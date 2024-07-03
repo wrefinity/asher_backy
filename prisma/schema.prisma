@@ -1,0 +1,240 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model landlords {
+  id       BigInt       @id @default(autoincrement())
+  property properties[]
+  userId   BigInt
+  user     users        @relation(fields: [userId], references: [id])
+}
+
+model properties {
+  id           BigInt    @id @default(autoincrement())
+  name         String
+  description  String
+  propertysize Int?
+  // owners
+  landlordId   BigInt
+  landlord     landlords @relation(fields: [landlordId], references: [id])
+  agencyId     BigInt?
+  agency       agency?   @relation(fields: [agencyId], references: [id])
+  agents       agents[]
+
+  // time attributes
+  yearBuilt DateTime?
+  createdAt DateTime? @default(now())
+
+  // address
+  city     String?
+  state    String?
+  country  String?
+  zipcode  String?
+  location String?
+
+  // visualizations
+  images   String[]
+  videourl String[]
+
+  //transaction can be expenses incurred or income generated
+  transactions transactions[]
+
+  amenities        String[]
+  //appartments
+  totalAppartments Int?
+  apartments       apartments[]
+  rating           rating[]
+  tenant           tenants[]
+}
+
+model apartments {
+  id           BigInt     @id @default(autoincrement())
+  code         String
+  propertyId   BigInt
+  property     properties @relation(fields: [propertyId], references: [id])
+  rooms        Int?
+  bedrooms     Int?
+  kitchen      Int?
+  bathrooms    Int?
+  garages      Int?
+  floorplans   String[]
+  facilities   String[]
+  offices      Int?
+  isVacant     Boolean    @default(true)
+  // rental duration in years
+  rentalAmount Decimal
+
+  // visualizations
+  images   String[]
+  videourl String[]
+
+  // the tenants occupying the apartments
+  currentTenant tenants
+  histories     appartmentTransactionHistory[]
+  transactions  transactions[]
+
+  inventory inventory[]
+}
+
+model appartmentTransactionHistory {
+  id BigInt @id @default(autoincrement())
+
+  rentDuration Int
+  amountPaid   Decimal
+
+  apartmentsId  BigInt?
+  apartments    apartments? @relation(fields: [apartmentsId], references: [id])
+  tenantId      BigInt?
+  tenants       tenants?    @relation(fields: [tenantId], references: [id])
+  transactionId BigInt?
+  transactions  tenants?    @relation(fields: [transactionId], references: [id])
+}
+
+//inventory accounts for the lists of items
+// for appartments within the inventory
+model inventory {
+  id           BigInt     @id @default(autoincrement())
+  location     String
+  propertyId   BigInt
+  property     properties @relation(fields: [propertyId], references: [propertyid])
+  appartmentId BigInt
+  apartments   properties @relation(fields: [appartmentId], references: [propertyid])
+  quantity     Int
+  description  String?
+  createdAt    DateTime?  @default(now()) @db.Timestamptz(6)
+}
+
+enum TransactionType {
+  EXPENSE
+  REVENUE
+}
+
+model transactions {
+  id           BigInt          @id @default(autoincrement())
+  description  String
+  cost         Decimal         @db.Decimal(18, 2)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(6)
+  // type can be income
+  type         TransactionType
+  propertyId   BigInt
+  properties   properties      @relation(fields: [propertyId], references: [id])
+  appartmentId BigInt
+  apartments   apartments      @relation(fields: [appartmentId], references: [id])
+  tenantId     BigInt
+  tenant       tenants         @relation(fields: [tenantId], references: [id])
+}
+
+model agency {
+  id         BigInt       @id @default(autoincrement())
+  name       String
+  agents     agents[]
+  properties properties[]
+  // TODO:
+}
+
+model agents {
+  id         BigInt      @id @default(autoincrement())
+  agentId    String?
+  about      String?
+  facebook   String?
+  twitter    String?
+  instagram  String?
+  linkedin   String?
+  createdAt  DateTime?   @default(now()) @db.Timestamptz(6)
+  agencyId   BigInt?
+  agency     agency?     @relation(fields: [agencyId], references: [id])
+  propertyId BigInt?
+  properties properties? @relation(fields: [propertyId], references: [id])
+  tenant     tenant[]
+}
+
+model rating {
+  ratingid    BigInt     @id @default(autoincrement())
+  propertyId  BigInt
+  property    properties @relation(fields: [propertyId], references: [id])
+  userId      BigInt
+  user        users      @relation(fields: [userId], references: [id])
+  ratingValue Int        @default(0) // a rating scale from 0 to 5
+  comments    String? // Optional field for user comments
+  createdAt   DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(6)
+}
+
+model tenantHistory {
+  id       BigInt   @id @default(autoincrement())
+  tenantId BigInt?
+  tenant   tenants? @relation(fields: [tenantId], references: [id])
+}
+
+model tenants {
+  id                    BigInt          @id @default(autoincrement())
+  tenantId              String          @unique
+  landlordId            BigInt
+  landlord              landlords       @relation(fields: [landlordId], references: [id])
+  agentId               BigInt?
+  agent                 agents?         @relation(fields: [agentId], references: [id])
+  propertyId            BigInt?
+  properties            properties?     @relation(fields: [propertyId], references: [id])
+  rentstartdate         DateTime?       @db.Timestamptz(6)
+  rentenddate           DateTime?       @db.Timestamptz(6)
+  rentstatus            Int
+  expectedrent          Decimal?        @db.Decimal(18, 2)
+  amountpaid            Decimal?        @db.Decimal(18, 2)
+  // durationofrent        Int?
+  isexisted             Int?
+  dateoffirstrent       DateTime?       @default(now()) @db.Timestamptz(6)
+  apartmentorflatnumber Int?
+  userId                BigInt
+  user                  users           @relation(fields: [userId], references: [id])
+  propertiesPropertyid  BigInt?
+  // TenantOnProperties    TenantOnProperties[]
+  history               tenantHistory[]
+  apartments            apartments?     @relation(fields: [apartmentsId], references: [id])
+  apartmentsId          BigInt?
+  transactions          transactions[]
+}
+
+model users {
+  id         BigInt  @id @default(autoincrement())
+  email      String  @unique
+  password   String
+  fullname   String
+  isVerified Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // foreign key and relational fields 
+  balance           balances?
+  VerificationToken VerificationToken[]
+  tenant            tenants[]
+  rating            rating[]
+}
+
+model balances {
+  id                 BigInt  @id @default(autoincrement())
+  amount             Decimal @default(0.00) @db.Decimal(18, 2)
+  outstandingBalance Decimal @default(0.00) @db.Decimal(18, 2)
+  userId             BigInt  @unique
+  user               users   @relation(fields: [userId], references: [id])
+}
+
+model VerificationToken {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  userId    BigInt
+  user      users     @relation(fields: [userId], references: [id])
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
