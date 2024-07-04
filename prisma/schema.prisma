@@ -18,6 +18,7 @@ model landlords {
   property properties[]
   userId   BigInt
   user     users        @relation(fields: [userId], references: [id])
+  tenants  tenants[]
 }
 
 model properties {
@@ -56,6 +57,8 @@ model properties {
   apartments       apartments[]
   rating           rating[]
   tenant           tenants[]
+  inventory        inventory[]
+  inventory        inventory[]
 }
 
 model apartments {
@@ -80,11 +83,12 @@ model apartments {
   videourl String[]
 
   // the tenants occupying the apartments
-  currentTenant tenants
+  currentTenant tenants                        @relation(fields: [tenantsId], references: [id])
   histories     appartmentTransactionHistory[]
   transactions  transactions[]
 
   inventory inventory[]
+  tenantsId BigInt
 }
 
 model appartmentTransactionHistory {
@@ -96,7 +100,7 @@ model appartmentTransactionHistory {
   apartmentsId  BigInt?
   apartments    apartments? @relation(fields: [apartmentsId], references: [id])
   tenantId      BigInt?
-  tenants       tenants?    @relation(fields: [tenantId], references: [id])
+  tenant        tenants?    @relation(fields: [tenantId], references: [id], name: "tenantHistory")
   transactionId BigInt?
   transactions  tenants?    @relation(fields: [transactionId], references: [id])
 }
@@ -104,15 +108,17 @@ model appartmentTransactionHistory {
 //inventory accounts for the lists of items
 // for appartments within the inventory
 model inventory {
-  id           BigInt     @id @default(autoincrement())
-  location     String
-  propertyId   BigInt
-  property     properties @relation(fields: [propertyId], references: [propertyid])
-  appartmentId BigInt
-  apartments   properties @relation(fields: [appartmentId], references: [propertyid])
-  quantity     Int
-  description  String?
-  createdAt    DateTime?  @default(now()) @db.Timestamptz(6)
+  id                 BigInt      @id @default(autoincrement())
+  location           String
+  propertyId         BigInt
+  property           properties  @relation(fields: [propertyId], references: [id], name: "propertyInventory")
+  appartmentId       BigInt
+  apartments         properties  @relation(fields: [appartmentId], references: [id])
+  quantity           Int
+  description        String?
+  createdAt          DateTime?   @default(now())
+  propertyApartments apartments? @relation(fields: [apartmentsId], references: [id])
+  apartmentsId       BigInt?
 }
 
 enum TransactionType {
@@ -156,7 +162,7 @@ model agents {
   agency     agency?     @relation(fields: [agencyId], references: [id])
   propertyId BigInt?
   properties properties? @relation(fields: [propertyId], references: [id])
-  tenant     tenant[]
+  tenant     tenants[]
 }
 
 model rating {
@@ -178,31 +184,33 @@ model tenantHistory {
 }
 
 model tenants {
-  id                    BigInt          @id @default(autoincrement())
-  tenantId              String          @unique
-  landlordId            BigInt
-  landlord              landlords       @relation(fields: [landlordId], references: [id])
-  agentId               BigInt?
-  agent                 agents?         @relation(fields: [agentId], references: [id])
-  propertyId            BigInt?
-  properties            properties?     @relation(fields: [propertyId], references: [id])
-  rentstartdate         DateTime?       @db.Timestamptz(6)
-  rentenddate           DateTime?       @db.Timestamptz(6)
-  rentstatus            Int
-  expectedrent          Decimal?        @db.Decimal(18, 2)
-  amountpaid            Decimal?        @db.Decimal(18, 2)
+  id                           BigInt                         @id @default(autoincrement())
+  tenantId                     String                         @unique
+  landlordId                   BigInt
+  landlord                     landlords                      @relation(fields: [landlordId], references: [id])
+  agentId                      BigInt?
+  agent                        agents?                        @relation(fields: [agentId], references: [id])
+  propertyId                   BigInt?
+  properties                   properties?                    @relation(fields: [propertyId], references: [id])
+  rentstartdate                DateTime?                      @db.Timestamptz(6)
+  rentenddate                  DateTime?                      @db.Timestamptz(6)
+  rentstatus                   Int
+  expectedrent                 Decimal?                       @db.Decimal(18, 2)
+  amountpaid                   Decimal?                       @db.Decimal(18, 2)
   // durationofrent        Int?
-  isexisted             Int?
-  dateoffirstrent       DateTime?       @default(now()) @db.Timestamptz(6)
-  apartmentorflatnumber Int?
-  userId                BigInt
-  user                  users           @relation(fields: [userId], references: [id])
-  propertiesPropertyid  BigInt?
+  isexisted                    Int?
+  dateoffirstrent              DateTime?                      @default(now()) @db.Timestamptz(6)
+  apartmentorflatnumber        Int?
+  userId                       BigInt
+  user                         users                          @relation(fields: [userId], references: [id])
+  propertiesPropertyid         BigInt?
   // TenantOnProperties    TenantOnProperties[]
-  history               tenantHistory[]
-  apartments            apartments?     @relation(fields: [apartmentsId], references: [id])
-  apartmentsId          BigInt?
-  transactions          transactions[]
+  history                      tenantHistory[]
+  apartments                   apartments?                    @relation(fields: [apartmentsId], references: [id])
+  apartmentsId                 BigInt?
+  transactions                 transactions[]
+  appartmentTransactionHistory appartmentTransactionHistory[]
+  appartmentTransactionHistory appartmentTransactionHistory[]
 }
 
 model users {
@@ -216,10 +224,17 @@ model users {
   updatedAt DateTime @updatedAt
 
   // foreign key and relational fields 
-  balance           balances?
-  VerificationToken VerificationToken[]
-  tenant            tenants[]
-  rating            rating[]
+  balance            balances?
+  VerificationToken  VerificationToken[]
+  tenant             tenants[]
+  rating             rating[]
+  landlords          landlords[]
+  community          community[]
+  communityPost      communityPost[]
+  communityPostLikes communityPostLikes[]
+  communityPostViews communityPostViews[]
+  sentEmails         Email[]              @relation("SentEmails", references: [id])
+  RecievedEmails     Email[]              @relation("RecievedEmails", references: [id])
 }
 
 model balances {
@@ -237,4 +252,79 @@ model VerificationToken {
   user      users     @relation(fields: [userId], references: [id])
   expiresAt DateTime?
   createdAt DateTime  @default(now())
+}
+
+model Community {
+  id                    BigInt   @id @default(autoincrement())
+  communityName         String   @unique
+  communityOwnerId      BigInt
+  user                  users    @relation(fields: [communityOwnerId], references: [id])
+  description           String
+  visibility            Boolean // we can have an enum it should either be public or private
+  communityProfileImage String?
+  communityProfileUrl   String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model CommunityPost {
+  id                   BigInt               @id @default(autoincrement())
+  communityId          BigInt
+  userId               BigInt
+  title                String
+  category             String
+  tags                 String[]
+  content              String
+  imageUrl             String
+  likes                CommunityPostLikes[]
+  views                CommunityPostViews   @relation(fields: [communityPostViewsId], references: [id])
+  user                 Users                @relation(fields: [userId], references: [id])
+  communityPostViewsId BigInt
+}
+
+model CommunityPostLikes {
+  id        BigInt        @id @default(autoincrement())
+  postId    BigInt
+  userId    BigInt
+  post      CommunityPost @relation(fields: [postId], references: [id])
+  user      Users         @relation(fields: [userId], references: [id])
+  createdAt DateTime      @default(now())
+}
+
+model CommunityPostViews {
+  id     BigInt        @id @default(autoincrement())
+  postId BigInt
+  userId BigInt
+  post   CommunityPost @relation(fields: [postId], references: [id])
+  user   Users         @relation(fields: [userId], references: [id])
+}
+
+model Comments {
+  id              BigInt        @id @default(autoincrement())
+  postId          BigInt
+  userId          BigInt
+  post            CommunityPost @relation(fields: [postId], references: [id])
+  user            Users         @relation(fields: [userId], references: [id])
+  comment         String
+  parentCommentId BigInt?
+  parentComment   Comments      @relation("ParentChildComment", fields: [parentCommentId], references: [id])
+  childComments   Comments[]    @relation("ParentChildComment")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([parentCommentId])
+}
+
+model Email {
+  id         BigInt   @id @default(autoincrement())
+  fromUserId BigInt
+  toUserId   BigInt
+  subject    String
+  attachment String?
+  isRead     Boolean  @default(false) //should we provide a default for these fields?
+  isDraft    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  from Users @relation("RecievedEmails", fields: [fromUserId], references: [id])
+  to   Users @relation("SentEmails", fields: [toUserId], references: [id])
 }
