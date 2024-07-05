@@ -22,16 +22,17 @@ model landlords {
 }
 
 model properties {
-  id           BigInt    @id @default(autoincrement())
+  id           BigInt @id @default(autoincrement())
   name         String
   description  String
   propertysize Int?
+
   // owners
-  landlordId   BigInt
-  landlord     landlords @relation(fields: [landlordId], references: [id])
-  agencyId     BigInt?
-  agency       agency?   @relation(fields: [agencyId], references: [id])
-  agents       agents[]
+  landlordId BigInt
+  landlord   landlords @relation(fields: [landlordId], references: [id])
+  agencyId   BigInt?
+  agency     agency?   @relation(fields: [agencyId], references: [id])
+  agents     agents[]
 
   // time attributes
   yearBuilt DateTime?
@@ -51,13 +52,13 @@ model properties {
   //transaction can be expenses incurred or income generated
   transactions transactions[]
 
-  amenities        String[]
-  //appartments
-  totalAppartments Int?
-  apartments       apartments[]
-  rating           rating[]
-  tenant           tenants[]
-  inventory        inventory[]
+  amenities       String[]
+  // apartments
+  totalApartments Int?
+  apartments      apartments[]
+  ratings         Rating[]
+  tenants         tenants[]
+  inventory       inventory[]
 }
 
 model apartments {
@@ -81,18 +82,18 @@ model apartments {
   images   String[]
   videourl String[]
 
-  // the tenants occupying the apartments
+  // the property to which the apartment belongs
   propertyId BigInt
   property   properties @relation(fields: [propertyId], references: [id])
 
-  currentTenant tenants                        @relation(fields: [tenantsId], references: [id])
-  histories     appartmentTransactionHistory[]
+  histories appartmentTransactionHistory[]
 
   transactions transactions[]
 
   inventory            inventory[]
   tenantPaymentHistory tenantPaymentHistory[]
-  tenantsId            BigInt
+  tenantsId            BigInt?
+  currentTenant        tenants?               @relation(fields: [tenantsId], references: [id])
 }
 
 model appartmentTransactionHistory {
@@ -176,7 +177,7 @@ model agents {
   tenant     tenants[]
 }
 
-model rating {
+model Rating {
   id          BigInt  @id @default(autoincrement())
   ratingValue Int     @default(0) // a rating scale from 0 to 5
   comments    String? // Optional field for user comments
@@ -188,12 +189,10 @@ model rating {
   user   users?  @relation("userRated", fields: [userId], references: [id])
 
   ratedByUserId BigInt
-  ratedBy       users  @relation("RatedByUser", fields: [ratedByUserId], references: [id])
+  ratedBy       users  @relation("ratedByUser", fields: [ratedByUserId], references: [id])
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
-  users     users?   @relation(fields: [usersId], references: [id])
-  usersId   BigInt?
 }
 
 // tenant session
@@ -232,13 +231,11 @@ model tenants {
   agentId                      BigInt?
   agent                        agents?                        @relation(fields: [agentId], references: [id])
   propertyId                   BigInt?
-  properties                   properties?                    @relation(fields: [propertyId], references: [id])
-  // TenantOnProperties    TenantOnProperties[]
+  property                     properties?                    @relation(fields: [propertyId], references: [id])
   history                      tenantPaymentHistory[]
-  apartmentsId                 BigInt?
-  apartments                   apartments?                    @relation(fields: [apartmentsId], references: [id])
   transactions                 transactions[]
   appartmentTransactionHistory appartmentTransactionHistory[]
+  apartments                   apartments[]
 }
 
 // user information definition 
@@ -287,20 +284,17 @@ model users {
   communityPost      CommunityPost[]
   communityPostLikes CommunityPostLikes[]
   communityPostViews CommunityPostViews[]
-  sentEmails         Email[]              @relation("SentEmails", references: [id])
-  RecievedEmails     Email[]              @relation("RecievedEmails", references: [id])
+  sentEmails         Email[]              @relation("SentEmails")
+  RecievedEmails     Email[]              @relation("RecievedEmails")
   applicants         applicant[]
   agents             agents[]
   Comments           Comments[]
-  Message            Message[]
-  ChatRoom           ChatRoom[]
-  rating             rating[]
-  rating             rating[]
-  rating             rating[]
-  Message            Message[]
-  Message            Message[]
-  ChatRoom           ChatRoom[]
-  ChatRoom           ChatRoom[]
+  ratingsGiven       Rating[]             @relation("ratedByUser")
+  ratingsReceived    Rating[]             @relation("userRated")
+  messagesSent       Message[]            @relation("messagesSent")
+  messagesReceived   Message[]            @relation("messagesReceived")
+  chatRoomsUser1     ChatRoom[]           @relation("chatRoomsUser1")
+  chatRoomsUser2     ChatRoom[]           @relation("chatRoomsUser2")
 }
 
 model VerificationToken {
@@ -335,9 +329,9 @@ model CommunityPost {
   content              String
   imageUrl             String
   likes                CommunityPostLikes[]
-  views                CommunityPostViews   @relation(fields: [communityPostViewsId], references: [id])
+  views                CommunityPostViews[]
   user                 users                @relation(fields: [userId], references: [id])
-  communityPostViewsId BigInt
+  communityPostViewsId BigInt               @unique
   Comments             Comments[]
 }
 
@@ -366,7 +360,7 @@ model Comments {
   user            users         @relation(fields: [userId], references: [id])
   comment         String
   parentCommentId BigInt?
-  parentComment   Comments      @relation("ParentChildComment", fields: [parentCommentId], references: [id])
+  parentComment   Comments?     @relation("ParentChildComment", fields: [parentCommentId], references: [id])
   childComments   Comments[]    @relation("ParentChildComment")
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -401,8 +395,6 @@ model Message {
   sender   users    @relation("messagesSent", fields: [senderId], references: [id])
   receiver users    @relation("messagesReceived", fields: [receiverId], references: [id])
   chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id])
-  users    users?   @relation(fields: [usersId], references: [id])
-  usersId  BigInt?
 }
 
 // Define the chatRooms model for one-on-one chats
@@ -416,8 +408,6 @@ model ChatRoom {
   user1    users     @relation("chatRoomsUser1", fields: [user1Id], references: [id])
   user2    users     @relation("chatRoomsUser2", fields: [user2Id], references: [id])
   messages Message[]
-  users    users?    @relation(fields: [usersId], references: [id])
-  usersId  BigInt?
 
   @@unique([user1Id, user2Id])
 }
