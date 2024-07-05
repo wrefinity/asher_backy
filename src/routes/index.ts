@@ -1,7 +1,8 @@
 import { Router } from "express";
 import AuthRoute from "./auth";
+import ApplicantRoute from "./applicant";
 
-class TenantRoutes {
+class IndexRoutes {
     public router: Router;
 
     constructor() {
@@ -11,7 +12,8 @@ class TenantRoutes {
 
     private initializeRoutes(): void {
         this.router.get("/auth", AuthRoute);
+        this.router.get("/auth", AuthRoute);
     }
 }
 
-export default new TenantRoutes().router;
+export default new IndexRoutes().router;

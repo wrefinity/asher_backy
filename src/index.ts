@@ -1,6 +1,7 @@
 import express, { Express } from "express";
 import { PORT } from "./secrets";
-import AppRouter from "./routes/tenant"
+import AuthRouter from "./routes/auth"
+import ApplicantRouter from "./routes/applicant"
 import { PrismaClient } from "@prisma/client";
 
 export const prismaClient:PrismaClient = new PrismaClient(
@@ -28,7 +29,8 @@ class Server {
 
     private configureRoutes() {
         // Add routes here
-        this.app.get("api/tenant/", AppRouter);
+        this.app.use("api/auth/", AuthRouter);
+        this.app.use("api/applicant/", ApplicantRouter);
     }
 
     public start() {
