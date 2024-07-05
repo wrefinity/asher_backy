@@ -1,5 +1,5 @@
 import { Router } from "express";
-import ApplicantControls from '../controllers/applicant';
+import ApplicantControls from '../webuser/controllers/applicant';
 
 class ApplicantRoutes {
     public router: Router;

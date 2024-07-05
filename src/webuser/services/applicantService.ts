@@ -1,5 +1,5 @@
 
-import { prismaClient } from "..";
+import { prismaClient } from "../..";
 
 class ApplicantService {
 
