@@ -1,5 +1,6 @@
 import { prismaClient } from "..";
-import {generateUniqueToken} from "../utils/generateToken" 
+import {generateUniqueToken} from "../utils/generateToken"
+import loggers from "../utils/loggers"; 
 
 
 const DEFAULT_EXPIRATION_DAYS = 1; // Default expiration in days
@@ -40,7 +41,7 @@ export async function validateVerificationToken(token: string): Promise<boolean>
 
         return !!verificationToken; // Return true if token exists and is valid
     } catch (error) {
-        console.error('Error validating verification token:', error);
+        loggers.info(`Error validating verification token: - ${error}`);
         throw new Error('Failed to validate verification token');
     }
 }

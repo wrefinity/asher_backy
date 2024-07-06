@@ -1,13 +1,14 @@
 import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
+import loggers from "../utils/loggers"; 
 
 class UserService {
     async findUserByEmail(email: string) {
         return await prismaClient.users.findFirst({ where: { email } });
     }
 
-    async findAUserById(userId: any) {
+    async findAUserById(userId: number) {
         return await prismaClient.users.findFirst({ where: { id: userId } })
     }
 
@@ -29,7 +30,7 @@ class UserService {
 
             return updatedUser;
         } catch (error) {
-            console.error('Error updating user verification status:', error);
+            loggers.info(`Error updating user verification status: ${error}`)
             throw new Error('Failed to update user verification status');
         }
     }

@@ -6,7 +6,6 @@ import AuthRouter from "./routes/auth"
 import ApplicantRouter from "./routes/applicant"
 import { PrismaClient } from "@prisma/client";
 
-
 export const prismaClient:PrismaClient = new PrismaClient(
     {
         log:['query']
