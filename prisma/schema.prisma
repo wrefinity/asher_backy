@@ -258,16 +258,10 @@ model balances {
 }
 
 model users {
-  id          BigInt  @id @default(autoincrement())
-  email       String  @unique
-  password    String
-  gender      String
-  phoneNumber String
-  address     String
-  dateOfBirth String
-  fullname    String
-  profileUrl  String
-  isVerified  Boolean @default(false)
+  id         BigInt  @id @default(autoincrement())
+  email      String  @unique
+  password   String
+  isVerified Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -295,6 +289,19 @@ model users {
   messagesReceived   Message[]            @relation("messagesReceived")
   chatRoomsUser1     ChatRoom[]           @relation("chatRoomsUser1")
   chatRoomsUser2     ChatRoom[]           @relation("chatRoomsUser2")
+  profileId          BigInt
+  profile            profile              @relation(fields: [profileId], references: [id])
+}
+
+model profile {
+  id          BigInt  @id @default(autoincrement())
+  gender      String?
+  phoneNumber String?
+  address     String?
+  dateOfBirth String?
+  fullname    String?
+  profileUrl  String?
+  users       users[]
 }
 
 model VerificationToken {
@@ -459,18 +466,17 @@ model nextOfKin {
 
 // Define the residentialInformation model
 model residentialInformation {
-  id                  BigInt   @id @default(autoincrement())
+  id                  BigInt @id @default(autoincrement())
   state               String
   zipcode             String
   address             String
   landlordPhoneNumber String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  addressStatus       String
-  lengthOfResidence   String
-  currentLandlord     String
-  city                String
-  landlordEmail       String
+
+  addressStatus     String
+  lengthOfResidence String
+  currentLandlord   String
+  city              String
+  landlordEmail     String
 
   applicantId BigInt
   applicant   applicant @relation(fields: [applicantId], references: [id])
@@ -483,8 +489,6 @@ model guarantorInformation {
   phoneNumber String
   email       String
   address     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
   applicantId BigInt
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
@@ -496,8 +500,6 @@ model emergencyContact {
   phoneNumber String
   email       String
   address     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
   applicantId BigInt
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
@@ -516,7 +518,7 @@ model document {
 
 // Define the EmploymentInformation model
 model EmploymentInformation {
-  id                BigInt   @id @default(autoincrement())
+  id                BigInt  @id @default(autoincrement())
   employerCompany   String
   taxCredit         String?
   childBenefit      String?
@@ -526,11 +528,10 @@ model EmploymentInformation {
   others            String?
   pension           String?
   employerEmail     String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  employerPhone     String
-  employmentStatus  String
-  positionTitle     String
+
+  employerPhone    String
+  employmentStatus String
+  positionTitle    String
 
   applicantId BigInt
   applicant   applicant @relation(fields: [applicantId], references: [id])

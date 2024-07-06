@@ -1,12 +1,18 @@
 import { Request, Response } from "express";
 import { compareSync } from "bcrypt";
+
 // custom libs
 import AuthServices from "../services/userServices";
-import { createVerificationToken, validateVerificationToken } from "../services/verificationTokenService"
+import { 
+    createVerificationToken,
+    deleteVerificationToken,
+    validateVerificationToken 
+} from "../services/verificationTokenService"
 import { Jtoken } from "../middlewares/Jtoken";
 import { JWT_SECRET } from "../secrets";
-import { SignUpIF } from "../interfaces/authInt";
-import sendEmail, { generateEmailTemplate } from "../utils/emailer"
+// import { SignUpIF } from "../interfaces/authInt";
+import sendEmail from "../utils/emailer"
+import  generateEmailTemplate from "../templates/email"
 
 
 
@@ -53,23 +59,78 @@ class AuthControls extends AuthServices {
                 res.status(404).json({ message: 'User not found' });
                 return;
             }
-
             // Validate verification token
-            const isValidToken = await validateVerificationToken(token);
+            const isValidToken = await validateVerificationToken(token, Number(user.id));
             if (!isValidToken) {
                 res.status(400).json({ message: 'Invalid or expired token' });
                 return;
             }
             // Update user's isVerified status to true
-            const updatedUser = await this.updateUserVerificationStatus(user.id, true);
+            const updatedUser = await this.updateUserVerificationStatus(Number(user.id), true);
+
+            await deleteVerificationToken(Number(user.id))
             res.status(200).json({ message: 'User verified successfully', user: updatedUser });
         } catch (error) {
             console.error('Error verifying user:', error);
             res.status(500).json({ message: 'Failed to verify user' });
         }
     }
+
+    async sendPasswordResetCode(req: Request, res: Response): Promise<void> {
+        const { email } = req.body;
+        try {
+            let user = await this.findUserByEmail(email);
+            if (user) res.status(400).json({ message: "user exists" });
+
+            // Ensure user is not null
+            if (user !== null && user !== undefined)
+                // Create verification token
+                await this.verificationTokenCreator(Number(user.id), email);
+
+            res.status(201).json({ message: "password reset code sent, check your email for verification code" });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                res.status(400).json({ message: error.message });
+            } else {
+                res.status(500).json({ message: "An unknown error occurred" });
+            }
+        }
+    }
+    async passwordReset(req: Request, res: Response): Promise<void> {
+
+        const { email, newPassword, token } = req.body;
+
+        try {
+            let user = await this.findUserByEmail(email);
+            if (user) res.status(400).json({ message: "user exists" });
+
+            // Validate verification token
+            let isValidToken = null;
+            if (user){
+                isValidToken = await validateVerificationToken(token, Number(user.id));
+            }
+
+            if (!isValidToken) {
+                res.status(400).json({ message: 'Invalid or expired token' });
+                return;
+            }
+            // Ensure user is not null
+            if (user !== null && user !== undefined)
+                // Update user's password
+                await this.updateUserPassword(Number(user.id), newPassword);
+
+            res.status(200).json({ message: 'Password Updated successfully' });
+
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                res.status(400).json({ message: error.message });
+            } else {
+                res.status(500).json({ message: "An unknown error occurred" });
+            }
+        }
+    }
     async login(req: Request, res: Response): Promise<void> {
-        const { email, password } = req.body;
+        const { email } = req.body;
 
         try {
             let user = await this.findUserByEmail(email);
@@ -78,12 +139,12 @@ class AuthControls extends AuthServices {
                 return;
             }
 
-            if (!compareSync(password, user.password)) {
-                res.status(400).json({ message: "Wrong login credentials" });
+            if (!compareSync(req.body.password, user.password)) {
+                res.status(400).json({ message: "Invalid login credentials" });
                 return;
             }
 
-            if  (!user.isVerified)  {
+            if (!user.isVerified) {
                 // Create verification token
                 this.verificationTokenCreator(Number(user.id), email);
                 res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
@@ -92,7 +153,9 @@ class AuthControls extends AuthServices {
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role) });
 
-            res.status(200).json({ message: "User logged in successfully", token, user });
+            const { password, ...userDetails } = user;
+
+            res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
             if (error instanceof Error) {
                 res.status(400).json({ message: error.message });
