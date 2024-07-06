@@ -11,6 +11,8 @@ class AuthRoutes {
 
     private initializeRoutes(): void {
         this.router.get("/login", AuthController.login);
+        this.router.get("/verify", AuthController.confirmation);
+        this.router.get("/register", AuthController.register);
     }
 }
 

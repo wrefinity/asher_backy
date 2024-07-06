@@ -1,6 +1,6 @@
 import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
-import { SignUpIF } from "../interfaces/authInt";
+// import { SignUpIF } from "../interfaces/authInt";
 
 class UserService {
     async findUserByEmail(email: string) {
@@ -11,7 +11,7 @@ class UserService {
         return await prismaClient.users.findUserById({ where: { id: userId } })
     }
 
-    async createUser(userData: SignUpIF) {
+    async createUser(userData: any) {
         return await prismaClient.users.create({
             data: {
                 ...userData,

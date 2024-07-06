@@ -4,7 +4,7 @@ import {generateUniqueToken} from "../utils/generateToken"
 
 const DEFAULT_EXPIRATION_DAYS = 1; // Default expiration in days
 
-export async function createVerificationToken(userId: BigInt): Promise<string> {
+export async function createVerificationToken(userId: number): Promise<string> {
     try {
         // Generate a unique token
         const token = generateUniqueToken();
@@ -21,8 +21,7 @@ export async function createVerificationToken(userId: BigInt): Promise<string> {
                 expiresAt: expirationDate,
             },
         });
-
-        return verificationToken;
+        return verificationToken.token;
     } catch (error) {
         throw new Error("Failed to create verification token");
     }

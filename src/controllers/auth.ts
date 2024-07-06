@@ -6,6 +6,7 @@ import { createVerificationToken, validateVerificationToken } from "../services/
 import { Jtoken } from "../middlewares/Jtoken";
 import { JWT_SECRET } from "../secrets";
 import { SignUpIF } from "../interfaces/authInt";
+import sendEmail, { generateEmailTemplate } from "../utils/emailer"
 
 
 
@@ -16,27 +17,26 @@ class AuthControls extends AuthServices {
         this.tokenService = new Jtoken(JWT_SECRET);
     }
 
+    protected async verificationTokenCreator(userId: number, email: string) {
+        const token = await createVerificationToken(Number(userId));
+        sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
+    }
+
     async register(req: Request, res: Response): Promise<void> {
-        const { email, password, fullname } = req.body;
+        const { email } = req.body;
 
         try {
             let user = await this.findUserByEmail(email);
             if (user) res.status(400).json({ message: "user exists" });
 
             if (user && !user?.isVerified) {
-                const token = await createVerificationToken(user.id);
-
-                return
+                // Create verification token
+                this.verificationTokenCreator(Number(user.id), email);
             }
-            user = await this.createUser({ email, password, fullname });
+            user = await this.createUser({ req.body, fullname });
             // Create verification token
-            const token = await createVerificationToken(user.id);
+            this.verificationTokenCreator(Number(user.id), email);
 
-            if (!token) {
-
-            }
-
-            //TODO: send token to email for verification
             res.status(201).json({ message: "User registered successfully, check your email for verification code", user });
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -47,7 +47,7 @@ class AuthControls extends AuthServices {
         }
 
     }
-    async verify(req: Request, res: Response): Promise<void> {
+    async confirmation(req: Request, res: Response): Promise<void> {
         const { email, token } = req.body;
 
         try {
@@ -64,7 +64,6 @@ class AuthControls extends AuthServices {
                 res.status(400).json({ message: 'Invalid or expired token' });
                 return;
             }
-
             // Update user's isVerified status to true
             const updatedUser = await this.updateUserVerificationStatus(user.id, true);
             res.status(200).json({ message: 'User verified successfully', user: updatedUser });
@@ -88,11 +87,14 @@ class AuthControls extends AuthServices {
                 return;
             }
 
-            if (!user.isVerified) {
-                // TODO: resend token for account verification
+            if  (!user.isVerified)  {
+                // Create verification token
+                this.verificationTokenCreator(Number(user.id), email);
+                res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
+                return;
             }
 
-            const token = await this.tokenService.createToken({ id: user.id, role: user.role });
+            const token = await this.tokenService.createToken({ id: user.id , role: user.role });
 
             res.status(200).json({ message: "User logged in successfully", token, user });
         } catch (error: unknown) {
