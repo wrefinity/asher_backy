@@ -7,6 +7,10 @@ class UserService {
         return await prismaClient.users.findFirst({ where: { email } });
     }
 
+    async findAUserById(userId: any) {
+        return await prismaClient.users.findUserById({ where: { id: userId } })
+    }
+
     async createUser(userData: SignUpIF) {
         return await prismaClient.users.create({
             data: {

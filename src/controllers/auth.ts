@@ -2,9 +2,10 @@ import { Request, Response } from "express";
 import { compareSync } from "bcrypt";
 // custom libs
 import AuthServices from "../services/userServices";
-import {createVerificationToken, validateVerificationToken} from "../services/verificationTokenService"
+import { createVerificationToken, validateVerificationToken } from "../services/verificationTokenService"
 import { Jtoken } from "../middlewares/Jtoken";
 import { JWT_SECRET } from "../secrets";
+import { SignUpIF } from "../interfaces/authInt";
 
 
 
@@ -22,19 +23,19 @@ class AuthControls extends AuthServices {
             let user = await this.findUserByEmail(email);
             if (user) res.status(400).json({ message: "user exists" });
 
-            if(user && !user?.isVerified ){
+            if (user && !user?.isVerified) {
                 const token = await createVerificationToken(user.id);
-                
+
                 return
             }
-            user = await this.createUser(email, password);
+            user = await this.createUser({ email, password, fullname });
             // Create verification token
             const token = await createVerificationToken(user.id);
 
-            if(!token){
+            if (!token) {
 
             }
-            
+
             //TODO: send token to email for verification
             res.status(201).json({ message: "User registered successfully, check your email for verification code", user });
         } catch (error: unknown) {
@@ -87,11 +88,11 @@ class AuthControls extends AuthServices {
                 return;
             }
 
-            if(!user.isVerified){
+            if (!user.isVerified) {
                 // TODO: resend token for account verification
             }
 
-            const token = await this.tokenService.createToken({ userId: user.id});
+            const token = await this.tokenService.createToken({ id: user.id, role: user.role });
 
             res.status(200).json({ message: "User logged in successfully", token, user });
         } catch (error: unknown) {
