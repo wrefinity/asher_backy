@@ -1,4 +1,5 @@
 import * as jwt from "jsonwebtoken";
+import { JWTPayload } from "../utils/types";
 
 export class Jtoken {
 
@@ -8,9 +9,9 @@ export class Jtoken {
         this.secret = secret;
     }
 
-    async createToken(payload: object): Promise<string> {
+    async createToken(payload: JWTPayload): Promise<string> {
         return new Promise((resolve, reject) => {
-            jwt.sign(payload, this.secret, { expiresIn:"1h"}, (err, token) => {
+            jwt.sign(payload, this.secret, { expiresIn: "1h" }, (err, token) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -19,13 +20,13 @@ export class Jtoken {
             });
         });
     }
-    async decodeToken(token: string): Promise<object | null> {
+    async decodeToken(token: string): Promise<JWTPayload | null> {
         return new Promise((resolve, reject) => {
             jwt.verify(token, this.secret, (err, decoded) => {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(decoded as object);
+                    resolve(decoded as JWTPayload);
                 }
             });
         });
