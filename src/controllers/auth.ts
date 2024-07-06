@@ -29,11 +29,7 @@ class AuthControls extends AuthServices {
             let user = await this.findUserByEmail(email);
             if (user) res.status(400).json({ message: "user exists" });
 
-            if (user && !user?.isVerified) {
-                // Create verification token
-                this.verificationTokenCreator(Number(user.id), email);
-            }
-            user = await this.createUser({ req.body, fullname });
+            user = await this.createUser(req.body);
             // Create verification token
             this.verificationTokenCreator(Number(user.id), email);
 
@@ -94,7 +90,7 @@ class AuthControls extends AuthServices {
                 return;
             }
 
-            const token = await this.tokenService.createToken({ id: user.id , role: user.role });
+            const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role) });
 
             res.status(200).json({ message: "User logged in successfully", token, user });
         } catch (error: unknown) {

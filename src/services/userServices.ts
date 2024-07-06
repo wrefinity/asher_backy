@@ -8,7 +8,7 @@ class UserService {
     }
 
     async findAUserById(userId: any) {
-        return await prismaClient.users.findUserById({ where: { id: userId } })
+        return await prismaClient.users.findFirst({ where: { id: userId } })
     }
 
     async createUser(userData: any) {
