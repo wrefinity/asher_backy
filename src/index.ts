@@ -5,10 +5,11 @@ import { PORT, APP_SECRET } from "./secrets";
 import AuthRouter from "./routes/auth"
 import ApplicantRouter from "./routes/applicant"
 import { PrismaClient } from "@prisma/client";
+import cookieParser from 'cookie-parser'
 
-export const prismaClient:PrismaClient = new PrismaClient(
+export const prismaClient: PrismaClient = new PrismaClient(
     {
-        log:['query']
+        log: ['query']
     }
 );
 
@@ -17,7 +18,7 @@ class Server {
     private port: number;
     private appSecret: string;
 
-    constructor(port: number, secret:string) {
+    constructor(port: number, secret: string) {
         this.app = express();
         this.port = port;
         this.appSecret = secret;
@@ -33,12 +34,13 @@ class Server {
             resave: false,
             saveUninitialized: false
         }));
+        this.app.use(cookieParser())
     }
 
     private configureRoutes() {
         // Add routes here
-        this.app.use("api/auth/", AuthRouter);
-        this.app.use("api/applicant/", ApplicantRouter);
+        this.app.use("/api/auth", AuthRouter);
+        this.app.use("/api/applicant", ApplicantRouter);
     }
 
     public start() {

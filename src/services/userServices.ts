@@ -1,7 +1,8 @@
 import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
-import loggers from "../utils/loggers"; 
+import loggers from "../utils/loggers";
+import { log } from "winston";
 
 class UserService {
     async findUserByEmail(email: string) {
@@ -16,7 +17,7 @@ class UserService {
         return await prismaClient.users.create({
             data: {
                 ...userData,
-                password: hashSync(userData.password, 10),
+                password: userData.password ? hashSync(userData.password, 10) : null,
             },
         });
     }
@@ -38,7 +39,7 @@ class UserService {
         try {
             const updatedUser = await prismaClient.users.update({
                 where: { id: userId },
-                data: { password: hashSync(password, 10)},
+                data: { password: hashSync(password, 10) },
             });
 
             return updatedUser;
@@ -46,6 +47,26 @@ class UserService {
             loggers.info(`Error updating user verification status: ${error}`)
             throw new Error('Failed to update user verification status');
         }
+    }
+
+    async createGoogleUser(userData: any) {
+        let user = null
+        try {
+            user = await this.findUserByEmail(userData.email)
+            if (user && user.password) {
+                return { error: "A user with this email exists" }
+            }
+        } catch (error) {
+            loggers.error("An error occured while checking for existing.", error)
+        }
+        try {
+            const newUser = await this.createUser(userData)
+            return newUser
+        } catch (error) {
+            loggers.error("An error occured while creating Google user.", error)
+            return { error: "An error occured creating Google User" }
+        }
+
     }
 
 }
