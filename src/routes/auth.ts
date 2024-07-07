@@ -13,6 +13,8 @@ class AuthRoutes {
         this.router.get("/login", AuthController.login);
         this.router.get("/verify", AuthController.confirmation);
         this.router.get("/register", AuthController.register);
+        this.router.get("/google_url", AuthController.sendGoogleUrl)
+        this.router.get("/google/callback", AuthController.githubLogin)
     }
 }
 
