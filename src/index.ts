@@ -1,4 +1,4 @@
-import express, { Express } from "express";
+import express, { Express,  } from "express";
 import session from "express-session";
 // import passport from "passport";
 import { PORT, APP_SECRET } from "./secrets";
@@ -30,13 +30,14 @@ class Server {
 
     private configureMiddlewares() {
         // middlewares here
-        this.app.use(express.json()) // for content-body parameters
+        this.app.use(express.json()); // for content-body parameters
+        this.app.use(express.urlencoded({extended:true}));
         this.app.use(session({
             secret: this.appSecret,
             resave: false,
             saveUninitialized: false
         }));
-        this.app.use(cookieParser())
+        this.app.use(cookieParser());
     }
 
     private configureRoutes() {

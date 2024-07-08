@@ -2,7 +2,7 @@ import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { log } from "winston";
+
 
 class UserService {
     async findUserByEmail(email: string) {
@@ -12,13 +12,34 @@ class UserService {
     async findAUserById(userId: number) {
         return await prismaClient.users.findFirst({ where: { id: userId } })
     }
-
+    
     async createUser(userData: any) {
         return await prismaClient.users.create({
             data: {
-                ...userData,
+                email:userData?.email,
+                role:userData?.role,
                 password: userData.password ? hashSync(userData.password, 10) : null,
+                profile:{
+                    create:{
+                        gender:userData?.gender,
+                        phoneNumber:userData?.phoneNumber,
+                        address:userData?.address,
+                        dateOfBirth:userData?.dateOfBirth,
+                        fullname:userData?.fullname,
+                        profileUrl:userData?.profileUrl
+                    }
+                }
             },
+        });
+    }
+    async updateUserInfo(id: number, userData: any) {
+        const updateData = { ...userData };
+        if (userData.password) {
+            updateData.password = hashSync(userData.password, 10);
+        }
+        return await prismaClient.users.update({
+            where: { id },
+            data: updateData,
         });
     }
 

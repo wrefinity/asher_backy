@@ -8,6 +8,9 @@ export type JWTPayload = {
 
 export interface CustomRequest extends Request {
     user: JWTPayload;
+    files: {
+        [fieldname: string]: Express.Multer.File[];
+    };
 }
 
 export type EmailDataType = {
@@ -19,4 +22,7 @@ export type EmailDataType = {
     isDraft?: boolean;
     isSent?: boolean;
     isRead?:boolean;
+}
+export interface CloudinaryFile extends Express.Multer.File {
+    buffer: Buffer;
 }

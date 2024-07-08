@@ -11,7 +11,7 @@ import {
     getTokensByUserId,
     validateVerificationToken
 } from "../services/verificationTokenService"
-
+import {bigIntToString} from "../utils/helpers";
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
@@ -19,10 +19,6 @@ import sendEmail from "../utils/emailer";
 import logger from '../utils/loggers'
 
 
-
-function serializeBigInt(obj: any): any {
-    return JSON.stringify(obj, (_, value) => (typeof value === 'bigint' ? value.toString() : value));
-}
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -50,10 +46,12 @@ class AuthControls {
             const token = await createVerificationToken(Number(user.id));
             sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
-            const { id, ...userWithoutId } = user;
+            // Convert BigInt to string before sending the response
+            const userResponse = bigIntToString(user);
 
+            
             // const serializedUser = serializeBigInt(user);
-            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user:userWithoutId });
+            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user:userResponse });
 
         } catch (error: unknown) {
             if (error instanceof Error) {

@@ -3,8 +3,7 @@ import { prismaClient } from "../..";
 class ChatServices {
 
 
-    createChatRoom = async (user1Id: number, user2Id: number) => {
-        
+    createChatRoom = async (user1Id: number, user2Id: number) => { 
         return await prismaClient.chatRoom.create({
             data: {
                 user1Id,
@@ -46,20 +45,6 @@ class ChatServices {
             },
         });
     }
-
-    // getChatRooms = async (userId: number) => {
-    //     return await prismaClient.chatRoom.findMany({
-    //         where: {
-    //             OR: [
-    //                 { user1Id: userId },
-    //                 { user2Id: userId },
-    //             ],
-    //         },
-    //         include: {
-    //             messages: true,
-    //         },
-    //     });
-    // }
 
 }
 
