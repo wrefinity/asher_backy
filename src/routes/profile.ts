@@ -1,7 +1,7 @@
 import { Router } from "express";
 import ProfileControls from '../controllers/profile';
 import { uploadToCloudinary } from '../middlewares/multerCloudinary';
-import { upload } from "../configs/multer";
+import upload from "../configs/multer";
 
 
 class ProfileRoutes {

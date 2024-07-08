@@ -11,7 +11,7 @@ import {
     getTokensByUserId,
     validateVerificationToken
 } from "../services/verificationTokenService"
-import {bigIntToString} from "../utils/helpers";
+import { bigIntToString } from "../utils/helpers";
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
@@ -49,9 +49,9 @@ class AuthControls {
             // Convert BigInt to string before sending the response
             const userResponse = bigIntToString(user);
 
-            
+
             // const serializedUser = serializeBigInt(user);
-            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user:userResponse });
+            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user: userResponse });
 
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -82,10 +82,13 @@ class AuthControls {
             // Update user's isVerified status to true
             const updatedUser = await UserServices.updateUserVerificationStatus(Number(user.id), true);
 
-            const tokenRet = await getTokensByUserId(Number(user.id), token ) 
+            const tokenRet = await getTokensByUserId(Number(user.id), token)
             await deleteVerificationToken(Number(tokenRet.id));
 
-            const { id, ...userWithoutId } = updatedUser;
+            const userResponse = bigIntToString(updatedUser);
+
+            const { password, ...userWithoutId } = userResponse;
+
             res.status(200).json({ message: 'User verified successfully', user: userWithoutId });
         } catch (error) {
             console.error('Error verifying user:', error);
@@ -93,14 +96,14 @@ class AuthControls {
         }
     }
 
-    sendPasswordResetCode = async(req: Request, res: Response) =>{
+    sendPasswordResetCode = async (req: Request, res: Response) => {
         const { email } = req.body;
         try {
             let user = await UserServices.findUserByEmail(email);
             if (user) res.status(400).json({ message: "user exists" });
 
             // Ensure user is not null
-            if (user !== null && user !== undefined){
+            if (user !== null && user !== undefined) {
                 // Create verification token
                 const token = await createVerificationToken(Number(user.id));
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
@@ -116,7 +119,7 @@ class AuthControls {
     }
 
 
-    passwordReset = async (req: Request, res: Response) =>{
+    passwordReset = async (req: Request, res: Response) => {
 
         const { email, newPassword, token } = req.body;
 
@@ -167,13 +170,15 @@ class AuthControls {
                 const token = await createVerificationToken(Number(user.id));
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
-            } 
+            }
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
-            const { password, id, ...userDetails } = user;
+            const { password, id, ...userDetails } = bigIntToString(user);;
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
+
+            console.log(error)
             if (error instanceof Error) {
                 return res.status(400).json({ message: error.message });
             } else {
