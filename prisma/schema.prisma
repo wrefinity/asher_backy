@@ -376,17 +376,19 @@ model Comments {
 }
 
 model Email {
-  id         BigInt   @id @default(autoincrement())
-  fromUserId BigInt
-  toUserId   BigInt
-  subject    String
-  attachment String?
-  isRead     Boolean  @default(false) //should we provide a default for these fields?
-  isDraft    Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  id            BigInt   @id @default(autoincrement())
+  senderEmail   String
+  recieverEmail String
+  subject       String
+  body          String
+  attachment    String?
+  isRead        Boolean  @default(false)
+  isDraft       Boolean  @default(false)
+  isSent        Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
-  from users @relation("RecievedEmails", fields: [fromUserId], references: [id])
-  to   users @relation("SentEmails", fields: [toUserId], references: [id])
+  from users @relation("RecievedEmails", fields: [senderEmail], references: [email])
+  to   users @relation("SentEmails", fields: [recieverEmail], references: [email])
 }
 
 // chats schema

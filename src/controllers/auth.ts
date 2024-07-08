@@ -163,7 +163,7 @@ class AuthControls extends AuthServices {
                 return;
             }
 
-            const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role) });
+            const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
             const { password, ...userDetails } = user;
 
@@ -229,7 +229,7 @@ class AuthControls extends AuthServices {
         }
         console.log(user)
 
-        const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role) });
+        const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
         return res.status(200).json({ access_token: token })
 
     }
