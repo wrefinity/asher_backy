@@ -3,6 +3,7 @@ import session from "express-session";
 // import passport from "passport";
 import { PORT, APP_SECRET } from "./secrets";
 import AuthRouter from "./routes/auth"
+import ProfileRouter from "./routes/profile"
 import ApplicantRouter from "./routes/applicant"
 import ChatRoomRouter from "./routes/chats"
 import EmailRouter from "./routes/email"
@@ -44,6 +45,7 @@ class Server {
         // Add routes here
         this.app.get("/", (req, res)=> res.json({message:"it is working"}));
         this.app.use("/api/auth", AuthRouter);
+        this.app.use("/api/profile", ProfileRouter);
         this.app.use("/api/applicant", ApplicantRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);

@@ -8,6 +8,7 @@ import { CustomRequest, CloudinaryFile } from "../utils/types";
 
 export const uploadToCloudinary = async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
+        console.log(req)
         const files = req.files as { [fieldname: string]: Express.Multer.File[] };
         const allFiles: CloudinaryFile[] = Object.values(files).flat() as CloudinaryFile[];
 

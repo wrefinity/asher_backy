@@ -9,32 +9,39 @@ export class Authorize {
     constructor() {
         // super()
         this.tokenService = new Jtoken(JWT_SECRET)
+        this.authorize = this.authorize.bind(this);
     }
 
     async authorize(req: CustomRequest, res: Response, next: NextFunction) {
         let token: string | undefined;
 
         if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+            token = req.headers.authorization.split(" ")[1];
+            console.log(token);
+        }
 
-            if (!token) return res.status(401).json({ message: "Not authorized, token failed" })
+        if (!token) {
+            return res.status(401).json({ message: "Not authorized, token failed" });
+        }
 
-            try {
-                token = req.headers.authorization.split(" ")[1];
+        try {
+            const decoded = await this.tokenService.decodeToken(token);
 
-                const decoded = await this.tokenService.decodeToken(token)
-
-                if (!decoded) return res.status(401).json({ message: "Not authorized, invalid token" })
-
-                const user = await UserService.findAUserById(decoded.id)
-
-                if (!user) return res.status(401).json({ message: "Not authorized, user not found" })
-
-                req.user = decoded;
-
-                next()
-            } catch (error) {
-                return res.status(401).json({ message: "Not authorized, token failed" })
+            if (!decoded) {
+                return res.status(401).json({ message: "Not authorized, invalid token" });
             }
+
+            const user = await UserService.findAUserById(decoded.id);
+
+            if (!user) {
+                return res.status(401).json({ message: "Not authorized, user not found" });
+            }
+
+            req.user = decoded;
+            next();
+        } catch (error) {
+            console.error('Authorization error:', error);
+            return res.status(401).json({ message: "Not authorized, token failed" });
         }
     }
 
