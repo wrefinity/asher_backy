@@ -4,12 +4,14 @@ import { Request, Response } from "express";
 // custom libs
 import { Jtoken } from "../middlewares/Jtoken";
 import { JWT_SECRET } from "../secrets";
-import AuthServices from "../services/userServices";
+import UserServices from "../services/userServices";
 import {
     createVerificationToken,
     deleteVerificationToken,
+    getTokensByUserId,
     validateVerificationToken
-} from "../services/verificationTokenService";
+} from "../services/verificationTokenService"
+
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
@@ -18,50 +20,57 @@ import logger from '../utils/loggers'
 
 
 
-class AuthControls extends AuthServices {
+function serializeBigInt(obj: any): any {
+    return JSON.stringify(obj, (_, value) => (typeof value === 'bigint' ? value.toString() : value));
+}
+
+class AuthControls {
     protected tokenService: Jtoken;
     protected googleService: GoogleService;
     constructor() {
-        super()
         this.tokenService = new Jtoken(JWT_SECRET);
         this.googleService = new GoogleService()
     }
 
-    protected async verificationTokenCreator(userId: number, email: string) {
+    async verificationTokenCreator(userId: number, email: string) {
         const token = await createVerificationToken(Number(userId));
         sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
     }
 
-
-    async register(req: Request, res: Response): Promise<void> {
+    register = async (req: Request, res: Response) => {
         const { email } = req.body;
 
         try {
-            let user = await this.findUserByEmail(email);
-            if (user) res.status(400).json({ message: "user exists" });
+            let user = await UserServices.findUserByEmail(email);
+            if (user) return res.status(400).json({ message: "user exists" });
 
-            user = await this.createUser(req.body);
+            user = await UserServices.createUser(req.body);
             // Create verification token
-            this.verificationTokenCreator(Number(user.id), email);
+            // await this.verificationTokenCreator(Number(user.id), email);
+            const token = await createVerificationToken(Number(user.id));
+            sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
-            res.status(201).json({ message: "User registered successfully, check your email for verification code", user });
+            const { id, ...userWithoutId } = user;
+
+            // const serializedUser = serializeBigInt(user);
+            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user:userWithoutId });
+
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(400).json({ message: error.message });
+                console.log(error)
+                return res.status(400).json({ message: error });
             } else {
-                res.status(500).json({ message: "An unknown error occurred" });
+                return res.status(500).json({ message: "An unknown error occurred" });
             }
         }
 
     }
-
-
-    async confirmation(req: Request, res: Response): Promise<void> {
+    confirmation = async (req: Request, res: Response) => {
         const { email, token } = req.body;
 
         try {
             // Find user by email
-            const user = await this.findUserByEmail(email);
+            const user = await UserServices.findUserByEmail(email);
             if (!user) {
                 res.status(404).json({ message: 'User not found' });
                 return;
@@ -73,46 +82,49 @@ class AuthControls extends AuthServices {
                 return;
             }
             // Update user's isVerified status to true
-            const updatedUser = await this.updateUserVerificationStatus(Number(user.id), true);
+            const updatedUser = await UserServices.updateUserVerificationStatus(Number(user.id), true);
 
-            await deleteVerificationToken(Number(user.id))
-            res.status(200).json({ message: 'User verified successfully', user: updatedUser });
+            const tokenRet = await getTokensByUserId(Number(user.id), token ) 
+            await deleteVerificationToken(Number(tokenRet.id));
+
+            const { id, ...userWithoutId } = updatedUser;
+            res.status(200).json({ message: 'User verified successfully', user: userWithoutId });
         } catch (error) {
             console.error('Error verifying user:', error);
             res.status(500).json({ message: 'Failed to verify user' });
         }
     }
 
-
-    async sendPasswordResetCode(req: Request, res: Response): Promise<void> {
+    sendPasswordResetCode = async(req: Request, res: Response) =>{
         const { email } = req.body;
         try {
-            let user = await this.findUserByEmail(email);
+            let user = await UserServices.findUserByEmail(email);
             if (user) res.status(400).json({ message: "user exists" });
 
             // Ensure user is not null
-            if (user !== null && user !== undefined)
+            if (user !== null && user !== undefined){
                 // Create verification token
-                await this.verificationTokenCreator(Number(user.id), email);
-
-            res.status(201).json({ message: "password reset code sent, check your email for verification code" });
+                const token = await createVerificationToken(Number(user.id));
+                sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
+            }
+            return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(400).json({ message: error.message });
+                return res.status(400).json({ message: error.message });
             } else {
-                res.status(500).json({ message: "An unknown error occurred" });
+                return res.status(500).json({ message: "An unknown error occurred" });
             }
         }
     }
 
 
-    async passwordReset(req: Request, res: Response): Promise<void> {
+    passwordReset = async (req: Request, res: Response) =>{
 
         const { email, newPassword, token } = req.body;
 
         try {
-            let user = await this.findUserByEmail(email);
-            if (user) res.status(400).json({ message: "user exists" });
+            let user = await UserServices.findUserByEmail(email);
+            if (user) return res.status(400).json({ message: "user exists" });
 
             // Validate verification token
             let isValidToken = null;
@@ -127,52 +139,47 @@ class AuthControls extends AuthServices {
             // Ensure user is not null
             if (user !== null && user !== undefined)
                 // Update user's password
-                await this.updateUserPassword(Number(user.id), newPassword);
+                await UserServices.updateUserPassword(Number(user.id), newPassword);
 
-            res.status(200).json({ message: 'Password Updated successfully' });
+            return res.status(200).json({ message: 'Password Updated successfully' });
 
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(400).json({ message: error.message });
+                return res.status(400).json({ message: error.message });
             } else {
-                res.status(500).json({ message: "An unknown error occurred" });
+                return res.status(500).json({ message: "An unknown error occurred" });
             }
         }
     }
-
-
-    async login(req: Request, res: Response): Promise<void> {
+    login = async (req: Request, res: Response) => {
         const { email } = req.body;
 
         try {
-            let user = await this.findUserByEmail(email);
+            let user = await UserServices.findUserByEmail(email);
             if (!user) {
-                res.status(400).json({ message: "User does not exist" });
-                return;
+                return res.status(400).json({ message: "User does not exist" });
             }
 
             if (!compareSync(req.body.password, user.password!)) {
-                res.status(400).json({ message: "Invalid login credentials" });
-                return;
+                return res.status(400).json({ message: "Invalid login credentials" });
             }
 
             if (!user.isVerified) {
                 // Create verification token
-                this.verificationTokenCreator(Number(user.id), email);
-                res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
-                return;
-            }
+                const token = await createVerificationToken(Number(user.id));
+                sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
+                return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
+            } 
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
-            const { password, ...userDetails } = user;
-
-            res.status(200).json({ message: "User logged in successfully", token, userDetails });
+            const { password, id, ...userDetails } = user;
+            return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(400).json({ message: error.message });
+                return res.status(400).json({ message: error.message });
             } else {
-                res.status(500).json({ message: "An unknown error occurred" });
+                return res.status(500).json({ message: "An unknown error occurred" });
             }
         }
 
@@ -223,7 +230,7 @@ class AuthControls extends AuthServices {
             return res.status(400).json({ message: "Invalid Request" })
         }
 
-        let user = await this.createGoogleUser(userProfile)
+        let user = await UserServices.createGoogleUser(userProfile)
         if ("error" in user) {
             return res.status(400).json({ message: user.error })
         }

@@ -10,11 +10,11 @@ class AuthRoutes {
     }
 
     private initializeRoutes(): void {
-        this.router.get("/login", AuthController.login);
-        this.router.get("/verify", AuthController.confirmation);
-        this.router.get("/register", AuthController.register);
-        this.router.get("/google_url", AuthController.sendGoogleUrl)
-        this.router.get("/google/callback", AuthController.githubLogin)
+        this.router.post("/login", AuthController.login.bind(AuthController));
+        this.router.post("/verify", AuthController.confirmation.bind(AuthController));
+        this.router.post("/register", AuthController.register.bind(AuthController));
+        this.router.get("/google_url", AuthController.sendGoogleUrl.bind(AuthController))
+        this.router.get("/google/callback", AuthController.githubLogin.bind(AuthController))
     }
 }
 

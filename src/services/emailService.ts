@@ -19,14 +19,11 @@ const userSelect = {
 };
 
 class EmailService {
-    userService: UserService
-    constructor() {
-        this.userService = new UserService()
-    }
+    
 
     async createEmail(emailData: EmailDataType) {
         try {
-            const recieverEmail = await this.userService.findUserByEmail(emailData.recieverEmail)
+            const recieverEmail = await UserService.findUserByEmail(emailData.recieverEmail)
             if (!recieverEmail) {
                 throw new Error('Reciever email is invalid');
             }

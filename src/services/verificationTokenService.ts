@@ -57,9 +57,6 @@ export async function getTokensByUserId(userId: number, token:string) {
             where: { 
                 userId,
                 token,
-                expiresAt: {
-                    gte: new Date(),
-                },
             },
         });
 

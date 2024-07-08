@@ -289,8 +289,8 @@ model users {
   messagesReceived   Message[]            @relation("messagesReceived")
   chatRoomsUser1     ChatRoom[]           @relation("chatRoomsUser1")
   chatRoomsUser2     ChatRoom[]           @relation("chatRoomsUser2")
-  profileId          BigInt
-  profile            profile              @relation(fields: [profileId], references: [id])
+  profileId          BigInt?
+  profile            profile?              @relation(fields: [profileId], references: [id])
 }
 
 model profile {

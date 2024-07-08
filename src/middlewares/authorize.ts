@@ -4,10 +4,10 @@ import { CustomRequest, JWTPayload } from "../utils/types";
 import { Jtoken } from "./Jtoken";
 import UserService from "../services/userServices";
 
-export class Authorize extends UserService {
+export class Authorize {
     protected tokenService: Jtoken;
     constructor() {
-        super()
+        // super()
         this.tokenService = new Jtoken(JWT_SECRET)
     }
 
@@ -25,7 +25,7 @@ export class Authorize extends UserService {
 
                 if (!decoded) return res.status(401).json({ message: "Not authorized, invalid token" })
 
-                const user = await this.findAUserById(decoded.id)
+                const user = await UserService.findAUserById(decoded.id)
 
                 if (!user) return res.status(401).json({ message: "Not authorized, user not found" })
 
