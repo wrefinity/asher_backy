@@ -1,15 +1,20 @@
-import { CLOUDINARY_FOLDER } from "../secrets"
 import {UploadApiResponse,UploadApiErrorResponse} from 'cloudinary';
-import cloudinary from "../configs/cloudinary";
-import sharp from 'sharp';
 import { Response, NextFunction } from "express";
+import sharp from 'sharp';
+import cloudinary from "../configs/cloudinary";
 import { CustomRequest, CloudinaryFile } from "../utils/types";
-
+import { CLOUDINARY_FOLDER } from "../secrets";
 
 export const uploadToCloudinary = async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
-        console.log(req)
+        console.log('Request received:', req);  // Debug log
         const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        console.log('Files:', files);  // Debug log
+
+        if (!files) {
+            return next(new Error('No files provided'));
+        }
+
         const allFiles: CloudinaryFile[] = Object.values(files).flat() as CloudinaryFile[];
 
         if (!allFiles || allFiles.length === 0) {

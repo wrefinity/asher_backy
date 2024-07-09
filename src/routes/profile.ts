@@ -15,7 +15,7 @@ class ProfileRoutes {
     }
 
     private initializeRoutes(): void {
-        this.router.patch('/:id', this.authenticateService.authorize, upload.array('images', 5), uploadToCloudinary, ProfileControls.profileUpdate);
+        this.router.patch('/:profileId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ProfileControls.profileUpdate);
     }
 }
 

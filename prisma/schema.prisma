@@ -290,15 +290,15 @@ model users {
   chatRoomsUser1     ChatRoom[]           @relation("chatRoomsUser1")
   chatRoomsUser2     ChatRoom[]           @relation("chatRoomsUser2")
   profileId          BigInt?
-  profile            profile?              @relation(fields: [profileId], references: [id])
+  profile            profile?             @relation(fields: [profileId], references: [id])
 }
 
 model profile {
-  id          BigInt  @id @default(autoincrement())
+  id          BigInt    @id @default(autoincrement())
   gender      String?
   phoneNumber String?
   address     String?
-  dateOfBirth String?
+  dateOfBirth DateTime?
   fullname    String?
   profileUrl  String?
   users       users[]

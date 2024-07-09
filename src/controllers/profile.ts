@@ -13,7 +13,8 @@ class ProfileControls {
             return res.status(400).json({ message: error.details[0].message });
         }
         try {
-            const userId = req.user.id;
+            // const userId = req.user.id;
+            const {profileId} = req.params;
             const updatedData = { ...value };
 
             if (req.files) {
@@ -28,13 +29,14 @@ class ProfileControls {
                         const cloudinaryUrls = req.body.cloudinaryUrls;
                         if (cloudinaryUrls.length > 0) {
                             updatedData.profileUrl = cloudinaryUrls[0];
+                            delete updatedData['cloudinaryUrls'];
                         }
                     });
                 }
             }
 
             // Update the user profile in the database
-            const updatedUser = await ProfileServices.updateUserProfile(userId, updatedData);
+            const updatedUser = await ProfileServices.updateUserProfile(Number(profileId), updatedData);
             const {id, ...profile} = updatedUser;
             res.status(200).json({ message: 'Profile updated successfully', user: profile });
 

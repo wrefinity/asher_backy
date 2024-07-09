@@ -6,6 +6,7 @@ export const profileSchema = Joi.object({
   address: Joi.string().optional(),
   dateOfBirth: Joi.date().iso().optional(),
   fullname: Joi.string().max(255),
+  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   profileUrl: Joi.string().uri().optional()
 });
 

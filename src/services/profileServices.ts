@@ -18,9 +18,9 @@ class ProfileService {
             },
         });
     }
-    async updateUserProfile(userId: number, profileData: any) { 
+    async updateUserProfile(id: number, profileData: any) { 
         return await prismaClient.profile.update({
-            where: { id:userId },
+            where: { id },
             data: profileData,
         });
     }
