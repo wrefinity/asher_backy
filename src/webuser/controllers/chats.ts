@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { CustomRequest } from "../../utils/types";
 import ChatServices from '../services/chatServices';
-import {bigIntToString} from "../../utils/helpers";
+import {String} from "../../utils/helpers";
 class ChatMessageAuth {
     createChatRoom = async (req: CustomRequest, res: Response) => {
 
@@ -12,9 +12,9 @@ class ChatMessageAuth {
             let chatRoom = null;
             if(!chatRoomExist) {
                 chatRoom = await ChatServices.createChatRoom(senderId, receiverId);
-                return res.status(201).json({chatRoom: bigIntToString(chatRoom)});
+                return res.status(201).json({chatRoom: String(chatRoom)});
             }
-            return res.status(201).json({chatRoom:bigIntToString(chatRoomExist)});
+            return res.status(201).json({chatRoom:String(chatRoomExist)});
         } catch (error) {
             console.error('Error creating chat room:', error);
             return res.status(500).json({ message: 'Internal server error' });
@@ -33,7 +33,7 @@ class ChatMessageAuth {
                 Number(receiverId),
                 Number(chatRoomId)
             );
-            return res.status(201).json({chat: bigIntToString(chat)});
+            return res.status(201).json({chat: String(chat)});
         } catch (error) {
             console.error('Error sending message:', error);
             res.status(500).json({ message: 'Internal server error' });
@@ -44,7 +44,7 @@ class ChatMessageAuth {
         const { chatRoomId } = req.params;
         try {
             const chat = await ChatServices.getChatRoomMessages(Number(chatRoomId));
-            res.json({chat: bigIntToString(chat)});
+            res.json({chat: String(chat)});
         } catch (error) {
             console.error('Error getting chat rooms:', error);
             res.status(500).json({ message: 'Internal server error' });
