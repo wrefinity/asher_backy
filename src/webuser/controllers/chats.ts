@@ -1,39 +1,50 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { CustomRequest } from "../../utils/types";
 import ChatServices from '../services/chatServices';
-
+import {bigIntToString} from "../../utils/helpers";
 class ChatMessageAuth {
-    createChatRoom = async (req: Request, res: Response) => {
-        const { user1Id, user2Id } = req.body;
+    createChatRoom = async (req: CustomRequest, res: Response) => {
+
         try {
-            const chatRoomExist = await ChatServices.getChatRooms(user1Id, user2Id);
+            const senderId = req.user.id; // sender is the current logged in user
+            const receiverId = Number(req.params.receiverId);
+            const chatRoomExist = await ChatServices.getChatRooms(senderId, receiverId);
             let chatRoom = null;
             if(!chatRoomExist) {
-                chatRoom = await ChatServices.createChatRoom(user1Id, user2Id);
-                return res.status(201).json({chatRoom});
+                chatRoom = await ChatServices.createChatRoom(senderId, receiverId);
+                return res.status(201).json({chatRoom: bigIntToString(chatRoom)});
             }
-            return res.status(201).json({chatRoom:chatRoomExist});
+            return res.status(201).json({chatRoom:bigIntToString(chatRoomExist)});
         } catch (error) {
             console.error('Error creating chat room:', error);
             return res.status(500).json({ message: 'Internal server error' });
         }
     }
-    createMessage = async (req: Request, res: Response) => {
-        const { content, senderId, receiverId } = req.body;
-        const {chatRoomId} = req.params;
+    
+    createMessage = async (req: CustomRequest, res: Response) => {
+        const { content  } = req.body;
+        const {chatRoomId, receiverId} = req.params;
         try {
-            const message = await ChatServices.createRoomMessages(content, senderId, receiverId, chatRoomId);
-            return res.status(201).json(message);
+            const senderId = req.user.id; // sender is the current logged in user
+        
+            const chat = await ChatServices.createRoomMessages(
+                content,
+                senderId,
+                Number(receiverId),
+                Number(chatRoomId)
+            );
+            return res.status(201).json({chat: bigIntToString(chat)});
         } catch (error) {
             console.error('Error sending message:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     }
 
-    getChatRoomMessage = async (req: Request, res: Response) => {
-        const { chatRoomId } = req.query;
+    getChatRoomMessage = async (req: CustomRequest, res: Response) => {
+        const { chatRoomId } = req.params;
         try {
-            const messages = await ChatServices.getChatRoomMessages(Number(chatRoomId));
-            res.json(messages);
+            const chat = await ChatServices.getChatRoomMessages(Number(chatRoomId));
+            res.json({chat: bigIntToString(chat)});
         } catch (error) {
             console.error('Error getting chat rooms:', error);
             res.status(500).json({ message: 'Internal server error' });

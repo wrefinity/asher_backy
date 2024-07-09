@@ -22,66 +22,37 @@ class ApplicantService {
         securityDeposit: data.securityDeposit,
         leaseTerm: data.leaseTerm,
         userId: data.userId,
+        residentialInformation: {
+          create: data.residentialInformation
+        },
+        guarantorInformation: {
+          create: data.guarantorInformation
+        },
+        emergencyContact: {
+          create: data.emergencyContact
+        },
+        documents: {
+          create: data.documents
+        },
+        employmentInformations: {
+          create: data.employmentInformations
+        },
+        nextOfKin: {
+          create: data.nextOfKin
+        }
       },
+      include: {
+        residentialInformation: true,
+        guarantorInformation: true,
+        emergencyContact: true,
+        documents: true,
+        employmentInformations: true,
+        nextOfKin: true
+      }
     });
 
-    const applicantId = applicant.id;
-
-    // Create related models and link them to the applicant
-    if (data.residentialInformation && data.residentialInformation.length > 0) {
-      await prismaClient.residentialInformation.createMany({
-        data: data.residentialInformation.map((info: any) => ({
-          ...info,
-          applicantId,
-        })),
-      });
-    }
-
-    if (data.guarantorInformation && data.guarantorInformation.length > 0) {
-      await prismaClient.guarantorInformation.createMany({
-        data: data.guarantorInformation.map((info: any) => ({
-          ...info,
-          applicantId,
-        })),
-      });
-    }
-
-    if (data.emergencyContact && data.emergencyContact.length > 0) {
-      await prismaClient.emergencyContact.createMany({
-        data: data.emergencyContact.map((contact: any) => ({
-          ...contact,
-          applicantId,
-        })),
-      });
-    }
-
-    if (data.documents && data.documents.length > 0) {
-      await prismaClient.document.createMany({
-        data: data.documents.map((doc: any) => ({
-          ...doc,
-          applicantId,
-        })),
-      });
-    }
-
-    if (data.employmentInformations && data.employmentInformations.length > 0) {
-      await prismaClient.employmentInformation.createMany({
-        data: data.employmentInformations.map((info: any) => ({
-          ...info,
-          applicantId,
-        })),
-      });
-    }
-
-    if (data.nextOfKin && data.nextOfKin.length > 0) {
-      await prismaClient.nextOfKin.createMany({
-        data: data.nextOfKin.map((kin: any) => ({
-          ...kin,
-          applicantId,
-        })),
-      });
-    }
     return applicant;
+
   }
 
 

@@ -175,7 +175,7 @@ class AuthControls {
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
-            const { password, id, ...userDetails } = String(user);;
+            const { password, id, ...userDetails } = bigIntToString(user);
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
 

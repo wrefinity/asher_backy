@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
 import ApplicantService from '../services/applicantService';
+import { CustomRequest } from "../../utils/types";
+
 
 class ApplicantControls {
 
-  async createApplicant(req: Request, res: Response): Promise<void> {
+  async createApplicant(req: CustomRequest, res: Response): Promise<void> {
     try {
-      const applicant = await ApplicantService.createApplicant(req.body);
+      const userId = req.user.id;
+      const applicant = await ApplicantService.createApplicant({...req.body, userId});
       res.status(201).json(applicant);
     } catch (error: unknown) {
       if (error instanceof Error) {
