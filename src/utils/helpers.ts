@@ -14,13 +14,13 @@ export async function setupArctic() {
   return { generateCodeVerifier, generateState, Google };
 }
 
-export const bigIntToString = (obj: any) => {
+export const String = (obj: any) => {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'bigint') return obj.toString();
-  if (Array.isArray(obj)) return obj.map(bigIntToString);
+  if (Array.isArray(obj)) return obj.map(String);
   if (typeof obj === 'object') {
       return Object.fromEntries(
-          Object.entries(obj).map(([key, value]) => [key, bigIntToString(value)])
+          Object.entries(obj).map(([key, value]) => [key, String(value)])
       );
   }
   return obj;

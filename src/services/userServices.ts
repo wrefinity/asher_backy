@@ -9,30 +9,30 @@ class UserService {
         return await prismaClient.users.findFirst({ where: { email } });
     }
 
-    async findAUserById(userId: number) {
-        return await prismaClient.users.findFirst({ where: { id: userId } })
+    async findAUserById(userId: string) {
+        return await prismaClient.users.findFirst({ where: { id: String(userId) } })
     }
-    
+
     async createUser(userData: any) {
         return await prismaClient.users.create({
             data: {
-                email:userData?.email,
-                role:userData?.role,
+                email: userData?.email,
+                role: userData?.role,
                 password: userData.password ? hashSync(userData.password, 10) : null,
-                profile:{
-                    create:{
-                        gender:userData?.gender,
-                        phoneNumber:userData?.phoneNumber,
-                        address:userData?.address,
-                        dateOfBirth:userData?.dateOfBirth,
-                        fullname:userData?.fullname,
-                        profileUrl:userData?.profileUrl
+                profile: {
+                    create: {
+                        gender: userData?.gender,
+                        phoneNumber: userData?.phoneNumber,
+                        address: userData?.address,
+                        dateOfBirth: userData?.dateOfBirth,
+                        fullname: userData?.fullname,
+                        profileUrl: userData?.profileUrl
                     }
                 }
             },
         });
     }
-    async updateUserInfo(id: number, userData: any) {
+    async updateUserInfo(id: string, userData: any) {
         const updateData = { ...userData };
         if (userData.password) {
             updateData.password = hashSync(userData.password, 10);
@@ -43,10 +43,10 @@ class UserService {
         });
     }
 
-    async updateUserVerificationStatus(userId: number, isVerified: boolean) {
+    async updateUserVerificationStatus(userId: string, isVerified: boolean) {
         try {
             const updatedUser = await prismaClient.users.update({
-                where: { id: userId },
+                where: { id: String(userId) },
                 data: { isVerified },
             });
 
@@ -56,10 +56,10 @@ class UserService {
             throw new Error('Failed to update user verification status');
         }
     }
-    async updateUserPassword(userId: number, password: string) {
+    async updateUserPassword(userId: string, password: string) {
         try {
             const updatedUser = await prismaClient.users.update({
-                where: { id: userId },
+                where: { id: String(userId) },
                 data: { password: hashSync(password, 10) },
             });
 

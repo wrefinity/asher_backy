@@ -14,23 +14,23 @@ datasource db {
 }
 
 model landlords {
-  id       BigInt       @id @default(autoincrement())
+  id       String       @id @default(cuid())
   property properties[]
-  userId   BigInt
+  userId   String
   user     users        @relation(fields: [userId], references: [id])
   tenants  tenants[]
 }
 
 model properties {
-  id           BigInt @id @default(autoincrement())
+  id           String @id @default(cuid())
   name         String
   description  String
   propertysize Int?
 
   // owners
-  landlordId BigInt
+  landlordId String
   landlord   landlords @relation(fields: [landlordId], references: [id])
-  agencyId   BigInt?
+  agencyId   String?
   agency     agency?   @relation(fields: [agencyId], references: [id])
   agents     agents[]
 
@@ -62,7 +62,7 @@ model properties {
 }
 
 model apartments {
-  id           BigInt   @id @default(autoincrement())
+  id           String   @id @default(cuid())
   code         String
   description  String
   sittingRoom  Int?
@@ -83,7 +83,7 @@ model apartments {
   videourl String[]
 
   // the property to which the apartment belongs
-  propertyId BigInt
+  propertyId String
   property   properties @relation(fields: [propertyId], references: [id])
 
   histories appartmentTransactionHistory[]
@@ -92,33 +92,33 @@ model apartments {
 
   inventory            inventory[]
   tenantPaymentHistory tenantPaymentHistory[]
-  tenantsId            BigInt?
+  tenantsId            String?
   currentTenant        tenants?               @relation(fields: [tenantsId], references: [id])
 }
 
 model appartmentTransactionHistory {
-  id BigInt @id @default(autoincrement())
+  id String @id @default(cuid())
 
   rentDuration Int
   amountPaid   Decimal
 
-  apartmentsId BigInt?
+  apartmentsId String?
   apartments   apartments? @relation(fields: [apartmentsId], references: [id])
 
-  tenantId BigInt
+  tenantId String
   tenant   tenants @relation(fields: [tenantId], references: [id])
 
-  transactionId BigInt?
+  transactionId String?
   transactions  transactions? @relation(fields: [transactionId], references: [id])
 }
 
 //inventory accounts for the lists of items
 // for appartments within the inventory
 model inventory {
-  id           BigInt    @id @default(autoincrement())
+  id           String    @id @default(cuid())
   location     String
-  apartmentId  BigInt
-  propertiesId BigInt?
+  apartmentId  String
+  propertiesId String?
   quantity     Int
   description  String?
   createdAt    DateTime? @default(now())
@@ -133,23 +133,23 @@ enum TransactionType {
 }
 
 model transactions {
-  id                           BigInt                         @id @default(autoincrement())
+  id                           String                         @id @default(cuid())
   description                  String
   cost                         Decimal                        @db.Decimal(18, 2)
   createdAt                    DateTime                       @default(now()) @db.Timestamptz(6)
   // type can be income
   type                         TransactionType
-  propertyId                   BigInt
+  propertyId                   String
   properties                   properties                     @relation(fields: [propertyId], references: [id])
-  appartmentId                 BigInt
+  appartmentId                 String
   apartments                   apartments                     @relation(fields: [appartmentId], references: [id])
-  tenantId                     BigInt
+  tenantId                     String
   tenant                       tenants                        @relation(fields: [tenantId], references: [id])
   appartmentTransactionHistory appartmentTransactionHistory[]
 }
 
 model agency {
-  id         BigInt       @id @default(autoincrement())
+  id         String       @id @default(cuid())
   name       String
   agents     agents[]
   properties properties[]
@@ -157,7 +157,7 @@ model agency {
 }
 
 model agents {
-  id         BigInt      @id @default(autoincrement())
+  id         String      @id @default(cuid())
   agentId    String?
   about      String?
   facebook   String?
@@ -168,27 +168,27 @@ model agents {
   createdAt  DateTime?   @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime?   @default(now()) @db.Timestamptz(6)
   // agents relationships
-  userId     BigInt
+  userId     String
   user       users       @relation(fields: [userId], references: [id])
-  agencyId   BigInt?
+  agencyId   String?
   agency     agency?     @relation(fields: [agencyId], references: [id])
-  propertyId BigInt?
+  propertyId String?
   properties properties? @relation(fields: [propertyId], references: [id])
   tenant     tenants[]
 }
 
 model Rating {
-  id          BigInt  @id @default(autoincrement())
+  id          String  @id @default(cuid())
   ratingValue Int     @default(0) // a rating scale from 0 to 5
   comments    String? // Optional field for user comments
 
-  propertyId BigInt?
+  propertyId String?
   property   properties? @relation(fields: [propertyId], references: [id])
 
-  userId BigInt?
+  userId String?
   user   users?  @relation("userRated", fields: [userId], references: [id])
 
-  ratedByUserId BigInt
+  ratedByUserId String
   ratedBy       users  @relation("ratedByUser", fields: [ratedByUserId], references: [id])
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -197,7 +197,7 @@ model Rating {
 
 // tenant session
 model tenantPaymentHistory {
-  id            BigInt    @id @default(autoincrement())
+  id            String    @id @default(cuid())
   rentStartDate DateTime? @db.Timestamptz(6)
   rentEndDate   DateTime? @db.Timestamptz(6)
 
@@ -205,17 +205,17 @@ model tenantPaymentHistory {
   amountPaid         Decimal? @db.Decimal(18, 2)
 
   // relationships feilds
-  tenantId BigInt?
+  tenantId String?
   tenant   tenants? @relation(fields: [tenantId], references: [id])
 
-  apartmentsId BigInt?
+  apartmentsId String?
   apartments   apartments? @relation(fields: [apartmentsId], references: [id])
 }
 
 model tenants {
-  id         BigInt @id @default(autoincrement())
+  id         String @id @default(cuid())
   tenantId   String @unique
-  landlordId BigInt
+  landlordId String
 
   rentstatus Int
 
@@ -225,12 +225,12 @@ model tenants {
   apartmentOrFlatNumber Int?
 
   // relationships definitions
-  userId                       BigInt
+  userId                       String
   user                         users                          @relation(fields: [userId], references: [id])
   landlord                     landlords                      @relation(fields: [landlordId], references: [id])
-  agentId                      BigInt?
+  agentId                      String?
   agent                        agents?                        @relation(fields: [agentId], references: [id])
-  propertyId                   BigInt?
+  propertyId                   String?
   property                     properties?                    @relation(fields: [propertyId], references: [id])
   history                      tenantPaymentHistory[]
   transactions                 transactions[]
@@ -250,15 +250,15 @@ enum userRoles {
 }
 
 model balances {
-  id                 BigInt  @id @default(autoincrement())
+  id                 String  @id @default(cuid())
   amount             Decimal @default(0.00) @db.Decimal(18, 2)
   outstandingBalance Decimal @default(0.00) @db.Decimal(18, 2)
-  userId             BigInt  @unique
+  userId             String  @unique
   user               users   @relation(fields: [userId], references: [id])
 }
 
 model users {
-  id         BigInt  @id @default(autoincrement())
+  id         String  @id @default(cuid())
   email      String  @unique
   password   String?
   isVerified Boolean @default(false)
@@ -289,12 +289,12 @@ model users {
   messagesReceived   Message[]            @relation("messagesReceived")
   chatRoomsUser1     ChatRoom[]           @relation("chatRoomsUser1")
   chatRoomsUser2     ChatRoom[]           @relation("chatRoomsUser2")
-  profileId          BigInt?
+  profileId          String?
   profile            profile?             @relation(fields: [profileId], references: [id])
 }
 
 model profile {
-  id          BigInt    @id @default(autoincrement())
+  id          String    @id @default(cuid())
   gender      String?
   phoneNumber String?
   address     String?
@@ -307,16 +307,16 @@ model profile {
 model VerificationToken {
   id        Int       @id @default(autoincrement())
   token     String    @unique
-  userId    BigInt
+  userId    String
   user      users     @relation(fields: [userId], references: [id])
   expiresAt DateTime?
   createdAt DateTime  @default(now())
 }
 
 model Community {
-  id                    BigInt   @id @default(autoincrement())
+  id                    String   @id @default(cuid())
   communityName         String   @unique
-  communityOwnerId      BigInt
+  communityOwnerId      String
   user                  users    @relation(fields: [communityOwnerId], references: [id])
   description           String
   visibility            Boolean // we can have an enum it should either be public or private
@@ -327,9 +327,9 @@ model Community {
 }
 
 model CommunityPost {
-  id                   BigInt               @id @default(autoincrement())
-  communityId          BigInt
-  userId               BigInt
+  id                   String               @id @default(cuid())
+  communityId          String
+  userId               String
   title                String
   category             String
   tags                 String[]
@@ -338,35 +338,35 @@ model CommunityPost {
   likes                CommunityPostLikes[]
   views                CommunityPostViews[]
   user                 users                @relation(fields: [userId], references: [id])
-  communityPostViewsId BigInt               @unique
+  communityPostViewsId String               @unique
   Comments             Comments[]
 }
 
 model CommunityPostLikes {
-  id        BigInt        @id @default(autoincrement())
-  postId    BigInt
-  userId    BigInt
+  id        String        @id @default(cuid())
+  postId    String
+  userId    String
   post      CommunityPost @relation(fields: [postId], references: [id])
   user      users         @relation(fields: [userId], references: [id])
   createdAt DateTime      @default(now())
 }
 
 model CommunityPostViews {
-  id     BigInt        @id @default(autoincrement())
-  postId BigInt
-  userId BigInt
+  id     String        @id @default(cuid())
+  postId String
+  userId String
   post   CommunityPost @relation(fields: [postId], references: [id])
   user   users         @relation(fields: [userId], references: [id])
 }
 
 model Comments {
-  id              BigInt        @id @default(autoincrement())
-  postId          BigInt
-  userId          BigInt
+  id              String        @id @default(cuid())
+  postId          String
+  userId          String
   post            CommunityPost @relation(fields: [postId], references: [id])
   user            users         @relation(fields: [userId], references: [id])
   comment         String
-  parentCommentId BigInt?
+  parentCommentId String?
   parentComment   Comments?     @relation("ParentChildComment", fields: [parentCommentId], references: [id])
   childComments   Comments[]    @relation("ParentChildComment")
   createdAt       DateTime      @default(now())
@@ -376,30 +376,30 @@ model Comments {
 }
 
 model Email {
-  id            BigInt   @id @default(autoincrement())
-  senderEmail   String
-  recieverEmail String
-  subject       String
-  body          String
-  attachment    String?
-  isRead        Boolean  @default(false)
-  isDraft       Boolean  @default(false)
-  isSent        Boolean  @default(false)
-  createdAt     DateTime @default(now())
-
-  from users @relation("RecievedEmails", fields: [senderEmail], references: [email])
-  to   users @relation("SentEmails", fields: [recieverEmail], references: [email])
+  id               String   @id @default(cuid())
+  senderEmail      String
+  recieverEmail    String
+  subject          String
+  body             String
+  attachment       String[]
+  isReadBySender   Boolean  @default(true)
+  isReadByReciever Boolean  @default(false)
+  isDraft          Boolean  @default(true)
+  isSent           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  sender           users    @relation("SentEmails", fields: [senderEmail], references: [email])
+  reciver          users    @relation("RecievedEmails", fields: [recieverEmail], references: [email])
 }
 
 // chats schema
 // Define the messages model
 model Message {
-  id         BigInt   @id @default(autoincrement())
+  id         String   @id @default(cuid())
   content    String
-  senderId   BigInt
-  receiverId BigInt
+  senderId   String
+  receiverId String
   createdAt  DateTime @default(now())
-  chatRoomId BigInt
+  chatRoomId String
 
   sender   users    @relation("messagesSent", fields: [senderId], references: [id])
   receiver users    @relation("messagesReceived", fields: [receiverId], references: [id])
@@ -408,9 +408,9 @@ model Message {
 
 // Define the chatRooms model for one-on-one chats
 model ChatRoom {
-  id        BigInt   @id @default(autoincrement())
-  user1Id   BigInt
-  user2Id   BigInt
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -423,7 +423,7 @@ model ChatRoom {
 
 // Define the applicant model
 model applicant {
-  id              BigInt   @id @default(autoincrement())
+  id              String   @id @default(cuid())
   title           String
   firstName       String
   middleName      String
@@ -440,7 +440,7 @@ model applicant {
   leaseTerm       String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  userId          BigInt
+  userId          String
   user            users    @relation(fields: [userId], references: [id])
 
   residentialInformation residentialInformation[]
@@ -452,7 +452,7 @@ model applicant {
 }
 
 model nextOfKin {
-  id           BigInt   @id @default(autoincrement())
+  id           String   @id @default(cuid())
   lastName     String
   relationship String
   email        String
@@ -462,13 +462,13 @@ model nextOfKin {
   updatedAt    DateTime @updatedAt
   middleName   String?
 
-  applicantId BigInt
+  applicantId String
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
 
 // Define the residentialInformation model
 model residentialInformation {
-  id                  BigInt @id @default(autoincrement())
+  id                  String @id @default(cuid())
   state               String
   zipcode             String
   address             String
@@ -480,47 +480,47 @@ model residentialInformation {
   city              String
   landlordEmail     String
 
-  applicantId BigInt
+  applicantId String
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
 
 // Define the guarantorInformation model
 model guarantorInformation {
-  id          BigInt    @id @default(autoincrement())
+  id          String    @id @default(cuid())
   fullName    String
   phoneNumber String
   email       String
   address     String
-  applicantId BigInt
+  applicantId String
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
 
 // Define the emergencyContact model
 model emergencyContact {
-  id          BigInt    @id @default(autoincrement())
+  id          String    @id @default(cuid())
   fullname    String
   phoneNumber String
   email       String
   address     String
-  applicantId BigInt
+  applicantId String
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
 
 // Define the document model
 model document {
-  id           BigInt   @id @default(autoincrement())
+  id           String   @id @default(cuid())
   documentName String
   documentUrl  String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  applicantId BigInt
+  applicantId String
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
 
 // Define the EmploymentInformation model
 model EmploymentInformation {
-  id                BigInt  @id @default(autoincrement())
+  id                String  @id @default(cuid())
   employerCompany   String
   taxCredit         String?
   childBenefit      String?
@@ -535,13 +535,13 @@ model EmploymentInformation {
   employmentStatus String
   positionTitle    String
 
-  applicantId BigInt
+  applicantId String
   applicant   applicant @relation(fields: [applicantId], references: [id])
 }
 
 // user wallets
 model wallet {
-  id                   BigInt    @id @default(autoincrement())
+  id                   String    @id @default(cuid())
   customerid           Int //USER??
   transactiontype      String    @db.VarChar(15)
   transactionDesc      String?
@@ -551,5 +551,5 @@ model wallet {
   balance              Decimal?  @default(0.00) @db.Decimal(18, 2)
   transactionIndicator Int?
   payerName            String?   @db.VarChar(255)
-  payerId              BigInt? //USER??
+  payerId              String? //USER??
 }

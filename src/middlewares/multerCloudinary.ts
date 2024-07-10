@@ -22,15 +22,20 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
         }
 
         const uploadPromises = allFiles.map(async (file) => {
-            const resizedBuffer: Buffer = await sharp(file.buffer)
-                .resize({ width: 800, height: 600 })
-                .toBuffer();
+            let fileBuffer: Buffer = file.buffer;
+            const isImage = file.mimetype.startsWith('image/');
+            if (isImage) {
+                fileBuffer = await sharp(file.buffer)
+                    .resize({ width: 800, height: 600, fit: 'inside' })
+                    .toBuffer();  
+            }
 
             return new Promise<string>((resolve, reject) => {
                 const uploadStream = cloudinary.uploader.upload_stream(
                     {
                         resource_type: 'auto',
                         folder: CLOUDINARY_FOLDER,
+                        format: isImage ? 'webp' : undefined
                     } as any,
                     (err: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
                         if (err) {
@@ -44,7 +49,7 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
                         resolve(result.secure_url);
                     }
                 );
-                uploadStream.end(resizedBuffer);
+                uploadStream.end(fileBuffer);
             });
         });
 

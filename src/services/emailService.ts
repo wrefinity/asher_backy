@@ -19,14 +19,21 @@ const userSelect = {
 };
 
 class EmailService {
-    
 
-    async createEmail(emailData: EmailDataType) {
+
+    async createEmail(emailData: any) {
         try {
             const recieverEmail = await UserService.findUserByEmail(emailData.recieverEmail)
             if (!recieverEmail) {
                 throw new Error('Reciever email is invalid');
             }
+            emailData.isDraft = emailData.isDraft ?? true;
+            emailData.isSent = (emailData.isDraft === true) ? false : true;
+            emailData.isReadBySender = true;
+            emailData.isReadByReciever = false;
+
+            delete (emailData.cloudinaryUrls)
+          
             return await prismaClient.email.create({
                 data: emailData,
             })
@@ -36,13 +43,13 @@ class EmailService {
         }
     }
 
-    async getEmailById(emailId: bigint) {
+    async getEmailById(emailId: string) {
         try {
             return await prismaClient.email.findUnique({
                 where: { id: emailId },
                 include: {
-                    from: userSelect,
-                    to: userSelect
+                    sender: userSelect,
+                    reciver: userSelect
                 }
             })
         } catch (error) {
@@ -62,7 +69,18 @@ class EmailService {
         if (options.sent) where.senderEmail = email
         if (options.recieved) where.recieverEmail = email
         if (options.draft) where.isDraft = true;
-        if (options.unread) where.isRead = false;
+        if (options.unread) {
+            if (options.sent) {
+                where.isReadBySender = false;
+            } else if (options.recieved) {
+                where.isReadByReciever = false;
+            } else {
+                where.OR = [
+                    { senderEmail: email, isReadBySender: false },
+                    { receiverEmail: email, isReadByReciever: false }
+                ]
+            }
+        };
 
 
         try {
@@ -70,8 +88,8 @@ class EmailService {
                 where,
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    from: userSelect,
-                    to: userSelect
+                    sender: userSelect,
+                    reciver: userSelect
                 }
             })
         } catch (error) {
@@ -80,7 +98,7 @@ class EmailService {
         }
     }
 
-    async updateEmail(emailId: bigint, emailData: Partial<EmailDataType>) {
+    async updateEmail(emailId: string, emailData: Partial<EmailDataType>) {
         try {
             return await prismaClient.email.update({
                 where: { id: emailId },
@@ -92,15 +110,36 @@ class EmailService {
         }
     }
 
-    async markEmailAsRead(emailId: bigint) {
-        return this.updateEmail(emailId, { isRead: true })
+    async markEmailAsRead(emailId: string, isReciever: boolean) {
+        try {
+            const updateData = isReciever ? { isReadByReciever: true } : { isReadBySender: true }
+            return await prismaClient.email.update({
+                where: { id: emailId },
+                data: updateData
+            })
+        } catch (error) {
+            loggers.error(`Error reading email: ${error}`)
+            throw new Error('Failed to read email')
+        }
     }
 
-    async sendDraftEmail(emailId: bigint) {
-        return this.updateEmail(emailId, { isDraft: false, isSent: true })
+    async sendDraftEmail(emailId: string) {
+        try {
+            return await prismaClient.email.update({
+                where: { id: emailId },
+                data: {
+                    isDraft: false,
+                    isSent: true,
+                    isReadByReciever: false
+                }
+            })
+        } catch (error) {
+            loggers.error(`Error reading email: ${error}`)
+            throw new Error('Failed to read email')
+        }
     }
 
-    async deleteEmail(emailId: bigint) {
+    async deleteEmail(emailId: string) {
         try {
             return await prismaClient.email.delete({
                 where: { id: emailId },
@@ -111,4 +150,4 @@ class EmailService {
         }
     }
 }
-export default EmailService;
+export default new EmailService();

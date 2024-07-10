@@ -11,7 +11,7 @@ import {
     getTokensByUserId,
     validateVerificationToken
 } from "../services/verificationTokenService"
-import { bigIntToString } from "../utils/helpers";
+import { String } from "../utils/helpers";
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
@@ -44,10 +44,11 @@ class AuthControls {
             // Create verification token
             // await this.verificationTokenCreator(Number(user.id), email);
             const token = await createVerificationToken(Number(user.id));
+            console.log(token)
             sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
             // Convert BigInt to string before sending the response
-            const userResponse = bigIntToString(user);
+            const userResponse = String(user);
 
 
             // const serializedUser = serializeBigInt(user);
@@ -85,7 +86,7 @@ class AuthControls {
             const tokenRet = await getTokensByUserId(Number(user.id), token)
             await deleteVerificationToken(Number(tokenRet.id));
 
-            const userResponse = bigIntToString(updatedUser);
+            const userResponse = String(updatedUser);
 
             const { password, ...userWithoutId } = userResponse;
 
@@ -174,7 +175,7 @@ class AuthControls {
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
-            const { password, id, ...userDetails } = bigIntToString(user);;
+            const { password, id, ...userDetails } = String(user);;
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
 
