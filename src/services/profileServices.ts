@@ -7,7 +7,7 @@ import { log } from "winston";
 class ProfileService {
    
 
-    async findAUserProfileById(userId: number) {
+    async findAUserProfileById(userId: string) {
         return await prismaClient.profile.findFirst({ where: { id: userId } })
     }
 
@@ -18,7 +18,7 @@ class ProfileService {
             },
         });
     }
-    async updateUserProfile(id: number, profileData: any) { 
+    async updateUserProfile(id: string, profileData: any) { 
         return await prismaClient.profile.update({
             where: { id },
             data: profileData,

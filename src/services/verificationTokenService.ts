@@ -5,7 +5,7 @@ import loggers from "../utils/loggers";
 
 const DEFAULT_EXPIRATION_DAYS = 1; // Default expiration in days
 
-export async function createVerificationToken(userId: number): Promise<string> {
+export async function createVerificationToken(userId: string): Promise<string> {
     try {
         // Generate a unique token
         const token = generateUniqueToken();
@@ -28,7 +28,7 @@ export async function createVerificationToken(userId: number): Promise<string> {
     }
 }
 
-export async function validateVerificationToken(token: string, userId:number): Promise<boolean> {
+export async function validateVerificationToken(token: string, userId:string): Promise<boolean> {
     try {
         const verificationToken = await prismaClient.verificationToken.findFirst({
             where: {
@@ -51,7 +51,7 @@ export async function deleteVerificationToken(tokenId: number) {
         where: { id: tokenId },
     });
 }
-export async function getTokensByUserId(userId: number, token:string) {
+export async function getTokensByUserId(userId: string, token:string) {
     try {
         const tokens = await prismaClient.verificationToken.findFirst({
             where: { 

@@ -28,8 +28,8 @@ class AuthControls {
         this.googleService = new GoogleService()
     }
 
-    async verificationTokenCreator(userId: number, email: string) {
-        const token = await createVerificationToken(Number(userId));
+    verificationTokenCreator = async (userId: string, email: string) =>{
+        const token = await createVerificationToken(userId);
         sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
     }
 
@@ -43,8 +43,8 @@ class AuthControls {
             user = await UserServices.createUser(req.body);
             // Create verification token
             // await this.verificationTokenCreator(Number(user.id), email);
-            const token = await createVerificationToken(Number(user.id));
-            console.log(token)
+            const token = await createVerificationToken(user.id);
+
             sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
             // Convert BigInt to string before sending the response
@@ -75,15 +75,15 @@ class AuthControls {
                 return;
             }
             // Validate verification token
-            const isValidToken = await validateVerificationToken(token, Number(user.id));
+            const isValidToken = await validateVerificationToken(token, user.id);
             if (!isValidToken) {
                 res.status(400).json({ message: 'Invalid or expired token' });
                 return;
             }
             // Update user's isVerified status to true
-            const updatedUser = await UserServices.updateUserVerificationStatus(Number(user.id), true);
+            const updatedUser = await UserServices.updateUserVerificationStatus(user.id, true);
 
-            const tokenRet = await getTokensByUserId(Number(user.id), token)
+            const tokenRet = await getTokensByUserId(user.id, token)
             await deleteVerificationToken(Number(tokenRet.id));
 
             const userResponse = String(updatedUser);
@@ -106,7 +106,7 @@ class AuthControls {
             // Ensure user is not null
             if (user !== null && user !== undefined) {
                 // Create verification token
-                const token = await createVerificationToken(Number(user.id));
+                const token = await createVerificationToken(user.id);
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
             }
             return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
@@ -131,7 +131,7 @@ class AuthControls {
             // Validate verification token
             let isValidToken = null;
             if (user) {
-                isValidToken = await validateVerificationToken(token, Number(user.id));
+                isValidToken = await validateVerificationToken(token, user.id);
             }
 
             if (!isValidToken) {
@@ -141,7 +141,7 @@ class AuthControls {
             // Ensure user is not null
             if (user !== null && user !== undefined)
                 // Update user's password
-                await UserServices.updateUserPassword(Number(user.id), newPassword);
+                await UserServices.updateUserPassword(user.id, newPassword);
 
             return res.status(200).json({ message: 'Password Updated successfully' });
 
@@ -168,14 +168,14 @@ class AuthControls {
 
             if (!user.isVerified) {
                 // Create verification token
-                const token = await createVerificationToken(Number(user.id));
+                const token = await createVerificationToken(user.id);
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
-            const { password, id, ...userDetails } = bigIntToString(user);
+            const { password, id, ...userDetails } = String(user);
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
 

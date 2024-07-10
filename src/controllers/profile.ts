@@ -36,7 +36,7 @@ class ProfileControls {
             }
 
             // Update the user profile in the database
-            const updatedUser = await ProfileServices.updateUserProfile(Number(profileId), updatedData);
+            const updatedUser = await ProfileServices.updateUserProfile(profileId, updatedData);
             const {id, ...profile} = updatedUser;
             res.status(200).json({ message: 'Profile updated successfully', user: profile });
 

@@ -1,10 +1,9 @@
 import { generateCodeVerifier, generateState } from "arctic"
-
-import { googleOAuthClient } from "../lib/googleOauth"
+import {GOOGLE_PROFILE} from "../secrets"
+import { googleOAuthClient } from "../configs/googleOauth"
 
 
 export class GoogleService {
-    profile_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     state = generateState()
     codeVerifier = generateCodeVerifier()
     constructor() { }
@@ -27,7 +26,7 @@ export class GoogleService {
 
     async getUserProfile(accessToken: string) {
         try {
-            const googleRes = await fetch(this.profile_url, {
+            const googleRes = await fetch(GOOGLE_PROFILE, {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`
                 }
