@@ -9,15 +9,22 @@ class ApplicantRoutes {
 
     constructor() {
         this.router = Router();
+        this.initializeRoutes = this.initializeRoutes.bind(this);
         this.authenticateService = new Authorize()
         this.initializeRoutes();
     }
 
     private initializeRoutes(): void {
-        this.router.post('/', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ApplicantControls.createApplicant);
-        this.router.get('/:id', ApplicantControls.getApplicant);
-        this.router.put('/:id', ApplicantControls.updateApplicant);
-        this.router.delete('/:id', ApplicantControls.deleteApplicant);
+        this.router.post('/:propertiesId', this.authenticateService.authorize, ApplicantControls.createOrUpdateApplicantBioData);
+        this.router.post('/complete/:applicationId', this.authenticateService.authorize, ApplicantControls.completeApplication);
+        this.router.post('/guarantor/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateGuarantor);
+        this.router.post('/emergency-contact/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateEmergencyContact);
+        this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateEmploymentInformation);
+        this.router.post('/residential-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateResidentialInformation);
+        this.router.post('/document/:applicationId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ApplicantControls.createApplicantionDocument);
+
+        this.router.get('/:id', this.authenticateService.authorize,  ApplicantControls.getApplication);
+        this.router.delete('/:id', this.authenticateService.authorize,  ApplicantControls.deleteApplicant);
     }
 }
 

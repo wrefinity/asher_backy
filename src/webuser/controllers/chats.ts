@@ -6,8 +6,8 @@ class ChatMessageAuth {
     createChatRoom = async (req: CustomRequest, res: Response) => {
 
         try {
-            const senderId = req.user.id; // sender is the current logged in user
-            const receiverId = Number(req.params.receiverId);
+            const senderId = String(req.user.id); // sender is the current logged in user
+            const receiverId = req.params.receiverId;
             const chatRoomExist = await ChatServices.getChatRooms(senderId, receiverId);
             let chatRoom = null;
             if(!chatRoomExist) {
@@ -25,13 +25,13 @@ class ChatMessageAuth {
         const { content  } = req.body;
         const {chatRoomId, receiverId} = req.params;
         try {
-            const senderId = req.user.id; // sender is the current logged in user
+            const senderId = String(req.user.id); // sender is the current logged in user
         
             const chat = await ChatServices.createRoomMessages(
                 content,
                 senderId,
-                Number(receiverId),
-                Number(chatRoomId)
+                receiverId,
+                chatRoomId
             );
             return res.status(201).json({chat: String(chat)});
         } catch (error) {
@@ -43,7 +43,7 @@ class ChatMessageAuth {
     getChatRoomMessage = async (req: CustomRequest, res: Response) => {
         const { chatRoomId } = req.params;
         try {
-            const chat = await ChatServices.getChatRoomMessages(Number(chatRoomId));
+            const chat = await ChatServices.getChatRoomMessages(chatRoomId);
             res.json({chat: String(chat)});
         } catch (error) {
             console.error('Error getting chat rooms:', error);
