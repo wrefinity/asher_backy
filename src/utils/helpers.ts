@@ -19,9 +19,21 @@ export const String = (obj: any) => {
   if (typeof obj === 'bigint') return obj.toString();
   if (Array.isArray(obj)) return obj.map(String);
   if (typeof obj === 'object') {
-      return Object.fromEntries(
-          Object.entries(obj).map(([key, value]) => [key, String(value)])
-      );
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [key, String(value)])
+    );
   }
   return obj;
 };
+
+export const generateOtp = (): string => {
+  const min = 100000;
+  const max = 999999;
+
+  const otp = Math.floor(Math.random() * (max - min + 1)) + min;
+  return otp.toString();
+}
+
+export function generateUniqueToken(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
