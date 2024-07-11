@@ -7,6 +7,7 @@ import ProfileRouter from "./routes/profile"
 import ApplicantRouter from "./routes/applicant"
 import ChatRoomRouter from "./routes/chats"
 import EmailRouter from "./routes/email"
+import PropertyRouter from "./routes/property"
 import { PrismaClient } from "@prisma/client";
 import cookieParser from 'cookie-parser'
 
@@ -49,6 +50,7 @@ class Server {
         this.app.use("/api/applicant", ApplicantRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
+        this.app.use("/api/properties", PropertyRouter)
     }
 
     public start() {

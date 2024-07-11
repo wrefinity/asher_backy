@@ -10,13 +10,13 @@ import {
     deleteVerificationToken,
     getTokensByUserId,
     validateVerificationToken
-} from "../services/verificationTokenService"
-import { String } from "../utils/helpers";
+} from "../services/verificationTokenService";
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
-import logger from '../utils/loggers'
+import logger from '../utils/loggers';
+import { generateUniqueToken } from "../utils/helpers";
 
 
 
@@ -28,8 +28,8 @@ class AuthControls {
         this.googleService = new GoogleService()
     }
 
-    verificationTokenCreator = async (userId: string, email: string) =>{
-        const token = await createVerificationToken(userId);
+    verificationTokenCreator = async (userId: string, email: string) => {
+        const token = await createVerificationToken(userId, generateUniqueToken);
         sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
     }
 
@@ -43,7 +43,7 @@ class AuthControls {
             user = await UserServices.createUser(req.body);
             // Create verification token
             // await this.verificationTokenCreator(Number(user.id), email);
-            const token = await createVerificationToken(user.id);
+            const token = await createVerificationToken(user.id, generateUniqueToken);
 
             sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
@@ -86,7 +86,7 @@ class AuthControls {
             const tokenRet = await getTokensByUserId(user.id, token)
             await deleteVerificationToken(Number(tokenRet.id));
 
-            const userResponse = String(updatedUser);
+            const userResponse = updatedUser;
 
             const { password, ...userWithoutId } = userResponse;
 
@@ -106,7 +106,7 @@ class AuthControls {
             // Ensure user is not null
             if (user !== null && user !== undefined) {
                 // Create verification token
-                const token = await createVerificationToken(user.id);
+                const token = await createVerificationToken(user.id, generateUniqueToken);
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
             }
             return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
@@ -153,7 +153,7 @@ class AuthControls {
             }
         }
     }
-    login = async (req: Request, res: Response) => {
+    login = async (req: Request, res: Response, funcTOken: () => string) => {
         const { email } = req.body;
 
         try {
@@ -168,14 +168,14 @@ class AuthControls {
 
             if (!user.isVerified) {
                 // Create verification token
-                const token = await createVerificationToken(user.id);
+                const token = await createVerificationToken(user.id, funcTOken);
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }
 
             const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
 
-            const { password, id, ...userDetails } = String(user);
+            const { password, id, ...userDetails } = user;
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
 
