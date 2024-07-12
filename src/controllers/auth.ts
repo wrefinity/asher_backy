@@ -11,12 +11,13 @@ import {
     getTokensByUserId,
     validateVerificationToken
 } from "../services/verificationTokenService";
+import ErrorService from "../services/error.service"
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
 import logger from '../utils/loggers';
-import { generateUniqueToken } from "../utils/helpers";
+import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
 
 
@@ -29,7 +30,7 @@ class AuthControls {
     }
 
     verificationTokenCreator = async (userId: string, email: string) => {
-        const token = await createVerificationToken(userId, generateUniqueToken);
+        const token = await createVerificationToken(userId, generateOtp);
         sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
     }
 
@@ -43,7 +44,7 @@ class AuthControls {
             user = await UserServices.createUser(req.body);
             // Create verification token
             // await this.verificationTokenCreator(Number(user.id), email);
-            const token = await createVerificationToken(user.id, generateUniqueToken);
+            const token = await createVerificationToken(user.id, generateOtp);
 
             sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
@@ -106,7 +107,7 @@ class AuthControls {
             // Ensure user is not null
             if (user !== null && user !== undefined) {
                 // Create verification token
-                const token = await createVerificationToken(user.id, generateUniqueToken);
+                const token = await createVerificationToken(user.id, generateOtp);
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
             }
             return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
@@ -145,7 +146,9 @@ class AuthControls {
             ErrorService.handleError(error, res)
         }
     }
-    login = async (req: Request, res: Response, funcTOken: () => string) => {
+
+
+    login = async (req: Request, res: Response) => {
         const { email } = req.body;
 
         try {
@@ -160,7 +163,7 @@ class AuthControls {
 
             if (!user.isVerified) {
                 // Create verification token
-                const token = await createVerificationToken(user.id, funcTOken);
+                const token = await createVerificationToken(user.id, generateOtp);
                 sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }
@@ -170,6 +173,24 @@ class AuthControls {
             const { password, id, ...userDetails } = user;
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
+            ErrorService.handleError(error, res)
+        }
+
+    }
+
+    registerTenant = async (req: Request, res: Response) => {
+        try {
+            const { tenantId, password } = req.body
+
+            if (!tenantId && !password) return res.status(500).json({ message: "No tenant Id or password found" })
+
+            const otp = await createVerificationToken(tenantId, generateOtp)
+
+            // send the email
+            console.log(otp)
+
+            return res.status(200).json({ message: "Email sent successfully" })
+        } catch (error) {
             ErrorService.handleError(error, res)
         }
 
