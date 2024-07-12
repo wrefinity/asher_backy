@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-const residentialInformationSchema = Joi.object({
+export const residentialInformationSchema = Joi.object({
   address: Joi.string().required(),
   city: Joi.string().required(),
   state: Joi.string().required(),
@@ -10,7 +10,7 @@ const residentialInformationSchema = Joi.object({
   moveOutDate: Joi.date().iso().optional(),
 });
 
-const guarantorInformationSchema = Joi.object({
+export const guarantorInformationSchema = Joi.object({
   firstName: Joi.string().required(),
   lastName: Joi.string().required(),
   phoneNumber: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
@@ -18,7 +18,7 @@ const guarantorInformationSchema = Joi.object({
   relationship: Joi.string().required(),
 });
 
-const emergencyContactSchema = Joi.object({
+export const emergencyContactSchema = Joi.object({
   firstName: Joi.string().required(),
   lastName: Joi.string().required(),
   phoneNumber: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
@@ -26,14 +26,14 @@ const emergencyContactSchema = Joi.object({
   relationship: Joi.string().required(),
 });
 
-const documentSchema = Joi.object({
+export const documentSchema = Joi.object({
   documentType: Joi.string().required(),
 //   documentUrl: Joi.string().uri().required(),
   cloudinaryUrls: Joi.string().uri().required(), // replacing the documentUrl
   uploadedAt: Joi.date().iso().required(),
 });
 
-const employmentInformationSchema = Joi.object({
+export const employmentInformationSchema = Joi.object({
   employerName: Joi.string().required(),
   jobTitle: Joi.string().required(),
   startDate: Joi.date().iso().required(),
@@ -43,7 +43,7 @@ const employmentInformationSchema = Joi.object({
   supervisorPhone: Joi.string().pattern(/^[0-9]{10,15}$/).optional(),
 });
 
-const nextOfKinSchema = Joi.object({
+export const nextOfKinSchema = Joi.object({
   firstName: Joi.string().required(),
   lastName: Joi.string().required(),
   relationship: Joi.string().required(),
@@ -51,7 +51,7 @@ const nextOfKinSchema = Joi.object({
   email: Joi.string().email().optional(),
 });
 
-const applicantSchema = Joi.object({
+export const applicantSchema = Joi.object({
   title: Joi.string().optional(),
   firstName: Joi.string().required(),
   middleName: Joi.string().optional(),
@@ -75,4 +75,3 @@ const applicantSchema = Joi.object({
   nextOfKin: Joi.array().items(nextOfKinSchema).optional()
 });
 
-export default applicantSchema;

@@ -17,7 +17,7 @@ class UserService {
         return await prismaClient.users.create({
             data: {
                 email: userData?.email,
-                role: userData?.role,
+                role: [userData?.role],
                 password: userData.password ? hashSync(userData.password, 10) : null,
                 profile: {
                     create: {
@@ -32,6 +32,7 @@ class UserService {
             },
         });
     }
+      
     async updateUserInfo(id: string, userData: any) {
         const updateData = { ...userData };
         if (userData.password) {

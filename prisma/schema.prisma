@@ -59,6 +59,7 @@ model properties {
   ratings         Rating[]
   tenants         tenants[]
   inventory       inventory[]
+  applicant       application[]
 }
 
 model apartments {
@@ -270,27 +271,28 @@ model users {
   role userRoles[] @default([WEBUSER])
 
   // foreign key and relational fields 
-  balance            balances?
-  VerificationToken  VerificationToken[]
-  tenant             tenants[]
-  landlords          landlords[]
-  community          Community[]
-  communityPost      CommunityPost[]
-  communityPostLikes CommunityPostLikes[]
-  communityPostViews CommunityPostViews[]
-  sentEmails         Email[]              @relation("SentEmails")
-  RecievedEmails     Email[]              @relation("RecievedEmails")
-  applicants         applicant[]
-  agents             agents[]
-  Comments           Comments[]
-  ratingsGiven       Rating[]             @relation("ratedByUser")
-  ratingsReceived    Rating[]             @relation("userRated")
-  messagesSent       Message[]            @relation("messagesSent")
-  messagesReceived   Message[]            @relation("messagesReceived")
-  chatRoomsUser1     ChatRoom[]           @relation("chatRoomsUser1")
-  chatRoomsUser2     ChatRoom[]           @relation("chatRoomsUser2")
-  profileId          String?
-  profile            profile?             @relation(fields: [profileId], references: [id])
+  balance                balances?
+  VerificationToken      VerificationToken[]
+  tenant                 tenants[]
+  landlords              landlords[]
+  community              Community[]
+  communityPost          CommunityPost[]
+  communityPostLikes     CommunityPostLikes[]
+  communityPostViews     CommunityPostViews[]
+  sentEmails             Email[]                  @relation("SentEmails")
+  RecievedEmails         Email[]                  @relation("RecievedEmails")
+  applicantion           application[]
+  agents                 agents[]
+  Comments               Comments[]
+  ratingsGiven           Rating[]                 @relation("ratedByUser")
+  ratingsReceived        Rating[]                 @relation("userRated")
+  messagesSent           Message[]                @relation("messagesSent")
+  messagesReceived       Message[]                @relation("messagesReceived")
+  chatRoomsUser1         ChatRoom[]               @relation("chatRoomsUser1")
+  chatRoomsUser2         ChatRoom[]               @relation("chatRoomsUser2")
+  profileId              String?
+  profile                profile?                 @relation(fields: [profileId], references: [id])
+  residentialInformation residentialInformation[]
 }
 
 model profile {
@@ -422,88 +424,125 @@ model ChatRoom {
 }
 
 // Define the applicant model
-model applicant {
-  id              String   @id @default(cuid())
-  title           String
-  firstName       String
-  middleName      String
-  lastName        String
-  dob             DateTime
-  email           String
-  phoneNumber     String
-  maritalStatus   String
-  leaseStartDate  DateTime
-  leaseEndDate    DateTime
-  moveInDate      DateTime
-  rentAmount      Decimal
-  securityDeposit Decimal
-  leaseTerm       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  userId          String
-  user            users    @relation(fields: [userId], references: [id])
+enum ApplicationStatus {
+  PENDING
+  DECLINED
+  COMPLETED
+  ACCEPTED
+}
 
-  residentialInformation residentialInformation[]
-  guarantorInformation   guarantorInformation[]
-  emergencyContact       emergencyContact[]
-  documents              document[]
-  employmentInformations EmploymentInformation[]
-  nextOfKin              nextOfKin[]
+model application {
+  id        String            @id @default(cuid())
+  // leaseStartDate  DateTime?
+  // leaseEndDate    DateTime?
+  // moveInDate      DateTime?
+  // rentAmount      Decimal?
+  // securityDeposit Decimal?
+  // leaseTerm       String?
+  status    ApplicationStatus @default(PENDING)
+  isDeleted Boolean           @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relation ship fields
+  userId String?
+  user   users?  @relation(fields: [userId], references: [id])
+
+  // residentialInformation residentialInformation[]
+  residentialId      String?
+  residentialInfo    residentialInformation? @relation(fields: [residentialId], references: [id])
+  emergencyContactId String?
+  emergencyInfo      emergencyContact?       @relation(fields: [emergencyContactId], references: [id])
+
+  employmentInformationId String?
+  employmentInfo          EmploymentInformation? @relation(fields: [employmentInformationId], references: [id])
+  documents               document[]
+
+  properties   properties? @relation(fields: [propertiesId], references: [id])
+  propertiesId String?
+
+  personalDetails            applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
+  applicantPersonalDetailsId String
+  guarantorInformation       guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
+  guarantorInformationId     String?
+}
+
+model applicantPersonalDetails {
+  id            String        @id @default(cuid())
+  title         String
+  firstName     String
+  middleName    String?
+  lastName      String
+  dob           DateTime
+  email         String        @unique
+  phoneNumber   String
+  maritalStatus String
+  application   application[]
+  nextOfKin     nextOfKin[]
 }
 
 model nextOfKin {
-  id           String   @id @default(cuid())
-  lastName     String
-  relationship String
-  email        String
-  firstName    String
-  phoneNumber  String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  middleName   String?
-
-  applicantId String
-  applicant   applicant @relation(fields: [applicantId], references: [id])
+  id                         String                    @id @default(cuid())
+  lastName                   String
+  relationship               String
+  email                      String
+  firstName                  String
+  phoneNumber                String
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  middleName                 String?
+  // One-to-one relationship with applicantPersonalDetails
+  applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
+  applicantPersonalDetailsId String?                   @unique
 }
 
 // Define the residentialInformation model
-model residentialInformation {
-  id                  String @id @default(cuid())
-  state               String
-  zipcode             String
-  address             String
-  landlordPhoneNumber String
+// previous adress covering six years
+model PrevAddress {
+  id                       String                  @id @default(cuid())
+  address                  String
+  lengthOfResidence        String
+  residentialInformation   residentialInformation? @relation(fields: [residentialInformationId], references: [id])
+  residentialInformationId String?
+}
 
+model residentialInformation {
+  id                String @id @default(cuid())
+  address           String
   addressStatus     String
   lengthOfResidence String
-  currentLandlord   String
-  city              String
-  landlordEmail     String
 
-  applicantId String
-  applicant   applicant @relation(fields: [applicantId], references: [id])
+  landlordOrAgencyPhoneNumber String
+  landlordOrAgencyEmail       String
+  landlordOrAgencyName        String
+
+  user   users?  @relation(fields: [userId], references: [id])
+  userId String?
+
+  prevAddresses PrevAddress[]
+  application   application[]
 }
 
 // Define the guarantorInformation model
 model guarantorInformation {
-  id          String    @id @default(cuid())
+  id          String @id @default(cuid())
   fullName    String
   phoneNumber String
   email       String
   address     String
-  applicantId String
-  applicant   applicant @relation(fields: [applicantId], references: [id])
+
+  application application[]
 }
 
 // Define the emergencyContact model
 model emergencyContact {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   fullname    String
   phoneNumber String
   email       String
   address     String
-  applicantId String
-  applicant   applicant @relation(fields: [applicantId], references: [id])
+  application application[]
 }
 
 // Define the document model
@@ -515,13 +554,13 @@ model document {
   updatedAt    DateTime @updatedAt
 
   applicantId String
-  applicant   applicant @relation(fields: [applicantId], references: [id])
+  application application @relation(fields: [applicantId], references: [id])
 }
 
 // Define the EmploymentInformation model
 model EmploymentInformation {
   id                String  @id @default(cuid())
-  employerCompany   String
+  employmentStatus  String
   taxCredit         String?
   childBenefit      String?
   childMaintenance  String?
@@ -529,14 +568,13 @@ model EmploymentInformation {
   housingBenefit    String?
   others            String?
   pension           String?
-  employerEmail     String
+  moreDetails       String?
+  // employerCompany   String
+  // employerEmail     String
+  // employerPhone    String
+  // positionTitle    String
 
-  employerPhone    String
-  employmentStatus String
-  positionTitle    String
-
-  applicantId String
-  applicant   applicant @relation(fields: [applicantId], references: [id])
+  application application[]
 }
 
 // user wallets
