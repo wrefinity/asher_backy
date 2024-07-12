@@ -105,7 +105,7 @@ class ApplicantService {
   };
 
   async createOrUpdateGuarantor(data: GuarantorInformationIF) {
-    const { id, ...rest } = data;
+    const { id, applicationId, ...rest } = data;
     const guarantorInfo = await prismaClient.guarantorInformation.upsert({
       where: { id: id ?? '' },
       update: rest,
@@ -113,13 +113,13 @@ class ApplicantService {
     });
     // Find the application associated with the guarantor
     await prismaClient.application.findUnique({
-      where: { id: rest.applicationId },
+      where: { id: applicationId },
       include: { guarantorInformation: true }, // Include the current guarantor information
     });
 
     // Update the application with the new or updated guarantor information
     const updatedApplication = await prismaClient.application.update({
-      where: { id: rest.applicationId },
+      where: { id: applicationId },
       data: {
         guarantorInformation: {
           connect: { id: guarantorInfo.id },
@@ -130,23 +130,28 @@ class ApplicantService {
   }
 
   async createOrUpdateEmergencyContact(data: EmergencyContactIF) {
-    const { id, ...rest } = data;
+    const { id, applicationId, ...rest } = data;
+  
+    // Upsert the emergency contact information
     const emergencyInfo = await prismaClient.emergencyContact.upsert({
       where: { id: id ?? '' },
       update: rest,
       create: { id, ...rest },
     });
-    // Update the application with the new or updated guarantor information
+  
+    // Update the application with the new or updated emergency contact information
     const updatedApplication = await prismaClient.application.update({
-      where: { id: rest.applicationId },
+      where: { id: applicationId },
       data: {
-        emergencyContact: {
+        emergencyInfo: {
           connect: { id: emergencyInfo.id },
         },
       },
     });
+  
     return { ...emergencyInfo, ...updatedApplication };
   }
+  
   createOrUpdateApplicationDoc = async (data: AppDocumentIF) => {
     const { id, applicationId, ...rest } = data;
     const docInfo = await prismaClient.document.upsert({
@@ -176,7 +181,6 @@ class ApplicantService {
       include: {
         documents: true,
         guarantorInformation: true,
-        emergencyContact: true,
         personalDetails: true,
       }
     });
@@ -196,7 +200,7 @@ class ApplicantService {
   }
 
   async createOrUpdateResidentialInformation(data: ResidentialInformationIF) {
-    const { id, prevAddresses, ...rest } = data;
+    const { id, prevAddresses, applicationId, ...rest } = data;
 
     let resInfo = null;
     if (prevAddresses && prevAddresses.length > 0) {
@@ -233,15 +237,12 @@ class ApplicantService {
 
     // Update the application with the new or updated residential info
     const updatedApplication = await prismaClient.application.update({
-      where: { id: rest.applicationId },
+      where: { id: applicationId },
       data: {
-        documents: {
+        residentialInfo: {
           connect: { id: resInfo.id },
         },
       },
-      include: {
-        residentialInformation: true,
-      }
     });
     return { ...resInfo, ...updatedApplication };
   }
@@ -271,13 +272,10 @@ class ApplicantService {
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
       data: {
-        documents: {
+        employmentInfo: {
           connect: { id: empInfo.id },
         },
       },
-      include: {
-        employmentInformations: true
-      }
     });
     return { ...empInfo, ...updatedApplication };
 
@@ -306,16 +304,16 @@ class ApplicantService {
       where: { id: applicationId },
       include: {
         user: true,
-        residentialInformation: {
+        residentialInfo: {
           include: {
             prevAddresses: true,
             user: true,
           },
         },
         guarantorInformation: true,
-        emergencyContact: true,
+        emergencyInfo: true,
         documents: true,
-        employmentInformations: true,
+        employmentInfo: true,
         properties: true,
         personalDetails: {
           include: {

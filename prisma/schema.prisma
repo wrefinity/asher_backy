@@ -450,23 +450,22 @@ model application {
   user   users?  @relation(fields: [userId], references: [id])
 
   // residentialInformation residentialInformation[]
-  residentialId   String?
-  residentialInfo residentialInformation? @relation(fields: [residentialId], references: [id])
-  guarantorId     String?
-  guarantorInfo   guarantorInformation    @relation(fields: [guarantorId], references: [id])
+  residentialId      String?
+  residentialInfo    residentialInformation? @relation(fields: [residentialId], references: [id])
+  emergencyContactId String?
+  emergencyInfo      emergencyContact?       @relation(fields: [emergencyContactId], references: [id])
 
-  emergencyContact       emergencyContact[]
-  documents              document[]
-  employmentInformations EmploymentInformation[]
+  employmentInformationId String?
+  employmentInfo          EmploymentInformation? @relation(fields: [employmentInformationId], references: [id])
+  documents               document[]
 
   properties   properties? @relation(fields: [propertiesId], references: [id])
   propertiesId String?
 
   personalDetails            applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
   applicantPersonalDetailsId String
-  // application                application[]
-  // application                application?             @relation(fields: [applicationId], references: [id])
-  // applicationId              String?
+  guarantorInformation       guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
+  guarantorInformationId     String?
 }
 
 model applicantPersonalDetails {
@@ -538,13 +537,12 @@ model guarantorInformation {
 
 // Define the emergencyContact model
 model emergencyContact {
-  id            String      @id @default(cuid())
-  fullname      String
-  phoneNumber   String
-  email         String
-  address       String
-  applicationId String
-  application   application @relation(fields: [applicationId], references: [id])
+  id          String        @id @default(cuid())
+  fullname    String
+  phoneNumber String
+  email       String
+  address     String
+  application application[]
 }
 
 // Define the document model
@@ -561,7 +559,7 @@ model document {
 
 // Define the EmploymentInformation model
 model EmploymentInformation {
-  id                String      @id @default(cuid())
+  id                String  @id @default(cuid())
   employmentStatus  String
   taxCredit         String?
   childBenefit      String?
@@ -575,8 +573,8 @@ model EmploymentInformation {
   // employerEmail     String
   // employerPhone    String
   // positionTitle    String
-  applicationId     String
-  application       application @relation(fields: [applicationId], references: [id])
+
+  application application[]
 }
 
 // user wallets
