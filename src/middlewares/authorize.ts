@@ -30,7 +30,7 @@ export class Authorize {
                 return res.status(401).json({ message: "Not authorized, invalid token" });
             }
 
-            const user = await UserService.findAUserById(decoded.id);
+            const user = await UserService.findAUserById(String(decoded.id));
 
             if (!user) {
                 return res.status(401).json({ message: "Not authorized, user not found" });
