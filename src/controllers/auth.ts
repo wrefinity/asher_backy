@@ -11,7 +11,6 @@ import {
     getTokensByUserId,
     validateVerificationToken
 } from "../services/verificationTokenService";
-import ErrorService from "../services/error.service"
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
@@ -19,7 +18,7 @@ import sendEmail from "../utils/emailer";
 import logger from '../utils/loggers';
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
-
+import { LoginSchema } from "../schemas/auth";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -43,17 +42,15 @@ class AuthControls {
 
             user = await UserServices.createUser(req.body);
             // Create verification token
-            // await this.verificationTokenCreator(Number(user.id), email);
-            const token = await createVerificationToken(user.id, generateOtp);
+            await this.verificationTokenCreator(user.id, email);
 
-            sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token.toString()));
 
             // Convert BigInt to string before sending the response
-            const userResponse = String(user);
+            // const userResponse = String(user);
 
 
             // const serializedUser = serializeBigInt(user);
-            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user: userResponse });
+            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user });
 
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -107,8 +104,8 @@ class AuthControls {
             // Ensure user is not null
             if (user !== null && user !== undefined) {
                 // Create verification token
-                const token = await createVerificationToken(user.id, generateOtp);
-                sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
+                await this.verificationTokenCreator(user.id, email);
+
             }
             return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
         } catch (error: unknown) {
@@ -152,6 +149,11 @@ class AuthControls {
         const { email } = req.body;
 
         try {
+            const { error } = LoginSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+
             let user = await UserServices.findUserByEmail(email);
             if (!user) {
                 return res.status(400).json({ message: "User does not exist" });
@@ -163,8 +165,7 @@ class AuthControls {
 
             if (!user.isVerified) {
                 // Create verification token
-                const token = await createVerificationToken(user.id, generateOtp);
-                sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
+                await this.verificationTokenCreator(user.id, email);
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }
 
