@@ -449,8 +449,12 @@ model application {
   userId String?
   user   users?  @relation(fields: [userId], references: [id])
 
-  residentialInformation residentialInformation[]
-  guarantorInformation   guarantorInformation[]
+  // residentialInformation residentialInformation[]
+  residentialId   String?
+  residentialInfo residentialInformation? @relation(fields: [residentialId], references: [id])
+  guarantorId     String?
+  guarantorInfo   guarantorInformation    @relation(fields: [guarantorId], references: [id])
+
   emergencyContact       emergencyContact[]
   documents              document[]
   employmentInformations EmploymentInformation[]
@@ -460,6 +464,9 @@ model application {
 
   personalDetails            applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
   applicantPersonalDetailsId String
+  // application                application[]
+  // application                application?             @relation(fields: [applicationId], references: [id])
+  // applicationId              String?
 }
 
 model applicantPersonalDetails {
@@ -515,19 +522,18 @@ model residentialInformation {
   userId String?
 
   prevAddresses PrevAddress[]
-  application   application?  @relation(fields: [applicationId], references: [id])
-  applicationId String?
+  application   application[]
 }
 
 // Define the guarantorInformation model
 model guarantorInformation {
-  id            String      @id @default(cuid())
-  fullName      String
-  phoneNumber   String
-  email         String
-  address       String
-  applicationId String
-  application   application @relation(fields: [applicationId], references: [id])
+  id          String @id @default(cuid())
+  fullName    String
+  phoneNumber String
+  email       String
+  address     String
+
+  application application[]
 }
 
 // Define the emergencyContact model
