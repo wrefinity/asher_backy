@@ -17,7 +17,7 @@ import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
 import logger from '../utils/loggers';
 import { generateUniqueToken } from "../utils/helpers";
-
+import ErrorService from "../services/error.service";
 
 
 class AuthControls {
@@ -111,11 +111,7 @@ class AuthControls {
             }
             return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
         } catch (error: unknown) {
-            if (error instanceof Error) {
-                return res.status(400).json({ message: error.message });
-            } else {
-                return res.status(500).json({ message: "An unknown error occurred" });
-            }
+            ErrorService.handleError(error, res)
         }
     }
 
@@ -146,11 +142,7 @@ class AuthControls {
             return res.status(200).json({ message: 'Password Updated successfully' });
 
         } catch (error: unknown) {
-            if (error instanceof Error) {
-                return res.status(400).json({ message: error.message });
-            } else {
-                return res.status(500).json({ message: "An unknown error occurred" });
-            }
+            ErrorService.handleError(error, res)
         }
     }
     login = async (req: Request, res: Response, funcTOken: () => string) => {
@@ -178,13 +170,7 @@ class AuthControls {
             const { password, id, ...userDetails } = user;
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
         } catch (error: unknown) {
-
-            console.log(error)
-            if (error instanceof Error) {
-                return res.status(400).json({ message: error.message });
-            } else {
-                return res.status(500).json({ message: "An unknown error occurred" });
-            }
+            ErrorService.handleError(error, res)
         }
 
     }

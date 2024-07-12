@@ -1,4 +1,5 @@
 import { prismaClient } from "../..";
+import { formatISO, parseISO } from 'date-fns';
 import { ApplicationStatus } from '@prisma/client';
 import {
   NextOfKinIF,
@@ -35,7 +36,32 @@ class ApplicantService {
       email: nextOfKin.email,
       phoneNumber: nextOfKin.phoneNumber,
       middleName: nextOfKin.middleName || null,
-    }
+    };
+
+    // Ensure dob is a valid ISO-8601 DateTime string
+    //  Ensure dob is a valid Date object
+    // let dobDate: Date;
+    // try {
+    //   dobDate = parseISO(dob);
+    //   if (isNaN(dobDate.getTime())) {
+    //     throw new Error('Invalid date format for dob');
+    //   }
+    // } catch (error) {
+    //   throw new Error('Invalid date format for dob');
+    // }
+
+    // Upsert nextOfKin first
+    const upsertedNextOfKin = await prismaClient.nextOfKin.upsert({
+      where: { id: nextOfKin.id || '' },
+      update: {
+        ...nextOfKinData,
+      },
+      create: {
+        ...nextOfKinData,
+      },
+    });
+
+    // Then upsert applicantPersonalDetails
     const personalDetailsData: ApplicantPersonalDetailsIF = {
       title,
       firstName,
@@ -44,38 +70,21 @@ class ApplicantService {
       dob,
       phoneNumber,
       maritalStatus,
-    }
+    };
 
-    // Perform upsert for applicantPersonalDetails and include nextOfKin
     const upsertedPersonalDetails = await prismaClient.applicantPersonalDetails.upsert({
       where: { email },
       update: {
         ...personalDetailsData,
         nextOfKin: {
-          upsert: {
-            where: { id: nextOfKin.id || undefined },
-            update: {
-              ...nextOfKinData
-            },
-            create: {
-              ...nextOfKinData
-            },
-          },
+          connect: { id: upsertedNextOfKin.id },
         },
       },
       create: {
-        title,
-        firstName,
-        middleName: middleName || null,
-        lastName,
-        dob,
+        ...personalDetailsData,
         email,
-        phoneNumber,
-        maritalStatus,
         nextOfKin: {
-          create: {
-            ...nextOfKinData
-          },
+          connect: { id: upsertedNextOfKin.id },
         },
       },
       include: {
@@ -83,6 +92,7 @@ class ApplicantService {
       },
     });
 
+    // Create application record
     await prismaClient.application.create({
       data: {
         propertiesId,
@@ -90,8 +100,9 @@ class ApplicantService {
         applicantPersonalDetailsId: upsertedPersonalDetails.id,
       },
     });
+
     return upsertedPersonalDetails;
-  }
+  };
 
   async createOrUpdateGuarantor(data: GuarantorInformationIF) {
     const { id, ...rest } = data;
@@ -115,7 +126,7 @@ class ApplicantService {
         },
       },
     });
-    return {...guarantorInfo, ...updatedApplication};
+    return { ...guarantorInfo, ...updatedApplication };
   }
 
   async createOrUpdateEmergencyContact(data: EmergencyContactIF) {
@@ -134,7 +145,7 @@ class ApplicantService {
         },
       },
     });
-    return {...emergencyInfo, ...updatedApplication};
+    return { ...emergencyInfo, ...updatedApplication };
   }
   createOrUpdateApplicationDoc = async (data: AppDocumentIF) => {
     const { id, applicationId, ...rest } = data;
@@ -154,22 +165,22 @@ class ApplicantService {
       },
     });
 
-     // Update the application with the new or updated document info
-     const updatedApplication = await prismaClient.application.update({
+    // Update the application with the new or updated document info
+    const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
       data: {
         documents: {
           connect: { id: docInfo.id },
         },
       },
-      include:{
+      include: {
         documents: true,
         guarantorInformation: true,
         emergencyContact: true,
         personalDetails: true,
       }
     });
-    return {...docInfo, ...updatedApplication};
+    return { ...docInfo, ...updatedApplication };
   }
 
   async createOrUpdatePrevAddresses(prevAddressesInput: PrevAddressIF[]) {
@@ -228,11 +239,11 @@ class ApplicantService {
           connect: { id: resInfo.id },
         },
       },
-      include:{
+      include: {
         residentialInformation: true,
       }
     });
-    return {...resInfo, ...updatedApplication};
+    return { ...resInfo, ...updatedApplication };
   }
 
   async createOrUpdateEmploymentInformation(data: EmploymentInformationIF) {
@@ -252,20 +263,23 @@ class ApplicantService {
         },
       },
     });
+    if (!empInfo) {
+      throw new Error(`Failed to create or update EmploymentInformation`);
+    }
 
-     // Update the application with the new or updated residential info
-     const updatedApplication = await prismaClient.application.update({
+    // Update the application with the new or employemnt infor
+    const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
       data: {
         documents: {
           connect: { id: empInfo.id },
         },
       },
-      include:{
-        employmentInformations:true
+      include: {
+        employmentInformations: true
       }
     });
-    return {...empInfo, ...updatedApplication};
+    return { ...empInfo, ...updatedApplication };
 
   }
 
@@ -281,13 +295,13 @@ class ApplicantService {
   async deleteApplicant(id: string) {
     return await prismaClient.application.update({
       where: { id },
-      data:{
-        isDeleted:true
+      data: {
+        isDeleted: true
       }
     });
   }
 
-  async getApplicationById(applicationId: string) {
+  getApplicationById = async(applicationId: string) =>{
     return await prismaClient.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -311,6 +325,14 @@ class ApplicantService {
       },
     });
   }
+
+
+  checkApplicationExistance = async (applicationId:string)=>{
+    // Check if the application exists
+  return await prismaClient.application.findUnique({
+    where: { id: applicationId },
+  });
+  } 
 }
 
 export default new ApplicantService();

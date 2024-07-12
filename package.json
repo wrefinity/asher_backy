@@ -23,6 +23,7 @@
   "dependencies": {
     "@prisma/client": "^5.16.1",
     "@types/bcrypt": "^5.0.2",
+    "@types/date-fns": "^2.6.0",
     "@types/express-session": "^1.18.0",
     "@types/joi": "^17.2.3",
     "@types/jsonwebtoken": "^9.0.6",
@@ -35,6 +36,7 @@
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.2.0",
     "cookie-parser": "^1.4.6",
+    "date-fns": "^3.6.0",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "joi": "^17.13.3",

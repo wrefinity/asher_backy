@@ -22,7 +22,7 @@ const applicantPersonalDetailsSchema = Joi.object({
     maritalStatus: Joi.string().required(),
     nextOfKin: nextOfKinSchema.allow(null).optional(), // Validate nextOfKin using the previous schema
   });
-
+ 
 // Guarantor Information Schema
 const guarantorInformationSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
@@ -30,7 +30,7 @@ const guarantorInformationSchema = Joi.object({
     phoneNumber: Joi.string().required(),
     email: Joi.string().email().required(),
     address: Joi.string().required(),
-    applicationId: Joi.string().required(),
+    applicationId: Joi.string().optional(),
 });
 
 // Emergency Contact Schema
@@ -40,7 +40,7 @@ const emergencyContactSchema = Joi.object({
     phoneNumber: Joi.string().required(),
     email: Joi.string().email().required(),
     address: Joi.string().required(),
-    applicationId: Joi.string().required(),
+    applicationId: Joi.string().optional(),
 });
 
 
@@ -48,10 +48,10 @@ const documentSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     documentName: Joi.string().required(),
     // documentUrl: Joi.string().optional(),
-    cloudinaryUrls: Joi.string().optional(),
+    cloudinaryUrls: Joi.any().optional(),
     createdAt: Joi.date().optional(),
     updatedAt: Joi.date().optional(),
-    applicantId: Joi.string().required(),
+    applicantId: Joi.string().optional(),
 });
 
 
@@ -74,6 +74,8 @@ const residentialInformationSchema = Joi.object({
     applicationId: Joi.string().allow(null).optional(),
 });
 
+
+
 const employmentInformationSchema = Joi.object({
     id: Joi.string().optional().allow(null),
     employmentStatus: Joi.string().required(),
@@ -85,7 +87,7 @@ const employmentInformationSchema = Joi.object({
     others: Joi.string().optional().allow(null),
     pension: Joi.string().optional().allow(null),
     moreDetails: Joi.string().optional().allow(null),
-    applicantId: Joi.string().required(),
+    applicantId: Joi.string().optional(),
   });
 
 export {

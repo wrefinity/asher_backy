@@ -63,6 +63,9 @@ export interface ResidentialInformationIF extends BaseIF  {
 }
 
 
+
+
+
 export interface EmploymentInformationIF extends BaseIF {
   employmentStatus: string;
   taxCredit?: string | null;
