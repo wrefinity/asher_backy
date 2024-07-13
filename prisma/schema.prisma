@@ -591,3 +591,22 @@ model wallet {
   payerName            String?   @db.VarChar(255)
   payerId              String? //USER??
 }
+
+model category {
+  id          String        @id @default(cuid())
+  name        String
+  image       String
+  labels      String[]
+  isDeleted   Boolean       @default(false)
+  subCategory subCategory[]
+}
+
+model subCategory {
+  id         String   @id @default(cuid())
+  name       String
+  image      String
+  categoryId String
+  label      String[]
+  isDeleted  Boolean  @default(false)
+  category   category @relation(fields: [categoryId], references: [id])
+}

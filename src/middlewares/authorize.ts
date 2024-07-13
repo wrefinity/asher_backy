@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import { JWT_SECRET } from "../secrets";
-import { CustomRequest, JWTPayload } from "../utils/types";
+import { CustomRequest } from "../utils/types";
 import { Jtoken } from "./Jtoken";
 import UserService from "../services/userServices";
 

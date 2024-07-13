@@ -8,6 +8,7 @@ import ApplicationRouter from "./routes/applicant"
 import ChatRoomRouter from "./routes/chats"
 import EmailRouter from "./routes/email"
 import PropertyRouter from "./routes/property"
+import CategoryRouter from "./routes/category"
 import { PrismaClient } from "@prisma/client";
 import cookieParser from 'cookie-parser'
 
@@ -46,6 +47,7 @@ class Server {
         // Add routes here
         this.app.get("/", (req, res)=> res.json({message:"it is working"}));
         this.app.use("/api/auth", AuthRouter);
+        this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);
