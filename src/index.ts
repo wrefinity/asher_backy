@@ -1,4 +1,4 @@
-import express, { Express,  } from "express";
+import express, { Express, } from "express";
 import session from "express-session";
 // import passport from "passport";
 import { PORT, APP_SECRET } from "./secrets";
@@ -11,6 +11,8 @@ import PropertyRouter from "./routes/property"
 import CategoryRouter from "./routes/category"
 import { PrismaClient } from "@prisma/client";
 import cookieParser from 'cookie-parser'
+import communityRoutes from "./tenant/routes/community.routes";
+import CommunityPostRouter from "./tenant/routes/community-post.routes";
 
 export const prismaClient: PrismaClient = new PrismaClient(
     {
@@ -34,7 +36,7 @@ class Server {
     private configureMiddlewares() {
         // middlewares here
         this.app.use(express.json()); // for content-body parameters
-        this.app.use(express.urlencoded({extended:true}));
+        this.app.use(express.urlencoded({ extended: true }));
         this.app.use(session({
             secret: this.appSecret,
             resave: false,
@@ -45,21 +47,23 @@ class Server {
 
     private configureRoutes() {
         // Add routes here
-        this.app.get("/", (req, res)=> res.json({message:"it is working"}));
+        this.app.get("/", (req, res) => res.json({ message: "it is working" }));
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
-        this.app.use("/api/properties", PropertyRouter)
+        this.app.use("/api/properties", PropertyRouter);
+        this.app.use("/api/community-post", CommunityPostRouter)
+        this.app.use("/api/tenants/community", communityRoutes);
     }
 
     public start() {
         this.app.listen(this.port, () => {
             console.log(`Server running on port ${this.port}`);
         });
-    
+
     }
 }
 

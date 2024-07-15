@@ -37,3 +37,7 @@ export const generateOtp = (): string => {
 export function generateUniqueToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
+
+export function getCommunityurl(name: string) {
+  return `${process.env.BASE_URL}/community/${name}`;
+}

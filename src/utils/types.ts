@@ -1,7 +1,7 @@
 import { Request } from 'express';
 
 export type JWTPayload = {
-    id: number;
+    id: string;
     role: string;
     email: string;
 }

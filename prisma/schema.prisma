@@ -293,6 +293,7 @@ model users {
   profileId              String?
   profile                profile?                 @relation(fields: [profileId], references: [id])
   residentialInformation residentialInformation[]
+  CommunityMember        CommunityMember[]
 }
 
 model profile {
@@ -315,33 +316,73 @@ model VerificationToken {
   createdAt DateTime  @default(now())
 }
 
+enum CommunityVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 model Community {
-  id                    String   @id @default(cuid())
-  communityName         String   @unique
-  communityOwnerId      String
-  user                  users    @relation(fields: [communityOwnerId], references: [id])
-  description           String
-  visibility            Boolean // we can have an enum it should either be public or private
-  communityProfileImage String?
-  communityProfileUrl   String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                      String                    @id @default(cuid())
+  communityName           String                    @unique
+  communityOwnerId        String
+  user                    users                     @relation(fields: [communityOwnerId], references: [id])
+  description             String
+  visibility              CommunityVisibility       @default(PUBLIC) // we can have an enum it should either be public or private
+  communityProfileImage   String?
+  communityProfileUrl     String?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  CommunityMember         CommunityMember[]
+  CommunityInvitationLink CommunityInvitationLink[]
+}
+
+enum MembershipStatus {
+  INVITED
+  MEMBER
+  REJECTED
+}
+
+model CommunityMember {
+  id          String           @id @default(cuid())
+  communityId String
+  userId      String
+  status      MembershipStatus
+  community   Community        @relation(fields: [communityId], references: [id])
+  user        users            @relation(fields: [userId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt()
+
+  @@unique([communityId, userId])
+}
+
+model CommunityInvitationLink {
+  id          String    @id @default(cuid())
+  communityId String
+  inviteCode  String    @unique
+  expiresAt   DateTime
+  community   Community @relation(fields: [communityId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([inviteCode])
 }
 
 model CommunityPost {
-  id                   String               @id @default(cuid())
-  communityId          String
-  userId               String
-  title                String
-  category             String
-  tags                 String[]
-  content              String
-  imageUrl             String
-  likes                CommunityPostLikes[]
-  views                CommunityPostViews[]
-  user                 users                @relation(fields: [userId], references: [id])
-  communityPostViewsId String               @unique
-  Comments             Comments[]
+  id          String               @id @default(cuid())
+  communityId String
+  userId      String
+  title       String
+  category    String
+  tags        String[]
+  content     String
+  imageUrl    String?
+  likesCount  Int                  @default(0)
+  viewsCount  Int                  @default(0)
+  likes       CommunityPostLikes[]
+  views       CommunityPostViews[]
+  user        users                @relation(fields: [userId], references: [id])
+  Comments    Comments[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }
 
 model CommunityPostLikes {

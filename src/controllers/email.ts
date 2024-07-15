@@ -13,9 +13,11 @@ class EmailController {
         try {
             const emailData: EmailDataType = req.body
             emailData.senderEmail = String(req.user.email)
-        
+
             if (req.body.cloudinaryUrls) {
                 emailData.attachment = req.body.cloudinaryUrls
+            } else {
+                emailData.attachment = null
             }
 
             if (!emailData.recieverEmail || !emailData.subject || !emailData.body) {
