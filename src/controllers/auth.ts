@@ -4,13 +4,13 @@ import { Request, Response } from "express";
 // custom libs
 import { Jtoken } from "../middlewares/Jtoken";
 import { JWT_SECRET } from "../secrets";
-import UserServices from "../services/userServices";
+import UserServices from "../services/user.services";
 import {
     createVerificationToken,
     deleteVerificationToken,
     getTokensByUserId,
     validateVerificationToken
-} from "../services/verificationTokenService";
+} from "../services/verification_token.service";
 // import { SignUpIF } from "../interfaces/authInt";
 import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
@@ -169,7 +169,7 @@ class AuthControls {
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }
 
-            const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
+            const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
 
             const { password, id, ...userDetails } = user;
             return res.status(200).json({ message: "User logged in successfully", token, userDetails });
@@ -248,7 +248,7 @@ class AuthControls {
         }
         console.log(user)
 
-        const token = await this.tokenService.createToken({ id: Number(user.id), role: String(user.role), email: String(user.email) });
+        const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
         return res.status(200).json({ access_token: token })
 
     }

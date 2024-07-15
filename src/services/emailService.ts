@@ -1,7 +1,7 @@
 import { prismaClient } from "..";
 import loggers from "../utils/loggers";
 import { EmailDataType } from "../utils/types";
-import UserService from "./userServices";
+import UserService from "./user.services";
 
 const profileSelect = {
     select: {

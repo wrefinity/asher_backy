@@ -2,7 +2,7 @@ import { Response, NextFunction } from "express";
 import { JWT_SECRET } from "../secrets";
 import { CustomRequest } from "../utils/types";
 import { Jtoken } from "./Jtoken";
-import UserService from "../services/userServices";
+import UserService from "../services/user.services";
 
 export class Authorize {
     protected tokenService: Jtoken;
