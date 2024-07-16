@@ -102,7 +102,7 @@ class EmailService {
         try {
             return await prismaClient.email.update({
                 where: { id: emailId },
-                data: emailData
+                data: emailData as any
             })
         } catch (error) {
             loggers.error(`Error updating email: ${error}`)
