@@ -3,7 +3,7 @@ import { prismaClient } from "..";
 
 class StatusService {
   public async getAllStatuses(){
-    return await prismaClient.status.findMany();
+    return await prismaClient.status.findMany({where:{isDeleted:false}});
   }
 
   public async getStatusById(id: string){
@@ -18,7 +18,7 @@ class StatusService {
 
   public async updateStatus(id: string, name:string){
     return await prismaClient.status.update({
-      where: { id },
+      where: { id, isDeleted:false },
       data: {name},
     });
   }

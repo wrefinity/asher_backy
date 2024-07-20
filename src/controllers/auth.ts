@@ -18,7 +18,7 @@ import sendEmail from "../utils/emailer";
 import logger from '../utils/loggers';
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
-import { LoginSchema } from "../schemas/auth";
+import { LoginSchema } from "../validations/schemas/auth";
 
 class AuthControls {
     protected tokenService: Jtoken;

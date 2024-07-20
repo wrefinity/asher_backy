@@ -2,9 +2,9 @@ import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
 import upload from "../configs/multer";
 import { uploadToCloudinary } from "../middlewares/multerCloudinary";
-import PropertyController from "../controllers/property.controller";
-import ApartmentRouter from "./appartment";
-class PropertyRouter {
+import AppartmentController from "../controllers/apartment.controller";
+
+class ApartmentRouter {
     public router: Router;
     authenticateService: Authorize
 
@@ -15,10 +15,9 @@ class PropertyRouter {
     }
 
     private initializeRoutes() {
-        this.router.use("/apartments", ApartmentRouter);
-        this.router.post('/property', PropertyController.createProperty)
-        this.router.get('/property', PropertyController.getProperty)
+        this.router.post('/:propertyId', this.authenticateService.authorize, upload.array('files'),  uploadToCloudinary, AppartmentController.createApartment)
+        this.router.get('/:propertyId', AppartmentController.getAppartments);
     }
 }
 
-export default new PropertyRouter().router
+export default new ApartmentRouter().router

@@ -1,0 +1,33 @@
+import { Request, Response } from "express";
+import ErrorService from "../services/error.service";
+import ApartmentServices from "../services/apartment.services";
+import { apartmentSchema } from "../validations/schemas/apartment.schema";
+class AppartmentController {
+    constructor() { }
+
+    async createApartment(req: Request, res: Response) {
+        try {
+            const { error } = apartmentSchema.validate(req.body);
+            if (error) return res.status(400).send(error.details[0].message);
+            const propertyData = req.body
+            const propertyId = req.params.propertyId;
+
+            const property = await ApartmentServices.createApartment({...propertyData, propertyId})
+            return res.status(201).json(property)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    async getAppartments(req: Request, res: Response) {
+        try {
+            const propertyId = req.params.propertyId;
+            const properties = await ApartmentServices.getApartments(propertyId)
+            if (properties.length < 1) return res.status(200).json({message: "No Property listed yet"})
+            return res.status(200).json(properties)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+}
+
+export default new AppartmentController()

@@ -1,5 +1,6 @@
 import express, { Express, } from "express";
 import session from "express-session";
+import cookieParser from 'cookie-parser'
 // import passport from "passport";
 import { PORT, APP_SECRET } from "./secrets";
 import AuthRouter from "./routes/auth"
@@ -10,8 +11,8 @@ import ChatRoomRouter from "./routes/chats"
 import EmailRouter from "./routes/email"
 import PropertyRouter from "./routes/property"
 import CategoryRouter from "./routes/category"
+import VendorServiceRouter from "./routes/services"
 import { PrismaClient } from "@prisma/client";
-import cookieParser from 'cookie-parser'
 import communityRoutes from "./tenant/routes/community.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import AdsRouter from "./tenant/routes/ads.routes";
@@ -54,6 +55,7 @@ class Server {
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);
+        this.app.use("/api/vendor/services", VendorServiceRouter);
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);

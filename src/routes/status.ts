@@ -16,7 +16,7 @@ class ChatRoutes {
         this.router.get('/', StatusControls.getAllStatuses);
         this.router.get('/:id', StatusControls.getStatusById);
         this.router.post('/', this.authenticateService.authorize, StatusControls.createStatus);
-        this.router.put('/:id', StatusControls.updateStatus);
+        this.router.patch('/:id', StatusControls.updateStatus);
         this.router.delete('/:id', StatusControls.deleteStatus);
     }
 

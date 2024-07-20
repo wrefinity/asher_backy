@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-
+import { CommunityVisibility, MembershipStatus } from "@prisma/client";
 class CommunityPostService {
     constructor() { }
 

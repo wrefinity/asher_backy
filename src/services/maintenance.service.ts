@@ -1,34 +1,56 @@
 import { prismaClient } from "..";
-import { MaintenanceIF } from '../interfaces/maintenance.interface';
-
+import { MaintenanceIF } from '../validations/interfaces/maintenance.interface';
 
 
 class MaintenanceService {
-  public async getAllMaintenances(): Promise<MaintenanceIF[]> {
-    return await prismaClient.maintenance.findMany({ include: { status: true } });
+  protected inclusion;
+  constructor() {
+    this.inclusion = {
+      user: true,
+      property: true,
+      apartment: true,
+      category: true,
+      subcategories: true,
+      status: true,
+      services: true,
+    }
   }
-
-  public async getMaintenanceById(id: string): Promise<MaintenanceIF | null> {
-    return await prismaClient.maintenance.findUnique({ where: { id }, include: { status: true } });
-  }
-
-  public async createMaintenance(maintenanceData: MaintenanceIF): Promise<MaintenanceIF> {
-    return await prismaClient.maintenance.create({
-      data: maintenanceData,
-      include: { status: true },
+  getAllMaintenances = async () => {
+    return await prismaClient.maintenance.findMany({
+      where: {
+        isDeleted: false,
+      },
+      include:this.inclusion,
     });
   }
 
-  public async updateMaintenance(id: string, maintenanceData: Partial<MaintenanceIF>): Promise<MaintenanceIF> {
+  getMaintenanceById = async (id: string) =>{
+    return await prismaClient.maintenance.findUnique({ where: { id }, include:this.inclusion, });
+  }
+
+  createMaintenance = async (maintenanceData: MaintenanceIF)=>{
+    const { subcategoryIds, ...rest } = maintenanceData;
+    return await prismaClient.maintenance.create({
+      data: {
+        ...rest,
+        subcategories: {
+          connect: subcategoryIds.map(id => ({ id })),
+        },
+      },
+      include:this.inclusion,
+    });
+  }
+
+  updateMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>) =>{
     return await prismaClient.maintenance.update({
       where: { id },
       data: maintenanceData,
-      include: { status: true },
+      include:this.inclusion,
     });
   }
 
-  public async deleteMaintenance(id: string): Promise<MaintenanceIF> {
-    return await prismaClient.maintenance.update({ where: { id }, data:{ isDeleted:true} });
+  deleteMaintenance = async (id: string) =>{
+    return await prismaClient.maintenance.update({ where: { id }, data: { isDeleted: true }, include:this.inclusion });
   }
 }
 

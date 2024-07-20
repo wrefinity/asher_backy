@@ -1,18 +1,15 @@
-
-
 export interface MaintenanceIF {
   id: string;
   description: string;
   attachments: string[];
-  priority: string;
+  offer: string[];
   scheduleDate: Date;
-  scheduleTime: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
   userId: string;
   propertyId?: string;
   apartmentId?: string;
   categoryId: string;
-  subcategoryId: string;
+  subcategoryIds: string[];
   statusId: string;
+  serviceId?: string;
 }

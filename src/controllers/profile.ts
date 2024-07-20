@@ -1,6 +1,6 @@
 import { Response } from "express";
 import ProfileServices from "../services/profileServices";
-import {profileSchema} from "../schemas/profile"
+import {profileSchema} from "../validations/schemas/profile"
 import { CustomRequest } from "../utils/types";
 import {uploadToCloudinary } from "../middlewares/multerCloudinary"; 
 

@@ -41,6 +41,7 @@ class StatusController {
     }
   };
 
+
   public updateStatus = async (req: Request, res: Response) => {
     try {
       const id = req.params.id;
@@ -49,7 +50,7 @@ class StatusController {
         return res.status(400).json({ message: "status name required" });
       }
       const status = await this.statusService.updateStatus(id, name);
-      res.status(200).json(status);
+      return res.status(200).json(status);
     } catch (error) {
         ErrorService.handleError(error, res)
     }
@@ -58,8 +59,8 @@ class StatusController {
   public deleteStatus = async (req: Request, res: Response) => {
     try {
       const id = req.params.id;
-      await this.statusService.deleteStatus(id);
-      res.status(204).end();
+      const deleted = await this.statusService.deleteStatus(id);
+      res.status(200).json({deleted, message:"status deleted"});
     } catch (error) {
         ErrorService.handleError(error, res)
     }

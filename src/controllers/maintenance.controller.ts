@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import MaintenanceService from '../services/maintenance.service';
-import { maintenanceSchema } from '../schemas/maintenance.schema';
+import { maintenanceSchema } from '../validations/schemas/maintenance.schema';
 import ErrorService from "../services/error.service";
+import { CustomRequest } from '../utils/types';
 
 
 class MaintenanceController {
@@ -31,13 +32,14 @@ class MaintenanceController {
     }
   };
 
-  public createMaintenance = async (req: Request, res: Response) => {
+  public createMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const { error } = maintenanceSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ message: error.details[0].message });
       }
-      const maintenance = await this.maintenanceService.createMaintenance(req.body);
+      const userId = req.user.id;
+      const maintenance = await this.maintenanceService.createMaintenance({...req.body, userId});
       res.status(201).json(maintenance);
     } catch (error) {
         ErrorService.handleError(error, res)
