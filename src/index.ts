@@ -14,6 +14,7 @@ import { PrismaClient } from "@prisma/client";
 import cookieParser from 'cookie-parser'
 import communityRoutes from "./tenant/routes/community.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
+import AdsRouter from "./tenant/routes/ads.routes";
 
 export const prismaClient: PrismaClient = new PrismaClient(
     {
@@ -59,6 +60,7 @@ class Server {
         this.app.use("/api/properties", PropertyRouter);
         this.app.use("/api/community-post", CommunityPostRouter)
         this.app.use("/api/tenants/community", communityRoutes);
+        this.app.use("/api/ads", AdsRouter);
     }
 
     public start() {
