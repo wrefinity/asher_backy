@@ -44,7 +44,7 @@ export class Authorize {
         }
     }
 
-    async authorizeRole(role: string) {
+    authorizeRole(role: string) {
         return (req: CustomRequest, res: Response, next: NextFunction) => {
             if (req.user && req.user.role === role) return next()
             res.status(401).json({ message: `You are not authorized as a ${role}` })

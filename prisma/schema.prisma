@@ -13,6 +13,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Ads {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  amountPaid       Decimal  @db.Decimal(18, 2)
+  locations        String[]
+  bussinessDetails Json
+  contactInfo      String
+  startedDate      DateTime
+  endDate          DateTime
+  attachment       String[]
+  isListed         Boolean  @default(false)
+  views            Int      @default(0)
+  clicks           Int      @default(0)
+  reach            Int      @default(0)
+  userId           String
+  user             users    @relation(fields: [userId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 model landlords {
   id       String       @id @default(cuid())
   property properties[]
@@ -297,6 +318,7 @@ model users {
   residentialInformation residentialInformation[]
   CommunityMember        CommunityMember[]
   maintenance            maintenance[]
+  Ads                    Ads[]
 }
 
 model profile {
@@ -658,7 +680,7 @@ model subCategory {
 }
 
 model maintenance {
-  id           String      @id @default(cuid())
+  id           String   @id @default(cuid())
   description  String
   attachments  String[]
   priority     String
@@ -685,7 +707,7 @@ model maintenance {
 }
 
 model Status {
-  id           String           @id @default(cuid())
+  id           String        @id @default(cuid())
   name         String
   isDeleted    Boolean       @default(false)
   maintenances maintenance[]
