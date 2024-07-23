@@ -15,14 +15,15 @@ class AdsRouter {
     }
 
     private initializeRoutes() {
-        this.router.post('/', upload.array('files'), uploadToCloudinary, this.authenticateService.authorize, adsController.createAd);
-        this.router.get('/listed', this.authenticateService.authorize, adsController.getAllListedAds);
-        this.router.get('/:adsId', this.authenticateService.authorize, adsController.getAdsById);
-        this.router.patch('/:adsId/list', this.authenticateService.authorize, this.authenticateService.authorizeRole('Admin'), adsController.listAd);
-        this.router.get('/location', this.authenticateService.authorize, adsController.getAdsByLocation)
-        this.router.get('/:userId', this.authenticateService.authorize, adsController.getAdsByUser)
-        this.router.get('/:adsId/stats', this.authenticateService.authorize, adsController.getAdStats)
-        this.router.patch('/:adsId', this.authenticateService.authorize, adsController.incrementAdsStats)
+        this.router.use(this.authenticateService.authorize)
+        this.router.post('/', upload.array('files'), uploadToCloudinary, adsController.createAd);
+        this.router.get('/listed', adsController.getAllListedAds);
+        this.router.get('/:adsId', adsController.getAdsById);
+        this.router.patch('/:adsId/list', this.authenticateService.authorizeRole('Admin'), adsController.listAd);
+        this.router.get('/location', adsController.getAdsByLocation)
+        this.router.get('/:userId', adsController.getAdsByUser)
+        this.router.get('/:adsId/stats', adsController.getAdStats)
+        this.router.patch('/:adsId', adsController.incrementAdsStats)
     }
 }
 
