@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
 import transactionsControllers from "../controllers/transactions.controllers";
+import transferControllers from "../controllers/transfer.controllers";
 import paystackServices from "../services/paystack.services";
 
 class TransactionRouter {
@@ -15,7 +16,7 @@ class TransactionRouter {
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize)
         this.router.get('/fund-wallet', transactionsControllers.fundWallet)
-
+        this.router.post('/pay-bill', transferControllers.makePayment)
     }
 
 }

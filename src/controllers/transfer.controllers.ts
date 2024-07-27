@@ -19,3 +19,5 @@ class TransferController {
         }
     }
 }
+
+export default new TransferController();
