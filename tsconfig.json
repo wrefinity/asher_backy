@@ -5,8 +5,15 @@
     "esModuleInterop": true,
     "target": "ESNext",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
   },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"

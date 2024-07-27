@@ -38,6 +38,7 @@
     "@types/passport-local": "^1.0.38",
     "@types/winston": "^2.4.4",
     "arctic": "^1.9.1",
+    "axios": "^1.7.2",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.2.0",
     "cookie-parser": "^1.4.6",
@@ -51,6 +52,7 @@
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "prisma": "^5.16.1",
+    "request": "^2.88.2",
     "sharp": "^0.33.4",
     "uuid": "^10.0.0",
     "winston": "^3.13.0"

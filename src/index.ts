@@ -11,11 +11,14 @@ import ChatRoomRouter from "./routes/chats"
 import EmailRouter from "./routes/email"
 import PropertyRouter from "./routes/property"
 import CategoryRouter from "./routes/category"
+import TransactionRouter from "./routes/transaction"
+
 import VendorServiceRouter from "./routes/services"
 import { PrismaClient } from "@prisma/client";
 import communityRoutes from "./tenant/routes/community.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import AdsRouter from "./tenant/routes/ads.routes";
+import paystackServices from "./services/paystack.services";
 
 export const prismaClient: PrismaClient = new PrismaClient(
     {
@@ -63,6 +66,8 @@ class Server {
         this.app.use("/api/community-post", CommunityPostRouter)
         this.app.use("/api/tenants/community", communityRoutes);
         this.app.use("/api/ads", AdsRouter);
+        this.app.use("/api/transactions", TransactionRouter);
+        this.app.post('/paystack/webhook', (req, res) => paystackServices.handleWebhook(req, res))
     }
 
     public start() {

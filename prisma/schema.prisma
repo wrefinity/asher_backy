@@ -35,11 +35,13 @@ model Ads {
 }
 
 model landlords {
-  id       String       @id @default(cuid())
-  property properties[]
-  userId   String
-  user     users        @relation(fields: [userId], references: [id])
-  tenants  tenants[]
+  id                    String                  @id @default(cuid())
+  property              properties[]
+  userId                String
+  user                  users                   @relation(fields: [userId], references: [id])
+  tenants               tenants[]
+  lnadlordSupportTicket lnadlordSupportTicket[]
+  transactions          PropertyTransactions[]
 }
 
 model properties {
@@ -72,7 +74,7 @@ model properties {
   videourl String[]
 
   //transaction can be expenses incurred or income generated
-  transactions transactions[]
+  transactions PropertyTransactions[]
 
   amenities       String[]
   // apartments
@@ -99,7 +101,7 @@ model apartments {
   facilities   String[]
   offices      Int?
   isVacant     Boolean  @default(true)
-  isDeleted Boolean @default(false)
+  isDeleted    Boolean  @default(false)
   // rental duration in years
   rentalAmount Decimal
 
@@ -113,7 +115,7 @@ model apartments {
 
   histories appartmentTransactionHistory[]
 
-  transactions transactions[]
+  transactions PropertyTransactions[]
 
   inventory            inventory[]
   tenantPaymentHistory tenantPaymentHistory[]
@@ -135,7 +137,7 @@ model appartmentTransactionHistory {
   tenant   tenants @relation(fields: [tenantId], references: [id])
 
   transactionId String?
-  transactions  transactions? @relation(fields: [transactionId], references: [id])
+  transactions  PropertyTransactions? @relation(fields: [transactionId], references: [id])
 }
 
 //inventory accounts for the lists of items
@@ -153,25 +155,67 @@ model inventory {
   properties         properties? @relation(fields: [propertiesId], references: [id])
 }
 
+// enum TransactionType {
+//   EXPENSE
+//   REVENUE
+// }
 enum TransactionType {
-  EXPENSE
-  REVENUE
+  FUNDWALLET
+  WITHDRAWAL
+  MAKEPAYMENT
 }
 
-model transactions {
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model Transactions {
+  id                String            @id @default(cuid())
+  description       String
+  amount            Decimal           @db.Decimal(18, 2)
+  userId            String
+  user              users             @relation(fields: [userId], references: [id])
+  transactionType   TransactionType
+  transactionStatus TransactionStatus
+  walletId          String
+  wallet            wallet            @relation(fields: [walletId], references: [id])
+  transactionId     String
+  referenceId       String            @unique
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+enum PropertyTransactionsType {
+  RENT_DUE
+  RENT_PAYMENT
+  MAINTAINACE_FEE
+  LANDLORD_PAYOUT
+}
+
+model PropertyTransactions {
   id                           String                         @id @default(cuid())
   description                  String
-  cost                         Decimal                        @db.Decimal(18, 2)
-  createdAt                    DateTime                       @default(now()) @db.Timestamptz(6)
-  // type can be income
-  type                         TransactionType
+  amount                       Decimal                        @db.Decimal(18, 2)
   propertyId                   String
   properties                   properties                     @relation(fields: [propertyId], references: [id])
   appartmentId                 String
   apartments                   apartments                     @relation(fields: [appartmentId], references: [id])
   tenantId                     String
   tenant                       tenants                        @relation(fields: [tenantId], references: [id])
+  landlordId                   String
+  landlord                     landlords                      @relation(fields: [landlordId], references: [id])
   appartmentTransactionHistory appartmentTransactionHistory[]
+  transactionStatus            TransactionStatus
+  type                         PropertyTransactionsType
+  referenceId                  String                         @unique
+  dueDate                      DateTime?
+  paidDate                     DateTime?
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  wallet                       wallet?                        @relation(fields: [walletId], references: [id])
+  walletId                     String?
 }
 
 model agency {
@@ -259,9 +303,10 @@ model tenants {
   propertyId                   String?
   property                     properties?                    @relation(fields: [propertyId], references: [id])
   history                      tenantPaymentHistory[]
-  transactions                 transactions[]
   appartmentTransactionHistory appartmentTransactionHistory[]
   apartments                   apartments[]
+  tenantSupportTicket          tenantSupportTicket[]
+  PropertyTransactions         PropertyTransactions[]
 }
 
 // user information definition 
@@ -322,6 +367,8 @@ model users {
   maintenance            maintenance[]
   Ads                    Ads[]
   services               services[]
+  wallet                 wallet[]
+  Transactions           Transactions[]
 }
 
 model profile {
@@ -444,6 +491,41 @@ model Comments {
   updatedAt       DateTime      @updatedAt
 
   @@index([parentCommentId])
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model lnadlordSupportTicket {
+  id                  String       @id @default(cuid())
+  landlordId          String
+  landlord            landlords    @relation(fields: [landlordId], references: [id])
+  supportTicketNumber String
+  subject             String
+  description         String
+  status              TicketStatus @default(OPEN)
+  attachment          String[]
+  assignedTo          String //(Landlord | Support)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model tenantSupportTicket {
+  id                  String       @id @default(cuid())
+  tenantId            String
+  tenant              tenants      @relation(fields: [tenantId], references: [id])
+  supportTicketNumber String
+  subject             String
+  description         String
+  status              TicketStatus @default(OPEN)
+  attachment          String[]
+  assignedTo          String //(Landlord | Support)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 }
 
 model Email {
@@ -648,17 +730,14 @@ model EmploymentInformation {
 
 // user wallets
 model wallet {
-  id                   String    @id @default(cuid())
-  customerid           Int //USER??
-  transactiontype      String    @db.VarChar(15)
-  transactionDesc      String?
-  transactionId        String    @db.VarChar(255)
-  amount               Decimal?  @default(0.00) @db.Decimal(18, 2)
-  dateadded            DateTime? @default(now()) @db.Timestamptz(6)
-  balance              Decimal?  @default(0.00) @db.Decimal(18, 2)
-  transactionIndicator Int?
-  payerName            String?   @db.VarChar(255)
-  payerId              String? //USER??
+  id                   String                 @id @default(cuid())
+  userId               String                 @unique
+  user                 users                  @relation(fields: [userId], references: [id])
+  transactions         Transactions[]
+  propertyTransactions PropertyTransactions[]
+  balance              Decimal                @default(0.00) @db.Decimal(18, 2)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 }
 
 model category {
