@@ -2,6 +2,7 @@ import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
+import { userRoles } from "@prisma/client";
 
 
 class UserService {
@@ -17,7 +18,7 @@ class UserService {
         return await prismaClient.users.create({
             data: {
                 email: userData?.email,
-                role: [userData?.role],
+                role: userData.role ? [userData.role] : [userRoles.WEBUSER],
                 password: userData.password ? hashSync(userData.password, 10) : null,
                 profile: {
                     create: {
@@ -32,7 +33,7 @@ class UserService {
             },
         });
     }
-      
+
     async updateUserInfo(id: string, userData: any) {
         const updateData = { ...userData };
         if (userData.password) {
