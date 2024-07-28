@@ -88,39 +88,31 @@ model properties {
 }
 
 model apartments {
-  id           String   @id @default(cuid())
-  code         String
-  description  String
-  sittingRoom  Int?
-  waitingRoom  Int?
-  bedrooms     Int?
-  kitchen      Int?
-  bathrooms    Int?
-  garages      Int?
-  floorplans   String[]
-  facilities   String[]
-  offices      Int?
-  isVacant     Boolean  @default(true)
-  isDeleted    Boolean  @default(false)
-  // rental duration in years
-  rentalAmount Decimal
-
-  // visualizations
-  images   String[]
-  videourl String[]
-
-  // the property to which the apartment belongs
-  propertyId String
-  property   properties @relation(fields: [propertyId], references: [id])
-
-  histories appartmentTransactionHistory[]
-
-  transactions PropertyTransactions[]
-
+  id                   String                         @id @default(cuid())
+  code                 String
+  description          String
+  sittingRoom          Int?
+  waitingRoom          Int?
+  bedrooms             Int?
+  kitchen              Int?
+  bathrooms            Int?
+  garages              Int?
+  floorplans           String[]
+  facilities           String[]
+  offices              Int?
+  isVacant             Boolean                        @default(true)
+  isDeleted               Boolean                         @default(false)
+  rentalAmount         Decimal
+  images               String[]
+  videourl             String[]
+  propertyId           String
+  property             properties                     @relation(fields: [propertyId], references: [id])
+  histories            appartmentTransactionHistory[]
+  transactions         PropertyTransactions[]
   inventory            inventory[]
   tenantPaymentHistory tenantPaymentHistory[]
   tenantsId            String?
-  currentTenant        tenants?               @relation(fields: [tenantsId], references: [id])
+  currentTenant        tenants?                       @relation(fields: [tenantsId], references: [id])
   maintenance          maintenance[]
 }
 
@@ -364,11 +356,15 @@ model users {
   profile                profile?                 @relation(fields: [profileId], references: [id])
   residentialInformation residentialInformation[]
   CommunityMember        CommunityMember[]
-  maintenance            maintenance[]
+  // maintenance            maintenance[]
   Ads                    Ads[]
   services               services[]
   wallet                 wallet[]
   Transactions           Transactions[]
+
+  // maintenance maintenance[] @relation(name: "vendorUser")
+  tenantMaintenanceUser maintenance[] @relation("tenantUser")
+  vendorMaintenaceUser  maintenance[] @relation("vendorUser")
 }
 
 model profile {
@@ -546,13 +542,21 @@ model Email {
 
 // chats schema
 // Define the messages model
+
+enum chatType {
+  MAINTENANCE
+  APPLICATION
+  SUPPORT
+}
+
 model Message {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   content    String
   senderId   String
   receiverId String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   chatRoomId String
+  chatType   chatType?
 
   sender   users    @relation("messagesSent", fields: [senderId], references: [id])
   receiver users    @relation("messagesReceived", fields: [receiverId], references: [id])
@@ -763,6 +767,13 @@ model subCategory {
   services    services[]
 }
 
+enum maintenanceStatus {
+  ASSIGNED
+  UNASSIGNED
+  PENDING
+  COMPLETED
+}
+
 model maintenance {
   id           String   @id @default(cuid())
   description  String
@@ -774,8 +785,10 @@ model maintenance {
   isDeleted    Boolean  @default(false)
 
   // relation fields
-  user          users         @relation(fields: [userId], references: [id])
+  user          users         @relation(name: "tenantUser", fields: [userId], references: [id])
   userId        String
+  vendor        users?         @relation(name: "vendorUser", fields: [vendorId], references: [id])
+  vendorId      String?
   property      properties?   @relation(fields: [propertyId], references: [id])
   propertyId    String?
   apartment     apartments?   @relation(fields: [apartmentId], references: [id])
@@ -784,8 +797,9 @@ model maintenance {
   categoryId    String
   subcategories subCategory[] @relation("SubCategoryMaintenance")
 
-  status   status @relation(fields: [statusId], references: [id])
-  statusId String
+  // status   status @relation(fields: [statusId], references: [id])
+  // statusId String
+  status maintenanceStatus @default(UNASSIGNED)
 
   services  services? @relation(fields: [serviceId], references: [id])
   serviceId String?
@@ -793,10 +807,10 @@ model maintenance {
 
 //  status will be in-progress, completed, assigned, aborted
 model status {
-  id           String        @id @default(cuid())
-  name         String
-  isDeleted    Boolean       @default(false)
-  maintenances maintenance[]
+  id        String  @id @default(cuid())
+  name      String
+  isDeleted Boolean @default(false)
+  // maintenances maintenance[]
 }
 
 enum vendorAvailability {
@@ -808,7 +822,7 @@ model services {
   id String @id @default(cuid())
 
   currentJobs        Int                @default(0)
-  availabilty        vendorAvailability @default(YES)
+  availability       vendorAvailability @default(YES)
   standardPriceRange String //example 20-50k
   mediumPriceRange   String //example 50-70k
   premiumPriceRange  String //example 70-100k
@@ -818,11 +832,11 @@ model services {
   user     users  @relation(fields: [vendorId], references: [id])
   vendorId String
 
-  category   category @relation(fields: [categoryId], references: [id])
-  categoryId String
+  category   category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
 
-  subcategory   subCategory @relation(fields: [subcategoryId], references: [id])
-  subcategoryId String
+  subcategory   subCategory? @relation(fields: [subcategoryId], references: [id])
+  subcategoryId String?
 
   maintenance maintenance[]
 }

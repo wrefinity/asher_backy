@@ -52,8 +52,13 @@ class ApplicantControls {
       }
 
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
+
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" }); 
+      }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" }); 
       }
 
       const guarantor = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId});
@@ -69,6 +74,10 @@ class ApplicantControls {
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" }); 
+      }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" }); 
       }
       const { error } = emergencyContactSchema.validate(req.body);
       if (error) {
@@ -96,6 +105,10 @@ class ApplicantControls {
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" }); 
       }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" }); 
+      }
 
       const document = await ApplicantService.createOrUpdateApplicationDoc({ ...data, documentUrl:documentUrl[0], applicationId });
       return res.status(201).json({ document });
@@ -116,6 +129,10 @@ class ApplicantControls {
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" }); 
       }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" }); 
+      }
 
       const result = await ApplicantService.createOrUpdateResidentialInformation({ ...data, applicationId });
       res.status(200).json(result);
@@ -123,8 +140,6 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
-
-
 
   createOrUpdateEmploymentInformation = async (req: CustomRequest, res: Response) => {
     try {
@@ -139,6 +154,10 @@ class ApplicantControls {
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" }); 
+      }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" }); 
       }
 
       const employmentInformation = await ApplicantService.createOrUpdateEmploymentInformation({ ...data, applicationId });

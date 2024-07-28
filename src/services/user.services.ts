@@ -6,12 +6,22 @@ import { userRoles } from "@prisma/client";
 
 
 class UserService {
-    async findUserByEmail(email: string) {
+    protected inclusion;
+
+    constructor(){
+        this.inclusion = {
+            profile:true
+        }
+    }
+    findUserByEmail = async (email: string) =>{
         return await prismaClient.users.findFirst({ where: { email } });
     }
 
     async findAUserById(userId: string) {
-        return await prismaClient.users.findFirst({ where: { id: String(userId) } })
+        return await prismaClient.users.findFirst({ 
+            where: { id: String(userId) },
+            include: this.inclusion
+         })
     }
 
     async createUser(userData: any) {

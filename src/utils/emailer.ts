@@ -31,3 +31,6 @@ export default async (to: string, subject: string, html: string) => {
         }
     });
 }
+
+
+  

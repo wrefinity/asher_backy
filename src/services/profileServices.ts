@@ -1,27 +1,26 @@
+
 import { prismaClient } from "..";
-import { hashSync } from "bcrypt";
-// import { SignUpIF } from "../interfaces/authInt";
-import loggers from "../utils/loggers";
-import { log } from "winston";
+import { ProfileIF } from "../validations/interfaces/profile.interface";
+
 
 class ProfileService {
+
+    protected inclusion;
+    constructor(){
+        this.inclusion = {
+            users:true
+        }
+    }
    
-
-    async findAUserProfileById(userId: string) {
-        return await prismaClient.profile.findFirst({ where: { id: userId } })
+    findAUserProfileById = async (userId: string) => {
+        return await prismaClient.profile.findFirst({ where: { id: userId }, include: this.inclusion })
     }
 
-    async createProfile(profileData: any) {
-        return await prismaClient.profile.create({
-            data: {
-                ...profileData,
-            },
-        });
-    }
-    async updateUserProfile(id: string, profileData: any) { 
+    updateUserProfile = async (id: string, profileData: Partial<ProfileIF>)=>{ 
         return await prismaClient.profile.update({
             where: { id },
             data: profileData,
+            include:this.inclusion
         });
     }
 

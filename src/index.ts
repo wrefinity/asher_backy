@@ -14,6 +14,7 @@ import CategoryRouter from "./routes/category"
 import TransactionRouter from "./routes/transaction"
 
 import VendorServiceRouter from "./routes/services"
+import MaintenanceRouter from "./routes/maintenance"
 import { PrismaClient } from "@prisma/client";
 import communityRoutes from "./tenant/routes/community.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
@@ -63,6 +64,7 @@ class Server {
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
         this.app.use("/api/properties", PropertyRouter);
+        this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community-post", CommunityPostRouter)
         this.app.use("/api/tenants/community", communityRoutes);
         this.app.use("/api/ads", AdsRouter);

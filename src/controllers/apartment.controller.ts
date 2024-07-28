@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import ErrorService from "../services/error.service";
 import ApartmentServices from "../services/apartment.services";
 import { apartmentSchema } from "../validations/schemas/apartment.schema";
+
+
 class AppartmentController {
     constructor() { }
 
@@ -12,7 +14,17 @@ class AppartmentController {
             const propertyData = req.body
             const propertyId = req.params.propertyId;
 
-            const property = await ApartmentServices.createApartment({...propertyData, propertyId})
+            const property = await ApartmentServices.createApartment({
+                ...propertyData,
+                sittingRoom: Number(propertyData.sittingRoom),
+                waitingRoom: Number(propertyData.waitingRoom),
+                bedrooms: Number(propertyData.bedrooms),
+                kitchen: Number(propertyData.kitchen),
+                bathrooms: Number(propertyData.bathrooms),
+                garages: Number(propertyData.garages),
+                offices: Number(propertyData.offices),
+                propertyId
+            })
             return res.status(201).json(property)
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -28,6 +40,8 @@ class AppartmentController {
             ErrorService.handleError(error, res)
         }
     }
+
+
 }
 
 export default new AppartmentController()

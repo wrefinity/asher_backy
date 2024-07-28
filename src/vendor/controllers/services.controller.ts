@@ -16,7 +16,7 @@ class ServiceControls {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-    };
+    }
 
     // Get Service by ID
     getService = async (req: Request, res: Response) => {
@@ -84,8 +84,8 @@ class ServiceControls {
             const { categoryId } = req.params;
             const { error, value } = applyOfferSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
-
-            const services = await serviceService.applyOffer(id, value.plan, value.offer);
+            // const services = await serviceService.applyOffer(categoryId, value.plan, value.offer);
+            const services = await serviceService.getServicesByCategoryAndSubcategories(categoryId, value.plan);
             res.status(200).json({services});
         } catch (error) {
             res.status(500).json({ error: error.message });

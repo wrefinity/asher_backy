@@ -7,38 +7,78 @@ class ServiceService {
     protected inclusion;
     constructor() {
         this.inclusion = {
-            user: true,
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            },
             category: true,
             subcategory: true,
-            services: true,
         }
     }
 
     createService = async (data: IService): Promise<services> => {
-        return await prismaClient.services.create({ 
+        return await prismaClient.services.create({
             data,
-            include:this.inclusion 
+            include: this.inclusion
         });
     }
 
     getService = async (id: string): Promise<services | null> => {
-        return await prismaClient.services.findUnique({ 
+        return await prismaClient.services.findUnique({
             where: { id },
-            include:this.inclusion,
+            include: this.inclusion,
+        });
+    }
+    getVendorService = async (vendorId: string): Promise<services | null> => {
+        return await prismaClient.services.findFirst({
+            where: { vendorId },
+            include: this.inclusion,
+        });
+    }
+    getSpecificVendorService = async (vendorId: string, categoryId: string): Promise<services> => {
+        return await prismaClient.services.findFirst({
+            where: { vendorId, categoryId },
+            include: this.inclusion,
+        });
+    };
+
+    incrementJobCount = async (serviceId: string, vendorId): Promise<void> => {
+        await prismaClient.services.update({
+            where: { id: serviceId, vendorId },
+            data: {
+                currentJobs: {
+                    increment: 1,
+                },
+            },
+        });
+    }
+    decrementJobCount = async (serviceId: string, vendorId: string): Promise<void> => {
+        await prismaClient.services.update({
+            where: { id: serviceId, vendorId },
+            data: {
+                currentJobs: {
+                    decrement: 1,
+                },
+            },
         });
     }
 
+
     updateService = async (id: string, data: Partial<IService>): Promise<services> => {
-        return await prismaClient.services.update({ 
+        return await prismaClient.services.update({
             where: { id },
             data,
-            include:this.inclusion
+            include: this.inclusion
         });
     }
 
     deleteService = async (id: string): Promise<services> => {
-        return await prismaClient.services.update({ 
-            where: { id }, 
+        return await prismaClient.services.update({
+            where: { id },
             data: { isDeleted: true },
             include: this.inclusion
         });
@@ -50,9 +90,9 @@ class ServiceService {
             include: this.inclusion
         });
     }
-    
+
     getServicesByCategory = async (categoryId: string): Promise<services[]> => {
-        return await prismaClient.services.findMany({ where: { categoryId }, include:this.inclusion});
+        return await prismaClient.services.findMany({ where: { categoryId }, include: this.inclusion });
     }
 
     getServicesByCategoryAndSubcategories = async (categoryId: string, subcategoryIds: string[]): Promise<services[]> => {
@@ -63,12 +103,13 @@ class ServiceService {
                     in: subcategoryIds
                 }
             },
-            include:this.inclusion
+            include: this.inclusion
         });
     }
 
     applyOffer = async (categoryId: string, subcategoryIds: string[], plan: 'standard' | 'medium' | 'premium'): Promise<services[]> => {
         const services = await this.getServicesByCategoryAndSubcategories(categoryId, subcategoryIds)
+        console.log(services)
         return services.filter(service => {
             switch (plan) {
                 case 'standard':
@@ -81,6 +122,13 @@ class ServiceService {
                     return false;
             }
         });
+    }
+
+    isVendorAllocated = async (vendorId: string): Promise<boolean> => {
+        const count = await prismaClient.services.count({
+            where: { vendorId },
+        });
+        return count > 0;
     }
 }
 

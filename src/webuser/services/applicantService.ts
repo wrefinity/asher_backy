@@ -1,5 +1,4 @@
 import { prismaClient } from "../..";
-import { formatISO, parseISO } from 'date-fns';
 import { ApplicationStatus } from '@prisma/client';
 import {
   NextOfKinIF,
@@ -13,8 +12,8 @@ import {
 } from "../schemas/types"
 
 
-
 class ApplicantService {
+
 
   createOrUpdatePersonalDetails = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
     const {
@@ -104,7 +103,7 @@ class ApplicantService {
     return upsertedPersonalDetails;
   };
 
-  async createOrUpdateGuarantor(data: GuarantorInformationIF) {
+  createOrUpdateGuarantor = async (data: GuarantorInformationIF) => {
     const { id, applicationId, ...rest } = data;
     const guarantorInfo = await prismaClient.guarantorInformation.upsert({
       where: { id: id ?? '' },
@@ -131,14 +130,14 @@ class ApplicantService {
 
   async createOrUpdateEmergencyContact(data: EmergencyContactIF) {
     const { id, applicationId, ...rest } = data;
-  
+
     // Upsert the emergency contact information
     const emergencyInfo = await prismaClient.emergencyContact.upsert({
       where: { id: id ?? '' },
       update: rest,
       create: { id, ...rest },
     });
-  
+
     // Update the application with the new or updated emergency contact information
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
@@ -148,10 +147,10 @@ class ApplicantService {
         },
       },
     });
-  
+
     return { ...emergencyInfo, ...updatedApplication };
   }
-  
+
   createOrUpdateApplicationDoc = async (data: AppDocumentIF) => {
     const { id, applicationId, ...rest } = data;
     const docInfo = await prismaClient.document.upsert({
@@ -299,7 +298,7 @@ class ApplicantService {
     });
   }
 
-  getApplicationById = async(applicationId: string) =>{
+  getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -325,12 +324,20 @@ class ApplicantService {
   }
 
 
-  checkApplicationExistance = async (applicationId:string)=>{
+  checkApplicationExistance = async (applicationId: string) => {
     // Check if the application exists
-  return await prismaClient.application.findUnique({
-    where: { id: applicationId },
-  });
-  } 
+    return await prismaClient.application.findUnique({
+      where: { id: applicationId },
+    });
+  }
+  
+  checkApplicationCompleted = async (applicationId: string) => {
+    // Check if the application completed
+    return await prismaClient.application.findUnique({
+      where: { id: applicationId, status: ApplicationStatus.COMPLETED },
+    });
+  }
+
 }
 
 export default new ApplicantService();

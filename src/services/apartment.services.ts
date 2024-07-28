@@ -29,18 +29,18 @@ class ApartmentService {
   }
 
   createApartment = async (data: ApartmentIF) => {
-
     const propertyExists = await PropertyServices.getPropertiesById(data.propertyId);
     if (!propertyExists) {
       throw new Error('Property not found');
     }
+
     return await prismaClient.apartments.create({
       data: {
         code: data.code,
         description: data.description,
-        sittingRoom: data.sittingRoom ?? null,
         waitingRoom: data.waitingRoom ?? null,
         bedrooms: data.bedrooms ?? null,
+        sittingRoom: data.sittingRoom ?? null,
         kitchen: data.kitchen ?? null,
         bathrooms: data.bathrooms ?? null,
         garages: data.garages ?? null,
@@ -57,9 +57,7 @@ class ApartmentService {
         property: true,
       }
     });
-  }
-
-
+  };
 }
 
 export default new ApartmentService();

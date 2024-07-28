@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { CustomRequest } from "../../utils/types";
 import ChatServices from '../services/chatServices';
 import {String} from "../../utils/helpers";
+
 class ChatMessageAuth {
     createChatRoom = async (req: CustomRequest, res: Response) => {
 
@@ -16,7 +17,6 @@ class ChatMessageAuth {
             }
             return res.status(201).json({chatRoom:String(chatRoomExist)});
         } catch (error) {
-            console.error('Error creating chat room:', error);
             return res.status(500).json({ message: 'Internal server error' });
         }
     }
@@ -25,8 +25,7 @@ class ChatMessageAuth {
         const { content  } = req.body;
         const {chatRoomId, receiverId} = req.params;
         try {
-            const senderId = String(req.user.id); // sender is the current logged in user
-        
+            const senderId = String(req.user.id); // sender is the current logged in user  
             const chat = await ChatServices.createRoomMessages(
                 content,
                 senderId,
@@ -35,7 +34,6 @@ class ChatMessageAuth {
             );
             return res.status(201).json({chat: String(chat)});
         } catch (error) {
-            console.error('Error sending message:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     }
@@ -44,10 +42,9 @@ class ChatMessageAuth {
         const { chatRoomId } = req.params;
         try {
             const chat = await ChatServices.getChatRoomMessages(chatRoomId);
-            res.json({chat: String(chat)});
+            return res.json({chat: String(chat)});
         } catch (error) {
-            console.error('Error getting chat rooms:', error);
-            res.status(500).json({ message: 'Internal server error' });
+            return res.status(500).json({ message: 'Internal server error' });
         }
     }
 }
