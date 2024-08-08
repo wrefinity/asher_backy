@@ -18,6 +18,20 @@ class TransferController {
             errorService.handleError(error, res);
         }
     }
+
+    async transferFunds(req: CustomRequest, res: Response) {
+        const userId = (req.user.id);
+        const { value, error } = TransactionSchema.trasferFunds().validate(req.body);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+        try {
+            const transfer = await transferServices.transferFunds(userId, value)
+            res.status(200).json(transfer);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
 }
 
 export default new TransferController();

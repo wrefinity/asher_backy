@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 const TicketStatus = ['open', 'in_progress', 'resolved', 'closed']
-const TicketAssignedTo = ['landolrd', 'support']
+const TicketAssignedTo = ['landlord', 'support']
 
 class SupportSchema {
     static create() {
@@ -10,8 +10,10 @@ class SupportSchema {
             description: Joi.string().required(),
             subject: Joi.string().required(),
             status: Joi.string().valid(...TicketStatus).default('open'),
-            attachment: Joi.array().items(Joi.string().uri().optional()).optional(),
+            // attachment: Joi.array().items(Joi.string().uri().optional()).optional(),
             assignedTo: Joi.string().valid(...TicketAssignedTo).required(),
+            cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+
         });
     }
 
@@ -21,7 +23,7 @@ class SupportSchema {
             description: Joi.string(),
             subject: Joi.string(),
             status: Joi.string().valid(...TicketStatus),
-            attachment: Joi.array().items(Joi.string().uri().optional()),
+            cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
             assignedTo: Joi.string().valid(...TicketAssignedTo),
         });
     }

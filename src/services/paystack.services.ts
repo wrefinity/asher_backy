@@ -88,6 +88,21 @@ class PayStackService {
             errorService.handleError(error, res);
         }
     }
+
+    async verifyPayment(referenceId: string) {
+        try {
+            const reposne = await axios.get(
+                `${this.payStackBaseUrl}/transaction/verify/${referenceId}`,
+                { headers: this.getHeaders() }
+            )
+            return reposne.data;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                throw new Error(`Error verifying payment: ${error}`);
+            }
+            throw error;
+        }
+    }
 }
 
 export default new PayStackService();

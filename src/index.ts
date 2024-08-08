@@ -1,8 +1,9 @@
-import express, { Express, } from "express";
+import cookieParser from 'cookie-parser';
+import express, { Express } from "express";
 import session from "express-session";
-import cookieParser from 'cookie-parser'
+import connectDB from './db/mongo_connnect';
+// import passport from "passport";
 import { PORT, APP_SECRET } from "./secrets";
-import connectDB from "./db/mongo_connnect"
 import AuthRouter from "./routes/auth"
 import ProfileRouter from "./routes/profile"
 import StatusRouter from "./routes/status"
@@ -12,16 +13,20 @@ import EmailRouter from "./routes/email"
 import PropertyRouter from "./routes/property"
 import CategoryRouter from "./routes/category"
 import TransactionRouter from "./routes/transaction"
-import FilesRouter from "./routes/files"
 import NotificationRouter from "./routes/notification"
 
-import VendorServiceRouter from "./routes/services"
-import MaintenanceRouter from "./routes/maintenance"
+
 import { PrismaClient } from "@prisma/client";
-import communityRoutes from "./tenant/routes/community.routes";
-import CommunityPostRouter from "./tenant/routes/community-post.routes";
-import AdsRouter from "./tenant/routes/ads.routes";
+import MaintenanceRouter from "./routes/maintenance";
+import VendorServiceRouter from "./routes/services";
+import WalletRouter from "./routes/wallet";
 import paystackServices from "./services/paystack.services";
+import AdsRouter from "./tenant/routes/ads.routes";
+import CommunityPostRouter from "./tenant/routes/community-post.routes";
+import communityRoutes from "./tenant/routes/community.routes";
+import TenantDashboardRouter from "./tenant/routes/dashboard.routes";
+import SupportRouter from "./tenant/routes/support-tenant.routes";
+
 
 export const prismaClient: PrismaClient = new PrismaClient(
     {
@@ -58,6 +63,7 @@ class Server {
     private configureRoutes() {
         // Add routes here
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
+        this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/notification", NotificationRouter)
@@ -71,11 +77,12 @@ class Server {
         this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community-post", CommunityPostRouter)
         this.app.use("/api/tenants/community", communityRoutes);
-        this.app.use("/api/tenants/files", FilesRouter);
         this.app.use("/api/ads", AdsRouter);
         this.app.use("/api/transactions", TransactionRouter);
-        this.app.post('/paystack/webhook', (req, res) => paystackServices.handleWebhook(req, res))
-    }
+        this.app.use("/api/wallet", WalletRouter);
+        this.app.use("/api/tenant/dashboard", TenantDashboardRouter);
+
+   }
 
     public start() {
         this.app.listen(this.port, () => {

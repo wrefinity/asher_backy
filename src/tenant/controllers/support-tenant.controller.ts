@@ -13,7 +13,11 @@ class SupportTenantController {
             if (error) {
                 return res.status(400).json({ message: error.details[0].message })
             }
-            const ticket = await supportTenantServices.createSupportTenantTicket(value, tenantId);
+            const data = { ...value }
+            const attachment = req.body.cloudinaryUrls
+            delete data['cloudinaryUrls']
+
+            const ticket = await supportTenantServices.createSupportTenantTicket({ ...data, attachment }, tenantId);
             res.status(201).json(ticket);
         } catch (error) {
             errorService.handleError(error, res);

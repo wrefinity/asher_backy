@@ -1,4 +1,5 @@
 import { prismaClient } from "../..";
+import transferServices from "../../services/transfer.services";
 
 class AdService {
 
@@ -19,12 +20,30 @@ class AdService {
     }
 
     async createAd(adData: any, userId: string) {
-        return await prismaClient.ads.create({
-            data: {
-                ...adData,
-                userId
-            },
-        });
+
+        const transaction = await prismaClient.$transaction(async (prisma) => {
+            const ads = await prisma.ads.create({
+                data: {
+                    ...adData,
+                    userId,
+                },
+            })
+            
+            //TODO: make ads payment
+            //if creating ads is a success we create the payment
+            const payment = await transferServices.makeAdsPayments(parseFloat(adData.amountPaid), userId)
+
+            // then we update the ads table
+            const updatedAds = await prisma.ads.update({
+                where: { id: ads.id },
+                data: { referenceId: payment.transactionRecord.id },
+            })
+
+            return { ads: updatedAds, payment }
+
+        })
+        return transaction.ads;
+
     }
 
     async getAllListedAds() {
@@ -52,16 +71,17 @@ class AdService {
         })
     }
 
-    async getAdsByLocation(location: any) {
+    async getAdsByLocation(location: any, isListed: boolean) {
         const currentDate = new Date();
+        
         return prismaClient.ads.findMany({
             where: {
                 locations: {
                     has: location
                 },
-                isListed: true,
+                isListed,
                 startedDate: { lte: currentDate },
-                endDate: { gte: currentDate },
+                // endDate: { gte: currentDate },
             }
         })
     }
@@ -100,7 +120,7 @@ class AdService {
             }
         })
     }
-    
+
     async updateAd(adId: string, adData: any) {
         return prismaClient.ads.update({
             where: { id: adId },

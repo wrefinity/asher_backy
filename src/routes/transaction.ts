@@ -1,8 +1,7 @@
 import { Router } from "express";
-import { Authorize } from "../middlewares/authorize";
 import transactionsControllers from "../controllers/transactions.controllers";
 import transferControllers from "../controllers/transfer.controllers";
-import paystackServices from "../services/paystack.services";
+import { Authorize } from "../middlewares/authorize";
 
 class TransactionRouter {
     public router: Router;
@@ -16,7 +15,9 @@ class TransactionRouter {
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize)
         this.router.get('/fund-wallet', transactionsControllers.fundWallet)
+        this.router.patch('/verify/:referenceId', transactionsControllers.verifyPayment)
         this.router.post('/pay-bill', transferControllers.makePayment)
+        this.router.post('/transfer', transferControllers.transferFunds)
     }
 
 }

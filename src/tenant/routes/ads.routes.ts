@@ -20,10 +20,10 @@ class AdsRouter {
         this.router.get('/listed', adsController.getAllListedAds);
         this.router.get('/:adsId', adsController.getAdsById);
         this.router.patch('/:adsId/list', this.authenticateService.authorizeRole('Admin'), adsController.listAd);
-        this.router.get('/location', adsController.getAdsByLocation)
-        this.router.get('/:userId', adsController.getAdsByUser)
-        this.router.get('/:adsId/stats', adsController.getAdStats)
-        this.router.patch('/:adsId', adsController.incrementAdsStats)
+        this.router.get('/post/location', adsController.getAdsByLocation);
+        this.router.get('/user/:userId', adsController.getAdsByUser);
+        this.router.get('/:adsId/stats', adsController.getAdStats);
+        this.router.patch('/:adsId/stats', adsController.incrementAdsStats);
     }
 }
 

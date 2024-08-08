@@ -1,9 +1,9 @@
-import { TransactionStatus } from "@prisma/client";
+import { PrismaClient, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { WebHookData, WebhookEventResponse } from "../utils/types";
 
 class TransactionService {
-    async createTransaction(transactionData: any) {
+    async createTransaction(transactionData: any){
         return prismaClient.transactions.create({
             data: transactionData,
         })
@@ -43,6 +43,20 @@ class TransactionService {
         })
     }
 
+    async updateReferneceTransaction(referenceId: string, userId:string){
+        console.log("got here")
+        return prismaClient.transactions.update({
+            where: {
+                referenceId,
+                userId
+            },
+            data: {
+                referenceId,
+                transactionStatus: TransactionStatus.COMPLETED,
+            },
+        })
+    }
+
     async handleSuccessfulPayment(respData: WebHookData) {
         const transaction = await this.getTransactionByReference(respData.reference)
         if (!transaction) {
@@ -50,7 +64,6 @@ class TransactionService {
         }
         await this.updateTransaction(transaction.id, transaction.userId, {
             transactionStatus: TransactionStatus.COMPLETED,
-            transactionId: respData.id,
         })
 
         //update the wallet balance

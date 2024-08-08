@@ -125,6 +125,7 @@ class CommunityController {
             errorService.handleError(error, res)
         }
     }
+    
 
     async getCommunityMembers(req: CustomRequest, res: Response) {
         const { communityId } = req.params

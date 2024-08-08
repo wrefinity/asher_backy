@@ -48,6 +48,8 @@ class AuthControls {
             // Convert BigInt to string before sending the response
             // const userResponse = String(user);
 
+            //TODO: ADD THE USER BASED OF HIS ROLE TO THEIR TABLE
+
 
             // const serializedUser = serializeBigInt(user);
             return res.status(201).json({ message: "User registered successfully, check your email for verification code", user });

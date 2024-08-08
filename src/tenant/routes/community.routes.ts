@@ -12,6 +12,7 @@ class CommunityRoutes {
 
         this.initializeRoutes();
     }
+    
 
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize);

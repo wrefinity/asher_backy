@@ -8,6 +8,7 @@ const communityInformationSchema = Joi.object({
     cloudinaryUrls: Joi.array().items(Joi.string().uri().optional()).optional(),
 })
 
+
 const communityPostSchema = Joi.object({
     title: Joi.string().required(),
     category: Joi.string().required(),

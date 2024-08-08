@@ -3,19 +3,26 @@ import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import { adSchema } from "../schema/adShema"
 import adsServices from "../services/ads.services"
+import transferServices from "../../services/transfer.services"
 
 
 class AdController {
     constructor() { }
 
     async createAd(req: CustomRequest, res: Response) {
+        if (typeof req.body.bussinessDetails === "string") {
+            req.body.bussinessDetails = JSON.parse(req.body.bussinessDetails)
+        }
         try {
             const { value, error } = adSchema.validate(req.body)
             if (error) {
                 return res.status(400).json({ error: error.details[0].message })
             }
             const userId = String(req.user.id)
-            const ad = await adsServices.createAd(value, userId)
+            const data = { ...value }
+            const attachment = req.body.cloudinaryUrls
+            delete data['cloudinaryUrls']
+            const ad = await adsServices.createAd({ ...data, attachment }, userId)
             return res.status(201).json(ad)
         } catch (error) {
             errorService.handleError(error, res)
@@ -63,7 +70,7 @@ class AdController {
     async getAllListedAds(req: Request, res: Response) {
         try {
             const ads = await adsServices.getAllListedAds()
-            if (ads.length < 0) {
+            if (ads.length < 1) {
                 return res.status(200).json({ message: "No listed ads found" })
             }
             return res.status(200).json(ads)
@@ -73,9 +80,10 @@ class AdController {
     }
 
     async getAdsByLocation(req: Request, res: Response) {
+        const { location, isListed } = req.query;
+        const isListedBoolean = isListed === 'false' ? false : Boolean(isListed);
         try {
-            const { location } = req.query;
-            const ads = await adsServices.getAdsByLocation(location)
+            const ads = await adsServices.getAdsByLocation(location, isListedBoolean)
             if (ads.length < 0) return res.status(404).json({ message: "No Ads found in such location" })
             return res.status(200).json(ads)
         } catch (error) {

@@ -38,7 +38,7 @@ class WalletService {
     async fundWallet(userId: string, amount: number) {
         const wallet = await this.getOrCreateWallet(userId);
         const user = await prismaClient.users.findUnique({
-            where: { id: userId }, 
+            where: { id: userId },
             include: {
                 profile: {
                     select: {
@@ -58,17 +58,19 @@ class WalletService {
         console.log(transactionDetails);
         const paymentResponse = await paystackServices.initializePayment({ ...transactionDetails })
 
-        await transactionService.createTransaction({
+        const transactionRespDetails = await transactionService.createTransaction({
             userId,
             amount: amount,
             description: `Wallet funding of ${amount}`,
             transactionType: TransactionType.FUNDWALLET,
             transactionStatus: TransactionStatus.PENDING,
             walletId: wallet.id,
-            referenceId: paymentResponse.data.reference,
-            transactionId: paymentResponse.data.access_code
+            referenceId: paymentResponse.data.reference
         })
-        return paymentResponse.data.authorization_url;
+        return {
+            authorizationUrl: paymentResponse.data.authorization_url,
+            transactionRespDetails
+        };
     }
 
 

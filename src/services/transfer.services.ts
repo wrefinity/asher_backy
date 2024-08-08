@@ -2,39 +2,39 @@ import { TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 import walletService from "./wallet.service";
 import { randomBytes } from 'crypto';
+import transactionServices from "./transaction.services";
 
 class TransferService {
-    async transferFunds(senderId: string, recieiverId: string, amount: number, description: string) {
+    async transferFunds(senderId: string, data: any) {
         const senderWallet = await walletService.getOrCreateWallet(senderId);
-        const recieiverWallet = await walletService.getOrCreateWallet(recieiverId);
+        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId);
 
-        await walletService.ensureSufficientBalance(senderWallet.id, amount);
+        await walletService.ensureSufficientBalance(senderWallet.id, data.amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             //Deduct from sender's wallet
             await prisma.wallet.update({
                 where: { id: senderWallet.id },
-                data: { balance: { decrement: amount } }
+                data: { balance: { decrement: data.amount } }
             })
 
 
             //Add to reciever's wallet
             await prisma.wallet.update({
                 where: { id: recieiverWallet.id },
-                data: { balance: { increment: amount } }
+                data: { balance: { increment: data.amount } }
             })
 
             // create transaction record
             const transactionRecord = await prisma.transactions.create({
                 data: {
                     userId: senderId,
-                    amount,
-                    description,
+                    amount: data.amount,
+                    description: data.description || `Transferred ${data.amount} to ${recieiverWallet.userId}`,
                     transactionType: TransactionType.MAKEPAYMENT,
                     transactionStatus: TransactionStatus.COMPLETED,
                     walletId: senderWallet.id,
-                    transactionId: `TRF-${Date.now()}`,
-                    referenceId: `REF-${Date.now()}`
+                    referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`
                 }
 
             })
@@ -113,6 +113,52 @@ class TransferService {
             };
         })
 
+
+        return transaction;
+    }
+
+    async makeAdsPayments(amount: any, userId: string) {
+        const user = await prismaClient.users.findUnique({
+            where: { id: userId },
+        })
+        if (!user) {
+            throw new Error('Tenant not found');
+        }
+
+        //get tenant wallet
+        const userWallet = await walletService.getOrCreateWallet(user.id);
+        await walletService.ensureSufficientBalance(userWallet.id, amount);
+
+        const transaction = await prismaClient.$transaction(async (prisma) => {
+            // Deduct from tenant's wallet
+            const updatedUserWallet = await prisma.wallet.update({
+                where: { id: userWallet.id },
+                data: { balance: { decrement: amount } }
+            })
+
+            // Add to payee's wallet -> for ads asher support
+            // const updatedWallet = await prisma.wallet.update({
+            //     where: { id: payee.id },
+            //     data: { balance: { increment: data.amount } }
+            // })
+
+            // create transaction record
+            const transactionRecord = await transactionServices.createTransaction({
+                userId: user.id,
+                amount: amount,
+                description: 'Making payment for Ads',
+                transactionType: TransactionType.MAKEPAYMENT,
+                transactionStatus: TransactionStatus.COMPLETED,
+                walletId: userWallet.id,
+                referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`
+
+            })
+            return {
+                transactionRecord,
+                userWallet: updatedUserWallet
+            };
+
+        })
 
         return transaction;
     }

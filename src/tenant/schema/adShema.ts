@@ -3,8 +3,8 @@ import Joi from "joi";
 const adSchema = Joi.object({
     title: Joi.string().required(),
     description: Joi.string().required(),
-    startDate: Joi.date().iso().required(),
-    endDate: Joi.date().iso().greater(Joi.ref('startDate')).required(),
+    startedDate: Joi.date().iso().required(),
+    endDate: Joi.date().iso().greater(Joi.ref('startedDate')).required(),
     locations: Joi.array().items(Joi.string()).optional(),
     bussinessDetails: Joi.object({
         bussinessName: Joi.string().required(),
@@ -14,8 +14,9 @@ const adSchema = Joi.object({
         bussinessPhone: Joi.string().optional()
     }),
     contactInfo: Joi.string().optional(),
-    attachments: Joi.string().uri().required(),
     amountPaid: Joi.number().positive().optional(),
+    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+
 })
 
 export { adSchema };

@@ -14,24 +14,26 @@ datasource db {
 }
 
 model Ads {
-  id               String   @id @default(cuid())
+  id               String        @id @default(cuid())
   title            String
   description      String
-  amountPaid       Decimal  @db.Decimal(18, 2)
+  amountPaid       Decimal       @db.Decimal(18, 2)
   locations        String[]
   bussinessDetails Json
   contactInfo      String
   startedDate      DateTime
   endDate          DateTime
   attachment       String[]
-  isListed         Boolean  @default(false)
-  views            Int      @default(0)
-  clicks           Int      @default(0)
-  reach            Int      @default(0)
+  isListed         Boolean       @default(false)
+  views            Int           @default(0)
+  clicks           Int           @default(0)
+  reach            Int           @default(0)
   userId           String
-  user             users    @relation(fields: [userId], references: [id])
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  user             users         @relation(fields: [userId], references: [id])
+  referenceId      String?
+  transaction      Transactions? @relation(fields: [referenceId], references: [id])
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }
 
 model landlords {
@@ -101,7 +103,7 @@ model apartments {
   facilities           String[]
   offices              Int?
   isVacant             Boolean                        @default(true)
-  isDeleted               Boolean                         @default(false)
+  isDeleted            Boolean                        @default(false)
   rentalAmount         Decimal
   images               String[]
   videourl             String[]
@@ -173,10 +175,10 @@ model Transactions {
   transactionStatus TransactionStatus?
   walletId          String
   wallet            wallet            @relation(fields: [walletId], references: [id])
-  transactionId     String
   referenceId       String            @unique
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  Ads               Ads[]
 }
 
 enum PropertyTransactionsType {
@@ -184,6 +186,13 @@ enum PropertyTransactionsType {
   RENT_PAYMENT
   MAINTAINACE_FEE
   LANDLORD_PAYOUT
+}
+
+enum PaymentFrequenct {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }
 
 model PropertyTransactions {
@@ -208,6 +217,10 @@ model PropertyTransactions {
   updatedAt                    DateTime                       @updatedAt
   wallet                       wallet?                        @relation(fields: [walletId], references: [id])
   walletId                     String?
+  paymentFrequency             PaymentFrequenct
+  nextDueDate                  DateTime
+  lastPaidDate                 DateTime?
+  missedPayment                Int                            @default(0)
 }
 
 model agency {
@@ -279,15 +292,16 @@ model tenants {
   tenantId   String @unique
   landlordId String
 
-  rentstatus Int
-
-  // durationofrent        Int?
+  rentstatus            Int
+  leaseStartDate        DateTime
+  leaseEndDate          DateTime
+  isCurrentLease        Boolean   @default(true)
   isexisted             Int?
   dateOfFirstRent       DateTime? @default(now()) @db.Timestamptz(6)
   apartmentOrFlatNumber Int?
 
   // relationships definitions
-  userId                       String
+  userId                       String                         @unique
   user                         users                          @relation(fields: [userId], references: [id])
   landlord                     landlords                      @relation(fields: [landlordId], references: [id])
   agentId                      String?
@@ -299,6 +313,9 @@ model tenants {
   apartments                   apartments[]
   tenantSupportTicket          tenantSupportTicket[]
   PropertyTransactions         PropertyTransactions[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // user information definition 
@@ -365,6 +382,21 @@ model users {
   // maintenance maintenance[] @relation(name: "vendorUser")
   tenantMaintenanceUser maintenance[] @relation("tenantUser")
   vendorMaintenaceUser  maintenance[] @relation("vendorUser")
+  creditScore           creditScore?
+}
+
+model creditScore {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        users    @relation(fields: [userId], references: [id])
+  score       Int
+  lastUpdated DateTime @default(now())
+
+  //NOTE: Factors that can possibly contribute to the score
+  paymentHistory    Float
+  rentalHistory     Float
+  maintainanceScore Float
+  reviewScore       Float
 }
 
 model profile {
@@ -787,7 +819,7 @@ model maintenance {
   // relation fields
   user          users         @relation(name: "tenantUser", fields: [userId], references: [id])
   userId        String
-  vendor        users?         @relation(name: "vendorUser", fields: [vendorId], references: [id])
+  vendor        users?        @relation(name: "vendorUser", fields: [vendorId], references: [id])
   vendorId      String?
   property      properties?   @relation(fields: [propertyId], references: [id])
   propertyId    String?

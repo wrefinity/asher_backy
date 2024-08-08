@@ -157,6 +157,7 @@ class CommunityService {
             }
         })
     }
+    
 
     async inviteUserToCommunity(communityId: string, invitedUserId: string, inviterId: string) {
         const community = await this.getCommunityById(communityId)

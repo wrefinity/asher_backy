@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import ErrorService from "../services/error.service";
 import PropertyServices from "../services/propertyServices";
+import { prismaClient } from "..";
 
 class PropertyController {
     constructor() { }
@@ -8,6 +9,13 @@ class PropertyController {
     async createProperty(req: Request, res: Response) {
         const propertyData = req.body
         try {
+
+            const landlord = await prismaClient.landlords.findUnique({
+                where: {id: propertyData.landlordId},
+            })
+
+            if (!landlord) return res.status(404).json({ message: "Landlord not found"})
+                
             const property = await PropertyServices.createProperty(propertyData)
             return res.status(201).json(property)
         } catch (error) {

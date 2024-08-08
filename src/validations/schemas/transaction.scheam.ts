@@ -23,6 +23,16 @@ class TransactionSchema {
             amount: Joi.number().required(),
         });
     }
+
+
+    static trasferFunds() {
+        return Joi.object({
+            amount: Joi.number().required(),
+            recieiverId: Joi.string().required(),
+            description: Joi.string().optional(),
+        });
+
+    }
 }
 
 export default TransactionSchema;

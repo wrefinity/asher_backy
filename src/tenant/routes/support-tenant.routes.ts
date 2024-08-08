@@ -5,7 +5,7 @@ import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
 import SupportTenantController from "../controllers/support-tenant.controller"
 
 
-class SupportTenantRouter {
+class SupportRouter {
     public router: Router;
     authenticateService: Authorize
 
@@ -23,4 +23,4 @@ class SupportTenantRouter {
     }
 }
 
-export default new SupportTenantRouter().router;
+export default new SupportRouter().router;
