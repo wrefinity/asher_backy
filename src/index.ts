@@ -20,6 +20,8 @@ import { PrismaClient } from "@prisma/client";
 import MaintenanceRouter from "./routes/maintenance";
 import VendorServiceRouter from "./routes/services";
 import WalletRouter from "./routes/wallet";
+import { startCreditScoreUpdateJob } from './services/creditScore/crediScoreUpdateService';
+import dashboardService from './services/dashboard/dashboard.service';
 import paystackServices from "./services/paystack.services";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
@@ -46,6 +48,8 @@ class Server {
         connectDB();
         this.configureMiddlewares();
         this.configureRoutes();
+        startCreditScoreUpdateJob()
+        dashboardService.initializeBagroundJobs()
     }
 
     private configureMiddlewares() {

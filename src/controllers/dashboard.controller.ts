@@ -5,6 +5,7 @@ import dashboardService from "../services/dashboard/dashboard.service";
 class DashboardController {
     async getDashboardData(req: CustomRequest, res: Response) {
         const userId = String(req.user.id);
+        console.log(userId);
 
         try {
             const dashboard = await dashboardService.getDashboardData(userId);

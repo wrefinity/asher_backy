@@ -6,11 +6,12 @@ import { Redis } from 'ioredis';
 
 import Queue from 'bull';
 
-const redis = new Redis();
+
+
 const dashboardUpdateQueue = new Queue('dashboardUpdates');
 
 interface DashboardData {
-    userCreditScore: (creditScore & { user: users }) | null;
+    userCreditScore: (creditScore & { user: users }) | any;
     propertyPaymentDetails: PropertyTransactions[];
     transactionDetails: (Transactions & { wallet: { id: string } })[]
     rentStatus: RentStatus;
@@ -28,11 +29,28 @@ interface RentStatus {
 class DashboardService {
 
     private static CACHE_TTL = 60 * 60
-    constructor() {}
+    private static redisCache: Redis;
+    constructor() {
+        if (!DashboardService.redisCache) {
+            DashboardService.redisCache = new Redis({
+                host: "127.0.0.1",
+                port: 6379,
+            });
+
+            DashboardService.redisCache.on('connect', () => {
+                console.log('Connected to Redis');
+            });
+
+            DashboardService.redisCache.on('error', (err) => {
+                console.error('Redis error:', err);
+            });
+        }
+     }
 
     async initializeBagroundJobs() {
         dashboardUpdateQueue.process(async (job) => {
             const userId = job.data.userId;
+            console.log(`Started dashboard refetch update job ${userId}`)
             try {
                 await this.dashboardDetails(userId);
             } catch (error) {
@@ -41,13 +59,13 @@ class DashboardService {
         });
         try {
             const users = await prismaClient.users.findMany({ select: { id: true } })
-        users.forEach((user) => {
-            dashboardUpdateQueue.add({ userId: user.id }, { repeat: { cron: '0 0 * * *' } })
-        })
+            users.forEach((user) => {
+                dashboardUpdateQueue.add({ userId: user.id }, { repeat: { cron: '0 0 * * *' } })
+            })
         } catch (error) {
             console.error("Error updating", error)
         }
-        
+
     }
     async dashboardDetails(userId: string): Promise<DashboardData> {
 
@@ -55,8 +73,8 @@ class DashboardService {
             const [userCreditScore, propertyPaymentDetails, transactionDetails, tenant] = await Promise.all([
                 prismaClient.creditScore.findUnique({
                     where: { userId },
-                    include: {
-                        user: true,
+                    select: {
+                        score: true,
                     },
                 }),
                 prismaClient.propertyTransactions.findMany({
@@ -86,14 +104,14 @@ class DashboardService {
             ]);
 
             const rentStatus = await this.calculateRentStatus(tenant?.PropertyTransactions[0]);
-
+            console.log(`Rent status ${rentStatus}`);
             const [totalDueBills, totalDuePayments] = await Promise.all([
                 this.calculateTotalDueBills(userId),
                 this.calculateTotalDuePayments(userId),
             ])
-
+            
             return {
-                userCreditScore,
+                userCreditScore: userCreditScore?.score,
                 propertyPaymentDetails,
                 transactionDetails,
                 rentStatus,
@@ -186,19 +204,24 @@ class DashboardService {
         }
     }
 
-    // async updatedashboardData(userId: string): Promise<void> {
-    //     await this.dashboardDetails(userId);
-    // }
-
     async getDashboardData(userId: string): Promise<DashboardData> {
-        const cachedData = await redis.get(`dashboard:${userId}`);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await DashboardService.redisCache.get(`dashboard:${userId}`);
+            if (cachedData) {
+                console.log(`Cache hit for user ${userId}`);
+                return JSON.parse(cachedData);
+            }
+            
+            console.log(`Cache miss for user ${userId}`);
+            const dashboardData = await this.dashboardDetails(userId);
+            await DashboardService.redisCache.set(`dashboard:${userId}`, JSON.stringify(dashboardData), 'EX', DashboardService.CACHE_TTL);
+            return dashboardData;
+        } catch (error) {
+            console.error('Error with Redis operation:', error);
+            throw error;
         }
-        const dashboardData = await this.dashboardDetails(userId);
-        await redis.set(`dashboard:${userId}`, JSON.stringify(dashboardData), 'EX', DashboardService.CACHE_TTL)
-        return dashboardData;
     }
+    
 }
 
 export default new DashboardService();;
