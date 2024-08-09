@@ -24,7 +24,7 @@ export const startCreditScoreUpdateJob = async () => {
 
         for (const user of users) {
             console.log(`currently processing ${user.id}`);
-            await creditScoreQueue.add({ userId: user.id });
+            await creditScoreQueue.add({ userId: user.id }, {repeat: {cron: "0 0 2 * * *"}}); //ss mm hh dom mon dow
         }
 
         skip += batchSize;
@@ -37,6 +37,7 @@ export const startCreditScoreUpdateJob = async () => {
 // Define the creditScoreUpdate job
 creditScoreQueue.process(10, async (job) => {
     console.log(`Credit scores process started updated for ${job.data.userId}`);
+    job.log("My bull is gettting started")
     const creditScoreService = new CreditScoreService();
     await creditScoreService.updateCreditScore(job.data.userId);
 })
