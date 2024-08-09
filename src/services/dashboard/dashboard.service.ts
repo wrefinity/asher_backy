@@ -2,9 +2,9 @@ import { creditScore, PropertyTransactions, PropertyTransactionsType, Transactio
 
 import { Decimal } from "@prisma/client/runtime/library";
 import { prismaClient } from "../..";
-import { Redis } from 'ioredis';
 
 import Queue from 'bull';
+import RedisService from "../utilsServices/redis.service";
 
 
 
@@ -29,23 +29,8 @@ interface RentStatus {
 class DashboardService {
 
     private static CACHE_TTL = 60 * 60
-    private static redisCache: Redis;
-    constructor() {
-        if (!DashboardService.redisCache) {
-            DashboardService.redisCache = new Redis({
-                host: "127.0.0.1",
-                port: 6379,
-            });
 
-            DashboardService.redisCache.on('connect', () => {
-                console.log('Connected to Redis');
-            });
-
-            DashboardService.redisCache.on('error', (err) => {
-                console.error('Redis error:', err);
-            });
-        }
-     }
+    constructor(private redisService: RedisService) { }
 
     async initializeBagroundJobs() {
         dashboardUpdateQueue.process(async (job) => {
@@ -109,7 +94,7 @@ class DashboardService {
                 this.calculateTotalDueBills(userId),
                 this.calculateTotalDuePayments(userId),
             ])
-            
+
             return {
                 userCreditScore: userCreditScore?.score,
                 propertyPaymentDetails,
@@ -206,22 +191,24 @@ class DashboardService {
 
     async getDashboardData(userId: string): Promise<DashboardData> {
         try {
-            const cachedData = await DashboardService.redisCache.get(`dashboard:${userId}`);
+            const cachedData = await this.redisService.get(`dashboard:${userId}`);
             if (cachedData) {
                 console.log(`Cache hit for user ${userId}`);
                 return JSON.parse(cachedData);
             }
-            
+
             console.log(`Cache miss for user ${userId}`);
             const dashboardData = await this.dashboardDetails(userId);
-            await DashboardService.redisCache.set(`dashboard:${userId}`, JSON.stringify(dashboardData), 'EX', DashboardService.CACHE_TTL);
+            await this.redisService.set(`dashboard:${userId}`, JSON.stringify(dashboardData), DashboardService.CACHE_TTL);
             return dashboardData;
         } catch (error) {
             console.error('Error with Redis operation:', error);
             throw error;
         }
     }
-    
+
 }
 
-export default new DashboardService();;
+const redisService = new RedisService()
+const dashboardService = new DashboardService(redisService);
+export default dashboardService;
