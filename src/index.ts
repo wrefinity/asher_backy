@@ -2,7 +2,8 @@ import cookieParser from 'cookie-parser';
 import express, { Express } from "express";
 import session from "express-session";
 import connectDB from './db/mongo_connnect';
-// import passport from "passport";
+import { APP_SECRET, PORT } from "./secrets";
+
 import ApplicationRouter from "./routes/applicant";
 import AuthRouter from "./routes/auth";
 import CategoryRouter from "./routes/category";
@@ -13,11 +14,9 @@ import PropertyRouter from "./routes/property";
 import StatusRouter from "./routes/status";
 import TransactionRouter from "./routes/transaction";
 import NotificationRouter from "./routes/notification";
-import { APP_SECRET, PORT } from "./secrets";
-
+import VendorServiceRouter from "./routes/services"
+import MaintenanceRouter from "./routes/maintenance"
 import { PrismaClient } from "@prisma/client";
-import MaintenanceRouter from "./routes/maintenance";
-import VendorServiceRouter from "./routes/services";
 import WalletRouter from "./routes/wallet";
 import paystackServices from "./services/paystack.services";
 import AdsRouter from "./tenant/routes/ads.routes";

@@ -16,6 +16,7 @@ export interface CustomRequest extends Request {
         maintenanceId?:string;
         applicationId?:string;
         apartmentId?:string;
+        referenceId?:string;
         propertyId?:string;
         propertiesId?:string;
         chatRoomId?:string;

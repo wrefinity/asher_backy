@@ -33,7 +33,16 @@ services:
       - .env
     volumes:
       - "mongo-data:/data/db"
+  redis:
+    image: redis:latest
+    container_name: redis-server
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
 
 volumes:
   postgres-data:
   mongo-data:
+  redis_data:

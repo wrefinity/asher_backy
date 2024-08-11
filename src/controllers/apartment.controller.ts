@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import ErrorService from "../services/error.service";
 import ApartmentServices from "../services/apartment.services";
 import { apartmentSchema } from "../validations/schemas/apartment.schema";
