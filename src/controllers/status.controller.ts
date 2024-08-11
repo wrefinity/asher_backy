@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import StatusService from '../services/status.service';
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
@@ -6,7 +6,7 @@ import { CustomRequest } from '../utils/types';
 class StatusController {
   private statusService = new StatusService();
 
-  public getAllStatuses = async (req: CustomRequest, res: Response) => {
+  public getAllStatuses = async (req: Request, res: Response) => {
     try {
       const statuses = await this.statusService.getAllStatuses();
       res.status(200).json(statuses);

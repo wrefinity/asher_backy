@@ -33,7 +33,6 @@ export interface CustomRequest extends Request {
         id?:string;
     }
 }
-
 export type EmailDataType = {
     senderEmail: string;
     recieverEmail: string;
