@@ -169,8 +169,8 @@ model Transactions {
   amount            Decimal           @db.Decimal(18, 2)
   userId            String
   user              users             @relation(fields: [userId], references: [id])
-  transactionType   TransactionType
-  transactionStatus TransactionStatus
+  transactionType   TransactionType?
+  transactionStatus TransactionStatus?
   walletId          String
   wallet            wallet            @relation(fields: [walletId], references: [id])
   transactionId     String

@@ -4,6 +4,8 @@ import crypto from 'crypto'
 import transactionServices from "./transaction.services";
 import errorService from "./error.service";
 import { PaystackResponseType, WebhookEventResponse } from "../utils/types";
+import {PAYSTACK_SECRET_KEY, PAYSTACK_WEBHOOK_SECRET_KEY} from "../secrets"
+
 
 class PayStackService {
     // Implement methods for PayStack API integration
@@ -12,12 +14,12 @@ class PayStackService {
     private readonly payStackBaseUrl: string = 'https://api.paystack.co';
 
     constructor() {
-        const secretKey = process.env.PAYSTACK_SECRET_KEY;
+        const secretKey = PAYSTACK_SECRET_KEY;
         if (!secretKey) {
             throw new Error('Missing PayStack secret key');
         }
         this.payStackSecretKey = secretKey;
-        const webHookSecret = process.env.PAYSTACK_WEBHOOK_SECRET_KEY;
+        const webHookSecret = PAYSTACK_WEBHOOK_SECRET_KEY;
         if (!webHookSecret) {
             throw new Error('Missing PayStack webhook secret key');
         }

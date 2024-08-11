@@ -16,5 +16,7 @@ export const GOOGLE_PROFILE = process.env.GOOGLE_PROFILE!;
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
 export const PUBLIC_URL = process.env.PUBLIC_URL!;
-
+export const MONGODB_URI = process.env.MONGODB_URI!;
+export const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!; 
+export const PAYSTACK_WEBHOOK_SECRET_KEY = process.env.PAYSTACK_WEBHOOK_SECRET_KEY!;
 

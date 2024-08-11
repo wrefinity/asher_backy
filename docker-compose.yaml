@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: app_cont
+    depends_on:
+      - db
+      - mongodb
+    env_file:
+      - .env
+
+  db:
+    image: postgres:16
+    container_name: postgres_cont
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+
+  mongodb:
+    image: mongo:6
+    container_name: mongodb_cont
+    restart: always
+    ports:
+      - "27017:27017"
+    env_file:
+      - .env
+    volumes:
+      - "mongo-data:/data/db"
+
+volumes:
+  postgres-data:
+  mongo-data:

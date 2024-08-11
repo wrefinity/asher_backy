@@ -40,7 +40,26 @@ class AppartmentController {
             ErrorService.handleError(error, res)
         }
     }
-
+    async getAppartmentById(req: Request, res: Response) {
+        try {
+            const apartmentId = req.params.apartmentId;
+            const apartment = await ApartmentServices.getApartmentById(apartmentId)
+            if (!apartment) return res.status(200).json({message: "No Appartment Found"})
+            return res.status(200).json(apartment)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    deleteApartments = async(req:Request, res:Response) =>{
+        try {
+            const apartmentId = req.params.apartmentId;
+            const apartment = await ApartmentServices.deleteApartment(apartmentId)
+            if (!apartment) return res.status(404).json({ error: 'apartment not found' });
+            res.status(200).json({ message: 'appartment deleted successfully' });
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
 
 }
 

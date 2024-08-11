@@ -9,7 +9,7 @@ class ApartmentService {
     }
   }
 
-  getApartments = async (propertyId:string) => {
+  getApartments = async (propertyId: string) => {
     return await prismaClient.apartments.findMany({
       where: { isDeleted: false, propertyId },
       include: this.inclusion
@@ -58,6 +58,15 @@ class ApartmentService {
       }
     });
   };
+
+  deleteApartment = async (id: string) => {
+    return await prismaClient.apartments.update({
+      where: { id },
+      data: {
+        isDeleted: false
+      }
+    });
+  }
 }
 
 export default new ApartmentService();
