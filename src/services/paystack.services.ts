@@ -10,7 +10,7 @@ import {PAYSTACK_SECRET_KEY, PAYSTACK_WEBHOOK_SECRET_KEY} from "../secrets"
 class PayStackService {
     // Implement methods for PayStack API integration
     private readonly payStackSecretKey: string;
-    private readonly webHookSecretKey: string;
+    // private readonly webHookSecretKey: string;
     private readonly payStackBaseUrl: string = 'https://api.paystack.co';
 
     constructor() {
@@ -19,11 +19,6 @@ class PayStackService {
             throw new Error('Missing PayStack secret key');
         }
         this.payStackSecretKey = secretKey;
-        const webHookSecret = PAYSTACK_WEBHOOK_SECRET_KEY;
-        if (!webHookSecret) {
-            throw new Error('Missing PayStack webhook secret key');
-        }
-        this.webHookSecretKey = webHookSecret;
     }
 
     private getHeaders(): Record<string, string> {
