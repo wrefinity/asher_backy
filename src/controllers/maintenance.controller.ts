@@ -26,7 +26,7 @@ class MaintenanceController {
     }
   };
 
-  public getMaintenanceById = async (req: Request, res: Response) => {
+  public getMaintenanceById = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const maintenance = await maintenanceService.getMaintenanceById(id);
@@ -60,7 +60,7 @@ class MaintenanceController {
     }
   };
 
-  public updateMaintenance = async (req: Request, res: Response) => {
+  public updateMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const { error } = maintenanceSchema.validate(req.body, { allowUnknown: true });
@@ -138,7 +138,7 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
-  public deleteMaintenance = async (req: Request, res: Response) => {
+  public deleteMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const maintenanceExits = await maintenanceService.getMaintenanceById(id);

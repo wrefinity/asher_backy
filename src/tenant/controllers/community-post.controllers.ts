@@ -30,7 +30,7 @@ class CommunityPostController {
         }
     }
 
-    async getCommunityPost(req: Request, res: Response) {
+    async getCommunityPost(req: CustomRequest, res: Response) {
         try {
             const { communityId } = req.params
             const post = await communityPostServices.getCommunityPosts(communityId)
@@ -41,7 +41,7 @@ class CommunityPostController {
         }
     }
 
-    async getSingleCommunityPost(req: Request, res: Response) {
+    async getSingleCommunityPost(req: CustomRequest, res: Response) {
         try {
             const { communityId, communityPostId } = req.params
             const community = await communityPostServices.getSingleCommunityPost(communityId, communityPostId)
@@ -113,7 +113,7 @@ class CommunityPostController {
     }
 
 
-    async getPostLikes(req: Request, res: Response) {
+    async getPostLikes(req: CustomRequest, res: Response) {
         try {
             const { communityPostId } = req.params;
             const page = parseInt(req.query.page as string) || 1;
@@ -125,7 +125,7 @@ class CommunityPostController {
         }
     }
 
-    async getPostViews(req: Request, res: Response) {
+    async getPostViews(req: CustomRequest, res: Response) {
         try {
             const { communityPostId } = req.params;
             const page = parseInt(req.query.page as string) || 1;

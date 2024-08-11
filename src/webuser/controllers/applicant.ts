@@ -13,7 +13,7 @@ import ErrorService from "../../services/error.service";
 
 class ApplicantControls {
 
-  completeApplication = async (req: Request, res: Response) => {
+  completeApplication = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
 
@@ -180,7 +180,7 @@ class ApplicantControls {
     }
   }
 
-  deleteApplicant = async (req: Request, res: Response) => {
+  deleteApplicant = async (req: CustomRequest, res: Response) => {
     try {
       const { id } = req.params;
       const applicant = await ApplicantService.deleteApplicant(id);

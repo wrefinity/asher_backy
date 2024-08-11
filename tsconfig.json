@@ -4,7 +4,7 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "target": "ESNext",
-    "outDir": "./dist",
+    "outDir": "./build",
     "rootDir": "./src",
   },
   "include": [
@@ -12,7 +12,7 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "build"
   ],
   "ts-node": {
     "esm": true,

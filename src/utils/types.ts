@@ -14,8 +14,21 @@ export interface CustomRequest extends Request {
     };
     params:{
         maintenanceId?:string;
+        applicationId?:string;
         apartmentId?:string;
         propertyId?:string;
+        propertiesId?:string;
+        chatRoomId?:string;
+        inviteCode?:string;
+        ticketId?:string;
+        categoryId?:string;
+        communityId?:string;
+        receiverId?:string;
+        userId?:string;
+        communityPostId?:string;
+        emailId?:string;
+        profileId?:string;
+        adsId?:string;
         id?:string;
     }
 }

@@ -115,7 +115,7 @@ class CommunityController {
         }
     }
 
-    async getCommunityOwner(req: Request, res: Response) {
+    async getCommunityOwner(req: CustomRequest, res: Response) {
         try {
             const { communityId } = req.params
             const community = await communityServices.getCommunityOwner(communityId)

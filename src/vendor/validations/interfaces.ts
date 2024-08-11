@@ -6,6 +6,8 @@ export interface IService {
     mediumPriceRange: string;
     premiumPriceRange: string;
     vendorId: string;
-    categoryId: string;
-    subcategoryId: string;
+    // categoryId: string;
+    categoryId: string | null; 
+    subcategoryId: string | null;
+    // subcategoryId: string;
 }

@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import StatusService from '../services/status.service';
 import ErrorService from "../services/error.service";
+import { CustomRequest } from '../utils/types';
 
 class StatusController {
   private statusService = new StatusService();
@@ -14,7 +15,7 @@ class StatusController {
     }
   };
 
-  public getStatusById = async (req: Request, res: Response) => {
+  public getStatusById = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const status = await this.statusService.getStatusById(id);
@@ -28,7 +29,7 @@ class StatusController {
     }
   };
 
-  public createStatus = async (req: Request, res: Response) => {
+  public createStatus = async (req: CustomRequest, res: Response) => {
     try {
       const { name } = req.body;
       if (!name) {
@@ -42,7 +43,7 @@ class StatusController {
   };
 
 
-  public updateStatus = async (req: Request, res: Response) => {
+  public updateStatus = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const { name } = req.body
@@ -56,7 +57,7 @@ class StatusController {
     }
   };
 
-  public deleteStatus = async (req: Request, res: Response) => {
+  public deleteStatus = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const deleted = await this.statusService.deleteStatus(id);

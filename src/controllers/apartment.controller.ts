@@ -2,12 +2,13 @@ import { Request, Response } from "express";
 import ErrorService from "../services/error.service";
 import ApartmentServices from "../services/apartment.services";
 import { apartmentSchema } from "../validations/schemas/apartment.schema";
+import { CustomRequest } from "../utils/types";
 
 
 class AppartmentController {
     constructor() { }
 
-    async createApartment(req: Request, res: Response) {
+    async createApartment(req: CustomRequest, res: Response) {
         try {
             const { error } = apartmentSchema.validate(req.body);
             if (error) return res.status(400).send(error.details[0].message);
@@ -30,7 +31,7 @@ class AppartmentController {
             ErrorService.handleError(error, res)
         }
     }
-    async getAppartments(req: Request, res: Response) {
+    async getAppartments(req: CustomRequest, res: Response) {
         try {
             const propertyId = req.params.propertyId;
             const properties = await ApartmentServices.getApartments(propertyId)
@@ -40,7 +41,7 @@ class AppartmentController {
             ErrorService.handleError(error, res)
         }
     }
-    async getAppartmentById(req: Request, res: Response) {
+    async getAppartmentById(req: CustomRequest, res: Response) {
         try {
             const apartmentId = req.params.apartmentId;
             const apartment = await ApartmentServices.getApartmentById(apartmentId)
@@ -50,7 +51,7 @@ class AppartmentController {
             ErrorService.handleError(error, res)
         }
     }
-    deleteApartments = async(req:Request, res:Response) =>{
+    deleteApartments = async(req:CustomRequest, res:Response) =>{
         try {
             const apartmentId = req.params.apartmentId;
             const apartment = await ApartmentServices.deleteApartment(apartmentId)

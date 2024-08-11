@@ -45,7 +45,7 @@ class EmailController {
         }
     }
 
-    async getEmailById(req: Request, res: Response) {
+    async getEmailById(req: CustomRequest, res: Response) {
         try {
             const emailId = String(req.params.emailId);
             const email = await EmailService.getEmailById(emailId)
