@@ -94,7 +94,7 @@ class TransferService {
                     paidDate: new Date(),
                     propertyId: tenant.propertyId,
                     appartmentId: tenant.apartmentOrFlatNumber.toString(),
-                }
+                } as any
             })
 
             // TODO: Update the model for auto payment

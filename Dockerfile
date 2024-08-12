@@ -54,4 +54,4 @@ COPY --chown=node:node --from=engine-builder /app/node_modules/.prisma/client ./
 EXPOSE 5000
 
 # Start the application using Node.js
-CMD ["node", "src/index.js"]
+CMD ["node", "src/index.ts"]
