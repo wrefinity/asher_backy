@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { PropertyDocumentService } from '../services/propertyDocument.service';
-import { IPropertyDocument } from '../validations/interfaces/propertyDocument.interface';
-import { createPropertyDocumentSchema, updatePropertyDocumentSchema } from '../validations/schemas/propertyDocument.schema';
+import { IPropertyDocument } from '../validations/interfaces/properties.interface';
+import { createPropertyDocumentSchema, updatePropertyDocumentSchema } from '../validations/schemas/properties.schema';
 import { CustomRequest } from '../utils/types';
 
 class PropertyDocumentController {

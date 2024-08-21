@@ -1,8 +1,9 @@
 import { prismaClient } from "..";
+import { ICreateProperty } from "../validations/interfaces/properties.interface";
 
 
 class PropertyService {
-    async createProperty(propertyData: any) {
+    async createProperty(propertyData: ICreateProperty) {
         return await prismaClient.properties.create({
             data: {
                 ...propertyData,

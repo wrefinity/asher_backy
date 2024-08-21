@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import ErrorService from "../services/error.service";
 import PropertyServices from "../services/propertyServices";
-import { prismaClient } from "..";
+import {createPropertySchema} from "../validations/schemas/properties.schema"
 import { CustomRequest } from "../utils/types";
 
 
@@ -10,17 +10,24 @@ class PropertyController {
     constructor() { }
 
     async createProperty(req: CustomRequest, res: Response) {
-        const propertyData = req.body
         const landlordId = req.user?.landlords?.id;
 
         try {
-
-
+            console.log(req.user, "testing")
+            const { error, value } = createPropertySchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+            const images = value.cloudinaryUrls;
+            const videourl = value.cloudinaryVideoUrls;
+            delete value['cloudinaryUrls']
+            delete value['cloudinaryVideoUrls']
+          
             if (!landlordId) return res.status(404).json({ message: "Landlord not found"})
-                
-            const property = await PropertyServices.createProperty({...propertyData, landlordId})
+            const property = await PropertyServices.createProperty({...value, images, videourl, landlordId})
             return res.status(201).json(property)
         } catch (error) {
+            console.log(error)
             ErrorService.handleError(error, res)
         }
 

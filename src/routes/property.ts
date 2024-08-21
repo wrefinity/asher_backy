@@ -16,8 +16,9 @@ class PropertyRouter {
 
     private initializeRoutes() {
         this.router.use("/apartments", ApartmentRouter);
-        this.router.post('/property', PropertyController.createProperty)
+        this.router.post('/property', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.get('/property', PropertyController.getProperty)
+        this.router.get('/property/landlord', this.authenticateService.authorize, PropertyController.getCurrentLandlordProperties)
     }
 }
 

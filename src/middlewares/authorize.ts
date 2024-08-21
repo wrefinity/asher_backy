@@ -36,7 +36,7 @@ export class Authorize {
                 return res.status(401).json({ message: "Not authorized, user not found" });
             }
 
-            req.user = decoded;
+            req.user = user;
             next();
         } catch (error) {
             console.error('Authorization error:', error);

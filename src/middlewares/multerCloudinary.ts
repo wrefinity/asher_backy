@@ -7,17 +7,14 @@ import { CLOUDINARY_FOLDER } from "../secrets";
 
 export const uploadToCloudinary = async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
-        console.log('Request received:', req);  // Debug log
+        // console.log('Request received:', req);  // Debug log
         const files = req.files as { [fieldname: string]: Express.Multer.File[] } || undefined;
-        console.log('Files:', files);  // Debug log
-
-        // if (!files) {
-        //     return next(new Error('No files provided'));
-        // }
+        // console.log('Files:', files);  // Debug log
 
         if (!files || Object.keys(files).length === 0) {
-            req.body.cloudinaryUrls = [];
-            return next()
+            req.body.cloudinaryUrls = []; // for images
+            req.body.cloudinaryVideoUrls = []; // for videos
+            return next();
         }
 
         const allFiles: CloudinaryFile[] = Object.values(files).flat() as CloudinaryFile[];
@@ -26,10 +23,17 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
             return next(new Error('No files provided'));
         }
 
+        // Initialize arrays for storing URLs
+        const imageUrls: string[] = [];
+        const videoUrls: string[] = [];
+
         const uploadPromises = allFiles.map(async (file) => {
             let fileBuffer: Buffer = file.buffer;
             const isImage = file.mimetype.startsWith('image/');
+            const isVideo = file.mimetype.startsWith('video/');
+
             if (isImage) {
+                // Resize the image
                 fileBuffer = await sharp(file.buffer)
                     .resize({ width: 800, height: 600, fit: 'inside' })
                     .toBuffer();
@@ -38,9 +42,9 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
             return new Promise<string>((resolve, reject) => {
                 const uploadStream = cloudinary.uploader.upload_stream(
                     {
-                        resource_type: 'auto',
+                        resource_type: isImage ? 'image' : isVideo ? 'video' : 'auto',
                         folder: CLOUDINARY_FOLDER,
-                        format: isImage ? 'webp' : undefined
+                        format: isImage ? 'webp' : undefined // Only convert images to webp
                     } as any,
                     (err: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
                         if (err) {
@@ -55,17 +59,24 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
                     }
                 );
                 uploadStream.end(fileBuffer);
+            }).then((url) => {
+                if (isImage) {
+                    imageUrls.push(url);
+                } else if (isVideo) {
+                    videoUrls.push(url);
+                }
             });
         });
 
-        const cloudinaryUrls = await Promise.all(uploadPromises);
+        await Promise.all(uploadPromises);
 
-        req.body.cloudinaryUrls = cloudinaryUrls;
+        // Attach URLs to the request body
+        req.body.cloudinaryUrls = imageUrls;
+        req.body.cloudinaryVideoUrls = videoUrls;
+
         next();
     } catch (error) {
         console.error('Error in uploadToCloudinary middleware:', error);
         next(error);
     }
 };
-
-

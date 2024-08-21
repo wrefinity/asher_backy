@@ -3,7 +3,7 @@ import { Request } from 'express';
 
 export type JWTPayload = {
     id: string;
-    role: string;
+    role: string | string[];
     email: string;
     tenants?:{
         id?:string;

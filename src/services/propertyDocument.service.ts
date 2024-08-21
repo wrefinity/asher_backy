@@ -1,4 +1,4 @@
-import { IPropertyDocument } from '../validations/interfaces/propertyDocument.interface';
+import { IPropertyDocument } from '../validations/interfaces/properties.interface';
 import { prismaClient } from "..";
 
 
