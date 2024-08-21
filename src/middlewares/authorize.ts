@@ -31,7 +31,6 @@ export class Authorize {
             }
             
             const user = await UserService.findAUserById(String(decoded.id));
-            console.log(user)
             if (!user) {
                 return res.status(401).json({ message: "Not authorized, user not found" });
             }
