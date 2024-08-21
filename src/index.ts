@@ -13,6 +13,7 @@ import ProfileRouter from "./routes/profile";
 import PropertyRouter from "./routes/property";
 import StatusRouter from "./routes/status";
 import TransactionRouter from "./routes/transaction";
+import ReviewsRouter from "./routes/reviews";
 import NotificationRouter from "./routes/notification";
 import VendorServiceRouter from "./routes/services"
 import MaintenanceRouter from "./routes/maintenance"
@@ -25,6 +26,8 @@ import communityRoutes from "./tenant/routes/community.routes";
 import TenantDashboardRouter from "./tenant/routes/dashboard.routes";
 import SupportRouter from "./tenant/routes/support-tenant.routes";
 import JobManager from './jobManager';
+import ProperyDocumentRouter from './routes/propertydoc';
+import LandlordRouter from './routes/landlord';
 
 
 export const prismaClient: PrismaClient = new PrismaClient(
@@ -73,11 +76,14 @@ class Server {
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
         this.app.use("/api/properties", PropertyRouter);
+        this.app.use("/api/properties-doc/", ProperyDocumentRouter);
         this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community-post", CommunityPostRouter)
         this.app.use("/api/tenants/community", communityRoutes);
         this.app.use("/api/ads", AdsRouter);
         this.app.use("/api/transactions", TransactionRouter);
+        this.app.use("/api/reviews", ReviewsRouter);
+        this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenant/dashboard", TenantDashboardRouter);
 

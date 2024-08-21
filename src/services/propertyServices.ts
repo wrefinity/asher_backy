@@ -5,7 +5,8 @@ class PropertyService {
     async createProperty(propertyData: any) {
         return await prismaClient.properties.create({
             data: {
-                ...propertyData,   }
+                ...propertyData,
+            }
         })
     }
 
@@ -17,6 +18,66 @@ class PropertyService {
             where: { id },
         });
     }
+
+    updateProperty = async (id: string, data: any) => {
+        return await prismaClient.properties.update({
+            where: { id },
+            data
+        });
+    }
+    deleteProperty = async (id: string) => {
+        return await prismaClient.properties.update({
+            where: { id },
+            data: { isDeleted: true }
+        });
+    }
+
+    // Function to aggregate properties by state for the current landlord
+    aggregatePropertiesByState = async (landlordId: string) => {
+        // Group properties by state for the current landlord
+        const groupedProperties = await prismaClient.properties.groupBy({
+            by: ['state'],
+            where: {
+                landlordId, // Filter by the current landlordId
+            },
+        });
+
+        // Object to store the grouped properties by state
+        const propertiesByState = {};
+
+        // Loop through each state group and fetch properties with apartments for that state
+        for (const group of groupedProperties) {
+            const state = group.state;
+
+            // Fetch properties belonging to the current state and landlord, including apartments
+            const properties = await prismaClient.properties.findMany({
+                where: {
+                    state,
+                    landlordId,
+                },
+                include: {
+                    apartments: true,
+                },
+            });
+
+            // Store the properties in the result object under the respective state
+            propertiesByState[state] = properties;
+        }
+
+        return propertiesByState;
+    }
+
+    checkLandlordPropertyExist  = async(landlordId: string, propertyId:string) => {
+
+        await prismaClient.properties.findFirst({
+            where:{
+                landlordId,
+                id:propertyId
+            }
+        })
+    }
+
 }
+
 
 export default new PropertyService()

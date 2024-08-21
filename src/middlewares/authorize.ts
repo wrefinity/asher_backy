@@ -25,13 +25,13 @@ export class Authorize {
 
         try {
             const decoded = await this.tokenService.decodeToken(token);
-
+            
             if (!decoded) {
                 return res.status(401).json({ message: "Not authorized, invalid token" });
             }
-
+            
             const user = await UserService.findAUserById(String(decoded.id));
-
+            console.log(user)
             if (!user) {
                 return res.status(401).json({ message: "Not authorized, user not found" });
             }

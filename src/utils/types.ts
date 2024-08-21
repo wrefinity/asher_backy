@@ -5,6 +5,15 @@ export type JWTPayload = {
     id: string;
     role: string;
     email: string;
+    tenants?:{
+        id?:string;
+    };
+    landlords?:{
+        id?:string;
+    },
+    vendor?:{
+        id?:string;
+    },
 }
 
 export interface CustomRequest extends Request {

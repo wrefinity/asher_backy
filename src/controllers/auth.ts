@@ -18,7 +18,8 @@ import sendEmail from "../utils/emailer";
 import logger from '../utils/loggers';
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
-import { LoginSchema } from "../validations/schemas/auth";
+import { LoginSchema, userLandlordSchema } from "../validations/schemas/auth";
+import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -40,9 +41,9 @@ class AuthControls {
             let user = await UserServices.findUserByEmail(email);
             if (user) return res.status(400).json({ message: "user exists" });
 
-            user = await UserServices.createUser(req.body);
+            let newUser = await UserServices.createUser(req.body);
             // Create verification token
-            await this.verificationTokenCreator(user.id, email);
+            await this.verificationTokenCreator(newUser.id, email);
 
 
             // Convert BigInt to string before sending the response
@@ -50,9 +51,8 @@ class AuthControls {
 
             //TODO: ADD THE USER BASED OF HIS ROLE TO THEIR TABLE
 
-
             // const serializedUser = serializeBigInt(user);
-            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user });
+            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user: newUser });
 
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -63,6 +63,21 @@ class AuthControls {
             }
         }
 
+    }
+    // Create a new landlord
+    createLandlord = async (req: Request, res: Response) => {
+        try {
+            const { error, value } = userLandlordSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+            const data: CreateLandlordIF = value;
+            
+            const landlord = await UserServices.createLandlord(data);
+            return res.status(201).json({landlord});
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
     }
     confirmation = async (req: Request, res: Response) => {
         const { email, token } = req.body;
@@ -157,6 +172,7 @@ class AuthControls {
             }
 
             let user = await UserServices.findUserByEmail(email);
+            console.log(user)
             if (!user) {
                 return res.status(400).json({ message: "User does not exist" });
             }
@@ -166,7 +182,6 @@ class AuthControls {
             }
 
             if (!user.isVerified) {
-                // Create verification token
                 await this.verificationTokenCreator(user.id, email);
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }

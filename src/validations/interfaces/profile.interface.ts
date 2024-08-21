@@ -6,3 +6,4 @@ export interface ProfileIF {
     fullname?:string,
     profileUrl?:string
 }
+

@@ -14,9 +14,12 @@ class AuthRoutes {
         this.router.post("/verify", AuthController.confirmation.bind(AuthController));
         this.router.post("/register", AuthController.register.bind(AuthController));
         this.router.post('/tenants/register', AuthController.registerTenant.bind(AuthController))
+        this.router.post('/landlord/register', AuthController.createLandlord.bind(AuthController))
         this.router.get("/google_url", AuthController.sendGoogleUrl.bind(AuthController))
         this.router.get("/google/callback", AuthController.githubLogin.bind(AuthController))
     }
 }
 
+
 export default new AuthRoutes().router;
+
