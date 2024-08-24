@@ -22,26 +22,37 @@ export interface CustomRequest extends Request {
         [fieldname: string]: Express.Multer.File[];
     };
     params:{
-        maintenanceId?:string;
-        applicationId?:string;
-        apartmentId?:string;
-        referenceId?:string;
-        propertyId?:string;
-        propertiesId?:string;
-        chatRoomId?:string;
-        inviteCode?:string;
-        ticketId?:string;
-        categoryId?:string;
-        communityId?:string;
-        receiverId?:string;
-        userId?:string;
-        communityPostId?:string;
-        emailId?:string;
-        profileId?:string;
-        adsId?:string;
-        id?:string;
+        [key:string]: string;
     }
 }
+
+// export interface CustomTestRequest extends Request {
+//     user: JWTPayload;
+//     files: {
+//         [fieldname: string]: Express.Multer.File[];
+//     };
+//     params: {
+//         maintenanceId?:string;
+//         applicationId?:string;
+//         apartmentId?:string;
+//         referenceId?:string;
+//         propertyId?:string;
+//         propertiesId?:string;
+//         chatRoomId?:string;
+//         inviteCode?:string;
+//         ticketId?:string;
+//         categoryId?:string;
+//         communityId?:string;
+//         receiverId?:string;
+//         userId?:string;
+//         communityPostId?:string;
+//         emailId?:string;
+//         profileId?:string;
+//         adsId?:string;
+//         id?:string;
+//     };
+// }
+
 export type EmailDataType = {
     senderEmail: string;
     recieverEmail: string;

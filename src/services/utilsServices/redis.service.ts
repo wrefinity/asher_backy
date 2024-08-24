@@ -5,11 +5,11 @@ class RedisService {
     private client: Redis
 
     constructor() {
-        this.client = new Redis({
-            host: '127.0.0.1',
-            port: 6379,
-        })
-        this.setupListeners();
+        // this.client = new Redis({
+        //     host: '127.0.0.1',
+        //     port: 6379,
+        // })
+        // this.setupListeners();
     }
 
     private setupListeners() {
@@ -19,6 +19,7 @@ class RedisService {
 
         this.client.on('error', (err) => {
             console.error("Error connecting to Redis:", err);
+
         })
     }
 

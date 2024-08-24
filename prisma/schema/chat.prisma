@@ -1,0 +1,37 @@
+// chats schema
+// Define the messages model
+
+enum chatType {
+  MAINTENANCE
+  APPLICATION
+  SUPPORT
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  content    String
+  senderId   String
+  receiverId String
+  createdAt  DateTime  @default(now())
+  chatRoomId String
+  chatType   chatType?
+
+  sender   users    @relation("messagesSent", fields: [senderId], references: [id])
+  receiver users    @relation("messagesReceived", fields: [receiverId], references: [id])
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id])
+}
+
+// Define the chatRooms model for one-on-one chats
+model ChatRoom {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user1    users     @relation("chatRoomsUser1", fields: [user1Id], references: [id])
+  user2    users     @relation("chatRoomsUser2", fields: [user2Id], references: [id])
+  messages Message[]
+
+  @@unique([user1Id, user2Id])
+}

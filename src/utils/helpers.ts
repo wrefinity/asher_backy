@@ -34,6 +34,13 @@ export const generateOtp = (): string => {
   return otp.toString();
 }
 
+export const generateIDs = (starter: string) => {
+  const timeStamp = Date.now(); //get the unix timestamp
+  const timeStampToString = timeStamp.toString().slice(-4)
+  return `${starter}-${timeStampToString}-${Math.floor(Math.random() * 1000)}`;
+}
+
+
 export function generateUniqueToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }

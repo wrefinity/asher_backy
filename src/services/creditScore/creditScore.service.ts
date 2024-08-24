@@ -72,7 +72,7 @@ class CreditScoreService {
         // TODO: Implement payment history score calculation
         const payments = await prismaClient.propertyTransactions.findMany({
             where: { tenantId: user.id, type: PropertyTransactionsType.RENT_PAYMENT },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { paidDate: 'desc' },
             take: 8, // consider the last 8 payments
         });
 
@@ -83,8 +83,9 @@ class CreditScoreService {
         let missedPayments = 0;
 
         payments.forEach(payment => {
-            const dueDate = new Date(payment.dueDate)
-            const paymentDate = new Date(payment.createdAt);
+            //TODO: Note dueDatepayment for the transaction type
+            const dueDate = new Date()
+            const paymentDate = new Date(payment.paidDate);
 
             if (paymentDate <= dueDate) {
                 onTimePayments += 1

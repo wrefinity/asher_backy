@@ -1,0 +1,43 @@
+enum StatusType {
+  PENDING
+  COMPLETED
+  IN_PROGRESS
+}
+
+model taskManagement {
+  id          String     @id @default(cuid())
+  taskName    String
+  description String
+  dueDate     DateTime
+  completed   Boolean    @default(false)
+  status      StatusType @default(PENDING)
+  propertyId  String
+  property    properties @relation(fields: [propertyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum InventoryType {
+  UNAVIALABLE
+  AVAILABLE
+  UNDER_MAINTANACE
+}
+
+//inventory accounts for the lists of items
+// for appartments within the inventory
+model inventoryManageMent {
+  id           String        @id @default(cuid())
+  itemName     String
+  description  String
+  quantity     Int
+  status       InventoryType @default(UNAVIALABLE)
+  itemLocation String
+  propertyId   String
+  property     properties    @relation(fields: [propertyId], references: [id])
+  apartmentId  String
+  apartments   apartments    @relation(fields: [apartmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

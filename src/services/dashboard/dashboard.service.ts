@@ -13,7 +13,7 @@ const dashboardUpdateQueue = new Queue('dashboardUpdates');
 interface DashboardData {
     userCreditScore: (creditScore & { user: users }) | any;
     propertyPaymentDetails: PropertyTransactions[];
-    transactionDetails: (Transactions & { wallet: { id: string } })[]
+    transactionDetails: (Transactions)[]
     rentStatus: RentStatus;
     totalDueBills: Decimal;
     totalDuePayments: Decimal;
@@ -64,15 +64,13 @@ class DashboardService {
                 }),
                 prismaClient.propertyTransactions.findMany({
                     where: { tenantId: userId },
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { paidDate: 'desc' },
                     take: 10
                 }),
                 prismaClient.transactions.findMany({
                     where: { userId },
                     include: {
-                        wallet: {
-                            select: { id: true },
-                        }
+                        
                     },
                     orderBy: { createdAt: 'desc' },
                     take: 10
@@ -152,7 +150,7 @@ class DashboardService {
                 tenantId: userId,
                 type: PropertyTransactionsType.RENT_DUE,
                 transactionStatus: TransactionStatus.PENDING,
-                dueDate: { lte: new Date() },
+                // dueDate: { lte: new Date() },
             },
             _sum: { amount: true },
         })
@@ -169,7 +167,7 @@ class DashboardService {
                     transactionStatus: TransactionStatus.PENDING,
                 },
                 include: {
-                    wallet: true
+                    
                 },
             }),
 
