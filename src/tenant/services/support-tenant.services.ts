@@ -1,4 +1,5 @@
 import { prismaClient } from "../.."
+import { generateIDs } from "../../utils/helpers";
 
 class SupportTenantService {
     constructor() { }
@@ -43,7 +44,7 @@ class SupportTenantService {
 
         let ticketData = {
             ...data,
-            supportTicketNumber: this.generateTicketNumber(),
+            supportTicketNumber: generateIDs('ASH-TNT'),
             status: data.status || 'open',
         };
 
@@ -69,12 +70,10 @@ class SupportTenantService {
         });
         return { type: 'tenant', ticket: tenantTicket };
     }
-
-    generateTicketNumber() {
-        const timeStamp = Date.now(); //get the unix timestamp
-        const timeStampToString = timeStamp.toString()
-        return `ASH-TNT-${timeStampToString.slice(-5)}-${Math.floor(Math.random() * 1000)}`;
+    generateIDs() {
+        throw new Error("Method not implemented.");
     }
+
 
     async getSupportTenantTicket(ticketId: string, tenantId: string) {
         return prismaClient.tenantSupportTicket.findUnique({
@@ -101,7 +100,7 @@ class SupportTenantService {
         };
 
         if (!ticketId) {
-            ticketData.supportTicketNumber = this.generateTicketNumber();
+            ticketData.supportTicketNumber = generateIDs('ASH-TNT');
         }
 
         // Create or update the tenant ticket

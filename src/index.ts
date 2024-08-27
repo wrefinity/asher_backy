@@ -28,6 +28,11 @@ import SupportRouter from "./tenant/routes/support-tenant.routes";
 import JobManager from './jobManager';
 import ProperyDocumentRouter from './routes/propertydoc';
 import LandlordRouter from './routes/landlord';
+import TaskRouter from './landlord/routes/task.routes';
+import InventoryRouter from './landlord/routes/inventory.routes';
+import BillRouter from './landlord/routes/bill.routes';
+
+
 
 
 export const prismaClient: PrismaClient = new PrismaClient(
@@ -45,7 +50,7 @@ class Server {
         this.app = express();
         this.port = port;
         this.appSecret = secret;
-        connectDB();
+        // connectDB();
         this.configureMiddlewares();
         this.configureRoutes();
     }
@@ -87,13 +92,21 @@ class Server {
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenant/dashboard", TenantDashboardRouter);
 
+
+        //landlord routes
+        this.app.use("/api/landlord/tasks", TaskRouter);
+        this.app.use("/api/landlord/inventory", InventoryRouter);
+        this.app.use("/api/landlord/bills", BillRouter);
+
+
+
     }
 
     public start() {
         this.app.listen(this.port, () => {
             console.log(`Server running on port ${this.port}`);
         });
-        JobManager.startJobs()
+        // JobManager.startJobs()
     }
 }
 
