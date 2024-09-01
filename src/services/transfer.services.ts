@@ -9,7 +9,7 @@ class TransferService {
         const senderWallet = await walletService.getOrCreateWallet(senderId);
         const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId);
 
-        await walletService.ensureSufficientBalance(senderWallet.id, data.amount);
+        await walletService.ensureSufficientBalance(senderWallet.id, senderWallet.userId, data.amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             //Deduct from sender's wallet
@@ -64,7 +64,7 @@ class TransferService {
         const tenantWallet = await walletService.getOrCreateWallet(tenant.id);
         const landlordWallet = await walletService.getOrCreateWallet(tenant.landlordId);
 
-        await walletService.ensureSufficientBalance(tenantWallet.id, data.amount);
+        await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             // Deduct from tenant's wallet
@@ -127,7 +127,7 @@ class TransferService {
 
         //get tenant wallet
         const userWallet = await walletService.getOrCreateWallet(user.id);
-        await walletService.ensureSufficientBalance(userWallet.id, amount);
+        await walletService.ensureSufficientBalance(userWallet.id, userWallet.userId, amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             // Deduct from tenant's wallet
