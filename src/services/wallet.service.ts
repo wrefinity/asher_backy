@@ -6,9 +6,10 @@ import transactionService from "./transaction.services";
 
 class WalletService {
 
-    async ensureSufficientBalance(walletId: string, amount: number) {
+    // NOTE: Is there need to be checking hte userId here? 
+    async ensureSufficientBalance(walletId: string, userId: string, amount: number) {
         const wallet = await prismaClient.wallet.findUnique({
-            where: { id: walletId }
+            where: { id: walletId, userId }
         });
         if (!wallet) {
             throw new Error(`Wallet not found.`);
@@ -72,8 +73,7 @@ class WalletService {
             transactionRespDetails
         };
     }
-
-
+    
 }
 
 export default new WalletService();

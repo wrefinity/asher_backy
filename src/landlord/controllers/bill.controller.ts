@@ -30,6 +30,7 @@ class BillController {
 
         try {
             const bill = await billServices.updateBill(billId, value, landlordId);
+            // NOTE: When we create a new bill we want to alert tenants and show on their side too
             return res.status(201).json(bill);
             
         } catch (error) {
