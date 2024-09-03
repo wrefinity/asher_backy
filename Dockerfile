@@ -29,7 +29,7 @@ WORKDIR /app
 COPY --chown=node:node --from=builder /app/prisma/schema/* ./prisma/
 
 # Generate the Prisma client inside the final image
-RUN npx prisma generate --schema=./prisma/schema/*.prisma
+RUN npx prisma generate --schema=./prisma/schema/* ./prisma/
 
 # Final image for running the application
 FROM node:20-alpine AS runner
