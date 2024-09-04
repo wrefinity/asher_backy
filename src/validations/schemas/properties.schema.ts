@@ -50,7 +50,9 @@ export const updatePropertySchema = Joi.object({
 
 export const createPropertyDocumentSchema = Joi.object({
   name: Joi.string().required(),
-  documentUrl: Joi.string().uri().required(),
+  // documentUrl: Joi.array().items(Joi.string()).optional(),
+  cloudinaryUrls: Joi.array().items(Joi.string()).optional(),
+  cloudinaryVideoUrls: Joi.array().items(Joi.string()).optional(),
   apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
 });

@@ -167,6 +167,7 @@ class ApplicantControls {
     }
   };
 
+
   getApplication = async (req: CustomRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -189,6 +190,8 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
+
+
 }
 
 export default new ApplicantControls();

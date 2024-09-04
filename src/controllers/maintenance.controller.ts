@@ -48,7 +48,8 @@ class MaintenanceController {
       }
 
       const userId = req.user.id;
-      const { cloudinaryUrls, ...data } = value;
+     
+      const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const maintenance = await maintenanceService.createMaintenance({
         ...data,
         attachments: cloudinaryUrls,

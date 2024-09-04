@@ -10,8 +10,8 @@ class ServiceControls {
         try {
             const { error, value } = serviceSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
-            const vendorId = req.user.id;
-            const service = await serviceService.createService({ ...value, vendorId });
+            const vendorId:string = req.user?.vendor?.id;
+            const service = await serviceService.createService({ ...value, vendorId});
             res.status(201).json({ service });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -19,7 +19,7 @@ class ServiceControls {
     }
 
     // Get Service by ID
-    getService = async (req: Request, res: Response) => {
+    getService = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
             const service = await serviceService.getService(id);
@@ -32,7 +32,7 @@ class ServiceControls {
     };
 
     // Update Service
-    updateService = async (req: Request, res: Response) => {
+    updateService = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
             const { error, value } = serviceSchema.validate(req.body);
@@ -46,7 +46,7 @@ class ServiceControls {
     }
 
     // Delete Service
-    deleteService = async (req: Request, res: Response) => {
+    deleteService = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
             const deletedService = await serviceService.deleteService(id);
@@ -57,7 +57,7 @@ class ServiceControls {
     }
 
     // Get All Services
-    getAllServices = async (_req: Request, res: Response) => {
+    getAllServices = async (_req: CustomRequest, res: Response) => {
         try {
             const services = await serviceService.getAllServices();
             res.status(200).json(services);
@@ -67,7 +67,7 @@ class ServiceControls {
     }
 
     // Get Services by Category and Subcategories
-    getServicesByCategoryAndSubcategories = async (req: Request, res: Response) => {
+    getServicesByCategoryAndSubcategories = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
             const { error, value } = applyOfferSchema.validate(req.body);
@@ -79,7 +79,7 @@ class ServiceControls {
             res.status(500).json({ error: error.message });
         }
     }
-    applyOffer = async (req: Request, res: Response) => {
+    applyOffer = async (req: CustomRequest, res: Response) => {
         try {
             const { categoryId } = req.params;
             const { error, value } = applyOfferSchema.validate(req.body);

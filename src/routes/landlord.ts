@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
+import upload from "../configs/multer";
+import { uploadToCloudinary } from "../middlewares/multerCloudinary";
 import LandlordControl from "../landlord/controllers/landlord.controller";
 import landlordController from "../landlord/controllers/landlord.controller";
+import ApplicationController from "../landlord/controllers/applicant.controller";
+import TenantsController from "../landlord/controllers/tenant.controller";
+import PropertyController from "../landlord/controllers/properties.controller";
 
 class LandlordRouter {
     public router: Router;
@@ -14,50 +19,57 @@ class LandlordRouter {
     }
 
     private initializeRoutes() {
-        
-
+        this.router.use(this.authenticateService.authorize)
         this.router.get(
             '/',
-            this.authenticateService.authorize,
             landlordController.getAllLandlords
         );
 
         this.router.get(
             '/:id',
-            this.authenticateService.authorize,
             landlordController.getLandlordById
         );
 
         this.router.patch(
             '/:id',
-            this.authenticateService.authorize,
             landlordController.updateLandlord
         );
 
         this.router.delete(
             '/:id',
-            this.authenticateService.authorize,
             LandlordControl.deleteLandlord
         );
         this.router.get(
             '/current-tenants',
-            this.authenticateService.authorize,
             LandlordControl.getCurrentTenants
         );
         this.router.get(
             '/previous-tenants',
-            this.authenticateService.authorize,
             LandlordControl.getPreviousTenants
         );
         this.router.get(
             '/jobs/current',
-            this.authenticateService.authorize,
             LandlordControl.getCurrentJobsForLandordProperties
         );
         this.router.get(
             '/jobs/completed',
             LandlordControl.getCompletedVendorsJobsForLandordProperties
         );
+        // applications modules under landlord
+        this.router.get('/application/pending',  ApplicationController.getApplicationsPending);
+        this.router.get('/application/completed',  ApplicationController.getApplicationsPending);
+        this.router.get('/application/statistics',  ApplicationController.getApplicationStatistics);
+        
+        // tenants modules under landlord
+        this.router.get('/tenants/', TenantsController.getTenancies);
+        this.router.get('/tenants/currents',  TenantsController.getCurrentTenant);
+        this.router.get('/tenants/previous',  TenantsController.getPreviousTenant);
+
+        // landlord properties
+        this.router.get('/property/landlord', PropertyController.getCurrentLandlordProperties)
+        this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
+        this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
+          
     }
 }
 

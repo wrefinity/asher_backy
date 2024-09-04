@@ -8,7 +8,9 @@ class CategoryControls {
         const data = req.body;
         const image = data.cloudinaryUrls;
         delete data.cloudinaryUrls;
-
+        delete data.cloudinaryVideoUrls;
+        delete data.cloudinaryDocumentUrls;
+        
         try {
             const category = await categoryService.createCategory({...data, image});
             res.status(201).json(category);

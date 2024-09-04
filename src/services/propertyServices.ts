@@ -26,9 +26,9 @@ class PropertyService {
             data
         });
     }
-    deleteProperty = async (id: string) => {
+    deleteProperty = async (landlordId: string, id: string) => {
         return await prismaClient.properties.update({
-            where: { id },
+            where: { id, landlordId },
             data: { isDeleted: true }
         });
     }
@@ -67,10 +67,40 @@ class PropertyService {
 
         return propertiesByState;
     }
+    // Function to aggregate properties by state for the current landlord
+    getPropertiesByState = async () => {
+        // Group properties by state for the current landlord
+        const groupedProperties = await prismaClient.properties.groupBy({
+            by: ['state'],
+        });
+
+        // Object to store the grouped properties by state
+        const propertiesByState = {};
+
+        // Loop through each state group and fetch properties with apartments for that state
+        for (const group of groupedProperties) {
+            const state = group.state;
+
+            // Fetch properties belonging to the current state and landlord, including apartments
+            const properties = await prismaClient.properties.findMany({
+                where: {
+                    state,
+                },
+                include: {
+                    apartments: true,
+                },
+            });
+
+            // Store the properties in the result object under the respective state
+            propertiesByState[state] = properties;
+        }
+
+        return propertiesByState;
+    }
 
     checkLandlordPropertyExist  = async(landlordId: string, propertyId:string) => {
 
-        await prismaClient.properties.findFirst({
+        return await prismaClient.properties.findFirst({
             where:{
                 landlordId,
                 id:propertyId

@@ -14,7 +14,12 @@ class PropertyDocumentController {
                 return res.status(400).json({ error: error.details[0].message });
             }
             const uploadedBy = req.user.id;
-            const data: IPropertyDocument = {...value, uploadedBy};
+            const documentUrl = value.cloudinaryDocumentUrls;
+            delete value['cloudinaryUrls']
+            delete value['cloudinaryVideoUrls']
+            delete value['cloudinaryDocumentUrls']
+
+            const data: IPropertyDocument = {...value, uploadedBy, documentUrl};
             const propertyDocument = await this.propertyDocumentService.create(data);
             res.status(201).json(propertyDocument);
         } catch (error) {

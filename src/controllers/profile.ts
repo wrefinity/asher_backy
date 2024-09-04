@@ -18,6 +18,8 @@ class ProfileControls {
             const data = { ...value };
             const profileUrl = req.body.cloudinaryUrls[0];
             delete data['cloudinaryUrls']
+            delete data['cloudinaryVideoUrls']
+            delete data['cloudinaryDocumentUrls']
 
         
             // Update the user profile in the database

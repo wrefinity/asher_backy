@@ -13,6 +13,8 @@ class SubCategoryControls {
             const data = req.body;
             const image = data.cloudinaryUrls;
             delete data.cloudinaryUrls;
+            delete data.cloudinaryVideoUrls;
+            delete data.cloudinaryDocumentUrls;
 
             const subCategory = await SubCategoryService.createSubCategory({...data, categoryId, image});
             res.status(201).json(subCategory);
@@ -24,7 +26,6 @@ class SubCategoryControls {
     // Other CRUD operations
     getAllSubCategories = async (req, res) => {
         try {
-            console.log("i run")
             const subCategories = await SubCategoryService.getAllSubCategories();
             res.status(200).json({subCategories});
         } catch (err) {

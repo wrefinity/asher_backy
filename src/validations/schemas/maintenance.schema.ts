@@ -10,5 +10,7 @@ export const maintenanceSchema = Joi.object({
   vendorId: Joi.string().optional(),
   subcategoryIds: Joi.array().items(Joi.string()).required(),
   cloudinaryUrls: Joi.array().items(Joi.string()).optional(),
+  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
   serviceId: Joi.string().required(),
 });

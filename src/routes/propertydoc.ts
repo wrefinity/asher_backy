@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
 import propertyDocument from "../controllers/propertyDocument.controller";
+import upload from "../configs/multer";
+import { uploadToCloudinary } from "../middlewares/multerCloudinary";
 
 class PropertyDocsRouter {
     public router: Router;
@@ -15,6 +17,9 @@ class PropertyDocsRouter {
     private initializeRoutes() {
         this.router.post(
             '/',
+            this.authenticateService.authorize,
+            upload.array('files'),
+            uploadToCloudinary,
             propertyDocument.create
         );
 

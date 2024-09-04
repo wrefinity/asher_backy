@@ -1,7 +1,7 @@
 export interface IPropertyDocument {
     id?: string;
     name: string;
-    documentUrl: string;
+    documentUrl: string[];
     createdAt?: Date;
     updatedAt?: Date;
     apartmentsId?: string;

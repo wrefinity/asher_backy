@@ -8,4 +8,6 @@ export const profileSchema = Joi.object({
   profileId: Joi.string().optional(),
   fullname: Joi.string().max(255),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
 });

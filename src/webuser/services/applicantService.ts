@@ -128,7 +128,7 @@ class ApplicantService {
     return { ...guarantorInfo, ...updatedApplication };
   }
 
-  async createOrUpdateEmergencyContact(data: EmergencyContactIF) {
+  createOrUpdateEmergencyContact = async (data: EmergencyContactIF) => {
     const { id, applicationId, ...rest } = data;
 
     // Upsert the emergency contact information
@@ -147,7 +147,6 @@ class ApplicantService {
         },
       },
     });
-
     return { ...emergencyInfo, ...updatedApplication };
   }
 
@@ -186,7 +185,7 @@ class ApplicantService {
     return { ...docInfo, ...updatedApplication };
   }
 
-  async createOrUpdatePrevAddresses(prevAddressesInput: PrevAddressIF[]) {
+  createOrUpdatePrevAddresses = async (prevAddressesInput: PrevAddressIF[]) => {
     const prevAddresses = await Promise.all(prevAddressesInput.map(async (input) => {
       const { id, ...rest } = input;
       return await prismaClient.prevAddress.upsert({
@@ -198,7 +197,7 @@ class ApplicantService {
     return prevAddresses;
   }
 
-  async createOrUpdateResidentialInformation(data: ResidentialInformationIF) {
+  createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {
     const { id, prevAddresses, applicationId, ...rest } = data;
 
     let resInfo = null;
@@ -246,7 +245,7 @@ class ApplicantService {
     return { ...resInfo, ...updatedApplication };
   }
 
-  async createOrUpdateEmploymentInformation(data: EmploymentInformationIF) {
+  createOrUpdateEmploymentInformation = async (data: EmploymentInformationIF) => {
     const { id, applicationId, ...rest } = data;
     const empInfo = await prismaClient.employmentInformation.upsert({
       where: { id: id ?? '' },
@@ -297,6 +296,50 @@ class ApplicantService {
       }
     });
   }
+  getPendingApplicationsForLandlord = async (landlordId: string) => {
+    return await prismaClient.application.findMany({
+      where: {
+        status: ApplicationStatus.PENDING,
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+      include: {
+        user: true,
+        residentialInfo: true,
+        emergencyInfo: true,
+        employmentInfo: true,
+        documents: true,
+        properties: true,
+        personalDetails: true,
+        guarantorInformation: true,
+      },
+    });
+  }
+  getCompletedApplications = async (landlordId: string) => {
+    return await prismaClient.application.findMany({
+      where: {
+        status: ApplicationStatus.COMPLETED,
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+      include: {
+        user: true,
+        residentialInfo: true,
+        emergencyInfo: true,
+        employmentInfo: true,
+        documents: true,
+        properties: true,
+        personalDetails: true,
+        guarantorInformation: true,
+      },
+    });
+  }
 
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
@@ -330,7 +373,7 @@ class ApplicantService {
       where: { id: applicationId },
     });
   }
-  
+
   checkApplicationCompleted = async (applicationId: string) => {
     // Check if the application completed
     return await prismaClient.application.findUnique({
@@ -338,6 +381,47 @@ class ApplicantService {
     });
   }
 
+  // statistics
+  countApplicationStatsForLandlord = async (landlordId: string) => {
+    const pendingCount = await prismaClient.application.count({
+      where: {
+        status: ApplicationStatus.PENDING,
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+    });
+
+    const approvedCount = await prismaClient.application.count({
+      where: {
+        status: ApplicationStatus.ACCEPTED,
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+    });
+
+    const completedCount = await prismaClient.application.count({
+      where: {
+        status: ApplicationStatus.COMPLETED,
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+    });
+
+    return {
+      pending: pendingCount,
+      approved: approvedCount,
+      completed: completedCount,
+    };
+  }
 }
 
 export default new ApplicantService();

@@ -7,13 +7,12 @@ import { CLOUDINARY_FOLDER } from "../secrets";
 
 export const uploadToCloudinary = async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
-        // console.log('Request received:', req);  // Debug log
         const files = req.files as { [fieldname: string]: Express.Multer.File[] } || undefined;
-        // console.log('Files:', files);  // Debug log
 
         if (!files || Object.keys(files).length === 0) {
-            req.body.cloudinaryUrls = []; // for images
-            req.body.cloudinaryVideoUrls = []; // for videos
+            req.body.cloudinaryUrls = [];
+            req.body.cloudinaryVideoUrls = [];
+            req.body.cloudinaryDocumentUrls = [];
             return next();
         }
 
@@ -26,11 +25,13 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
         // Initialize arrays for storing URLs
         const imageUrls: string[] = [];
         const videoUrls: string[] = [];
+        const documentUrls: string[] = [];
 
         const uploadPromises = allFiles.map(async (file) => {
             let fileBuffer: Buffer = file.buffer;
             const isImage = file.mimetype.startsWith('image/');
             const isVideo = file.mimetype.startsWith('video/');
+            const isDocument = file.mimetype.startsWith('application/'); // Handles PDFs, DOCs, etc.
 
             if (isImage) {
                 // Resize the image
@@ -42,9 +43,9 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
             return new Promise<string>((resolve, reject) => {
                 const uploadStream = cloudinary.uploader.upload_stream(
                     {
-                        resource_type: isImage ? 'image' : isVideo ? 'video' : 'auto',
+                        resource_type: isImage ? 'image' : isVideo ? 'video' : isDocument ? 'raw' : 'auto',
                         folder: CLOUDINARY_FOLDER,
-                        format: isImage ? 'webp' : undefined // Only convert images to webp
+                        format: isImage ? 'webp' : undefined
                     } as any,
                     (err: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
                         if (err) {
@@ -64,6 +65,8 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
                     imageUrls.push(url);
                 } else if (isVideo) {
                     videoUrls.push(url);
+                } else if (isDocument) {
+                    documentUrls.push(url);
                 }
             });
         });
@@ -73,6 +76,7 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
         // Attach URLs to the request body
         req.body.cloudinaryUrls = imageUrls;
         req.body.cloudinaryVideoUrls = videoUrls;
+        req.body.cloudinaryDocumentUrls = documentUrls;
 
         next();
     } catch (error) {

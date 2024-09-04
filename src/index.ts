@@ -24,9 +24,7 @@ import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
 import TenantDashboardRouter from "./tenant/routes/dashboard.routes";
-import SupportRouter from "./tenant/routes/support-tenant.routes";
 import JobManager from './jobManager';
-import ProperyDocumentRouter from './routes/propertydoc';
 import LandlordRouter from './routes/landlord';
 import TaskRouter from './landlord/routes/task.routes';
 import InventoryRouter from './landlord/routes/inventory.routes';
@@ -81,7 +79,6 @@ class Server {
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
         this.app.use("/api/properties", PropertyRouter);
-        this.app.use("/api/properties-doc/", ProperyDocumentRouter);
         this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community-post", CommunityPostRouter)
         this.app.use("/api/tenants/community", communityRoutes);

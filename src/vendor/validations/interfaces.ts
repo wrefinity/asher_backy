@@ -1,7 +1,8 @@
+
 export interface IService {
     id?: string;
     currentJobs: number;
-    availability: string;
+    availability?: string;
     standardPriceRange: string;
     mediumPriceRange: string;
     premiumPriceRange: string;
