@@ -2,8 +2,8 @@
   "name": "asher-backend-server",
   "version": "1.0.0",
   "description": "",
-  "exports": "./index.js",
   "type": "module",
+  "main": "src/index.ts",
   "scripts": {
     "start": "nodemon",
     "build": "tsc",
@@ -24,6 +24,7 @@
     "nodemon": "^3.1.4",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.10",
+    "tsx": "^4.19.0",
     "typescript": "^5.5.3"
   },
   "dependencies": {
