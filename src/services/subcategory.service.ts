@@ -10,7 +10,6 @@ class SubCategoryService {
 
     // Other CRUD operations
     getAllSubCategories = async () => {
-        console.log("i ranned")
         return await prismaClient.subCategory.findMany({
             where:{isDeleted:false}
         });

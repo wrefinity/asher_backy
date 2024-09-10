@@ -51,7 +51,6 @@ model landlords {
   isDeleted Boolean @default(false)
 }
 
-
 model properties {
   id           String  @id @default(cuid())
   name         String
@@ -102,7 +101,7 @@ model properties {
 model propertyDocument {
   id          String   @id @default(cuid())
   name        String
-  documentUrl String
+  documentUrl String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -117,6 +116,11 @@ model propertyDocument {
 model apartments {
   id                   String                         @id @default(cuid())
   code                 String
+  name                 String
+  size                 String // 2500sqf
+  monthlyRent          String
+  minLeaseDuration     String
+  maxLeaseDuration     String
   description          String
   sittingRoom          Int?
   waitingRoom          Int?
@@ -144,7 +148,6 @@ model apartments {
   propertyDocument     propertyDocument[]
   inventoryManageMent  inventoryManageMent[]
 }
-
 
 model agency {
   id         String       @id @default(cuid())

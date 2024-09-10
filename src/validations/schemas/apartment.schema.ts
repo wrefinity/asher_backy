@@ -2,6 +2,11 @@ import Joi from 'joi';
 
 export const apartmentSchema = Joi.object({
     code: Joi.string().required(),
+    name: Joi.string().required(),
+    size: Joi.string().required(), // 2500sqf
+    monthlyRent: Joi.string().required(),
+    minLeaseDuration: Joi.string().required(),
+    maxLeaseDuration: Joi.string().required(),
     description: Joi.string().required(),
     sittingRoom: Joi.number().integer().min(0).optional(),
     waitingRoom: Joi.number().integer().min(0).optional(),
@@ -15,5 +20,6 @@ export const apartmentSchema = Joi.object({
     isVacant: Joi.boolean().default(true),
     rentalAmount: Joi.number().positive().required(),
     cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-    videourl: Joi.string().uri().optional()
+    videourl:  Joi.array().items(Joi.string().uri()).optional(),
+    propertyId: Joi.string().optional()
   });

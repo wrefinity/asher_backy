@@ -7,6 +7,7 @@ import landlordController from "../landlord/controllers/landlord.controller";
 import ApplicationController from "../landlord/controllers/applicant.controller";
 import TenantsController from "../landlord/controllers/tenant.controller";
 import PropertyController from "../landlord/controllers/properties.controller";
+import AppartmentController from "../landlord/controllers/apartment.controller";
 
 class LandlordRouter {
     public router: Router;
@@ -20,6 +21,7 @@ class LandlordRouter {
 
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
+        this.router.use(this.authenticateService.authorizeRole("LANDLORD"))
         this.router.get(
             '/',
             landlordController.getAllLandlords
@@ -69,6 +71,12 @@ class LandlordRouter {
         this.router.get('/property/landlord', PropertyController.getCurrentLandlordProperties)
         this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
+        
+        // appartments
+        this.router.get('/apartment', AppartmentController.getCurrentLandlordAppartments)
+        this.router.post('/apartment', upload.array('files'), uploadToCloudinary, AppartmentController.createApartment)
+        this.router.patch('/apartment/:apartmentId', upload.array('files'), uploadToCloudinary, AppartmentController.updateApartment)
+        this.router.delete('/apartment/:apartmentId', AppartmentController.deleteApartments)
           
     }
 }

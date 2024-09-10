@@ -1,6 +1,12 @@
 export interface ApartmentIF {
+  id?: string;
   code: string;
   description: string;
+  name: string;
+  size: string; // 2500sqf
+  monthlyRent: string;
+  minLeaseDuration: string;
+  maxLeaseDuration: string;
   sittingRoom?: number;
   waitingRoom?: number;
   bedrooms?: number;

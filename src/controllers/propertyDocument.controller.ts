@@ -13,7 +13,7 @@ class PropertyDocumentController {
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
-            const uploadedBy = req.user.id;
+            const uploadedBy = req.user?.id;
             const documentUrl = value.cloudinaryDocumentUrls;
             delete value['cloudinaryUrls']
             delete value['cloudinaryVideoUrls']
@@ -21,7 +21,7 @@ class PropertyDocumentController {
 
             const data: IPropertyDocument = {...value, uploadedBy, documentUrl};
             const propertyDocument = await this.propertyDocumentService.create(data);
-            res.status(201).json(propertyDocument);
+            res.status(201).json({propertyDocument});
         } catch (error) {
             res.status(500).json({ message: 'Failed to create property document', error });
         }

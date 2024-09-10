@@ -32,7 +32,7 @@ class PropertyController {
 
     }
    
-    async getCurrentLandlordProperties(req: CustomRequest, res: Response) {
+    getCurrentLandlordProperties = async (req: CustomRequest, res: Response) =>{
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
@@ -43,7 +43,7 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
-    async deleteLandlordProperties(req: CustomRequest, res: Response) {
+    deleteLandlordProperties = async (req: CustomRequest, res: Response) =>{
         try {
             const landlordId = req.user?.landlords?.id;
             const propertiesId =  req.params.propertyId;
