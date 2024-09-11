@@ -1,0 +1,64 @@
+enum maintenanceStatus {
+  ASSIGNED
+  UNASSIGNED
+  PENDING
+  COMPLETED
+}
+enum vendorAvailability {
+  YES
+  NO
+}
+
+model maintenance {
+  id           String   @id @default(cuid())
+  description  String
+  attachments  String[]
+  offer        String[]
+  scheduleDate DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isDeleted    Boolean  @default(false)
+
+  // relation fields
+  user          users         @relation(name: "tenantUser", fields: [userId], references: [id])
+  userId        String
+  vendor        users?        @relation(name: "vendorUser", fields: [vendorId], references: [id])
+  vendorId      String?
+  property      properties?   @relation(fields: [propertyId], references: [id])
+  propertyId    String?
+  apartment     apartments?   @relation(fields: [apartmentId], references: [id])
+  apartmentId   String?
+  category      category      @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  subcategories subCategory[] @relation("SubCategoryMaintenance")
+
+  status maintenanceStatus @default(UNASSIGNED)
+
+  services  services? @relation(fields: [serviceId], references: [id])
+  serviceId String?
+}
+
+model services {
+  id String @id @default(cuid())
+
+  currentJobs        Int                @default(0)
+  availability       vendorAvailability @default(YES)
+  standardPriceRange String //example 20-50k
+  mediumPriceRange   String //example 50-70k
+  premiumPriceRange  String //example 70-100k
+
+  isDeleted Boolean @default(false)
+
+  vendor   vendors @relation(fields: [vendorId], references: [id])
+  vendorId String
+
+  category   category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
+
+  subcategory   subCategory? @relation(fields: [subcategoryId], references: [id])
+  subcategoryId String?
+
+  maintenance maintenance[]
+  tenant      tenants?      @relation(fields: [tenantId], references: [id])
+  tenantId    String?
+}

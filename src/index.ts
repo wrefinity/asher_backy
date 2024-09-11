@@ -29,6 +29,7 @@ import LandlordRouter from './routes/landlord';
 import TaskRouter from './landlord/routes/task.routes';
 import InventoryRouter from './landlord/routes/inventory.routes';
 import BillRouter from './landlord/routes/bill.routes';
+import BankRouter from './routes/bank';
 
 
 
@@ -88,7 +89,9 @@ class Server {
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenant/dashboard", TenantDashboardRouter);
-
+        
+        // bank information routes
+        this.app.use("/api/banks/", BankRouter);
 
         //landlord routes
         this.app.use("/api/landlord/tasks", TaskRouter);
