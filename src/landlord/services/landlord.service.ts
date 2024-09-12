@@ -1,6 +1,6 @@
 
-import { UpdateLandlordDTO } from '../../validations/interfaces/auth.interface';
 import { prismaClient } from "../../index";
+import { UpdateLandlordDTO } from '../../validations/interfaces/auth.interface';
 
 export class LandlordService {
 
@@ -201,7 +201,6 @@ export class LandlordService {
 
     return currentVendors;
   }
-
 }
 
 

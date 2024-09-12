@@ -4,14 +4,14 @@ import { maintenanceSchema } from '../validations/schemas/maintenance.schema';
 import ServiceServices from "../vendor/services/vendor.services"
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
-import { maintenanceStatus, vendorAvailability } from '@prisma/client';
+import { maintenanceStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
 
 class MaintenanceController {
 
   public getAllMaintenances = async (req: Request, res: Response) => {
     try {
       const maintenances = await maintenanceService.getAllMaintenances();
-      res.status(200).json({maintenances});
+      res.status(200).json({ maintenances });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
@@ -20,7 +20,7 @@ class MaintenanceController {
     try {
       const vendorId = req.user.id;
       const vendorService = await ServiceServices.getVendorService(vendorId);
-      res.status(200).json({services: vendorService});
+      res.status(200).json({ services: vendorService });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
@@ -48,14 +48,14 @@ class MaintenanceController {
       }
 
       const userId = req.user.id;
-     
+
       const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const maintenance = await maintenanceService.createMaintenance({
         ...data,
         attachments: cloudinaryUrls,
         userId,
       });
-      res.status(201).json({maintenance});
+      res.status(201).json({ maintenance });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
@@ -74,7 +74,7 @@ class MaintenanceController {
       }
 
       const maintenance = await maintenanceService.updateMaintenance(id, req.body);
-      return res.status(200).json({maintenance});
+      return res.status(200).json({ maintenance });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
@@ -101,11 +101,11 @@ class MaintenanceController {
 
       await maintenanceService.updateMaintenance(
         maintenanceId,
-        { 
-          vendorId, 
+        {
+          vendorId,
           status: maintenanceStatus.ASSIGNED,
           serviceId: vendorService.id,
-          availability: vendorService.currentJobs > 1? vendorAvailability.NO : vendorAvailability.YES 
+          availability: vendorService.currentJobs > 1 ? vendorAvailability.NO : vendorAvailability.YES
         }
       );
 
@@ -127,12 +127,17 @@ class MaintenanceController {
         return res.status(404).json({ message: `maintenance with id: ${maintenanceId} doesnt exist` });
       }
 
+      //check  if payment has beeen completed
+      if (maintenanceExits.paymentStatus !== TransactionStatus.COMPLETED) {
+        return res.status(400).json({ message: `Payment has not been completed yet` });
+      }
+
       const maintenance = await maintenanceService.updateMaintenance(maintenanceId, { status: maintenanceStatus.COMPLETED });
-      
+
       // decrement job current count for vendor
       await ServiceServices.decrementJobCount(maintenance.serviceId, vendorId);
-      
-      await ServiceServices.updateService(maintenance.serviceId, {availability:vendorAvailability.YES});
+
+      await ServiceServices.updateService(maintenance.serviceId, { availability: vendorAvailability.YES });
 
       return res.status(201).json({ message: `maintenance status updated: ${maintenanceStatus.COMPLETED}`, maintenance });
     } catch (error) {
@@ -153,6 +158,30 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
+
+  public payForMaintenance = async (req: CustomRequest, res: Response) => {
+    try {
+      const maintenanceId = req.params.id;
+      const { amount, vendorId } = req.body;
+      const { landlords } = req.user
+      const userId = landlords.id;
+
+      const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
+      if (!maintenance) {
+        return res.status(404).json({ message: `Maintenance with id: ${maintenanceId} does not exist` });
+      }
+
+      if (maintenance.paymentStatus !== TransactionStatus.PENDING) {
+        return res.status(400).json({ message: `Payment has already been processed` });
+      }
+
+      const updatedMaintenance = await maintenanceService.processPayment(maintenanceId, amount, userId, vendorId);
+
+      return res.status(200).json({ message: `Payment processed successfully`, updatedMaintenance });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  }
 
 }
 

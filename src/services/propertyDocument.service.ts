@@ -8,22 +8,22 @@ export class PropertyDocumentService {
     return prismaClient.propertyDocument.create({ data });
   }
 
-  findAll = async () =>{
+  findAll = async () => {
     return prismaClient.propertyDocument.findMany();
   }
 
-  findById = async (id: string)=>{
+  findById = async (id: string) => {
     return prismaClient.propertyDocument.findUnique({ where: { id } });
   }
 
   update = async (id: string, data: Partial<Prisma.propertyDocumentUpdateInput>) =>{
     return prismaClient.propertyDocument.update({
       where: { id },
-      data,
+      data: data as any,
     });
   }
 
-  delete = async (id: string)=>{
+  delete = async (id: string) => {
     return prismaClient.propertyDocument.delete({ where: { id } });
   }
 }

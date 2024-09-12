@@ -31,7 +31,7 @@ class TransferService {
                     userId: senderId,
                     amount: data.amount,
                     description: data.description || `Transferred ${data.amount} to ${recieiverWallet.userId}`,
-                    transactionType: TransactionType.MAKEPAYMENT,
+                    transactionType:  data.transactionType || TransactionType.MAKEPAYMENT,
                     transactionStatus: TransactionStatus.COMPLETED,
                     walletId: senderWallet.id,
                     referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`

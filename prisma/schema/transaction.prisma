@@ -12,6 +12,7 @@ enum TransactionStatus {
   PENDING
   COMPLETED
   FAILED
+  RENT_RENEWED
 }
 
 model Transactions {
@@ -36,6 +37,8 @@ enum PropertyTransactionsType {
   MAINTAINACE_FEE
   LANDLORD_PAYOUT
   BILL_PAYMENT
+  LATE_FEE
+  CHARGES
 }
 
 enum PaymentFrequency {
@@ -54,21 +57,22 @@ model PropertyTransactions {
   appartmentId                 String?
   apartments                   apartments?                    @relation(fields: [appartmentId], references: [id])
   tenantId                     String
-  tenant                       tenants                        @relation(fields: [tenantId], references: [id])
+  tenant                       tenants                        @relation(fields: [tenantId], references: [tenantId])
   appartmentTransactionHistory appartmentTransactionHistory[]
   transactionStatus            TransactionStatus
   type                         PropertyTransactionsType
   referenceId                  String                         @unique
   paidDate                     DateTime                       @default(now())
   updatedAt                    DateTime                       @updatedAt
-  paymentFrequency             PaymentFrequency
-  nextDueDate                  DateTime
+  paymentFrequency             PaymentFrequency?
+  nextDueDate                  DateTime?
   lastPaidDate                 DateTime?
   missedPayment                Int                            @default(0)
   billsId                      String?
   bills                        bills?                         @relation(fields: [billsId], references: [id])
   landlords                    landlords?                     @relation(fields: [landlordsId], references: [id])
   landlordsId                  String?
+  attachment                   String[]
 }
 
 model tenantPaymentHistory {
@@ -120,4 +124,3 @@ model bills {
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 }
-

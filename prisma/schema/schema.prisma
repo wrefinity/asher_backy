@@ -77,6 +77,9 @@ model properties {
   agency     agency?   @relation(fields: [agencyId], references: [id])
   agents     agents[]
 
+  //marketValue
+  marketValue Decimal? @default(0.00) @db.Decimal(18, 2)
+
   // time attributes
   yearBuilt DateTime?
   createdAt DateTime? @default(now())
@@ -231,13 +234,13 @@ model tenants {
   apartmentOrFlatNumber Int?
 
   // relationships definitions
-  userId                       String                         @unique
+  userId                       String
   user                         users                          @relation(fields: [userId], references: [id])
   landlord                     landlords                      @relation(fields: [landlordId], references: [id])
   agentId                      String?
   agent                        agents?                        @relation(fields: [agentId], references: [id])
-  propertyId                   String?
-  property                     properties?                    @relation(fields: [propertyId], references: [id])
+  propertyId                   String
+  property                     properties                     @relation(fields: [propertyId], references: [id])
   history                      tenantPaymentHistory[]
   appartmentTransactionHistory appartmentTransactionHistory[]
   apartments                   apartments[]
@@ -248,6 +251,8 @@ model tenants {
   updatedAt DateTime   @updatedAt
   reviews   reviews[]
   services  services[]
+
+  @@unique([userId, propertyId])
 }
 
 // user information definition 
@@ -275,7 +280,7 @@ model users {
 
   // foreign key and relational fields 
   VerificationToken      VerificationToken[]
-  tenant                 tenants?
+  tenant                 tenants[]
   landlords              landlords?
   community              Community[]
   communityPost          CommunityPost[]
@@ -370,10 +375,6 @@ model wallet {
   Transactions Transactions[]
 }
 
-
-
-
-
 //  status will be in-progress, completed, assigned, aborted
 model status {
   id        String  @id @default(cuid())
@@ -381,9 +382,6 @@ model status {
   isDeleted Boolean @default(false)
   // maintenances maintenance[]
 }
-
-
-
 
 model reviews {
   id          String      @id @default(cuid())

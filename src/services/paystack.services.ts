@@ -4,7 +4,7 @@ import crypto from 'crypto'
 import transactionServices from "./transaction.services";
 import errorService from "./error.service";
 import { PaystackResponseType, WebhookEventResponse } from "../utils/types";
-import {PAYSTACK_SECRET_KEY, PAYSTACK_WEBHOOK_SECRET_KEY} from "../secrets"
+import {PAYSTACK_SECRET_KEY} from "../secrets"
 
 
 class PayStackService {

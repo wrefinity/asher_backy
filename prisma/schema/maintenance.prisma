@@ -36,7 +36,12 @@ model maintenance {
 
   services  services? @relation(fields: [serviceId], references: [id])
   serviceId String?
+
+    //payment
+  paymentStatus TransactionStatus
+  amount        Decimal           @db.Decimal(18, 2)
 }
+
 
 model services {
   id String @id @default(cuid())

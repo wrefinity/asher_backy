@@ -76,7 +76,7 @@ class DashboardService {
                     take: 10
                 }),
                 prismaClient.tenants.findUnique({
-                    where: { userId },
+                    where: { tenantId: userId },
                     include: {
                         PropertyTransactions: {
                             orderBy: { nextDueDate: 'asc' },

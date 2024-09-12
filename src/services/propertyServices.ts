@@ -1,3 +1,4 @@
+import { PropertyTransactionsType, TransactionStatus, TransactionType } from '@prisma/client';
 import { prismaClient } from "..";
 import { ICreateProperty } from "../validations/interfaces/properties.interface";
 
@@ -98,16 +99,24 @@ class PropertyService {
         return propertiesByState;
     }
 
-    checkLandlordPropertyExist  = async(landlordId: string, propertyId:string) => {
+    checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 
         return await prismaClient.properties.findFirst({
-            where:{
+            where: {
                 landlordId,
-                id:propertyId
+                id: propertyId
             }
         })
     }
 
+    getPropertyExpenses = async (landlordId: string, propertyId: string) => {
+        return await prismaClient.maintenance.findMany({
+            where: {
+                userId: landlordId,
+                propertyId,
+            }
+        })
+    }
 }
 
 

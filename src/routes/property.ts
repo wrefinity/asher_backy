@@ -3,6 +3,7 @@ import { Authorize } from "../middlewares/authorize";
 import PropertyController from "../controllers/property.controller";
 import PropertDocumentRouter from "./propertydoc"
 import ApartmentRouter from "./appartment";
+import propertyController from "../controllers/property.controller";
 class PropertyRouter {
     public router: Router;
     authenticateService: Authorize

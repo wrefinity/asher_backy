@@ -1,5 +1,8 @@
+import { PropertyTransactionsType, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { MaintenanceIF } from '../validations/interfaces/maintenance.interface';
+import transferServices from "./transfer.services";
+import walletService from "./wallet.service";
 
 class MaintenanceService {
   protected inclusion;
@@ -105,6 +108,24 @@ class MaintenanceService {
 
     return maintenance?.vendorId !== null;
   }
+
+  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string) => {
+
+    // Deduct amount from user's wallet -> Also add transaction type to track expenses
+    await transferServices.transferFunds(userId, { receiverId, amount, transactionType: PropertyTransactionsType.MAINTAINACE_FEE, description: `Payment for maintenance #${maintenanceId}` });
+
+    // Update maintenance record to reflect payment
+    return await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        paymentStatus: TransactionStatus.COMPLETED,
+        amount
+      }
+    });
+  }
+
 }
+
+
 
 export default new MaintenanceService();
