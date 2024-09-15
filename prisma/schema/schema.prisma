@@ -312,6 +312,9 @@ model users {
   creditScore           creditScore?
   propertyDocument      propertyDocument[]
   reviews               reviews[]
+  stripePaymentIntentId String?            @unique
+  stripeCustomerId      String?            @unique
+  Subscription          Subscription[]
 }
 
 model creditScore {
