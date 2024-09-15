@@ -48,3 +48,15 @@ export function generateUniqueToken(): string {
 export function getCommunityurl(name: string) {
   return `${process.env.BASE_URL}/community/${name}`;
 }
+
+import axios from 'axios';
+
+export async function getCountryCodeFromIp(ipAddress) {
+  try {
+    const response = await axios.get(`https://ipapi.co/${ipAddress}/json/`);
+    return response.data.country_code;
+  } catch (error) {
+    console.error('Error getting country code:', error);
+    return null;
+  }
+}

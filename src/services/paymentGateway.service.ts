@@ -1,5 +1,6 @@
 import { PaymentGateway } from '@prisma/client';
 
+
 type CountryCode = string;
 
 const STRIPE_SUPPORTED_COUNTRIES: CountryCode[] = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'NL', 'IE', 'IT', 'ES', 'CH', 'AT', 'BE', 'DK', 'FI', 'NO', 'SE', 'NZ', 'SG', 'HK', 'JP'];

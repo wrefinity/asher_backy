@@ -187,9 +187,11 @@ class WalletService {
         if (!user) {
             throw new Error("User not found.");
         }
-
+        console.log(countryCode)
         const gateway = paymentGatewayService.selectGateway(countryCode);
+        console.log(gateway);
 
+        return
         let paymentResponse;
         let referenceId;
         let paymentUrl;
