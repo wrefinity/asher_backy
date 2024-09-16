@@ -15,20 +15,28 @@ enum TransactionStatus {
   RENT_RENEWED
 }
 
+enum PaymentGateway {
+  STRIPE
+  FLUTTERWAVE
+  PAYSTACK
+}
+
 model Transactions {
-  id                String             @id @default(cuid())
-  description       String
-  amount            Decimal            @db.Decimal(18, 2)
-  userId            String
-  user              users              @relation(fields: [userId], references: [id])
-  transactionType   TransactionType?
-  transactionStatus TransactionStatus?
-  walletId          String
-  wallet            wallet             @relation(fields: [walletId], references: [id])
-  referenceId       String             @unique
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  Ads               Ads[]
+  id                    String             @id @default(cuid())
+  description           String
+  amount                Decimal            @db.Decimal(18, 2)
+  userId                String
+  user                  users              @relation(fields: [userId], references: [id])
+  transactionType       TransactionType?
+  transactionStatus     TransactionStatus?
+  walletId              String
+  wallet                wallet             @relation(fields: [walletId], references: [id])
+  referenceId           String             @unique
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  stripePaymentIntentId String?            @unique
+  Ads                   Ads[]
+  paymentGateway        PaymentGateway?
 }
 
 enum PropertyTransactionsType {
@@ -123,4 +131,16 @@ model bills {
   transactions  PropertyTransactions[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
+}
+
+// New Subscription model
+model Subscription {
+  id                   String    @id @default(cuid())
+  stripeSubscriptionId String    @unique
+  status               String
+  userId               String
+  user                 users     @relation(fields: [userId], references: [id])
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  cancelledAt          DateTime?
 }

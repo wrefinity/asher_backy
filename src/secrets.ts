@@ -19,4 +19,7 @@ export const PUBLIC_URL = process.env.PUBLIC_URL!;
 export const MONGODB_URI = process.env.MONGODB_URI!;
 export const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!; 
 export const PAYSTACK_WEBHOOK_SECRET_KEY = process.env.PAYSTACK_WEBHOOK_SECRET_KEY!;
-
+export const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY!;
+export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
+export const STRIPE_WEBHOOK_SECRET= process.env.STRIPE_WEBHOOK_SECRET!;
+export const FLUTTERWAVE_SECRET_HASH=process.env.FLUTTERWAVE_SECRET_HASH!;

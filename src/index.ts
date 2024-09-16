@@ -73,6 +73,7 @@ class Server {
         // Add routes here
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
         this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
+        this.app.post("/flutterwave/webhook", (req, res) => paystackServices.handleWebhook(req, res))
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/notification", NotificationRouter)
