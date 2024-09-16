@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CustomRequest } from '../../utils/types';
 import serviceService from '../services/vendor.services';
 import { serviceSchema, applyOfferSchema } from '../validations/schema';
+import { verbose } from 'winston';
 
 class ServiceControls {
 
@@ -10,7 +11,8 @@ class ServiceControls {
         try {
             const { error, value } = serviceSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
-            const vendorId:string = req.user?.vendor?.id;
+            const vendorId:String = req.user?.vendor?.id;
+            if(!vendorId) return res.status(403).json({message:"only vendor can create a service to be rendered"})
             const service = await serviceService.createService({ ...value, vendorId});
             res.status(201).json({ service });
         } catch (error) {
@@ -25,7 +27,7 @@ class ServiceControls {
             const service = await serviceService.getService(id);
             if (!service) return res.status(404).json({ error: 'Service not found' });
 
-            res.status(200).json(service);
+            res.status(200).json({service});
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

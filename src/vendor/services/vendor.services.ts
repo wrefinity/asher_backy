@@ -1,4 +1,5 @@
 import { prismaClient } from "../..";
+import {IService} from "../validations/interfaces"
 
 
 class ServiceService {
