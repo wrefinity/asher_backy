@@ -3,7 +3,7 @@ import { JWT_SECRET } from "../secrets";
 import { CustomRequest } from "../utils/types";
 import { Jtoken } from "./Jtoken";
 import UserService from "../services/user.services";
-
+import { userRoles } from '@prisma/client';
 export class Authorize {
     protected tokenService: Jtoken;
     constructor() {
@@ -43,9 +43,9 @@ export class Authorize {
         }
     }
 
-    authorizeRole(role: string) {
+    authorizeRole(role: userRoles) {
         return (req: CustomRequest, res: Response, next: NextFunction) => {
-            if (req.user && req.user.role.includes(role)) return next()
+            if (req.user && req.user?.role.includes(role)) return next()
             res.status(401).json({ message: `You are not authorized as a ${role}` })
         }
     }

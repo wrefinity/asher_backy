@@ -7,6 +7,7 @@ model category {
   subCategory subCategory[]
   maintenance maintenance[]
   services    services[]
+  maintenanceWhiteList maintenanceWhitelist[]
 }
 
 model subCategory {
@@ -19,4 +20,5 @@ model subCategory {
   categoryId  String
   maintenance maintenance[] @relation("SubCategoryMaintenance")
   services    services[]
+  maintenanceWhiteList maintenanceWhitelist[]
 }

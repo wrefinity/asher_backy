@@ -6,7 +6,8 @@ export interface MaintenanceIF {
   offer: string[];
   scheduleDate: Date;
   updatedAt?: Date;
-  userId: string;
+  tenantId?: string;
+  landlordId?: string;
   propertyId?: string;
   apartmentId?: string;
   vendorId?: string;
@@ -14,4 +15,5 @@ export interface MaintenanceIF {
   subcategoryIds: string[];
   status: string;
   serviceId?: string;
+  handleByLandlord: boolean;
 }

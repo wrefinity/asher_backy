@@ -73,7 +73,6 @@ model nextOfKin {
 }
 
 // Define the residentialInformation model
-// previous adress covering six years
 model PrevAddress {
   id                       String                  @id @default(cuid())
   address                  String
@@ -99,18 +98,15 @@ model residentialInformation {
   application   application[]
 }
 
-// Define the guarantorInformation model
 model guarantorInformation {
   id          String @id @default(cuid())
   fullName    String
   phoneNumber String
   email       String
   address     String
-
   application application[]
 }
 
-// Define the emergencyContact model
 model emergencyContact {
   id          String        @id @default(cuid())
   fullname    String
@@ -144,10 +140,9 @@ model EmploymentInformation {
   others            String?
   pension           String?
   moreDetails       String?
-  // employerCompany   String
-  // employerEmail     String
-  // employerPhone    String
-  // positionTitle    String
-
+  employerCompany   String
+  employerEmail     String
+  employerPhone    String
+  positionTitle    String
   application application[]
 }

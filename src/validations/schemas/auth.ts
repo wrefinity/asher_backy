@@ -47,3 +47,11 @@ export const userLandlordSchema =  Joi.object({
     profile: profileSchema,
     landlord: createLandlordSchema,
 });
+
+// Define the allowed roles for validation
+const roleEnum = ["WEBUSER", "ADMIN", "SUPERADMIN", "MANAGER"];
+
+export const assignRoleSchema = Joi.object({
+    userId: Joi.string().required(),
+    roles: Joi.array().items(Joi.string().valid(...roleEnum)).required()
+});

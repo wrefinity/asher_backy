@@ -17,15 +17,20 @@ class TenantControls {
     }
     getCurrentTenant = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
+        if (!landlordId) {
+            return res.status(404).json({ error: 'kindly login as landlord' });
+        }
         const currentTenants = await TenantService.getCurrenntTenantsForLandlord(landlordId);
         return res.status(200).json({ currentTenants });
     }
     getPreviousTenant = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
         const previousTenants = await TenantService.getPreviousTenantsForLandlord(landlordId);
         return res.status(200).json({ previousTenants });
     }
-
 }
 
 

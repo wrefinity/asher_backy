@@ -1,11 +1,11 @@
 
-export interface LoginIF{
+export interface LoginIF {
     email: string,
     password: string
 }
 
 
-export interface SignUpIF{
+export interface SignUpIF {
     email: string,
     password: string,
     fullname: string,
@@ -30,7 +30,7 @@ export interface CreateLandlordDTO {
 export interface UpdateLandlordDTO {
     userId?: string;
     properties?: {
-        connect?: { id: string }[]; 
+        connect?: { id: string }[];
         disconnect?: { id: string }[];
     };
     tenants?: {

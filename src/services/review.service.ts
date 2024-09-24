@@ -1,6 +1,6 @@
 import { prismaClient } from "..";
 import { reviews } from "@prisma/client";
-import { ICreateReview, IGetReviewsByProperty } from "../validations/interfaces/reviews.interface";
+import { ICreateReview } from "../validations/interfaces/reviews.interface";
 
 class ReviewService {
     createReview = async (data: ICreateReview): Promise<reviews> => {
@@ -50,10 +50,49 @@ class ReviewService {
             data: { isDeleted: true }
         });
     }
-    getReviewsByProperty = async (data: IGetReviewsByProperty): Promise<reviews[]> => {
-        return await prismaClient.reviews.findMany({
-            where: { propertyId: data.propertyId, isDeleted: false }
+    // Aggregate reviews based on propertyId, apartmentId, tenantId, landlordId, or vendorId
+    aggregateReviews = async (filter: { propertyId?: string, apartmentId?: string, tenantId?: string, landlordId?: string, vendorId?: string }) =>{
+
+        const reviews = await prismaClient.reviews.findMany({
+            where: {
+                OR: [
+                    { propertyId: filter.propertyId },
+                    { apartmentId: filter.apartmentId },
+                    { tenantId: filter.tenantId },
+                    { landlordId: filter.landlordId },
+                    { vendorId: filter.vendorId },
+                ],
+            },
+            select: {
+                id: true,
+                rating: true,
+                comment: true,
+                createdAt: true,
+                tenant: {
+                    select: { id: true },
+                },
+                landlord: {
+                    select: { id: true },
+                },
+                vendor: {
+                    select: { id: true },
+                },
+                property: {
+                    select: { id: true },
+                },
+                apartment: {
+                    select: { id: true },
+                },
+                user: {
+                    select: { id: true },
+                },
+            },
         });
+        const aliasedReviews = reviews.map(review => ({
+            ...review,
+            reviewedBy: review.user,
+        }));
+        return aliasedReviews;
     }
 }
 

@@ -8,7 +8,3 @@ export interface ICreateReview {
     apartmentId?: string;
     reviewById?: string;
 }
-
-export interface IGetReviewsByProperty {
-    propertyId: string;
-}

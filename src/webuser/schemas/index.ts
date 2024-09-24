@@ -88,6 +88,10 @@ const employmentInformationSchema = Joi.object({
     pension: Joi.string().optional().allow(null),
     moreDetails: Joi.string().optional().allow(null),
     applicantId: Joi.string().optional(),
+    employerCompany: Joi.string(),
+    employerEmail: Joi.string(),
+    employerPhone: Joi.string(),
+    positionTitle: Joi.string()
   });
 
 export {

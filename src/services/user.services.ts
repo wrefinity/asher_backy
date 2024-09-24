@@ -71,7 +71,13 @@ class UserService {
                         address: userData?.address,
                         dateOfBirth: userData?.dateOfBirth,
                         fullname: userData?.fullname,
-                        profileUrl: userData?.profileUrl
+                        profileUrl: userData?.profileUrl,
+                        zip: userData?.zip,
+                        unit: userData?.unit,
+                        state: userData?.state,
+                        timeZone: userData?.timeZone,
+                        taxPayerId: userData?.taxPayerId,
+                        taxType: userData?.taxType,
                     }
                 }
             },

@@ -380,6 +380,27 @@ class ApplicantService {
       where: { id: applicationId, status: ApplicationStatus.COMPLETED },
     });
   }
+  
+  getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus) => {
+
+    return await prismaClient.application.findMany({
+      where: {
+        userId: userId,
+        status,
+        isDeleted: false,
+      },
+      include: {
+        user: true,
+        residentialInfo: true,
+        emergencyInfo: true,
+        employmentInfo: true,
+        documents: true,
+        properties: true,
+        personalDetails: true,
+        guarantorInformation: true,
+      },
+    });
+  }
 
   // statistics
   countApplicationStatsForLandlord = async (landlordId: string) => {

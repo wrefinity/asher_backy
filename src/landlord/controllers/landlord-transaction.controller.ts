@@ -4,7 +4,7 @@ import { Response } from "express";
 import errorService from "../../services/error.service";
 import { generateIDs } from "../../utils/helpers";
 import { CustomRequest } from "../../utils/types";
-import landlordTransactionSchema from "../schema/landlordTransactionSchema";
+import landlordTransactionSchema from "../validations/schema/landlordTransactionSchema";
 import landlordTransactionServices from "../services/landlord-transaction.services";
 import propertyPerformance from "../services/property-performance";
 

@@ -10,8 +10,22 @@ import {
   emergencyContactSchema
 } from '../schemas';
 import ErrorService from "../../services/error.service";
+import { ApplicationStatus } from '@prisma/client';
 
 class ApplicantControls {
+
+  getPendingApplications = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(403).json({ error: 'kindly login as applicant' });
+      }
+      const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
+      res.status(200).json({ pendingApplications });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
 
   completeApplication = async (req: CustomRequest, res: Response) => {
     try {

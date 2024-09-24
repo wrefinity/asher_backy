@@ -25,13 +25,8 @@ import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
 import TenantDashboardRouter from "./tenant/routes/dashboard.routes";
 import JobManager from './jobManager';
-import LandlordRouter from './routes/landlord';
-import TaskRouter from './landlord/routes/task.routes';
-import InventoryRouter from './landlord/routes/inventory.routes';
-import BillRouter from './landlord/routes/bill.routes';
-import FinanceRouter from './landlord/routes/finance.routes';
-import LandlordTransactionRouter from './landlord/routes/landlord-transaction.routes';
 
+import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
 
 
@@ -96,16 +91,6 @@ class Server {
         
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
-
-        //landlord routes
-        this.app.use("/api/landlord/tasks", TaskRouter);
-        this.app.use("/api/landlord/inventory", InventoryRouter);
-        this.app.use("/api/landlord/bills", BillRouter);
-        this.app.use("/api/landlord/transaction", LandlordTransactionRouter);
-        this.app.use("/api/landlord/finance", FinanceRouter);
-
-
-
 
     }
 

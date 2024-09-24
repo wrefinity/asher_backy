@@ -8,7 +8,8 @@ class MaintenanceService {
   protected inclusion;
   constructor() {
     this.inclusion = {
-      user: true,
+      tenant: true,
+      landlord: true,
       vendor: true,
       property: true,
       apartment: true,
@@ -107,6 +108,24 @@ class MaintenanceService {
     });
 
     return maintenance?.vendorId !== null;
+  }
+
+  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string) =>{
+    try {
+      const whitelistEntry = await prismaClient.maintenanceWhitelist.findFirst({
+        where: {
+          landlordId,
+          categoryId,
+          subcategoryId: subcategoryId ? subcategoryId : undefined,
+          propertyId: propertyId ? propertyId : undefined,
+          apartmentId: apartmentId ? apartmentId : undefined,
+        },
+      });
+
+      return whitelistEntry;
+    } catch (error) {
+      throw new Error(`Error checking whitelist: ${error.message}`);
+    }
   }
 
   processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string) => {

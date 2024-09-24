@@ -1,6 +1,6 @@
 import { Router } from "express";
 import AuthController from "../controllers/auth";
-
+import RoleRouter from "./roles"
 class AuthRoutes {
     public router: Router;
 
@@ -10,6 +10,7 @@ class AuthRoutes {
     }
 
     private initializeRoutes(): void {
+        this.router.use("/roles", RoleRouter);
         this.router.post("/login", AuthController.login.bind(AuthController));
         this.router.post("/verify", AuthController.confirmation.bind(AuthController));
         this.router.post("/register", AuthController.register.bind(AuthController));

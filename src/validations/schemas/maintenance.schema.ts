@@ -14,3 +14,9 @@ export const maintenanceSchema = Joi.object({
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
   serviceId: Joi.string().required(),
 });
+export const checkWhitelistedSchema = Joi.object({
+  propertyId: Joi.string().optional(),
+  apartmentId: Joi.string().optional(),
+  categoryId: Joi.string().required(),
+  subcategoryIds: Joi.array().items(Joi.string()).optional(),
+});

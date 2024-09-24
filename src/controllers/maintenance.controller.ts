@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import maintenanceService from '../services/maintenance.service';
-import { maintenanceSchema } from '../validations/schemas/maintenance.schema';
+import propertyService from '../services/propertyServices';
+import { maintenanceSchema, checkWhitelistedSchema } from '../validations/schemas/maintenance.schema';
 import ServiceServices from "../vendor/services/vendor.services"
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
@@ -40,6 +41,35 @@ class MaintenanceController {
     }
   };
 
+  // tenancy function to check if a property maintenance is whitelisted
+  public checkIfMaintenanceWhitelisted = async (req: CustomRequest, res: Response) => {
+    try {
+      const { error, value } = checkWhitelistedSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
+      const tenantId = req.user?.tenants?.id;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
+      }
+
+      const checkPropertyExist = await propertyService.getPropertiesById(value.propertyId) 
+      if (checkPropertyExist) return res.status(400).json({message:"propery doesnt exist"})
+
+      const isWhitelisted = await maintenanceService.checkWhitelist(
+        checkPropertyExist?.landlordId,
+        value.categoryId,
+        value.subcategoryId,
+        value.propertyId,
+        value.apartmentId
+      );
+      return res.status(200).json({
+        isWhitelisted
+      })
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
   public createMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const { error, value } = maintenanceSchema.validate(req.body);
@@ -47,15 +77,38 @@ class MaintenanceController {
         return res.status(400).json({ message: error.details[0].message });
       }
 
-      const userId = req.user.id;
+      const tenantId = req.user.tenants?.id;
+      const landlordId = req.user.landlords?.id;
 
+      if (!tenantId && !landlordId) {
+        return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
+      }
+
+      const isWhitelisted = await maintenanceService.checkWhitelist(
+        landlordId,
+        value.categoryId,
+        value.subcategoryId,
+        value.propertyId,
+        value.apartmentId
+      );
+      const handleByLandlord = isWhitelisted || !!landlordId;
+
+  
       const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const maintenance = await maintenanceService.createMaintenance({
         ...data,
+        handleByLandlord,
         attachments: cloudinaryUrls,
-        userId,
+        tenantId: tenantId || undefined,
+        landlordId: landlordId || undefined
       });
-      res.status(201).json({ maintenance });
+
+      if(isWhitelisted && !landlordId) return res.status(200).json({
+        message:"request created and will be handled by landlord",
+        maintenance 
+      })
+
+      return res.status(201).json({ maintenance, message:" maintenance request created"  });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
@@ -70,7 +123,7 @@ class MaintenanceController {
       }
       const maintenanceExits = await maintenanceService.getMaintenanceById(id);
       if (!maintenanceExits) {
-        res.status(404).json({ message: `maintenance with id: ${id} doesnt exist` });
+        return res.status(404).json({ message: `maintenance with id: ${id} doesnt exist` });
       }
 
       const maintenance = await maintenanceService.updateMaintenance(id, req.body);

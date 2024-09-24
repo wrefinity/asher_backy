@@ -1,0 +1,18 @@
+model profile {
+    id          String    @id @default(cuid())
+    gender      String?
+    phoneNumber String?
+    address     String?
+    dateOfBirth DateTime?
+    fullname    String?
+    profileUrl  String?
+    zip         String?
+    unit        String?
+    state       String?
+    timeZone    String?
+    taxPayerId  String?
+    taxType     String?
+
+    // relations fields 
+    users users?
+}

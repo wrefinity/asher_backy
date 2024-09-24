@@ -48,8 +48,10 @@ model landlords {
   bills                 bills[]
   reviews               reviews[]
 
-  isDeleted Boolean    @default(false)
-  bankInfo  bankInfo[]
+  isDeleted            Boolean                @default(false)
+  bankInfo             bankInfo[]
+  maintenances         maintenance[]          @relation("landlordUser")
+  maintenanceWhitelist maintenanceWhitelist[]
 }
 
 model bankInfo {
@@ -98,19 +100,20 @@ model properties {
   //transaction can be expenses incurred or income generated
   transactions PropertyTransactions[]
 
-  amenities           String[]
+  amenities            String[]
   // apartments
-  totalApartments     Int?
-  apartments          apartments[]
-  ratings             Rating[]
-  tenants             tenants[]
-  applicant           application[]
-  maintenance         maintenance[]
-  reviews             reviews[]
-  propertyDocument    propertyDocument[]
-  bills               bills[]
-  taskManagement      taskManagement[]
-  inventoryManageMent inventoryManageMent[]
+  totalApartments      Int?
+  apartments           apartments[]
+  ratings              Rating[]
+  tenants              tenants[]
+  applicant            application[]
+  maintenance          maintenance[]
+  reviews              reviews[]
+  propertyDocument     propertyDocument[]
+  bills                bills[]
+  taskManagement       taskManagement[]
+  inventoryManageMent  inventoryManageMent[]
+  maintenanceWhitelist maintenanceWhitelist[]
 }
 
 model propertyDocument {
@@ -162,6 +165,7 @@ model apartments {
   reviews              reviews[]
   propertyDocument     propertyDocument[]
   inventoryManageMent  inventoryManageMent[]
+  maintenanceWhitelist maintenanceWhitelist[]
 }
 
 model agency {
@@ -212,12 +216,13 @@ model Rating {
 }
 
 model vendors {
-  id        String     @id @default(cuid())
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  services  services[]
-  reviews   reviews[]
-  bankInfo  bankInfo[]
+  id           String        @id @default(cuid())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  services     services[]
+  reviews      reviews[]
+  bankInfo     bankInfo[]
+  maintenances maintenance[] @relation("vendorUser")
 }
 
 model tenants {
@@ -251,6 +256,8 @@ model tenants {
   updatedAt DateTime   @updatedAt
   reviews   reviews[]
   services  services[]
+
+  maintenances maintenance[] @relation("tenantUser")
 
   @@unique([userId, propertyId])
 }
@@ -307,14 +314,12 @@ model users {
   Transactions           Transactions[]
 
   // maintenance maintenance[] @relation(name: "vendorUser")
-  tenantMaintenanceUser maintenance[]      @relation("tenantUser")
-  vendorMaintenaceUser  maintenance[]      @relation("vendorUser")
-  creditScore           creditScore?
-  propertyDocument      propertyDocument[]
-  reviews               reviews[]
-  stripePaymentIntentId String?            @unique
-  stripeCustomerId      String?            @unique
-  Subscription          Subscription[]
+  // tenantMaintenanceUser maintenance[]      @relation("tenantUser")
+  // vendorMaintenaceUser  maintenance[]      @relation("vendorUser")
+  creditScore      creditScore?
+  propertyDocument propertyDocument[]
+  reviews          reviews[]
+  Subscription     Subscription[]
 }
 
 model creditScore {
@@ -329,17 +334,6 @@ model creditScore {
   rentalHistory     Float
   maintainanceScore Float
   reviewScore       Float
-}
-
-model profile {
-  id          String    @id @default(cuid())
-  gender      String?
-  phoneNumber String?
-  address     String?
-  dateOfBirth DateTime?
-  fullname    String?
-  profileUrl  String?
-  users       users?
 }
 
 model VerificationToken {
@@ -384,25 +378,4 @@ model status {
   name      String
   isDeleted Boolean @default(false)
   // maintenances maintenance[]
-}
-
-model reviews {
-  id          String      @id @default(cuid())
-  rating      Float
-  comment     String?
-  tenant      tenants?    @relation(fields: [tenantId], references: [id])
-  tenantId    String?
-  vendor      vendors?    @relation(fields: [vendorId], references: [id])
-  vendorId    String?
-  landord     landlords?  @relation(fields: [landlordId], references: [id])
-  landlordId  String?
-  property    properties? @relation(fields: [propertyId], references: [id])
-  propertyId  String?
-  apartment   apartments? @relation(fields: [apartmentId], references: [id])
-  apartmentId String?
-  user        users?      @relation(fields: [reviewById], references: [id])
-  reviewById  String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  isDeleted   Boolean     @default(false)
 }

@@ -1,7 +1,7 @@
 import errorService from "../../services/error.service";
 import { Request, Response } from 'express';
 import inventoryServices from "../services/inventory.services";
-import { inventorySchema } from "../schema/inventorySchema";
+import { inventorySchema } from "../validations/schema/inventorySchema";
 
 class InventoryController {
     async createInventory(req: Request, res: Response) {

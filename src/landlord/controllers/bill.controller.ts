@@ -1,19 +1,17 @@
 import { Response } from "express";
 import errorService from "../../services/error.service";
 import { CustomRequest } from "../../utils/types";
-import { billSchema } from "../schema/billSchema";
+import { billSchema } from "../validations/schema/billSchema";
 import billServices from "../services/bill.services";
 
 class BillController {
     constructor() { }
 
-    async createBill(req: CustomRequest, res: Response) {
-        const { value, error } = billSchema.validate(req.body);
+    createBill = async (req: CustomRequest, res: Response) =>{
+        const { error, value } = billSchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
-        const landlordId = req.user.landlords.id;
-
+        const landlordId = req.user?.landlords?.id;
         try {
-
             const bill = await billServices.createBill(value, landlordId);
             return res.status(201).json(bill);
 
@@ -22,7 +20,7 @@ class BillController {
         }
     }
 
-    async updateBill(req: CustomRequest, res: Response) {
+    updateBill = async (req: CustomRequest, res: Response) => {
         const { billId } = req.params;
         const { value, error } = billSchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
@@ -38,7 +36,7 @@ class BillController {
         }
     }
 
-    async deleteBill(req: CustomRequest, res: Response) {
+    deleteBill = async (req: CustomRequest, res: Response) => {
         const { billId } = req.params;
         const landlordId = req.user.landlords.id;
         try {
@@ -51,7 +49,7 @@ class BillController {
     }
 
     //NOTE: These are the bills tenants under this landlord will pay
-    async getAllBills(req: CustomRequest, res: Response) {
+    getAllBills = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user.landlords.id;
         try {
             const bills = await billServices.getAllBills(landlordId);
@@ -62,7 +60,7 @@ class BillController {
         }
     }
 
-    async getSingleBill(req: CustomRequest, res: Response) {
+    getSingleBill = async (req: CustomRequest, res: Response) =>{
         const { billId } = req.params;
         const landlordId = req.user.landlords.id;
         try {
@@ -74,7 +72,7 @@ class BillController {
         }
     }
 
-    async getBillByPropertyId(req: CustomRequest, res: Response) {
+    getBillByPropertyId = async (req: CustomRequest, res: Response) =>{
         const { propertyId } = req.params;
         const landlordId = req.user.landlords.id;
         try {

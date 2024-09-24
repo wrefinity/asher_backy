@@ -1,0 +1,20 @@
+model reviews {
+  id          String      @id @default(cuid())
+  rating      Float
+  comment     String?
+  tenant      tenants?    @relation(fields: [tenantId], references: [id])
+  tenantId    String?
+  vendor      vendors?    @relation(fields: [vendorId], references: [id])
+  vendorId    String?
+  landlord     landlords?  @relation(fields: [landlordId], references: [id])
+  landlordId  String?
+  property    properties? @relation(fields: [propertyId], references: [id])
+  propertyId  String?
+  apartment   apartments? @relation(fields: [apartmentId], references: [id])
+  apartmentId String?
+  user        users?      @relation(fields: [reviewById], references: [id])
+  reviewById  String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  isDeleted   Boolean     @default(false)
+}

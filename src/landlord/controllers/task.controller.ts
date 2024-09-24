@@ -1,22 +1,22 @@
 import errorService from "../../services/error.service";
-import { taskSchema } from "../schema/taskSchema";
+import { taskSchema } from "../validations/schema/taskSchema";
 import { Request, Response } from 'express';
 import taskServices from "../services/task.services";
+import { CustomRequest } from "../../utils/types";
 
 class TaskController {
-    async createTask(req: Request, res: Response) {
-        const { value, error } = await taskSchema.validate(req.body);
+    createTask = async (req: Request, res: Response) => {
+        const { error, value  } = await taskSchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
         try {
             const task = await taskServices.createTask(value);
             return res.status(201).json(task);
-
         } catch (error) {
             errorService.handleError(error, res);
         }
     }
 
-    async getAllTasks(req: Request, res: Response) {
+    getAllTasks = async (req: Request, res: Response) =>{
         try {
             const tasks = await taskServices.getAllTask();
             return res.status(200).json(tasks);
@@ -25,7 +25,7 @@ class TaskController {
         }
     }
 
-    async getTaskById(req: Request, res: Response) {
+    getTaskById = async (req: CustomRequest, res: Response) => {
         try {
             const {taskId} = req.params;
             const task = await taskServices.getTaskById(taskId);
@@ -36,7 +36,7 @@ class TaskController {
         }
     }
 
-    async updateTask(req: Request, res: Response) {
+    updateTask = async (req: CustomRequest, res: Response)=>{
         // const { value, error } = await taskSchema.validate(req.body);
         // if (error) return res.status(400).json({ message: error.details[0].message });
         try {
@@ -48,7 +48,7 @@ class TaskController {
         }
     }
 
-    async deleteTask(req: Request, res: Response) {
+    deleteTask = async (req: CustomRequest, res: Response) =>{
         try {
             const deletedTask = await taskServices.deleteTask(req.params.id);
             if (!deletedTask) return res.status(404).json({ message: "Task not found" });
@@ -58,7 +58,7 @@ class TaskController {
         }
     }
 
-    async getAllTasksByProperty(req: Request, res: Response) {
+    getAllTasksByProperty = async (req: CustomRequest, res: Response) => {
         try {
             const { propertyId } = req.params;
             const tasks = await taskServices.getAllTasksByProperty(propertyId);

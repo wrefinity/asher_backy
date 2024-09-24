@@ -41,33 +41,7 @@ class LandlordController {
             return res.status(500).json({ error: err.message });
         }
     }
-    // get current tenants
-    getCurrentTenants = async (req: CustomRequest, res: Response) => {
-        try {
-            const landlordId = req.user?.landlords?.id;
-            if (!landlordId) {
-                return res.status(404).json({ error: 'kindly login as landlord' });
-            }
-            await this.landlordService.getCurrentTenants(landlordId);
-            return res.status(204).send();
-        } catch (err) {
-            return res.status(500).json({ error: err.message });
-        }
-    }
-    // get current tenants
-    getPreviousTenants = async (req: CustomRequest, res: Response) => {
-        try {
-            const landlordId = req.user?.landlords?.id;
-            if (!landlordId) {
-                return res.status(404).json({ error: 'kindly login as landlord' });
-            }
-            await this.landlordService.getPreviousTenants(landlordId);
-            return res.status(204).send();
-        } catch (err) {
-            return res.status(500).json({ error: err.message });
-        }
-    }
-
+    
     // Get all landlords
     getAllLandlords = async (req: Request, res: Response) =>{
         try {
