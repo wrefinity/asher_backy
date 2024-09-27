@@ -18,5 +18,6 @@ export const checkWhitelistedSchema = Joi.object({
   propertyId: Joi.string().optional(),
   apartmentId: Joi.string().optional(),
   categoryId: Joi.string().required(),
-  subcategoryIds: Joi.array().items(Joi.string()).optional(),
+  // subcategoryIds: Joi.array().items(Joi.string()).optional(),
+  subcategoryId: Joi.string().optional(),
 });

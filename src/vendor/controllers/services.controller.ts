@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { CustomRequest } from '../../utils/types';
 import serviceService from '../services/vendor.services';
+import CateoryService from '../../services/category.service';
+import SubCateoryService from '../../services/subcategory.service';
 import { serviceSchema, applyOfferSchema } from '../validations/schema';
-import { verbose } from 'winston';
+
 
 class ServiceControls {
 
@@ -11,11 +13,19 @@ class ServiceControls {
         try {
             const { error, value } = serviceSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
-            const vendorId:String = req.user?.vendor?.id;
+            console.log(value)
+            const vendorId:String = req.user?.vendors?.id;
             if(!vendorId) return res.status(403).json({message:"only vendor can create a service to be rendered"})
+
+            const categoryExist =  await CateoryService.getCategoryById(value.categoryId)
+            if (!categoryExist) return res.status(400).json({message:"category doesnt exist"})
+            const subCategoryExist =  await SubCateoryService.getSubCategoryById(value.subcategoryId)
+            if (!subCategoryExist) return res.status(400).json({message:"sub category doesnt exist"})
+
             const service = await serviceService.createService({ ...value, vendorId});
             res.status(201).json({ service });
         } catch (error) {
+            console.log(error)
             res.status(500).json({ error: error.message });
         }
     }

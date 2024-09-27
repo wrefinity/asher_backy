@@ -6,19 +6,16 @@ class ServiceService {
     protected inclusion;
     constructor() {
         this.inclusion = {
-            user: {
+            vendor: {
                 select: {
                     id: true,
-                    email: true,
-                    createdAt: true,
-                    updatedAt: true,
                 }
             },
             category: true,
             subcategory: true,
-        }
+        }    
     }
-
+    
     createService = async (data: any)  => {
         return await prismaClient.services.create({
             data,

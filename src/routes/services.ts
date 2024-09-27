@@ -1,7 +1,7 @@
 import { Router } from "express";
 import VendorServiceController from '../vendor/controllers/services.controller';
 import { Authorize } from "../middlewares/authorize";
-
+import { userRoles } from "@prisma/client";
 class VendorServiceRoutes {
     public router: Router;
     protected authenticateService: Authorize
@@ -13,7 +13,8 @@ class VendorServiceRoutes {
         this.initializeRoutes();
     }
     private initializeRoutes(): void {
-        this.router.post('/',this.authenticateService.authorize, VendorServiceController.createService);
+        this.router.use(this.authenticateService.authorize);
+        this.router.post('/',this.authenticateService.authorizeRole(userRoles.VENDOR), VendorServiceController.createService);
         this.router.get('/', VendorServiceController.getAllServices);
         this.router.post('/category/:categoryId', this.authenticateService.authorize, VendorServiceController.getServicesByCategoryAndSubcategories);
         this.router.post('/offer/:categoryId', this.authenticateService.authorize, VendorServiceController.applyOffer);

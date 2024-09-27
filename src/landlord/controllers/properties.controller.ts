@@ -6,7 +6,6 @@ import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 
 
-// TODO: create schema and iterface for the properties
 class PropertyController {
     constructor() { }
 
@@ -24,6 +23,7 @@ class PropertyController {
             const videourl = value.cloudinaryVideoUrls;
             delete value['cloudinaryUrls']
             delete value['cloudinaryVideoUrls']
+            delete value['cloudinaryDocumentUrls']
             const property = await PropertyServices.createProperty({ ...value, images, videourl, landlordId })
             return res.status(201).json(property)
         } catch (error) {
@@ -59,7 +59,6 @@ class PropertyController {
         }
     }
 
-
     async getPropertyPerformance(req: CustomRequest, res: Response) {
         const { entityId } = req.params;
         const { isApartment } = req.body
@@ -71,7 +70,6 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     }
-
     async getPropertyExpenses(req: CustomRequest, res: Response) {
         const { landlords } = req.user
         const landlordId = landlords.id

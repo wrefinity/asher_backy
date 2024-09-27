@@ -64,7 +64,7 @@ class LandlordRouter {
         // properties modules under landlord
         this.router.use('/properties', PropertyRouter);
         // appartments
-        this.router.use('/apartment', AppartmentRoute);
+        this.router.use('/apartments', AppartmentRoute);
         // tasks routes routes
         this.router.use("/tasks", TaskRouter);
         // inventory routes routes

@@ -15,6 +15,7 @@ export const createPropertySchema = Joi.object({
     totalApartments: Joi.number().integer().optional(),
     cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
     cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
 });
 
 // Joi schema for validating property update data

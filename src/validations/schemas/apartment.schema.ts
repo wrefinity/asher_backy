@@ -20,6 +20,7 @@ export const apartmentSchema = Joi.object({
     isVacant: Joi.boolean().default(true),
     rentalAmount: Joi.number().positive().required(),
     cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-    videourl:  Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
     propertyId: Joi.string().optional()
   });

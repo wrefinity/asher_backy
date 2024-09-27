@@ -12,13 +12,14 @@ class AppartmentController {
         try {
             const { error, value } = apartmentSchema.validate(req.body);
             if (error) return res.status(400).send(error.details[0].message);
-            const propertyId = req.params.propertyId;
+            // const propertyId = req.params.propertyId;
 
             const videourl = value?.videourl;
             const images = value?.cloudinaryUrls;
 
             delete value?.videourl;
             delete value?.cloudinaryUrls;
+            delete value?.cloudinaryDocumentUrls;
 
             const property = await ApartmentServices.createApartment({
                 ...value,
@@ -29,7 +30,6 @@ class AppartmentController {
                 bathrooms: Number(value.bathrooms),
                 garages: Number(value.garages),
                 offices: Number(value.offices),
-                propertyId,
                 videourl,
                 images
             })

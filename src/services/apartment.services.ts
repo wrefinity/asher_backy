@@ -31,10 +31,7 @@ class ApartmentService {
 
   createApartment = async (data: ApartmentIF) => {
     const propertyExists = await PropertyServices.getPropertiesById(data.propertyId);
-    if (!propertyExists) {
-      throw new Error('Property not found');
-    }
-
+    if (!propertyExists) throw new Error('Property not found'); 
     return await prismaClient.apartments.create({
       data: {
         code: data.code,

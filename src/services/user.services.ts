@@ -13,6 +13,7 @@ class UserService {
         this.inclusion = {
             tenant: false,
             landlords: false,
+            vendors: false,
             profile: false
         };
     }
@@ -24,22 +25,27 @@ class UserService {
                 tenant: { select: { id: true } },
                 landlords: { select: { id: true } },
                 profile: { select: { id: true } },
+                vendors: { select: { id: true } },
             }
         });
 
         // Dynamically build the inclusion object
-        if (user.tenant) this.inclusion.tenant = true;
-        if (user.landlords) this.inclusion.landlords = true;
-        if (user.profile) this.inclusion.profile = true;
-
+        if (user?.tenant != null) this.inclusion.tenant = true;
+        if (user?.landlords != null) this.inclusion.landlords = true;
+        if (user?.vendors != null) this.inclusion.vendors = true;
+        if (user?.profile) this.inclusion.profile = true;
+        console.log(user)
         return user
     }
     findUserByEmail = async (email: string) => {
         // Find the user first to check if related entities exist
         const user = await this.checkexistance({ email })
+        
         if (!user) {
-            throw new Error('User not found');
+            return false;
         }
+        // console.log("===========DB Checkers ==========")
+        // console.log(this.inclusion)
         return await prismaClient.users.findFirst({
             where: { email },
             include: this.inclusion,
@@ -59,7 +65,7 @@ class UserService {
     }
 
     createUser = async (userData: any) => {
-        return await prismaClient.users.create({
+        const newUser = await prismaClient.users.create({
             data: {
                 email: userData?.email,
                 role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
@@ -82,6 +88,28 @@ class UserService {
                 }
             },
         });
+        // Based on the role, create the corresponding entry in the related schema
+        switch (userData?.role) {
+            case userRoles.LANDLORD:
+                await prismaClient.landlords.create({
+                    data: {
+                        userId: newUser.id,
+                    },
+                });
+                break;
+
+            case userRoles.VENDOR:
+                await prismaClient.vendors.create({
+                    data: {
+                        userId: newUser.id
+                    },
+                });
+                break;
+
+            default:
+                break;
+        }
+        return newUser;
     }
 
     updateUserInfo = async (id: string, userData: any) => {

@@ -11,7 +11,7 @@ export type JWTPayload = {
     landlords?:{
         id?:string;
     },
-    vendor?:{
+    vendors?:{
         id?:string;
     },
 }

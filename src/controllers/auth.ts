@@ -45,12 +45,6 @@ class AuthControls {
             // Create verification token
             await this.verificationTokenCreator(newUser.id, email);
 
-
-            // Convert BigInt to string before sending the response
-            // const userResponse = String(user);
-
-            //TODO: ADD THE USER BASED OF HIS ROLE TO THEIR TABLE
-
             // const serializedUser = serializeBigInt(user);
             return res.status(201).json({ message: "User registered successfully, check your email for verification code", user: newUser });
 
@@ -170,13 +164,11 @@ class AuthControls {
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
-
+            
             let user = await UserServices.findUserByEmail(email);
-            console.log(user)
             if (!user) {
                 return res.status(400).json({ message: "User does not exist" });
             }
-
             if (!compareSync(req.body.password, user.password!)) {
                 return res.status(400).json({ message: "Invalid login credentials" });
             }
