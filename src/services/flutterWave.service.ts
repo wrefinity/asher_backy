@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import { prismaClient } from "..";
 import { TransactionStatus } from "@prisma/client";
 import { generateIDs } from "../utils/helpers";
+import { APP_URL } from "../secrets";
 const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
 const FLUTTERWAVE_BASE_URL = "https://api.flutterwave.com/v3";
 
@@ -39,8 +40,10 @@ class FlutterwaveService {
     amount: number,
     currency: string,
     email: string,
-    name: string,
     tx_ref: string,
+    description?: string,
+    expiryDate?: Date,
+    name?: string,
   ): Promise<FlutterwavePaymentResponse> {
     try {
       const response = await axios.post<FlutterwavePaymentResponse>(
@@ -49,15 +52,16 @@ class FlutterwaveService {
           tx_ref: tx_ref,
           amount: amount,
           currency: currency,
-          redirect_url: `${process.env.APP_URL}/payment/callback`,
+          redirect_url: `${APP_URL}/payment/callback`,
           customer: {
             email: email,
             name: name
           },
           customizations: {
-            title: "Wallet Funding",
+            title: description || "Asher  System Funding",
             logo: process.env.APP_LOGO_URL
-          }
+          },
+          expiry_date: expiryDate,
         },
         { headers: this.headers }
       );

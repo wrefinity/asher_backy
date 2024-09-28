@@ -52,6 +52,8 @@ model landlords {
   bankInfo             bankInfo[]
   maintenances         maintenance[]          @relation("landlordUser")
   maintenanceWhitelist maintenanceWhitelist[]
+  stripeCustomerId     String?                @unique
+  wallet               wallet?
 }
 
 model bankInfo {
@@ -234,14 +236,14 @@ model tenants {
   tenantId   String @unique
   landlordId String
 
-  rentstatus            Int
-  leaseStartDate        DateTime
-  leaseEndDate          DateTime
-  isCurrentLease        Boolean   @default(true)
-  isexisted             Int?
-  dateOfFirstRent       DateTime? @default(now()) @db.Timestamptz(6)
-  apartmentOrFlatNumber Int?
-
+  rentstatus                   Int
+  leaseStartDate               DateTime
+  leaseEndDate                 DateTime
+  isCurrentLease               Boolean                        @default(true)
+  isexisted                    Int?
+  dateOfFirstRent              DateTime?                      @default(now()) @db.Timestamptz(6)
+  apartmentOrFlatNumber        Int?
+  stripeCustomerId             String?                        @unique
   // relationships definitions
   userId                       String
   user                         users                          @relation(fields: [userId], references: [id])
@@ -315,7 +317,6 @@ model users {
   CommunityMember        CommunityMember[]
   // maintenance            maintenance[]
   Ads                    Ads[]
-  wallet                 wallet[]
   Transactions           Transactions[]
 
   // maintenance maintenance[] @relation(name: "vendorUser")
@@ -326,6 +327,8 @@ model users {
   reviews          reviews[]
   Subscription     Subscription[]
   vendors          vendors?
+  stripeCustomerId String?            @unique
+  wallet           wallet?
 }
 
 model creditScore {
@@ -370,8 +373,10 @@ model Email {
 // user wallets
 model wallet {
   id           String         @id @default(cuid())
-  userId       String         @unique
-  user         users          @relation(fields: [userId], references: [id])
+  userId       String?        @unique
+  user         users?         @relation(fields: [userId], references: [id])
+  landlordId   String?        @unique
+  landlord     landlords?     @relation(fields: [landlordId], references: [id])
   balance      Decimal        @default(0.00) @db.Decimal(18, 2)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt

@@ -23,3 +23,4 @@ export const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY!;
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
 export const STRIPE_WEBHOOK_SECRET= process.env.STRIPE_WEBHOOK_SECRET!;
 export const FLUTTERWAVE_SECRET_HASH=process.env.FLUTTERWAVE_SECRET_HASH!;
+export const APP_URL= process.env.APP_URL!;

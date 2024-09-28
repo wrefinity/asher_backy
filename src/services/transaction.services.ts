@@ -1,6 +1,6 @@
-import { PrismaClient, TransactionStatus } from "@prisma/client";
+import { TransactionStatus } from "@prisma/client";
 import { prismaClient } from "..";
-import { WebHookData, WebhookEventResponse } from "../utils/types";
+import { WebHookData } from "../utils/types";
 
 class TransactionService {
     async createTransaction(transactionData: any){
@@ -86,6 +86,7 @@ class TransactionService {
             transactionStatus: TransactionStatus.FAILED,
         })
     }
+
 
 }
 

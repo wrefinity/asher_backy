@@ -47,6 +47,8 @@ enum PropertyTransactionsType {
   BILL_PAYMENT
   LATE_FEE
   CHARGES
+  SUPPLIES
+  EQUIPMENTS
 }
 
 enum PaymentFrequency {

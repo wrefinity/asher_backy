@@ -11,9 +11,9 @@ import { generateIDs } from "../utils/helpers";
 class WalletService {
 
     // NOTE: Is there need to be checking hte userId here? 
-    async ensureSufficientBalance(walletId: string, userId: string, amount: number) {
+    async ensureSufficientBalance(walletId: string, id: string, amount: number, isLandlord: boolean) {
         const wallet = await prismaClient.wallet.findUnique({
-            where: { id: walletId, userId }
+            where: isLandlord ? { id: walletId, userId: id } : { id: walletId, landlordId: id },
         });
         if (!wallet) {
             throw new Error(`Wallet not found.`);
@@ -23,15 +23,22 @@ class WalletService {
         }
     }
 
-    async getOrCreateWallet(userId: string) {
-        let wallet = await prismaClient.wallet.findUnique({
-            where: { userId },
-        });
+    async getOrCreateWallet(id: string, isLandlord: boolean) {
+        let wallet
+        if (isLandlord) {
+            wallet = await prismaClient.wallet.findUnique({
+                where: { landlordId: id },
+            });
+        } else {
+            await prismaClient.wallet.findUnique({
+                where: { userId: id },
+            });
+        }
 
         if (!wallet) {
             wallet = await prismaClient.wallet.create({
                 data: {
-                    userId,
+                    [isLandlord ? 'landlordId' : 'userId']: id,
                     balance: 0,
                 },
             });
@@ -41,7 +48,7 @@ class WalletService {
     }
 
     async fundWallet(userId: string, amount: number) {
-        const wallet = await this.getOrCreateWallet(userId);
+        const wallet = await this.getOrCreateWallet(userId, false);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -79,7 +86,7 @@ class WalletService {
     }
 
     async fundWalletUsingStripe(userId: string, amount: number, currency: string = 'usd') {
-        const wallet = await this.getOrCreateWallet(userId);
+        const wallet = await this.getOrCreateWallet(userId, false);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -96,7 +103,7 @@ class WalletService {
         }
 
         // Get or create Stripe customer
-        const stripeCustomer = await stripeService.createOrGetStripeCustomer(userId);
+        const stripeCustomer = await stripeService.createOrGetStripeCustomer(userId, false);
         console.log(stripeCustomer);
 
         // Create a Stripe PaymentIntent
@@ -126,7 +133,7 @@ class WalletService {
 
     async fundWalletUsingFlutter(userId: string, amount: number, currency: string = 'usd') {
 
-        const wallet = await this.getOrCreateWallet(userId);
+        const wallet = await this.getOrCreateWallet(userId, false);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -172,7 +179,7 @@ class WalletService {
     }
 
     async fundWalletGeneral(userId: string, amount: number, currency: string = 'usd', countryCode: string) {
-        const wallet = await this.getOrCreateWallet(userId);
+        const wallet = await this.getOrCreateWallet(userId, false);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -198,7 +205,7 @@ class WalletService {
 
         switch (gateway) {
             case PaymentGateway.STRIPE:
-                const stripeCustomer = await stripeService.createOrGetStripeCustomer(userId);
+                const stripeCustomer = await stripeService.createOrGetStripeCustomer(userId, false);
                 const paymentIntent = await stripeService.createPaymentIntent(
                     amount * 100, // Stripe expects amounts in cents
                     currency,

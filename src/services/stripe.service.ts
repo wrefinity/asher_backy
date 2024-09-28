@@ -245,11 +245,25 @@ class StripeService {
         // TODO: Implement any necessary cleanup or notification logic
     }
 
-    async createOrGetStripeCustomer(userId: string): Promise<StripeCustomer> {
-        const user = await prismaClient.users.findUnique({
-            where: { id: userId },
-            include: { profile: true },
-        });
+    async createOrGetStripeCustomer(id: string, isLandlord: boolean): Promise<StripeCustomer> {
+        let user;
+
+        if (isLandlord) {
+            user = await prismaClient.landlords.findUnique({
+                where: { id },
+                include: {
+                    user: {
+                        include: { profile: true }
+                    }
+                }
+            })
+        } else {
+            user = await prismaClient.users.findUnique({
+                where: { id },
+                include: { profile: true },
+            });
+
+        }
 
         if (!user) {
             throw new Error('User not found');
@@ -273,10 +287,19 @@ class StripeService {
         });
 
         // Save the Stripe Customer ID to the user record
-        await prismaClient.users.update({
-            where: { id: userId },
-            data: { stripeCustomerId: customer.id },
-        });
+        if (isLandlord) {
+            await prismaClient.landlords.update({
+                where: { id },
+                data: { stripeCustomerId: customer.id },
+            });
+        } else {
+            await prismaClient.users.update({
+                where: { id },
+                data: { stripeCustomerId: customer.id },
+            });
+        } {
+            
+        }
 
         return {
             id: customer.id,
@@ -296,6 +319,44 @@ class StripeService {
 
         return user.id;
     }
+
+    async createPaymentLink(amount: number, currency: string, customerId: string, expiryDurationInMinutes: number) {
+        try {
+            // Create a new Checkout Session
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [
+                    {
+                        price_data: {
+                            currency: currency,
+                            product_data: {
+                                name: 'Service Payment',
+                            },
+                            unit_amount: amount,
+                        },
+                        quantity: 1,
+                    },
+                ],
+                mode: 'payment',
+                customer: customerId,
+                // Set the expiration time for the checkout session
+                expires_at: Math.floor(Date.now() / 1000) + expiryDurationInMinutes * 60,
+                success_url: 'https://yourdomain.com/success',
+                cancel_url: 'https://yourdomain.com/cancel',
+            });
+            console.log(session);
+
+            // Return the URL to the checkout session
+            return {
+                id: session.id,
+                url: session.url,
+            };
+        } catch (error) {
+            console.error('Error creating Stripe payment link:', error);
+            throw new Error('Failed to create Stripe payment link');
+        }
+    }
+
 }
 
 export default new StripeService();
