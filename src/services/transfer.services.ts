@@ -6,10 +6,10 @@ import transactionServices from "./transaction.services";
 
 class TransferService {
     async transferFunds(senderId: string, data: any) {
-        const senderWallet = await walletService.getOrCreateWallet(senderId);
-        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId);
+        const senderWallet = await walletService.getOrCreateWallet(senderId, false);
+        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId, false);
 
-        await walletService.ensureSufficientBalance(senderWallet.id, senderWallet.userId, data.amount);
+        await walletService.ensureSufficientBalance(senderWallet.id, senderWallet.userId, data.amount, false);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             //Deduct from sender's wallet
@@ -61,10 +61,10 @@ class TransferService {
         if (!tenant) {
             throw new Error('Tenant not found');
         }
-        const tenantWallet = await walletService.getOrCreateWallet(tenant.id);
-        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlordId);
+        const tenantWallet = await walletService.getOrCreateWallet(tenant.id, false);
+        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlordId, true);
 
-        await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount);
+        await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount, false);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             // Deduct from tenant's wallet
@@ -126,8 +126,8 @@ class TransferService {
         }
 
         //get tenant wallet
-        const userWallet = await walletService.getOrCreateWallet(user.id);
-        await walletService.ensureSufficientBalance(userWallet.id, userWallet.userId, amount);
+        const userWallet = await walletService.getOrCreateWallet(user.id, false);
+        await walletService.ensureSufficientBalance(userWallet.id, userWallet.userId, amount, false);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             // Deduct from tenant's wallet
