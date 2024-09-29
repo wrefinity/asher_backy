@@ -6,10 +6,10 @@ import transactionServices from "./transaction.services";
 
 class TransferService {
     async transferFunds(senderId: string, data: any) {
-        const senderWallet = await walletService.getOrCreateWallet(senderId, false);
-        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId, false);
+        const senderWallet = await walletService.getOrCreateWallet(senderId);
+        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId);
 
-        await walletService.ensureSufficientBalance(senderWallet.id, senderWallet.userId, data.amount, false);
+        await walletService.ensureSufficientBalance(senderWallet.id, senderWallet.userId, data.amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             //Deduct from sender's wallet
@@ -31,7 +31,7 @@ class TransferService {
                     userId: senderId,
                     amount: data.amount,
                     description: data.description || `Transferred ${data.amount} to ${recieiverWallet.userId}`,
-                    transactionType:  data.transactionType || TransactionType.MAKEPAYMENT,
+                    transactionType: data.transactionType || TransactionType.MAKEPAYMENT,
                     transactionStatus: TransactionStatus.COMPLETED,
                     walletId: senderWallet.id,
                     referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`
@@ -57,14 +57,19 @@ class TransferService {
         //get tenant information
         const tenant = await prismaClient.tenants.findUnique({
             where: { id: tenantId },
+            include: {
+                landlord: {
+                    select: { userId: true }
+                }
+            }
         })
         if (!tenant) {
             throw new Error('Tenant not found');
         }
-        const tenantWallet = await walletService.getOrCreateWallet(tenant.id, false);
-        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlordId, true);
+        const tenantWallet = await walletService.getOrCreateWallet(tenant.userId);
+        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlord.userId);
 
-        await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount, false);
+        await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             // Deduct from tenant's wallet
@@ -126,8 +131,8 @@ class TransferService {
         }
 
         //get tenant wallet
-        const userWallet = await walletService.getOrCreateWallet(user.id, false);
-        await walletService.ensureSufficientBalance(userWallet.id, userWallet.userId, amount, false);
+        const userWallet = await walletService.getOrCreateWallet(user.id);
+        await walletService.ensureSufficientBalance(userWallet.id, userWallet.userId, amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             // Deduct from tenant's wallet

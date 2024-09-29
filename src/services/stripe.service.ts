@@ -245,25 +245,11 @@ class StripeService {
         // TODO: Implement any necessary cleanup or notification logic
     }
 
-    async createOrGetStripeCustomer(id: string, isLandlord: boolean): Promise<StripeCustomer> {
-        let user;
-
-        if (isLandlord) {
-            user = await prismaClient.landlords.findUnique({
-                where: { id },
-                include: {
-                    user: {
-                        include: { profile: true }
-                    }
-                }
-            })
-        } else {
-            user = await prismaClient.users.findUnique({
-                where: { id },
-                include: { profile: true },
-            });
-
-        }
+    async createOrGetStripeCustomer(userId: string): Promise<StripeCustomer> {
+        const user = await prismaClient.users.findUnique({
+            where: { id: userId },
+            include: { profile: true },
+        });
 
         if (!user) {
             throw new Error('User not found');
@@ -287,19 +273,10 @@ class StripeService {
         });
 
         // Save the Stripe Customer ID to the user record
-        if (isLandlord) {
-            await prismaClient.landlords.update({
-                where: { id },
-                data: { stripeCustomerId: customer.id },
-            });
-        } else {
-            await prismaClient.users.update({
-                where: { id },
-                data: { stripeCustomerId: customer.id },
-            });
-        } {
-            
-        }
+        await prismaClient.users.update({
+            where: { id: userId },
+            data: { stripeCustomerId: customer.id },
+        });
 
         return {
             id: customer.id,
@@ -307,6 +284,7 @@ class StripeService {
             name: customer.name!,
         };
     }
+
 
     private async getUserIdFromStripeCustomerId(stripeCustomerId: string): Promise<string> {
         const user = await prismaClient.users.findFirst({

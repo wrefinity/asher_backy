@@ -20,6 +20,8 @@ class FinanceRouter {
         this.router.post('/generate-payment-link', financeControllers.generatePaymentLink)
         this.router.get(':propertyId/monthly-analysis/:month/:year', financeControllers.getMonthlyAnalysis)
         this.router.get('/:propertyId', financeControllers.getIncomeStatistics)
+        this.router.post('/budgets', financeControllers.createBudget);
+        this.router.put('/budgets/:id', financeControllers.updateBudget);
     }
 }
 

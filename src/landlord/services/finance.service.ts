@@ -1,4 +1,4 @@
-import { PaymentGateway, PropertyTransactionsType, TransactionStatus, TransactionType } from '@prisma/client';
+import { BudgetFrequency, PaymentGateway, PropertyTransactionsType, TransactionStatus, TransactionType } from '@prisma/client';
 import { prismaClient } from "../..";
 import transactionServices from '../../services/transaction.services';
 import paystackServices from '../../services/paystack.services';
@@ -45,66 +45,76 @@ class FinanceService {
     }
 
 
-    async generatePaymentLink(landlordId: string, amount: number, currency: string = 'usd', countryCode: string, expirationDate: Date, description: string, email:string) {
-        const wallet = await walletService.getOrCreateWallet(landlordId, true);
+    async generatePaymentLink(id: string, amount: number, currency: string = 'usd', countryCode: string, expirationDate: Date, description: string, email:string) {
+        const tenantUserId = await prismaClient.tenants.findUnique({ where: { id } })
+        const wallet = await walletService.getOrCreateWallet(tenantUserId.userId);
 
-        const gateway = paymentGatewayService.selectGateway(countryCode);
+        // const gateway = paymentGatewayService.selectGateway(countryCode);
 
         let paymentResponse;
         let referenceId;
         let paymentUrl;
 
-        switch (gateway) {
-            case PaymentGateway.STRIPE:
-                const stripeCustomer = await stripeService.createOrGetStripeCustomer(landlordId, true);
-                //TODO: Check minutes here
-                const payment = await stripeService.createPaymentLink(amount * 100, currency, stripeCustomer.id, 160);
-                paymentUrl = payment.url;
-                referenceId = payment.id;
-                break;
+        // NOTE: it should be the payeeId that's the stripeCustomer
 
-            case PaymentGateway.FLUTTERWAVE:
-                referenceId = generateIDs('FTWREF');
-                const flutterwavePayment = await flutterWaveService.initializePayment(
-                    amount,
-                    currency,
-                    email,
-                    referenceId,
-                    description,
-                    expirationDate
-                );
-                paymentResponse = flutterwavePayment;
-                paymentUrl = flutterwavePayment.data.link;
-                break;
+        // switch (gateway) {
+        //     case PaymentGateway.STRIPE:
+        //         const stripeCustomer = await stripeService.createOrGetStripeCustomer(landlordId);
+        //         //TODO: Check minutes here
+        //         const payment = await stripeService.createPaymentLink(amount * 100, currency, stripeCustomer.id, 160);
+        //         paymentUrl = payment.url;
+        //         referenceId = payment.id;
+        //         break;
 
-            case PaymentGateway.PAYSTACK:
-                const transactionDetails = {
-                    amount: amount,
-                    email: email,
-                    description,
-                    expires_at: expirationDate,
-                };
-                const paystackPayment = await paystackServices.initializePayment({ ...transactionDetails });
-                paymentResponse = paystackPayment;
-                referenceId = paystackPayment.data.reference;
-                paymentUrl = paystackPayment.data.authorization_url;
-                break;
+        //     case PaymentGateway.FLUTTERWAVE:
+        //         referenceId = generateIDs('FTWREF');
+        //         const flutterwavePayment = await flutterWaveService.initializePayment(
+        //             amount,
+        //             currency,
+        //             email,
+        //             referenceId,
+        //             description,
+        //             expirationDate
+        //         );
+        //         paymentResponse = flutterwavePayment;
+        //         paymentUrl = flutterwavePayment.data.link;
+        //         break;
 
-            default:
-                throw new Error("Unsupported payment gateway");
-        }
+        //     case PaymentGateway.PAYSTACK:
+        //         const transactionDetails = {
+        //             amount: amount,
+        //             email: email,
+        //             description,
+        //             expires_at: expirationDate,
+        //         };
+        //         const paystackPayment = await paystackServices.initializePayment({ ...transactionDetails });
+        //         paymentResponse = paystackPayment;
+        //         referenceId = paystackPayment.data.reference;
+        //         paymentUrl = paystackPayment.data.authorization_url;
+        //         break;
+
+        //     default:
+        //         throw new Error("Unsupported payment gateway");
+        // }
 
         // Create a transaction record
+        
+        const stripeCustomer = await stripeService.createOrGetStripeCustomer(tenantUserId.userId);
+                //TODO: Check minutes here
+        const payment = await stripeService.createPaymentLink(amount * 100, currency, stripeCustomer.id, 160);
+        paymentUrl = payment.url;
+        referenceId = payment.id;
+        
         const transaction = await transactionServices.createTransaction({
-            userId: landlordId,
+            userId: tenantUserId.userId,
             amount: amount,
-            description: `Wallet funding of ${amount} ${currency.toUpperCase()} via ${gateway}: ${description}`,
+            description: `Wallet funding of ${amount} ${currency.toUpperCase()} via STRIPE : ${description}`,
             transactionType: TransactionType.FUNDWALLET,
             transactionStatus: TransactionStatus.PENDING,
             walletId: wallet.id,
             referenceId: referenceId,
-            paymentGateway: gateway,
-            ...(gateway === PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
+            paymentGateway: PaymentGateway.STRIPE,
+            ...(PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
         });
 
         return {
@@ -211,6 +221,44 @@ class FinanceService {
         }
 
         return monthlyPayments;
+    }
+
+    async createBudget(propertyId: string, transactionType: PropertyTransactionsType, budgetAmount: number, frequency: BudgetFrequency) {
+        return await prismaClient.budget.create({
+            data: {
+                propertyId,
+                transactionType,
+                budgetAmount,
+                frequency,
+            },
+        });
+    }
+
+    checkAlerts(budget: any, currentAmount: number) {
+        const budgetReached = currentAmount >= budget.budgetAmount;
+        const alertThreshold = budget.budgetAmount * budget.alertThreshold;
+
+        if (budgetReached) {
+            console.log(`Budget for ${budget.transactionType} has been reached.`);
+            // Send alert notification
+        } else if (currentAmount >= alertThreshold) {
+            console.log(`Warning: You are approaching the budget limit for ${budget.transactionType}.`);
+            // Send warning notification
+        }
+    }
+
+    async updateBudget(id: string, amount: number) {
+        const budget = await prismaClient.budget.findUnique({ where: { id } });
+        if (!budget) throw new Error('Budget not found');
+
+        const newCurrentAmount = budget.currentAmount + amount;
+
+        await prismaClient.budget.update({
+            where: { id },
+            data: { currentAmount: newCurrentAmount },
+        });
+
+        this.checkAlerts(budget, newCurrentAmount);
     }
 }
 

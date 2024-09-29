@@ -3,6 +3,7 @@ import { CustomRequest } from "../../utils/types";
 import errorService from "../../services/error.service";
 import financeService from "../services/finance.service";
 import { getCountryCodeFromIp } from "../../utils/helpers";
+import { budgetSchema } from "../validations/schema/financeSceham";
 
 class FinanceController {
 
@@ -54,9 +55,13 @@ class FinanceController {
     }
 
     async generatePaymentLink(req: CustomRequest, res: Response) {
-        const {landlords} = req.user;
-        const landlodId = landlords.id;
-        const { amount, expirationDate, email, description } = req.body;
+        const userId = req.user.id;
+
+        const { amount, expirationDate, email, description, payeeId } = req.body;
+        if (!payeeId || !amount) {
+            return res.status(400).json({ message: "Please provide payeeId and amount" });
+        }
+        //NOTE: Get the userId from user table using the email
         const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         // Get country code from IP address
@@ -66,7 +71,7 @@ class FinanceController {
             const validAmount = Number(amount);
 
             // Generate payment link
-            const fundWallet = await financeService.generatePaymentLink(landlodId, validAmount, 'usd', countryCode, expirationDate, description, email);
+            const fundWallet = await financeService.generatePaymentLink(payeeId, validAmount, 'usd', countryCode, expirationDate, description, email);
 
             res.status(200).json(fundWallet);
         } catch (error) {
@@ -103,6 +108,31 @@ class FinanceController {
             return res.status(200).json(annualPayments);
         } catch (error) {
             errorService.handleError(error, res);
+        }
+    }
+
+    async createBudget(req: CustomRequest, res: Response) {
+        const { error, value } = budgetSchema.validate(req.body);
+        if (error) return res.status(400).json({ message: error.details[0].message });
+        const { propertyId, transactionType, budgetAmount, frequency } = value;
+
+        try {
+            const budget = await financeService.createBudget(propertyId, transactionType, budgetAmount, frequency);
+            res.status(201).json(budget);
+        } catch (error) {
+             errorService.handleError(error, res)
+        }
+    }
+
+    async updateBudget(req: CustomRequest, res: Response) {
+        const { amount } = req.body;
+        const { id } = req.params;
+
+        try {
+            await financeService.updateBudget(id, amount);
+            res.status(200).json({ message: 'Budget updated successfully' });
+        } catch (error) {
+             errorService.handleError(error, res)
         }
     }
 
