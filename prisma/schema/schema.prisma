@@ -53,7 +53,8 @@ model landlords {
   maintenances         maintenance[]          @relation("landlordUser")
   maintenanceWhitelist maintenanceWhitelist[]
   stripeCustomerId     String?                @unique
-  wallet               wallet?
+
+  Broadcast Broadcast[]
 }
 
 model bankInfo {
@@ -116,6 +117,8 @@ model properties {
   taskManagement       taskManagement[]
   inventoryManageMent  inventoryManageMent[]
   maintenanceWhitelist maintenanceWhitelist[]
+
+  Budget Budget[]
 }
 
 model propertyDocument {
@@ -375,8 +378,6 @@ model wallet {
   id           String         @id @default(cuid())
   userId       String?        @unique
   user         users?         @relation(fields: [userId], references: [id])
-  landlordId   String?        @unique
-  landlord     landlords?     @relation(fields: [landlordId], references: [id])
   balance      Decimal        @default(0.00) @db.Decimal(18, 2)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt

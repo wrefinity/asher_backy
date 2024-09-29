@@ -146,3 +146,23 @@ model Subscription {
   updatedAt            DateTime  @updatedAt
   cancelledAt          DateTime?
 }
+
+model Budget {
+  id              String                   @id @default(cuid())
+  propertyId      String
+  transactionType PropertyTransactionsType
+  budgetAmount    Float
+  currentAmount   Float                    @default(0)
+  frequency       BudgetFrequency
+  alertThreshold  Float                    @default(0.8) // 80% threshold
+  property        properties               @relation(fields: [propertyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum BudgetFrequency {
+  WEEKLY
+  MONTHLY
+  ANNUAL
+}
