@@ -71,7 +71,7 @@ class FinanceController {
             const validAmount = Number(amount);
 
             // Generate payment link
-            const fundWallet = await financeService.generatePaymentLink(payeeId, validAmount, 'usd', countryCode, expirationDate, description, email);
+            const fundWallet = await financeService.generatePaymentLink(payeeId, userId, validAmount, 'usd', countryCode, expirationDate, description, email);
 
             res.status(200).json(fundWallet);
         } catch (error) {

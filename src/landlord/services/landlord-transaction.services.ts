@@ -1,57 +1,56 @@
 // services/landlordTransaction.service.ts
-import { PropertyTransactionsType, TransactionStatus } from "@prisma/client";
+import { TransactionReference, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "../..";
 import { WebHookData } from "../../utils/types";
 
 
 class LandlordTransactionService {
     async createPropertyTransaction(transactionData: any) {
-        return prismaClient.propertyTransactions.create({
+        return prismaClient.transaction.create({
             data: {
                 description: transactionData.description,
                 amount: transactionData.amount,
                 propertyId: transactionData.propertyId,  // Correctly link to existing property
-                tenantId: transactionData.tenantId,
-                transactionStatus: transactionData.transactionStatus,
+                userId: transactionData.userId,
+                status: transactionData.transactionStatus,
                 type: transactionData.type,
                 referenceId: transactionData.referenceId,
-                paidDate: transactionData.paidDate,
-                landlordsId: transactionData.landlordsId,
+                reference: transactionData.reference,
             }
         });
     }
     
 
     async getPropertyTransactionById(id: string) {
-        return prismaClient.propertyTransactions.findUnique({
+        return prismaClient.transaction.findUnique({
             where: {
                 id
             },
         });
     }
 
-    async getPropertyTransactionsByLandlord(landlordId: string, propertyId: string) {
-        return prismaClient.propertyTransactions.findMany({
+    async getPropertyTransactionsByLandlord(userId: string, propertyId: string) {
+        return prismaClient.transaction.findMany({
             where: {
-                landlordsId: landlordId,
+                userId: userId,
                 propertyId: propertyId
             },
         });
     }
 
     async getPropertyTransactionByReference(referenceId: string) {
-        return prismaClient.propertyTransactions.findUnique({
+        return prismaClient.transaction.findFirst({
             where: {
                 referenceId
             },
         });
     }
 
-    async updatePropertyTransaction(transactionId: string, landlordId: string, transactionData: any) {
-        return prismaClient.propertyTransactions.update({
+    async updatePropertyTransaction(transactionId: string, userId: string, transactionData: any) {
+        return prismaClient.transaction.update({
             where: {
                 id: transactionId,
-                landlordsId: landlordId
+                userId
             },
             data: transactionData,
         });
@@ -62,7 +61,7 @@ class LandlordTransactionService {
         if (!transaction) {
             throw new Error('Transaction not found');
         }
-        await this.updatePropertyTransaction(transaction.id, transaction.landlordsId, {
+        await this.updatePropertyTransaction(transaction.id, transaction.userId, {
             transactionStatus: TransactionStatus.COMPLETED,
         });
 
@@ -74,15 +73,15 @@ class LandlordTransactionService {
         if (!transaction) {
             throw new Error('Transaction not found');
         }
-        await this.updatePropertyTransaction(transaction.id, transaction.landlordsId, {
+        await this.updatePropertyTransaction(transaction.id, transaction.userId, {
             transactionStatus: TransactionStatus.FAILED,
         });
     }
 
-    async getTransactionSummary(landlordId: string) {
-        const transactions = await prismaClient.propertyTransactions.aggregate({
+    async getTransactionSummary(userId: string) {
+        const transactions = await prismaClient.transaction.aggregate({
             where: {
-                landlordsId: landlordId,
+                userId,
             },
             _sum: {
                 amount: true
@@ -92,13 +91,13 @@ class LandlordTransactionService {
             },
         });
 
-        const totalIncome = await prismaClient.propertyTransactions.aggregate({
+        const totalIncome = await prismaClient.transaction.aggregate({
             where: {
-                landlordsId: landlordId,
-                type: {
+                userId,
+                reference: {
                     in: [
-                        PropertyTransactionsType.RENT_PAYMENT,
-                        PropertyTransactionsType.BILL_PAYMENT
+                        TransactionReference.RENT_PAYMENT,
+                        TransactionReference.BILL_PAYMENT
                     ]
                 }
             },
@@ -107,13 +106,13 @@ class LandlordTransactionService {
             }
         });
 
-        const totalExpenses = await prismaClient.propertyTransactions.aggregate({
+        const totalExpenses = await prismaClient.transaction.aggregate({
             where: {
-                landlordsId: landlordId,
-                type: {
+                userId,
+                reference: {
                     in: [
-                        PropertyTransactionsType.MAINTAINACE_FEE,
-                        PropertyTransactionsType.LANDLORD_PAYOUT
+                        TransactionReference.MAINTENANCE_FEE,
+                        TransactionReference.LANDLORD_PAYOUT
                     ]
                 }
             },

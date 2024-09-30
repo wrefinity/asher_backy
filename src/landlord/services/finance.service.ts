@@ -1,4 +1,4 @@
-import { BudgetFrequency, PaymentGateway, PropertyTransactionsType, TransactionStatus, TransactionType } from '@prisma/client';
+import { BudgetFrequency, PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from '@prisma/client';
 import { prismaClient } from "../..";
 import transactionServices from '../../services/transaction.services';
 import paystackServices from '../../services/paystack.services';
@@ -9,15 +9,15 @@ import paymentGatewayService from '../../services/paymentGateway.service';
 import walletService from '../../services/wallet.service';
 
 class FinanceService {
-    async getFinanceIncome(landlordId: string) {
-        return await prismaClient.propertyTransactions.findMany({
+    async getFinanceIncome(userId: string) {
+        return await prismaClient.transaction.findMany({
             where: {
 
-                landlordsId: landlordId,
-                type: { in: [PropertyTransactionsType.RENT_PAYMENT, PropertyTransactionsType.LATE_FEE, PropertyTransactionsType.CHARGES, PropertyTransactionsType.MAINTAINACE_FEE] },
+                userId,
+                reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES, TransactionReference.MAINTENANCE_FEE] },
             },
             include: {
-                properties: true
+                property: true
             }
         })
     }
@@ -33,21 +33,28 @@ class FinanceService {
         })
     }
 
-    async getAllFinanceTransaction(landlordId: string) {
-        return await prismaClient.propertyTransactions.findMany({
+    async getAllFinanceTransaction(userId: string) {
+        return await prismaClient.transaction.findMany({
             where: {
-                landlordsId: landlordId,
+                userId,
             },
             include: {
-                properties: true
+                property: true
             }
         })
     }
 
 
-    async generatePaymentLink(id: string, amount: number, currency: string = 'usd', countryCode: string, expirationDate: Date, description: string, email:string) {
-        const tenantUserId = await prismaClient.tenants.findUnique({ where: { id } })
-        const wallet = await walletService.getOrCreateWallet(tenantUserId.userId);
+    async generatePaymentLink(payeeId: string, creatorId: string, amount: number, currency: string = 'usd', countryCode: string, expirationDate: Date, description: string, email: string) {
+        const creator = await prismaClient.users.findUnique({ where: { id: creatorId } });
+        const payee = await prismaClient.users.findUnique({ where: { id: payeeId } });
+
+        if (!creator || !payee) {
+            throw new Error('Creator or payee not found');
+        }
+
+        const creatorWallet = await walletService.getOrCreateWallet(creatorId);
+        const payeeWallet = await walletService.getOrCreateWallet(payeeId);
 
         // const gateway = paymentGatewayService.selectGateway(countryCode);
 
@@ -98,20 +105,36 @@ class FinanceService {
         // }
 
         // Create a transaction record
-        
-        const stripeCustomer = await stripeService.createOrGetStripeCustomer(tenantUserId.userId);
-                //TODO: Check minutes here
+
+        const stripeCustomer = await stripeService.createOrGetStripeCustomer(payeeId);
+        //TODO: Check minutes here
         const payment = await stripeService.createPaymentLink(amount * 100, currency, stripeCustomer.id, 160);
         paymentUrl = payment.url;
         referenceId = payment.id;
-        
-        const transaction = await transactionServices.createTransaction({
-            userId: tenantUserId.userId,
+
+        // Create a transaction for the payee (the person who will make the payment)
+        const payeeTransaction = await transactionServices.createTransaction({
+            userId: payeeId,
             amount: amount,
-            description: `Wallet funding of ${amount} ${currency.toUpperCase()} via STRIPE : ${description}`,
-            transactionType: TransactionType.FUNDWALLET,
-            transactionStatus: TransactionStatus.PENDING,
-            walletId: wallet.id,
+            description: `Payment of ${amount} ${currency.toUpperCase()} via STRIPE: ${description}`,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.PENDING,
+            reference: TransactionReference.MAKE_PAYMENT,
+            walletId: payeeWallet.id,
+            referenceId: referenceId,
+            paymentGateway: PaymentGateway.STRIPE,
+            ...(PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
+        });
+
+        // Create a pending transaction for the creator (the person who will receive the payment)
+        await transactionServices.createTransaction({
+            userId: creatorId,
+            amount: amount,
+            description: `Pending receipt of ${amount} ${currency.toUpperCase()} via STRIPE: ${description}`,
+            type: TransactionType.CREDIT,
+            status: TransactionStatus.PENDING,
+            reference: TransactionReference.RECEIVE_PAYMENT,
+            walletId: creatorWallet.id,
             referenceId: referenceId,
             paymentGateway: PaymentGateway.STRIPE,
             ...(PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
@@ -119,20 +142,20 @@ class FinanceService {
 
         return {
             paymentDetails: paymentResponse,
-            transactionDetails: transaction,
-            paymentUrl: paymentUrl, // Only for Flutterwave and Paystack
+            transactionDetails: payeeTransaction,
+            paymentUrl: paymentUrl, 
         };
     }
 
-    async getMonthlyAnalysis(month: number, year: number, propertyId: string, landlordId: string) {
+    async getMonthlyAnalysis(month: number, year: number, propertyId: string, userId: string) {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0);
 
-        const transactions = await prismaClient.propertyTransactions.findMany({
+        const transactions = await prismaClient.transaction.findMany({
             where: {
                 propertyId,
-                landlordsId: landlordId,
-                paidDate: {
+                userId,
+                createdAt: {
                     gte: startDate,
                     lte: endDate,
                 },
@@ -144,31 +167,31 @@ class FinanceService {
         let overduePayments = 0;
 
         transactions.forEach((transaction) => {
-            if (transaction.type === 'RENT_PAYMENT') {
+            if (transaction.reference === 'RENT_PAYMENT') {
                 totalRevenue += transaction.amount.toNumber();
             } else if (
-                transaction.type === 'MAINTAINACE_FEE' ||
-                transaction.type === 'BILL_PAYMENT' ||
-                transaction.type === 'LATE_FEE' ||
-                transaction.type === 'CHARGES'
+                transaction.reference === 'MAINTENANCE_FEE' ||
+                transaction.reference === 'BILL_PAYMENT' ||
+                transaction.reference === 'LATE_FEE' ||
+                transaction.reference === 'CHARGES'
             ) {
                 totalExpenses += transaction.amount.toNumber();
             }
         });
 
         // Fetch overdue payments
-        const overdueTransactions = await prismaClient.propertyTransactions.findMany({
-            where: {
-                propertyId,
-                landlordsId: landlordId,
-                nextDueDate: {
-                    lt: new Date(), // Past due date
-                },
-                transactionStatus: 'PENDING',
-            },
-        });
+        // const overdueTransactions = await prismaClient.transaction.findMany({
+        //     where: {
+        //         propertyId,
+        //         userId,
+        //         nextDueDate: {
+        //             lt: new Date(), // Past due date
+        //         },
 
-        overduePayments = overdueTransactions.reduce((sum, transaction) => sum + transaction.amount.toNumber(), 0);
+        //     },
+        // });
+
+        // overduePayments = overdueTransactions.reduce((sum, transaction) => sum + transaction.amount.toNumber(), 0);
 
         return {
             totalRevenue,
@@ -178,7 +201,7 @@ class FinanceService {
         };
     }
 
-    async getIncomeStatistics(propertyId: string, landlordId: string) {
+    async getIncomeStatistics(propertyId: string, userId: string) {
         const monthlyPayments = [];
         const currentYear = new Date().getFullYear();
 
@@ -186,15 +209,15 @@ class FinanceService {
             const startDate = new Date(currentYear, month - 1, 1);
             const endDate = new Date(currentYear, month, 0);
 
-            const transactions = await prismaClient.propertyTransactions.findMany({
+            const transactions = await prismaClient.transaction.findMany({
                 where: {
                     propertyId,
-                    landlordsId: landlordId,
-                    paidDate: {
+                    userId,
+                    createdAt: {
                         gte: startDate,
                         lte: endDate,
                     },
-                    transactionStatus: TransactionStatus.COMPLETED,
+                    status: TransactionStatus.COMPLETED,
                 },
             });
 
@@ -203,11 +226,11 @@ class FinanceService {
             let totalCharges = 0;
 
             transactions.forEach((transaction) => {
-                if (transaction.type === 'RENT_PAYMENT') {
+                if (transaction.reference === 'RENT_PAYMENT') {
                     totalRentPayments += transaction.amount.toNumber();
-                } else if (transaction.type === 'LATE_FEE') {
+                } else if (transaction.reference === 'LATE_FEE') {
                     totalLateFees += transaction.amount.toNumber();
-                } else if (transaction.type === 'CHARGES') {
+                } else if (transaction.reference === 'CHARGES') {
                     totalCharges += transaction.amount.toNumber();
                 }
             });
@@ -223,7 +246,7 @@ class FinanceService {
         return monthlyPayments;
     }
 
-    async createBudget(propertyId: string, transactionType: PropertyTransactionsType, budgetAmount: number, frequency: BudgetFrequency) {
+    async createBudget(propertyId: string, transactionType: TransactionReference, budgetAmount: number, frequency: BudgetFrequency) {
         return await prismaClient.budget.create({
             data: {
                 propertyId,

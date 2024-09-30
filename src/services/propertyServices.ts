@@ -1,4 +1,3 @@
-import { PropertyTransactionsType, TransactionStatus, TransactionType } from '@prisma/client';
 import { prismaClient } from "..";
 import { ICreateProperty } from "../validations/interfaces/properties.interface";
 
@@ -112,7 +111,7 @@ class PropertyService {
     getPropertyExpenses = async (landlordId: string, propertyId: string) => {
         return await prismaClient.maintenance.findMany({
             where: {
-                userId: landlordId,
+                landlordId,
                 propertyId,
             }
         })

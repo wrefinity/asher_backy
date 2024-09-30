@@ -32,7 +32,7 @@ model Ads {
   userId           String
   user             users         @relation(fields: [userId], references: [id])
   referenceId      String?
-  transaction      Transactions? @relation(fields: [referenceId], references: [id])
+  transaction      Transaction? @relation(fields: [referenceId], references: [id])
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 }
@@ -44,7 +44,6 @@ model landlords {
   user                  users                   @relation(fields: [userId], references: [id])
   tenants               tenants[]
   lnadlordSupportTicket lnadlordSupportTicket[]
-  transactions          PropertyTransactions[]
   bills                 bills[]
   reviews               reviews[]
 
@@ -101,7 +100,7 @@ model properties {
   videourl String[]
 
   //transaction can be expenses incurred or income generated
-  transactions PropertyTransactions[]
+  transactions Transaction[]
 
   amenities            String[]
   // apartments
@@ -162,7 +161,7 @@ model apartments {
   propertyId           String
   property             properties                     @relation(fields: [propertyId], references: [id])
   histories            appartmentTransactionHistory[]
-  transactions         PropertyTransactions[]
+  transactions         Transaction[]
   tenantPaymentHistory tenantPaymentHistory[]
   tenantsId            String?
   currentTenant        tenants?                       @relation(fields: [tenantsId], references: [id])
@@ -259,7 +258,6 @@ model tenants {
   appartmentTransactionHistory appartmentTransactionHistory[]
   apartments                   apartments[]
   tenantSupportTicket          tenantSupportTicket[]
-  PropertyTransactions         PropertyTransactions[]
 
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -270,6 +268,7 @@ model tenants {
 
   @@unique([userId, propertyId])
   @@unique([userId])
+  bills bills[]
 }
 
 // user information definition 
@@ -320,7 +319,7 @@ model users {
   CommunityMember        CommunityMember[]
   // maintenance            maintenance[]
   Ads                    Ads[]
-  Transactions           Transactions[]
+  transactions           Transaction[]
 
   // maintenance maintenance[] @relation(name: "vendorUser")
   // tenantMaintenanceUser maintenance[]      @relation("tenantUser")
@@ -381,7 +380,7 @@ model wallet {
   balance      Decimal        @default(0.00) @db.Decimal(18, 2)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  Transactions Transactions[]
+  transactions Transaction[]
 }
 
 //  status will be in-progress, completed, assigned, aborted

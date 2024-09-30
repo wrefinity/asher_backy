@@ -26,9 +26,18 @@ class BroadcastService {
         });
     }
 
-    async sendBroadcast(broadcastData) {
+    async sendBroadcast(broadcastData, landlordId: string) {
         const { type, category, subject, recipients, message } = broadcastData;
-
+        const broadcast = await prismaClient.broadcast.create({
+            data: {
+              landlordId,
+              type,
+              category,
+              subject,
+              message,
+              recipients,
+            },
+          });
         try {
             if (type === BroadcastType.EMAIL) {
                 const batchSize = 100; // Number of emails to send in a batch
@@ -40,7 +49,7 @@ class BroadcastService {
                 // Handle chat messaging
             }
 
-            return { message: 'Broadcast sent successfully!' };
+            return { message: 'Broadcast initiated successfully!', broadcastId: broadcast.id };
         } catch (error) {
             throw new Error(`Failed to send broadcast: ${error.message}`);
         }

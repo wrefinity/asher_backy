@@ -2,10 +2,25 @@
 //   EXPENSE
 //   REVENUE
 // }
-enum TransactionType {
-  FUNDWALLET
+enum TransactionReference {
+  FUND_WALLET
   WITHDRAWAL
-  MAKEPAYMENT
+  MAKE_PAYMENT
+  RECEIVE_PAYMENT
+  RENT_DUE
+  RENT_PAYMENT
+  MAINTENANCE_FEE
+  LANDLORD_PAYOUT
+  BILL_PAYMENT
+  LATE_FEE
+  CHARGES
+  SUPPLIES
+  EQUIPMENTS
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
 }
 
 enum TransactionStatus {
@@ -21,36 +36,6 @@ enum PaymentGateway {
   PAYSTACK
 }
 
-model Transactions {
-  id                    String             @id @default(cuid())
-  description           String
-  amount                Decimal            @db.Decimal(18, 2)
-  userId                String
-  user                  users              @relation(fields: [userId], references: [id])
-  transactionType       TransactionType?
-  transactionStatus     TransactionStatus?
-  walletId              String
-  wallet                wallet             @relation(fields: [walletId], references: [id])
-  referenceId           String             @unique
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  stripePaymentIntentId String?            @unique
-  Ads                   Ads[]
-  paymentGateway        PaymentGateway?
-}
-
-enum PropertyTransactionsType {
-  RENT_DUE
-  RENT_PAYMENT
-  MAINTAINACE_FEE
-  LANDLORD_PAYOUT
-  BILL_PAYMENT
-  LATE_FEE
-  CHARGES
-  SUPPLIES
-  EQUIPMENTS
-}
-
 enum PaymentFrequency {
   DAILY
   WEEKLY
@@ -58,31 +43,32 @@ enum PaymentFrequency {
   YEARLY
 }
 
-model PropertyTransactions {
-  id                           String                         @id @default(cuid())
-  description                  String
-  amount                       Decimal                        @db.Decimal(18, 2)
-  propertyId                   String
-  properties                   properties                     @relation(fields: [propertyId], references: [id])
-  appartmentId                 String?
-  apartments                   apartments?                    @relation(fields: [appartmentId], references: [id])
-  tenantId                     String
-  tenant                       tenants                        @relation(fields: [tenantId], references: [tenantId])
-  appartmentTransactionHistory appartmentTransactionHistory[]
-  transactionStatus            TransactionStatus
-  type                         PropertyTransactionsType
-  referenceId                  String                         @unique
-  paidDate                     DateTime                       @default(now())
-  updatedAt                    DateTime                       @updatedAt
-  paymentFrequency             PaymentFrequency?
-  nextDueDate                  DateTime?
-  lastPaidDate                 DateTime?
-  missedPayment                Int                            @default(0)
-  billsId                      String?
-  bills                        bills?                         @relation(fields: [billsId], references: [id])
-  landlords                    landlords?                     @relation(fields: [landlordsId], references: [id])
-  landlordsId                  String?
-  attachment                   String[]
+model Transaction {
+  id                    String               @id @default(cuid())
+  description           String
+  amount                Decimal              @db.Decimal(18, 2)
+  userId                String               @unique
+  user                  users                @relation(fields: [userId], references: [id])
+  walletId              String?
+  wallet                wallet?              @relation(fields: [walletId], references: [id])
+  type                  TransactionType
+  reference             TransactionReference
+  status                TransactionStatus
+  referenceId           String
+  paymentGateway        PaymentGateway?
+  stripePaymentIntentId String?              @unique
+  propertyId            String?
+  property              properties?          @relation(fields: [propertyId], references: [id])
+  apartmentId           String?
+  apartment             apartments?          @relation(fields: [apartmentId], references: [id])
+  billId                String?
+  bill                  bills?               @relation(fields: [billId], references: [id])
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  apartmentTransactionHistory appartmentTransactionHistory[]
+
+  Ads Ads[]
 }
 
 model tenantPaymentHistory {
@@ -114,25 +100,27 @@ model appartmentTransactionHistory {
   tenant   tenants @relation(fields: [tenantId], references: [id])
 
   transactionId String?
-  transactions  PropertyTransactions? @relation(fields: [transactionId], references: [id])
+  transactions  Transaction? @relation(fields: [transactionId], references: [id])
 }
 
 model bills {
-  id            String                 @id @default(cuid())
-  billId        String                 @unique
+  id            String           @id @default(cuid())
+  billId        String           @unique
   billName      String
   billCategory  String
   description   String
-  amount        Decimal                @db.Decimal(18, 2)
+  amount        Decimal          @db.Decimal(18, 2)
   billFrequency PaymentFrequency
   dueDate       DateTime
   propertyId    String
-  property      properties             @relation(fields: [propertyId], references: [id])
-  landlordId    String                 @unique
-  landlord      landlords              @relation(fields: [landlordId], references: [id])
-  transactions  PropertyTransactions[]
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  property      properties       @relation(fields: [propertyId], references: [id])
+  landlordId    String           @unique
+  landlord      landlords        @relation(fields: [landlordId], references: [id])
+  tenantId      String
+  tenant        tenants          @relation(fields: [tenantId], references: [id])
+  transactions  Transaction[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 }
 
 // New Subscription model
@@ -148,14 +136,14 @@ model Subscription {
 }
 
 model Budget {
-  id              String                   @id @default(cuid())
+  id              String               @id @default(cuid())
   propertyId      String
-  transactionType PropertyTransactionsType
+  transactionType TransactionReference
   budgetAmount    Float
-  currentAmount   Float                    @default(0)
+  currentAmount   Float                @default(0)
   frequency       BudgetFrequency
-  alertThreshold  Float                    @default(0.8) // 80% threshold
-  property        properties               @relation(fields: [propertyId], references: [id])
+  alertThreshold  Float                @default(0.8) // 80% threshold
+  property        properties           @relation(fields: [propertyId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

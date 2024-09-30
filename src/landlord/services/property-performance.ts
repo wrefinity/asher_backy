@@ -1,4 +1,4 @@
-import { PropertyTransactionsType, TransactionStatus } from "@prisma/client";
+import {  TransactionReference, TransactionStatus } from "@prisma/client";
 import Queue from 'bull';
 import { prismaClient } from "../..";
 import RedisService from "../../services/utilsServices/redis.service";
@@ -63,13 +63,13 @@ class PropertyPerformaceService {
                 totalApartments: true,
                 transactions: {
                     where: {
-                        type: {
+                        reference: {
                             in: [
-                                PropertyTransactionsType.BILL_PAYMENT,
-                                PropertyTransactionsType.RENT_PAYMENT,
+                                TransactionReference.BILL_PAYMENT,
+                                TransactionReference.RENT_PAYMENT,
                             ]
                         },
-                        transactionStatus: TransactionStatus.COMPLETED,
+                        status: TransactionStatus.COMPLETED,
                     }
 
                 }
@@ -87,22 +87,22 @@ class PropertyPerformaceService {
 
     async getNetOperatingIncome(propertyId: string) {
         //total rent income
-        const rentalIncome = await prismaClient.propertyTransactions.aggregate({
+        const rentalIncome = await prismaClient.transaction.aggregate({
             where:
             {
                 propertyId: propertyId,
-                type: PropertyTransactionsType.RENT_PAYMENT,
-                transactionStatus: TransactionStatus.COMPLETED
+                reference: TransactionReference.RENT_PAYMENT,
+                status: TransactionStatus.COMPLETED
             },
             _sum: { amount: true }
         })
 
         // total operating income
-        const operatingIncome = await prismaClient.propertyTransactions.aggregate({
+        const operatingIncome = await prismaClient.transaction.aggregate({
             where: {
                 propertyId: propertyId,
-                type: { in: [PropertyTransactionsType.MAINTAINACE_FEE] },
-                transactionStatus: TransactionStatus.COMPLETED
+                reference: { in: [TransactionReference.MAINTENANCE_FEE] },
+                status: TransactionStatus.COMPLETED
             },
             _sum: { amount: true }
         })
@@ -177,11 +177,11 @@ class PropertyPerformaceService {
 
     //financial overview
     async getFinancialOverview(entityId: string, isApartment: boolean) {
-        const totalRevenue = await prismaClient.propertyTransactions.aggregate({
+        const totalRevenue = await prismaClient.transaction.aggregate({
             where: {
                 ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
-                type: { in: [PropertyTransactionsType.BILL_PAYMENT, PropertyTransactionsType.RENT_PAYMENT] },
-                transactionStatus: TransactionStatus.COMPLETED,
+                reference: { in: [TransactionReference.BILL_PAYMENT, TransactionReference.RENT_PAYMENT] },
+                status: TransactionStatus.COMPLETED,
             },
             _sum: { amount: true },
         });
@@ -220,18 +220,18 @@ class PropertyPerformaceService {
     }
 
     async getRentRenewalRate(entityId: string, isApartment: boolean) {
-        const totalRentals = await prismaClient.propertyTransactions.count({
+        const totalRentals = await prismaClient.transaction.count({
             where: {
                 ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
-                type: PropertyTransactionsType.RENT_PAYMENT
+                reference: TransactionReference.RENT_PAYMENT
             }
         });
 
-        const renewedRentals = await prismaClient.propertyTransactions.count({
+        const renewedRentals = await prismaClient.transaction.count({
             where: {
                 ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
-                type: PropertyTransactionsType.RENT_PAYMENT,
-                transactionStatus: TransactionStatus.RENT_RENEWED,
+                reference: TransactionReference.RENT_PAYMENT,
+                status: TransactionStatus.RENT_RENEWED,
             }
         });
 
@@ -246,13 +246,13 @@ class PropertyPerformaceService {
 async  getRentVSExpenseMonthlyData(entityId: string, isApartment: boolean, startDate: Date, endDate: Date) {
     try {
         // Fetch monthly rent data with details
-        const rentData = await prismaClient.propertyTransactions.groupBy({
-            by: ['paidDate', 'type'],
+        const rentData = await prismaClient.transaction.groupBy({
+            by: ['createdAt', 'reference'],
             where: {
                 ...(isApartment ? { apartmentId: entityId } : { propertyId: entityId }),
-                type: { in: [PropertyTransactionsType.RENT_PAYMENT, PropertyTransactionsType.LATE_FEE, PropertyTransactionsType.CHARGES] },
-                transactionStatus: TransactionStatus.COMPLETED,
-                paidDate: {
+                reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
+                status: TransactionStatus.COMPLETED,
+                createdAt: {
                     gte: startDate,
                     lte: endDate
                 }
@@ -284,8 +284,8 @@ async  getRentVSExpenseMonthlyData(entityId: string, isApartment: boolean, start
         // Process rent data
         const rentMap = new Map<string, Map<string, number>>();
         for (const data of rentData) {
-            const month = new Date(data.paidDate).toLocaleString('default', { month: 'short', year: 'numeric' });
-            const type = data.type;
+            const month = new Date(data.createdAt).toLocaleString('default', { month: 'short', year: 'numeric' });
+            const reference = data.reference;
             const amount = data._sum.amount || 0;
             
             if (!rentMap.has(month)) {
@@ -293,7 +293,7 @@ async  getRentVSExpenseMonthlyData(entityId: string, isApartment: boolean, start
             }
 
             const monthMap = rentMap.get(month);
-            monthMap.set(type, (monthMap.get(type) || 0) + parseFloat(amount.toString()));
+            monthMap.set(reference, (monthMap.get(reference) || 0) + parseFloat(amount.toString()));
         }
 
         const rentByMonth = Array.from(rentMap.entries()).map(([month, typesMap]) => ({
