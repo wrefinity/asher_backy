@@ -16,6 +16,18 @@ class BillService {
         })
     }
 
+    async createTenantBill(billData: any, landlordId: string) {
+        const billId = generateIDs('BILL')
+        return prismaClient.bills.create({
+            data: {
+                landlordId,
+                billId,
+                description: `Created ${billData.billName}`,
+                ...billData,
+            },
+        })
+    }
+
     async getAllBills(landlordId: string) {
         return prismaClient.bills.findMany({
             where: {

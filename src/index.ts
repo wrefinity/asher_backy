@@ -1,33 +1,33 @@
 import cookieParser from 'cookie-parser';
 import express, { Express } from "express";
 import session from "express-session";
-import connectDB from './db/mongo_connnect';
 import { APP_SECRET, PORT } from "./secrets";
 
+import { PrismaClient } from "@prisma/client";
 import ApplicationRouter from "./routes/applicant";
 import AuthRouter from "./routes/auth";
 import CategoryRouter from "./routes/category";
 import ChatRoomRouter from "./routes/chats";
 import EmailRouter from "./routes/email";
+import MaintenanceRouter from "./routes/maintenance";
+import NotificationRouter from "./routes/notification";
 import ProfileRouter from "./routes/profile";
 import PropertyRouter from "./routes/property";
+import ReviewsRouter from "./routes/reviews";
+import VendorServiceRouter from "./routes/services";
 import StatusRouter from "./routes/status";
 import TransactionRouter from "./routes/transaction";
-import ReviewsRouter from "./routes/reviews";
-import NotificationRouter from "./routes/notification";
-import VendorServiceRouter from "./routes/services"
-import MaintenanceRouter from "./routes/maintenance"
-import { PrismaClient } from "@prisma/client";
 import WalletRouter from "./routes/wallet";
 import paystackServices from "./services/paystack.services";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
 import TenantDashboardRouter from "./tenant/routes/dashboard.routes";
-import JobManager from './jobManager';
+import TenantBillsRouter from "./tenant/routes/tenant-bills.routes";
 
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
+import flutterWaveService from './services/flutterWave.service';
 
 
 
@@ -68,7 +68,7 @@ class Server {
         // Add routes here
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
         this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
-        this.app.post("/flutterwave/webhook", (req, res) => paystackServices.handleWebhook(req, res))
+        this.app.post("/flutterwave/webhook", (req, res) => flutterWaveService.handleWebhook(req, res))
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/notification", NotificationRouter)
@@ -88,7 +88,7 @@ class Server {
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenant/dashboard", TenantDashboardRouter);
-        
+        this.app.use("/api/tenants", TenantBillsRouter);
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
 

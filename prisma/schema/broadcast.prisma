@@ -1,0 +1,17 @@
+model Broadcast {
+    id         String        @id @default(cuid())
+    landlordId String
+    subject    String
+    message    String
+    type       BroadcastType
+    recipients String[] // Array of recipient emails
+    category   String
+    createdAt  DateTime      @default(now())
+    updatedAt  DateTime      @updatedAt
+    landlord   landlords     @relation(fields: [landlordId], references: [id])
+}
+
+enum BroadcastType {
+    EMAIL
+    CHAT
+}

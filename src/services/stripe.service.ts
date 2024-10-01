@@ -34,7 +34,7 @@ type StripeWebhookEvent = {
     id: string;
     type: string;
     data: {
-        object: StripePaymentIntent | StripeSubscription;
+        object: any;
     };
 };
 
@@ -142,6 +142,9 @@ class StripeService {
 
         try {
             switch (event.type) {
+                case 'checkout.session.completed':
+                    await this.handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+                    break;
                 case 'payment_intent.succeeded':
                     await this.handleSuccessfulPayment(event.data.object as StripePaymentIntent);
                     break;
@@ -166,9 +169,21 @@ class StripeService {
             res.status(500).send('Error processing webhook');
         }
     }
-
+    
+    async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
+        // Ensure the session is paid
+        if (session.payment_status === 'paid') {
+          // Extract the session ID
+          const sessionId = session.id;
+    
+          // Call your existing handleLinkSuccessfulPayment method
+          await this.handleLinkSuccessfulPayment(sessionId);
+        } else {
+          console.log(`Checkout session ${session.id} was not paid`);
+        }
+      }
     async handleSuccessfulPayment(paymentIntent: StripePaymentIntent): Promise<void> {
-        const transaction = await prismaClient.transactions.findUnique({
+        const transaction = await prismaClient.transaction.findUnique({
             where: { stripePaymentIntentId: paymentIntent.id },
         });
 
@@ -178,10 +193,10 @@ class StripeService {
         }
 
         await prismaClient.$transaction(async (prisma) => {
-            await prisma.transactions.update({
+            await prisma.transaction.update({
                 where: { id: transaction.id },
                 data: {
-                    transactionStatus: TransactionStatus.COMPLETED,
+                    status: TransactionStatus.COMPLETED,
                 },
             });
 
@@ -193,11 +208,13 @@ class StripeService {
                     },
                 },
             });
+
+            
         });
     }
 
     private async handleFailedPayment(paymentIntent: StripePaymentIntent): Promise<void> {
-        const transaction = await prismaClient.transactions.findUnique({
+        const transaction = await prismaClient.transaction.findUnique({
             where: { stripePaymentIntentId: paymentIntent.id },
         });
 
@@ -206,10 +223,10 @@ class StripeService {
             return;
         }
 
-        await prismaClient.transactions.update({
+        await prismaClient.transaction.update({
             where: { id: transaction.id },
             data: {
-                transactionStatus: TransactionStatus.FAILED,
+                status: TransactionStatus.FAILED,
             },
         });
 
@@ -285,6 +302,53 @@ class StripeService {
         };
     }
 
+    async handleLinkSuccessfulPayment(sessionId: string): Promise<void> {
+        const payeeTransaction = await prismaClient.transaction.findFirst({
+          where: { 
+            stripePaymentIntentId: sessionId,
+            type: TransactionType.DEBIT
+          },
+        });
+      
+        const creatorTransaction = await prismaClient.transaction.findFirst({
+          where: { 
+            stripePaymentIntentId: sessionId,
+            type: TransactionType.CREDIT
+          },
+        });
+      
+        if (!payeeTransaction || !creatorTransaction) {
+          console.error(`Transactions not found for PaymentIntent: ${sessionId}`);
+          return;
+        }
+      
+        await prismaClient.$transaction(async (prisma) => {
+          // Update payee's transaction status
+          await prisma.transaction.update({
+            where: { id: payeeTransaction.id },
+            data: { status: TransactionStatus.COMPLETED },
+          });
+      
+          // Update creator's transaction status
+          await prisma.transaction.update({
+            where: { id: creatorTransaction.id },
+            data: { status: TransactionStatus.COMPLETED },
+          });
+      
+          // Update payee's wallet (debit)
+          await prisma.wallet.update({
+            where: { id: payeeTransaction.walletId },
+            data: { balance: { decrement: payeeTransaction.amount } },
+          });
+      
+          // Update creator's wallet (credit)
+          await prisma.wallet.update({
+            where: { id: creatorTransaction.walletId },
+            data: { balance: { increment: creatorTransaction.amount } },
+          });
+        });
+    }
+
     private async getUserIdFromStripeCustomerId(stripeCustomerId: string): Promise<string> {
         const user = await prismaClient.users.findFirst({
             where: { stripeCustomerId },
@@ -296,6 +360,44 @@ class StripeService {
 
         return user.id;
     }
+
+    async createPaymentLink(amount: number, currency: string, customerId: string, expiryDurationInMinutes: number) {
+        try {
+            // Create a new Checkout Session
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [
+                    {
+                        price_data: {
+                            currency: currency,
+                            product_data: {
+                                name: 'Service Payment',
+                            },
+                            unit_amount: amount,
+                        },
+                        quantity: 1,
+                    },
+                ],
+                mode: 'payment',
+                customer: customerId,
+                // Set the expiration time for the checkout session
+                expires_at: Math.floor(Date.now() / 1000) + expiryDurationInMinutes * 60,
+                success_url: 'https://yourdomain.com/success',
+                cancel_url: 'https://yourdomain.com/cancel',
+            });
+            console.log(session);
+
+            // Return the URL to the checkout session
+            return {
+                id: session.id,
+                url: session.url,
+            };
+        } catch (error) {
+            console.error('Error creating Stripe payment link:', error);
+            throw new Error('Failed to create Stripe payment link');
+        }
+    }
+
 }
 
 export default new StripeService();

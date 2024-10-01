@@ -1,7 +1,7 @@
 import { Response } from "express";
 import errorService from "../../services/error.service";
 import { CustomRequest } from "../../utils/types";
-import { billSchema } from "../validations/schema/billSchema";
+import { billSchema, tenantBillSchema } from "../validations/schema/billSchema";
 import billServices from "../services/bill.services";
 
 class BillController {
@@ -13,6 +13,19 @@ class BillController {
         const landlordId = req.user?.landlords?.id;
         try {
             const bill = await billServices.createBill(value, landlordId);
+            return res.status(201).json(bill);
+
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+
+    createTenantBill = async (req: CustomRequest, res: Response) =>{
+        const { error, value } = tenantBillSchema.validate(req.body);
+        if (error) return res.status(400).json({ message: error.details[0].message });
+        const landlordId = req.user?.landlords?.id;
+        try {
+            const bill = await billServices.createTenantBill(value, landlordId);
             return res.status(201).json(bill);
 
         } catch (error) {

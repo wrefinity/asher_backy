@@ -1,4 +1,5 @@
-import { PropertyTransactionsType } from '@prisma/client';
+
+import { TransactionReference } from '@prisma/client';
 import { Request } from 'express';
 
 export type JWTPayload = {
@@ -149,5 +150,5 @@ export type WebhookEventResponse = {
 
 export type PayBillType = {
     amount: number;
-    billType: PropertyTransactionsType
+    billType: TransactionReference
 }

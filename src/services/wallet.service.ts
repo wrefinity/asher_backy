@@ -1,4 +1,4 @@
-import { PaymentGateway, TransactionStatus, TransactionType } from "@prisma/client";
+import { PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 import paystackServices from "./paystack.services";
 import transactionService from "./transaction.services";
@@ -67,8 +67,9 @@ class WalletService {
             userId,
             amount: amount,
             description: `Wallet funding of ${amount}`,
-            transactionType: TransactionType.FUNDWALLET,
-            transactionStatus: TransactionStatus.PENDING,
+            type: TransactionType.CREDIT,
+            status: TransactionStatus.PENDING,
+            reference: TransactionReference.FUND_WALLET,
             walletId: wallet.id,
             referenceId: paymentResponse.data.reference
         })
@@ -111,8 +112,9 @@ class WalletService {
             userId,
             amount: amount,
             description: `Wallet funding of ${amount} ${currency.toUpperCase()}`,
-            transactionType: TransactionType.FUNDWALLET,
-            transactionStatus: TransactionStatus.PENDING,
+            type: TransactionType.CREDIT,
+            status: TransactionStatus.PENDING,
+            reference: TransactionReference.FUND_WALLET,
             walletId: wallet.id,
             referenceId: paymentIntent.id, // Use Stripe PaymentIntent ID as reference
             stripePaymentIntentId: paymentIntent.id,
@@ -157,8 +159,9 @@ class WalletService {
             userId,
             amount: amount,
             description: `Wallet funding of ${amount} ${currency.toUpperCase()}`,
-            transactionType: TransactionType.FUNDWALLET,
-            transactionStatus: TransactionStatus.PENDING,
+            type: TransactionType.CREDIT,
+            status: TransactionStatus.PENDING,
+            reference: TransactionReference.FUND_WALLET,
             walletId: wallet.id,
             referenceId: referenceId,
             paymentGateway: PaymentGateway.FLUTTERWAVE,
@@ -171,7 +174,7 @@ class WalletService {
         };
     }
 
-    async fundWalletGeneral(userId: string, amount: number, currency: string = 'usd', countryCode: string) {
+    async fundWalletGeneral(userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway:PaymentGateway) {
         const wallet = await this.getOrCreateWallet(userId);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
@@ -188,10 +191,9 @@ class WalletService {
             throw new Error("User not found.");
         }
         console.log(countryCode)
-        const gateway = paymentGatewayService.selectGateway(countryCode);
+        const gateway = paymentGateway ? paymentGateway : paymentGatewayService.selectGateway(countryCode);
         console.log(gateway);
 
-        return
         let paymentResponse;
         let referenceId;
         let paymentUrl;
@@ -241,8 +243,9 @@ class WalletService {
             userId,
             amount: amount,
             description: `Wallet funding of ${amount} ${currency.toUpperCase()} via ${gateway}`,
-            transactionType: TransactionType.FUNDWALLET,
-            transactionStatus: TransactionStatus.PENDING,
+            type: TransactionType.CREDIT,
+            status: TransactionStatus.PENDING,
+            reference: TransactionReference.FUND_WALLET,
             walletId: wallet.id,
             referenceId: referenceId,
             paymentGateway: gateway,
@@ -252,7 +255,7 @@ class WalletService {
         return {
             paymentDetails: paymentResponse,
             transactionDetails: transaction,
-            paymentUrl: paymentUrl, // Only for Flutterwave and Paystack
+            paymentUrl: paymentUrl,
         };
     }
 

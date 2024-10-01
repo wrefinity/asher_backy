@@ -1,4 +1,4 @@
-import { TransactionStatus, TransactionType } from "@prisma/client";
+import { TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 import walletService from "./wallet.service";
 import { randomBytes } from 'crypto';
@@ -26,13 +26,14 @@ class TransferService {
             })
 
             // create transaction record
-            const transactionRecord = await prisma.transactions.create({
+            const transactionRecord = await prisma.transaction.create({
                 data: {
                     userId: senderId,
                     amount: data.amount,
                     description: data.description || `Transferred ${data.amount} to ${recieiverWallet.userId}`,
-                    transactionType:  data.transactionType || TransactionType.MAKEPAYMENT,
-                    transactionStatus: TransactionStatus.COMPLETED,
+                    type: TransactionType.DEBIT,
+                    reference: data.reference || TransactionReference.MAKE_PAYMENT,
+                    status: TransactionStatus.COMPLETED,
                     walletId: senderWallet.id,
                     referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`
                 }
@@ -45,7 +46,7 @@ class TransferService {
     }
 
     async getTransactionsByUserId(userId: string) {
-        return prismaClient.transactions.findMany({
+        return prismaClient.transaction.findMany({
             where: { userId },
             include: {
                 wallet: true
@@ -57,12 +58,24 @@ class TransferService {
         //get tenant information
         const tenant = await prismaClient.tenants.findUnique({
             where: { id: tenantId },
+            include: {
+                landlord: {
+                    select: { userId: true }
+                },
+                user: {
+                    include: {
+                        profile: {
+                            select: { fullname: true }
+                        }
+                    }
+                }
+            }
         })
         if (!tenant) {
             throw new Error('Tenant not found');
         }
-        const tenantWallet = await walletService.getOrCreateWallet(tenant.id);
-        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlordId);
+        const tenantWallet = await walletService.getOrCreateWallet(tenant.userId);
+        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlord.userId);
 
         await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount);
 
@@ -79,23 +92,33 @@ class TransferService {
                 data: { balance: { increment: data.amount } }
             })
 
-            // create propertyTransaction table
-
-            const propertyTransaction = await prisma.propertyTransactions.create({
+            // create tenant transaction table
+            const propertyTransaction = await prisma.transaction.create({
                 data: {
-                    tenantId: tenant.id,
-                    landlordId: tenant.landlordId,
+                    userId: tenant.userId,
                     amount: data.amount,
                     description: `${data.billType} payment transaction`,
-                    type: data.billType,
-                    transactionStatus: TransactionStatus.COMPLETED,
+                    type: TransactionType.DEBIT,
+                    reference: data.billType,
+                    status: TransactionStatus.COMPLETED,
                     walletId: tenantWallet.id,
                     referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
-                    paidDate: new Date(),
                     propertyId: tenant.propertyId,
-                    appartmentId: tenant.apartmentOrFlatNumber.toString(),
-                } as any
+                    apartmentId: tenant.apartmentOrFlatNumber.toString(),
+                }
             })
+
+            //create landlord transaction
+            await transactionServices.createCounterpartyTransaction({
+                userId: tenant.landlord.userId,
+                amount: data.amount,
+                description: `${data.billType} payment received from ${tenant.user?.profile?.fullname}`,
+                reference: data.billType,
+                walletId: landlordWallet.id,
+                propertyId: data?.propertyId,
+                apartmentId: data?.apartmentId,
+                billId: data?.billId,
+            });
 
             // TODO: Update the model for auto payment
             // If set_auto is true, update tenant's auto-payment settings
@@ -147,8 +170,9 @@ class TransferService {
                 userId: user.id,
                 amount: amount,
                 description: 'Making payment for Ads',
-                transactionType: TransactionType.MAKEPAYMENT,
-                transactionStatus: TransactionStatus.COMPLETED,
+                reference: TransactionReference.MAKE_PAYMENT,
+                type: TransactionType.DEBIT,
+                status: TransactionStatus.COMPLETED,
                 walletId: userWallet.id,
                 referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`
 
