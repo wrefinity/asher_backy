@@ -1,5 +1,5 @@
-import { PropertyTransactionsType, Rating, TransactionType, users } from "@prisma/client"
-import { prismaClient } from "../.."
+import { Rating, TransactionReference, users } from "@prisma/client";
+import { prismaClient } from "../..";
 
 interface CreditScoreType {
     score: number;
@@ -70,9 +70,9 @@ class CreditScoreService {
 
     private async calculatePaymentHistoryScore(user: users): Promise<number> {
         // TODO: Implement payment history score calculation
-        const payments = await prismaClient.propertyTransactions.findMany({
-            where: { tenantId: user.id, type: PropertyTransactionsType.RENT_PAYMENT },
-            orderBy: { paidDate: 'desc' },
+        const payments = await prismaClient.transaction.findMany({
+            where: { userId: user.id, reference: TransactionReference.RENT_PAYMENT },
+            orderBy: { createdAt: 'desc' },
             take: 8, // consider the last 8 payments
         });
 
@@ -85,7 +85,7 @@ class CreditScoreService {
         payments.forEach(payment => {
             //TODO: Note dueDatepayment for the transaction type
             const dueDate = new Date()
-            const paymentDate = new Date(payment.paidDate);
+            const paymentDate = new Date(payment.createdAt);
 
             if (paymentDate <= dueDate) {
                 onTimePayments += 1

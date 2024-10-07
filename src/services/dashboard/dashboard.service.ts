@@ -1,4 +1,4 @@
-import { creditScore, PropertyTransactions, PropertyTransactionsType, Transactions, TransactionStatus, users } from "@prisma/client";
+import { creditScore, Transaction, TransactionReference, TransactionStatus, users } from '@prisma/client';
 
 import { Decimal } from "@prisma/client/runtime/library";
 import { prismaClient } from "../..";
@@ -12,9 +12,9 @@ const dashboardUpdateQueue = new Queue('dashboardUpdates');
 
 interface DashboardData {
     userCreditScore: (creditScore & { user: users }) | any;
-    propertyPaymentDetails: PropertyTransactions[];
-    transactionDetails: (Transactions)[]
-    rentStatus: RentStatus;
+    propertyPaymentDetails: Transaction[];
+    transactionDetails: (Transaction)[]
+    rentStatus: RentStatus | any;
     totalDueBills: Decimal;
     totalDuePayments: Decimal;
 }
@@ -62,31 +62,30 @@ class DashboardService {
                         score: true,
                     },
                 }),
-                prismaClient.propertyTransactions.findMany({
-                    where: { tenantId: userId },
-                    orderBy: { paidDate: 'desc' },
+                prismaClient.transaction.findMany({
+                    where: { userId: userId },
+                    orderBy: { createdAt: 'desc' },
                     take: 10
                 }),
-                prismaClient.transactions.findMany({
+                prismaClient.transaction.findMany({
                     where: { userId },
                     include: {
-                        
+
                     },
                     orderBy: { createdAt: 'desc' },
                     take: 10
                 }),
                 prismaClient.tenants.findUnique({
-                    where: { tenantId: userId },
+                    where: { userId: userId },
                     include: {
-                        PropertyTransactions: {
-                            orderBy: { nextDueDate: 'asc' },
+                        apartments: {
                             take: 1
                         }
                     }
                 }),
             ]);
-
-            const rentStatus = await this.calculateRentStatus(tenant?.PropertyTransactions[0]);
+            // NOTE: THIS IS NOT VALID
+            const rentStatus = await this.calculateRentStatus(tenant.rentstatus[0]);
             console.log(`Rent status ${rentStatus}`);
             const [totalDueBills, totalDuePayments] = await Promise.all([
                 this.calculateTotalDueBills(userId),
@@ -108,7 +107,7 @@ class DashboardService {
 
     }
 
-    async calculateRentStatus(latestTransaction: PropertyTransactions | undefined) {
+    async calculateRentStatus(latestTransaction: Transaction | undefined) {
         if (!latestTransaction) {
             return {
                 isOverdue: false,
@@ -118,25 +117,26 @@ class DashboardService {
             }
         }
         const now = new Date();
-        const dueDate = new Date(latestTransaction.nextDueDate)
+        // const dueDate = new Date(latestTransaction.property.nextDueDate)
+        const dueDate = new Date()
         const diffDays = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
 
         return {
             isOverdue: diffDays < 0,
             daysUntilDue: Math.max(0, diffDays),
             daysOverdue: Math.max(0, -diffDays),
-            minDuePayments: latestTransaction.missedPayment,
+            minDuePayments: latestTransaction.status,
         }
 
     }
 
     async calculateTotalDueBills(userId: string): Promise<Decimal> {
-        const dueBills = await prismaClient.propertyTransactions.aggregate({
+        const dueBills = await prismaClient.transaction.aggregate({
             where: {
-                tenantId: userId,
-                type: PropertyTransactionsType.MAINTAINACE_FEE,
-                transactionStatus: TransactionStatus.PENDING,
-                nextDueDate: { lte: new Date() },
+                userId: userId,
+                reference: TransactionReference.MAINTENANCE_FEE,
+                status: TransactionStatus.PENDING,
+                // nextDueDate: { lte: new Date() },
             },
             _sum: { amount: true },
         })
@@ -145,11 +145,11 @@ class DashboardService {
     }
 
     async calculateTotalDuePayments(userId: string): Promise<Decimal> {
-        const duePayments = await prismaClient.propertyTransactions.aggregate({
+        const duePayments = await prismaClient.transaction.aggregate({
             where: {
-                tenantId: userId,
-                type: PropertyTransactionsType.RENT_DUE,
-                transactionStatus: TransactionStatus.PENDING,
+                userId: userId,
+                reference: TransactionReference.RENT_DUE,
+                status: TransactionStatus.PENDING,
                 // dueDate: { lte: new Date() },
             },
             _sum: { amount: true },
@@ -161,22 +161,22 @@ class DashboardService {
 
     async returnDuePayments(userId: string) {
         const [nativeTransactionDue, propertyTransactionDue] = await Promise.all([
-            prismaClient.transactions.findMany({
+            prismaClient.transaction.findMany({
                 where: {
                     userId,
-                    transactionStatus: TransactionStatus.PENDING,
+                    status: TransactionStatus.PENDING,
                 },
                 include: {
-                    
+
                 },
             }),
 
             // property Transaction
-            prismaClient.propertyTransactions.findMany({
+            prismaClient.transaction.findMany({
                 where: {
-                    tenantId: userId,
-                    transactionStatus: TransactionStatus.PENDING,
-                    nextDueDate: { lte: new Date() },
+                    userId,
+                    status: TransactionStatus.PENDING,
+                    // nextDueDate: { lte: new Date() },
                 },
             })
         ])
