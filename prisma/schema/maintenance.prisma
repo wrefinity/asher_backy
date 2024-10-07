@@ -5,21 +5,28 @@ enum maintenanceStatus {
   COMPLETED
 }
 
+enum maintenanceDecisionStatus {
+  APPROVED
+  DECLINED
+  PENDING
+}
+
 enum vendorAvailability {
   YES
   NO
 }
 
 model maintenance {
-  id               String   @id @default(cuid())
+  id               String                     @id @default(cuid())
   description      String
   attachments      String[]
   offer            String[]
   scheduleDate     DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  isDeleted        Boolean  @default(false)
-  handleByLandlord Boolean  @default(false)
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  isDeleted        Boolean                    @default(false)
+  handleByLandlord Boolean                    @default(false)
+  landlordDecision maintenanceDecisionStatus? 
 
   // relation fields
   tenant        tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
@@ -36,16 +43,19 @@ model maintenance {
   categoryId    String
   subcategories subCategory[] @relation("SubCategoryMaintenance")
 
+  // Chat integration for communication on maintenance issues
+  chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
+  chatRoomId String?   @unique
+
   status maintenanceStatus @default(UNASSIGNED)
 
   services  services? @relation(fields: [serviceId], references: [id])
   serviceId String?
 
-    //payment
+  //payment
   paymentStatus TransactionStatus
   amount        Decimal           @db.Decimal(18, 2)
 }
-
 
 model services {
   id String @id @default(cuid())

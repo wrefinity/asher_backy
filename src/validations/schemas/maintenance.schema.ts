@@ -21,3 +21,7 @@ export const checkWhitelistedSchema = Joi.object({
   // subcategoryIds: Joi.array().items(Joi.string()).optional(),
   subcategoryId: Joi.string().optional(),
 });
+export const maintenanceChatSchema = Joi.object({
+  receiverId: Joi.string().required(),
+  message: Joi.string().required(),
+});

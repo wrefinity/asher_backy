@@ -49,6 +49,8 @@ const documentSchema = Joi.object({
     documentName: Joi.string().required(),
     // documentUrl: Joi.string().optional(),
     cloudinaryUrls: Joi.any().optional(),
+    cloudinaryVideoUrls: Joi.any().optional(),
+    cloudinaryDocumentUrls: Joi.any().optional(),
     createdAt: Joi.date().optional(),
     updatedAt: Joi.date().optional(),
     applicantId: Joi.string().optional(),
@@ -88,10 +90,10 @@ const employmentInformationSchema = Joi.object({
     pension: Joi.string().optional().allow(null),
     moreDetails: Joi.string().optional().allow(null),
     applicantId: Joi.string().optional(),
-    employerCompany: Joi.string(),
-    employerEmail: Joi.string(),
-    employerPhone: Joi.string(),
-    positionTitle: Joi.string()
+    employerCompany: Joi.string().optional(),
+    employerEmail: Joi.string().optional(),
+    employerPhone: Joi.string().optional(),
+    positionTitle: Joi.string().optional()
   });
 
 export {

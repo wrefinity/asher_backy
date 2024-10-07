@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import maintenanceService from '../services/maintenance.service';
 import propertyService from '../services/propertyServices';
-import { maintenanceSchema, checkWhitelistedSchema } from '../validations/schemas/maintenance.schema';
+import { maintenanceSchema, checkWhitelistedSchema, maintenanceChatSchema } from '../validations/schemas/maintenance.schema';
 import ServiceServices from "../vendor/services/vendor.services"
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
-import { maintenanceStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
+import { maintenanceStatus, maintenanceDecisionStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
 
 class MaintenanceController {
 
@@ -40,7 +40,6 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
-
   // tenancy function to check if a property maintenance is whitelisted
   public checkIfMaintenanceWhitelisted = async (req: CustomRequest, res: Response) => {
     try {
@@ -98,6 +97,7 @@ class MaintenanceController {
       const maintenance = await maintenanceService.createMaintenance({
         ...data,
         handleByLandlord,
+        landlordDecision: handleByLandlord? maintenanceDecisionStatus.PENDING : '',
         attachments: cloudinaryUrls,
         tenantId: tenantId || undefined,
         landlordId: landlordId || undefined
@@ -113,6 +113,22 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
+
+  createMaintenanceChat = async (req: CustomRequest, res: Response) =>{
+    const {maintenanceId} = req.params; 
+    // Fetch the maintenance request details
+    const {error, value} = maintenanceChatSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
+    const senderId = req.user.id;
+    if (!maintenance) {
+      return res.status(200).json({message:"Maintenance request not found."});
+    }
+    const chats = await maintenanceService.createMaintenanceChat(maintenanceId, senderId, value.receiverId, value.message)
+}
 
   public updateMaintenance = async (req: CustomRequest, res: Response) => {
     try {

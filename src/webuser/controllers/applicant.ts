@@ -23,7 +23,7 @@ class ApplicantControls {
       const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
       res.status(200).json({ pendingApplications });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      ErrorService.handleError(error, res)
     }
   };
 
@@ -34,7 +34,7 @@ class ApplicantControls {
       if (!applicationId) {
         return res.status(400).json({ error: 'Application ID is required' });
       }
-      const application = await ApplicantService.updateApplicationStatus(applicationId);
+      const application = await ApplicantService.updateApplicationStatus(applicationId, ApplicationStatus.COMPLETED);
       res.status(200).json(application);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -68,14 +68,14 @@ class ApplicantControls {
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
 
       if (!existingApplication) {
-        return res.status(400).json({ error: "wrong application id supplied" }); 
+        return res.status(400).json({ error: "wrong application id supplied" });
       }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
-        return res.status(400).json({ error: "application completed" }); 
+        return res.status(400).json({ error: "application completed" });
       }
 
-      const guarantor = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId});
+      const guarantor = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId });
       return res.status(201).json({ guarantor });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
@@ -84,14 +84,14 @@ class ApplicantControls {
   createOrUpdateEmergencyContact = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
-      
+
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
-        return res.status(400).json({ error: "wrong application id supplied" }); 
+        return res.status(400).json({ error: "wrong application id supplied" });
       }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
-        return res.status(400).json({ error: "application completed" }); 
+        return res.status(400).json({ error: "application completed" });
       }
       const { error } = emergencyContactSchema.validate(req.body);
       if (error) {
@@ -106,25 +106,37 @@ class ApplicantControls {
   }
   createApplicantionDocument = async (req: CustomRequest, res: Response) => {
     try {
-      const { error } = documentSchema.validate(req.body);
+      const { error, value } = documentSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
       const applicationId = req.params.applicationId;
-      const documentUrl = req.body.cloudinaryUrls;
-      const data = req.body;
-      delete data['cloudinaryUrls']
+      const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls } = value;
+      // Check if all three URLs are empty
+      if (!cloudinaryUrls && !cloudinaryVideoUrls && !cloudinaryDocumentUrls) {
+        // Prompt the user for the document URL if all are empty
+        return res.status(400).json({
+          message: "Please provide a document URL. Either cloudinaryUrls, cloudinaryVideoUrls, or cloudinaryDocumentUrls must be supplied."
+        });
+      }
+      // Proceed with the rest of your logic
+      const documentUrl = cloudinaryUrls || cloudinaryVideoUrls || cloudinaryDocumentUrls;
+
+
+      delete value['cloudinaryUrls']
+      delete value['cloudinaryVideoUrls']
+      delete value['cloudinaryDocumentUrls']
 
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
-        return res.status(400).json({ error: "wrong application id supplied" }); 
+        return res.status(400).json({ error: "wrong application id supplied" });
       }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
-        return res.status(400).json({ error: "application completed" }); 
+        return res.status(400).json({ error: "application completed" });
       }
 
-      const document = await ApplicantService.createOrUpdateApplicationDoc({ ...data, documentUrl:documentUrl[0], applicationId });
+      const document = await ApplicantService.createOrUpdateApplicationDoc({ ...value, documentUrl: documentUrl[0], applicationId });
       return res.status(201).json({ document });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
@@ -141,11 +153,11 @@ class ApplicantControls {
       const data = req.body;
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
-        return res.status(400).json({ error: "wrong application id supplied" }); 
+        return res.status(400).json({ error: "wrong application id supplied" });
       }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
-        return res.status(400).json({ error: "application completed" }); 
+        return res.status(400).json({ error: "application completed" });
       }
 
       const result = await ApplicantService.createOrUpdateResidentialInformation({ ...data, applicationId });
@@ -167,11 +179,11 @@ class ApplicantControls {
       const data = req.body;
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
-        return res.status(400).json({ error: "wrong application id supplied" }); 
+        return res.status(400).json({ error: "wrong application id supplied" });
       }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
-        return res.status(400).json({ error: "application completed" }); 
+        return res.status(400).json({ error: "application completed" });
       }
 
       const employmentInformation = await ApplicantService.createOrUpdateEmploymentInformation({ ...data, applicationId });

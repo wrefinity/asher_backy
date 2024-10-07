@@ -1,4 +1,4 @@
-import { TransactionReference, TransactionStatus } from "@prisma/client";
+import { TransactionReference, chatType, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { MaintenanceIF } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
@@ -76,6 +76,58 @@ class MaintenanceService {
       include: this.inclusion,
     });
   }
+
+
+
+  createMaintenanceChat= async(maintenanceId: string, senderId: string, receiverId: string, initialMessage: string) =>{
+  try {
+    // Check if a chat room already exists for this maintenance request
+    let chatRoom = await prismaClient.chatRoom.findFirst({
+      where: {
+        AND: [
+          { user1Id: senderId },
+          { user2Id: receiverId },
+        ],
+      },
+    });
+
+    // If no chat room exists, create one
+    if (!chatRoom) {
+      chatRoom = await prismaClient.chatRoom.create({
+        data: {
+          user1Id: senderId,
+          user2Id: receiverId,
+        },
+      });
+    }
+
+    // Associate the chat room with the maintenance request
+    await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: { chatRoomId: chatRoom.id },
+    });
+
+    // Add the initial message to the chat room
+    const message = await prismaClient.message.create({
+      data: {
+        content: initialMessage,
+        senderId: senderId,
+        receiverId: receiverId,
+        chatRoomId: chatRoom.id,
+        chatType: chatType.MAINTENANCE, 
+      },
+    });
+
+    console.log("Chat room created and message sent.");
+    return { chatRoom, message };
+  } catch (error) {
+    console.error("Error creating maintenance chat:", error.message);
+    throw error;
+  }
+}
+
+
+
   updateMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>) => {
     const { subcategoryIds, ...rest } = maintenanceData;
 

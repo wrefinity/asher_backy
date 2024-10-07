@@ -14,6 +14,7 @@ class MaintenaceRoutes {
     }
     private initializeRoutes(): void {
         this.router.post('/accept/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.acceptMaintenanceOffer);
+        this.router.post('/chats/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.createMaintenanceChat);
         this.router.post('/completed/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.updateMaintenanceToCompleted);
         this.router.post('/whitelisted', this.authenticateService.authorize,  MaintenanceController.checkIfMaintenanceWhitelisted);
         this.router.get('/', MaintenanceController.getAllMaintenances);

@@ -3,6 +3,7 @@ enum ApplicationStatus {
   PENDING
   DECLINED
   COMPLETED
+  MAKEPAYMENT
   ACCEPTED
 }
 
@@ -41,6 +42,10 @@ model application {
   applicantPersonalDetailsId String
   guarantorInformation       guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
   guarantorInformationId     String?
+  // Relation to the tenant after application approval
+  // Tenant (new user created upon approval)
+  tenantId                   String?
+  tenant                     users?                   @relation("TenantApplications", fields: [tenantId], references: [id])
 }
 
 model applicantPersonalDetails {
@@ -99,7 +104,7 @@ model residentialInformation {
 }
 
 model guarantorInformation {
-  id          String @id @default(cuid())
+  id          String        @id @default(cuid())
   fullName    String
   phoneNumber String
   email       String
@@ -130,7 +135,7 @@ model document {
 
 // Define the EmploymentInformation model
 model EmploymentInformation {
-  id                String  @id @default(cuid())
+  id                String        @id @default(cuid())
   employmentStatus  String
   taxCredit         String?
   childBenefit      String?
@@ -140,9 +145,9 @@ model EmploymentInformation {
   others            String?
   pension           String?
   moreDetails       String?
-  employerCompany   String
-  employerEmail     String
-  employerPhone    String
-  positionTitle    String
-  application application[]
+  employerCompany   String?
+  employerEmail     String?
+  employerPhone     String?
+  positionTitle     String?
+  application       application[]
 }

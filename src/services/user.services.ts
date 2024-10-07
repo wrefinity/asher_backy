@@ -2,7 +2,7 @@ import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles } from "@prisma/client";
+import { userRoles, ApplicationStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 
 
@@ -40,7 +40,7 @@ class UserService {
     findUserByEmail = async (email: string) => {
         // Find the user first to check if related entities exist
         const user = await this.checkexistance({ email })
-        
+
         if (!user) {
             return false;
         }
@@ -63,13 +63,16 @@ class UserService {
             include: this.inclusion,
         });
     }
+    hashPassword = (password: string) => {
+        return password ? hashSync(password, 10) : null
+    };
 
     createUser = async (userData: any) => {
         const newUser = await prismaClient.users.create({
             data: {
                 email: userData?.email,
                 role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
-                password: userData.password ? hashSync(userData.password, 10) : null,
+                password: this.hashPassword(userData?.password),
                 profile: {
                     create: {
                         gender: userData?.gender,
@@ -104,6 +107,27 @@ class UserService {
                         userId: newUser.id
                     },
                 });
+                break;
+            case userRoles.TENANT:
+                const tenant = await prismaClient.tenants.create({
+                    data: {
+                        userId: newUser.id,
+                        propertyId: userData?.propertyId,
+                        landlordId: userData?.landlordId,
+                        leaseStartDate: userData?.leaseStartDate,
+                        leaseEndDate: userData?.leaseStartDate,
+                    },
+                });
+                if (tenant){
+                    // Update application with tenant info
+                    await prismaClient.application.update({
+                        where: { id: userData.applicationId },
+                        data: {
+                            status: ApplicationStatus.ACCEPTED,
+                            tenantId: newUser.id,
+                        },
+                    });
+                }
                 break;
 
             default:

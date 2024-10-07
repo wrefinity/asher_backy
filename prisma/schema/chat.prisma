@@ -33,5 +33,9 @@ model ChatRoom {
   user2    users     @relation("chatRoomsUser2", fields: [user2Id], references: [id])
   messages Message[]
 
+  // Relation to the maintenance model
+  maintenanceId String?  @unique
+  maintenance maintenance?
+
   @@unique([user1Id, user2Id])
 }

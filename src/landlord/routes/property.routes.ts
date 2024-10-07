@@ -16,11 +16,11 @@ class ApartmentLandlordRouter {
 
     private initializeRoutes() {
           // landlord properties
+          this.router.patch('/property/showcase/:propertyId', PropertyController.showCaseRentals)
           this.router.get('/property', PropertyController.getCurrentLandlordProperties)
           this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
           this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
-          
-        
+          this.router.get('/property/showcased', PropertyController.getShowCasedRentals)  
     }
 }
 

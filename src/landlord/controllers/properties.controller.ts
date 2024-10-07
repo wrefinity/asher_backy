@@ -33,6 +33,32 @@ class PropertyController {
 
     }
 
+    showCaseRentals = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
+
+            const propertyId = req.params.propertyId;
+            const property = await PropertyServices.showCaseRentals(propertyId, landlordId);
+            if (!property) return res.status(200).json({ message: "No Property found" })
+            return res.status(200).json({ property })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    getShowCasedRentals = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
+
+            const property = await PropertyServices.getShowCasedRentals(landlordId);
+            if (!property) return res.status(200).json({ message: "No Property found" })
+            return res.status(200).json({ property })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+
     getCurrentLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
@@ -85,10 +111,10 @@ class PropertyController {
 
     async getRentVSExpense(req: CustomRequest, res: Response) {
         const { entityId } = req.params;
-        const { isApartment, startDate , endDate } = req.body
+        const { isApartment, startDate, endDate } = req.body
         if (!entityId) return res.status(400).json({ message: 'No propertyId provided' })
         try {
-            const rentVsExpense = await propertyPerformance.getRentVSExpenseMonthlyData(entityId, isApartment, startDate , endDate);
+            const rentVsExpense = await propertyPerformance.getRentVSExpenseMonthlyData(entityId, isApartment, startDate, endDate);
             res.status(200).json(rentVsExpense);
         } catch (error) {
             ErrorService.handleError(error, res);

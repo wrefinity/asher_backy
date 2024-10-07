@@ -97,6 +97,25 @@ class PropertyService {
 
         return propertiesByState;
     }
+    showCaseRentals = async (propertyId:string, landlordId:string) => {
+        return await prismaClient.properties.update({
+            where: {
+                landlordId,
+                id: propertyId,
+            },
+            data: {
+                showCase: true
+            }
+        })
+    }
+    getShowCasedRentals = async (landlordId:string) => {
+        return await prismaClient.properties.findMany({
+            where: {
+                landlordId,
+                showCase:true
+            }
+        })
+    }
 
     checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 

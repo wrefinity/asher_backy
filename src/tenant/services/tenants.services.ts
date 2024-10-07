@@ -50,6 +50,26 @@ class TenantService {
             include: this.inclusion,
         });
     }
+    getApplicationRequests = async (landlordId: string) => {
+
+        return await prismaClient.application.findMany({
+          where: {
+            userId: userId,
+            status,
+            isDeleted: false,
+          },
+          include: {
+            user: true,
+            residentialInfo: true,
+            emergencyInfo: true,
+            employmentInfo: true,
+            documents: true,
+            properties: true,
+            personalDetails: true,
+            guarantorInformation: true,
+          },
+        });
+      }
 }
 
 export default new TenantService();

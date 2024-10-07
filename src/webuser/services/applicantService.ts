@@ -1,5 +1,6 @@
 import { prismaClient } from "../..";
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationStatus, userRoles } from '@prisma/client';
+import userServices from "../../services/user.services";
 import {
   NextOfKinIF,
   ApplicantPersonalDetailsIF,
@@ -36,18 +37,6 @@ class ApplicantService {
       phoneNumber: nextOfKin.phoneNumber,
       middleName: nextOfKin.middleName || null,
     };
-
-    // Ensure dob is a valid ISO-8601 DateTime string
-    //  Ensure dob is a valid Date object
-    // let dobDate: Date;
-    // try {
-    //   dobDate = parseISO(dob);
-    //   if (isNaN(dobDate.getTime())) {
-    //     throw new Error('Invalid date format for dob');
-    //   }
-    // } catch (error) {
-    //   throw new Error('Invalid date format for dob');
-    // }
 
     // Upsert nextOfKin first
     const upsertedNextOfKin = await prismaClient.nextOfKin.upsert({
@@ -279,16 +268,7 @@ class ApplicantService {
 
   }
 
-  async updateApplicationStatus(applicationId: string) {
-    return await prismaClient.application.update({
-      where: { id: applicationId },
-      data: {
-        status: ApplicationStatus.COMPLETED,
-      },
-    });
-  }
-
-  async deleteApplicant(id: string) {
+  deleteApplicant = async (id: string) =>{
     return await prismaClient.application.update({
       where: { id },
       data: {
@@ -366,11 +346,17 @@ class ApplicantService {
     });
   }
 
-
   checkApplicationExistance = async (applicationId: string) => {
     // Check if the application exists
     return await prismaClient.application.findUnique({
       where: { id: applicationId },
+    });
+  }
+  updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {
+    // Check if the application exists
+    return await prismaClient.application.update({
+      where: { id: applicationId },
+      data:{  status: ApplicationStatus.COMPLETED}
     });
   }
 
@@ -442,6 +428,10 @@ class ApplicantService {
       approved: approvedCount,
       completed: completedCount,
     };
+  }
+
+  approveApplication = async (tenantData: any) =>{
+    return await userServices.createUser({...tenantData, role:userRoles.TENANT});
   }
 }
 
