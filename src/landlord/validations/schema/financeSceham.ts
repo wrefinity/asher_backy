@@ -1,10 +1,10 @@
-import { BudgetFrequency, PropertyTransactionsType } from '@prisma/client';
+import { BudgetFrequency, TransactionReference } from '@prisma/client';
 import Joi from 'joi';
 
 const budgetSchema = Joi.object({
     propertyId: Joi.string().required(),
     transactionType: Joi.string()
-        .valid(...[PropertyTransactionsType])
+        .valid(...[TransactionReference])
         .required(),
     budgetAmount: Joi.number().positive().required(),
     frequency: Joi.string()

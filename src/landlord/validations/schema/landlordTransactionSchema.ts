@@ -1,5 +1,5 @@
 // validations/schemas/landlordTransaction.schema.ts
-import { PropertyTransactionsType, TransactionStatus } from '@prisma/client';
+import { TransactionReference, TransactionStatus } from '@prisma/client';
 import Joi from 'joi';
 
 const landlordTransactionSchema = {
@@ -7,7 +7,7 @@ const landlordTransactionSchema = {
         description: Joi.string().optional(),
         amount: Joi.number().precision(2).required(),
         tenantId: Joi.string().required(),
-        type: Joi.string().valid(...Object.values(PropertyTransactionsType)).required(),
+        type: Joi.string().valid(...Object.values(TransactionReference)).required(),
         transactionStatus: Joi.string().valid(...Object.values(TransactionStatus)).required(),
         paidDate: Joi.date().required(),
     })
