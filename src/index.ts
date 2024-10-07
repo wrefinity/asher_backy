@@ -30,8 +30,6 @@ import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
 
 
-
-
 export const prismaClient: PrismaClient = new PrismaClient(
     {
         log: ['query']
