@@ -29,7 +29,7 @@ class ApplicationControls {
     makeApplicationPaymentRequest = async (req: CustomRequest, res: Response) => {
         const applicationId = req.params?.applicationId;
         const application = await ApplicationService.updateApplicationStatus(applicationId, ApplicationStatus.MAKEPAYMENT);
-        if (!application) return res.status(400).json({ message: "property doesn't exist" });
+        if (!application) return res.status(400).json({ message: "application doesn't exist" });
         return res.status(200).json({ application });
     } 
     declineApplication = async (req: CustomRequest, res: Response) => {
@@ -43,7 +43,12 @@ class ApplicationControls {
         const applicationId = req.params?.applicationId;
         const application = await ApplicationService.getApplicationById(applicationId);
         if (!application) return res.status(400).json({ message: "property doesn't exist" });
-        const tenant = await ApplicationService.approveApplication({...req.body, applicationId, landlordId});
+        const tenant = await ApplicationService.approveApplication({
+            ...req.body,
+            propertyId: application.propertiesId,
+            applicationId,
+            password: application?.personalDetails?.firstName,
+            landlordId});
         return res.status(200).json({ tenant });
     } 
 

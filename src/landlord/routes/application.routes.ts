@@ -12,15 +12,13 @@ class ApplicationLandlordRouter {
         this.authenticateService = new Authorize()
         this.initializeRoutes()
     }
-
     private initializeRoutes() {
         this.router.get('/pending',  ApplicationController.getApplicationsPending);
-        this.router.get('/completed',  ApplicationController.getApplicationsPending);
+        this.router.get('/completed',  ApplicationController.getApplicationsCompleted);
         this.router.patch('/proceed-pay/:applicationId',  ApplicationController.makeApplicationPaymentRequest);
         this.router.post('/approve/:applicationId',  ApplicationController.approveApplication);
         this.router.patch('/decline/:applicationId',  ApplicationController.declineApplication);
-        this.router.get('/statistics',  ApplicationController.getApplicationStatistics);
-        
+        this.router.get('/statistics',  ApplicationController.getApplicationStatistics);     
     }
 }
 

@@ -115,7 +115,7 @@ class UserService {
                         propertyId: userData?.propertyId,
                         landlordId: userData?.landlordId,
                         leaseStartDate: userData?.leaseStartDate,
-                        leaseEndDate: userData?.leaseStartDate,
+                        leaseEndDate: userData?.leaseEndDate,
                     },
                 });
                 if (tenant){

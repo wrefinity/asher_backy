@@ -353,10 +353,9 @@ class ApplicantService {
     });
   }
   updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {
-    // Check if the application exists
     return await prismaClient.application.update({
       where: { id: applicationId },
-      data:{  status: ApplicationStatus.COMPLETED}
+      data:{  status}
     });
   }
 
