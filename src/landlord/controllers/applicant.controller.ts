@@ -34,6 +34,7 @@ class ApplicationControls {
     } 
     declineApplication = async (req: CustomRequest, res: Response) => {
         const applicationId = req.params?.applicationId;
+        console.log(applicationId)
         const application = await ApplicationService.updateApplicationStatus(applicationId, ApplicationStatus.DECLINED);
         if (!application) return res.status(400).json({ message: "property doesn't exist" });
         return res.status(200).json({ application });
@@ -41,6 +42,7 @@ class ApplicationControls {
     approveApplication = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
         const applicationId = req.params?.applicationId;
+        if (!req.body.email) return res.status(400).json({message:"kindly supply the new tenant email"})
         const application = await ApplicationService.getApplicationById(applicationId);
         if (!application) return res.status(400).json({ message: "property doesn't exist" });
         const tenant = await ApplicationService.approveApplication({

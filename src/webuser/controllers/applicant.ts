@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import ApplicantService from '../services/applicantService';
+import PropertyServices from '../../services/propertyServices';
 import { CustomRequest } from "../../utils/types";
 import {
   documentSchema,
@@ -34,6 +35,9 @@ class ApplicantControls {
       if (!applicationId) {
         return res.status(400).json({ error: 'Application ID is required' });
       }
+      // check for the existance of application before proceeding
+      const applicationExist = await ApplicantService.getApplicationById(applicationId);
+      if(!applicationExist) return  res.status(500).json({ message: "Application Doesn't Exist"}); 
       const application = await ApplicantService.updateApplicationStatus(applicationId, ApplicationStatus.COMPLETED);
       res.status(200).json(application);
     } catch (error) {
@@ -44,13 +48,18 @@ class ApplicantControls {
     try {
       const userId = String(req.user.id);
       const propertiesId = req.params.propertiesId;
+      console.log("i was called");
+
+      // check for property existance
+      const propertyExist = await PropertyServices.getPropertiesById(propertiesId);
+      if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` }); 
 
       const { error } = applicantPersonalDetailsSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
-      const guarantor = await ApplicantService.createOrUpdatePersonalDetails({ ...req.body, userId }, propertiesId, userId);
-      return res.status(201).json({ guarantor });
+      const application = await ApplicantService.createOrUpdatePersonalDetails({ ...req.body, userId }, propertiesId, userId);
+      return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
     }
@@ -59,6 +68,7 @@ class ApplicantControls {
     try {
       const userId = req.user.id;
       const applicationId = req.params.applicationId;
+
 
       const { error } = guarantorInformationSchema.validate(req.body);
       if (error) {
@@ -75,8 +85,8 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const guarantor = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId });
-      return res.status(201).json({ guarantor });
+      const application = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId });
+      return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
     }
@@ -98,8 +108,8 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      const emergencyContact = await ApplicantService.createOrUpdateEmergencyContact({ ...req.body, applicationId });
-      return res.status(201).json({ emergencyContact });
+      const application = await ApplicantService.createOrUpdateEmergencyContact({ ...req.body, applicationId });
+      return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res);
     }
@@ -136,8 +146,8 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const document = await ApplicantService.createOrUpdateApplicationDoc({ ...value, documentUrl: documentUrl[0], applicationId });
-      return res.status(201).json({ document });
+      const application = await ApplicantService.createOrUpdateApplicationDoc({ ...value, documentUrl: documentUrl[0], applicationId });
+      return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
     }

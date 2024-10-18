@@ -198,7 +198,16 @@ class LandlordMaintenanceService {
       throw new Error(`Error updating whitelist: ${error.message}`);
     }
   }
-
+  deleteMaintenance = async (maintenanceId: string) => {
+    return await prismaClient.maintenance.update({
+      where: {
+        id:maintenanceId
+      },
+      data:{
+        isDeleted:true
+      }
+    })
+  } 
 }
 
 export default new LandlordMaintenanceService();

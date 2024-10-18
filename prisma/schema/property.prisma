@@ -1,3 +1,8 @@
+enum LatePaymentFeeType {
+  ONE_TIME
+  DAILY
+}
+
 model properties {
   id           String    @id @default(cuid())
   name         String
@@ -12,8 +17,10 @@ model properties {
   agency       agency?   @relation(fields: [agencyId], references: [id])
   agents       agents[]
 
-  //marketValue
-  marketValue Decimal? @default(0.00) @db.Decimal(18, 2)
+  // marketValue
+  marketValue Decimal?  @default(0.00) @db.Decimal(18, 2)
+  rentalFee   Decimal?  @default(0.00) @db.Decimal(18, 2)
+  dueDate     DateTime?
 
   // time attributes
   yearBuilt DateTime?
@@ -47,7 +54,36 @@ model properties {
 
   //transaction can be expenses incurred or income generated
   transactions Transaction[]
-  Budget Budget[]
+  Budget       Budget[]
+  // late fee for due payment (either daily or one time stuff)
+  // rental fee should be for both  appartment and property
+  // is it rental fee weekly, monthly, or yearly
+  // due date on rental for both appartment or property
+
+  // IDEAS:
+  // make a history of properties
+  // create a setting a property setting
+
+  //setting 
+  settings PropApartmentSettings?
+}
+
+model PropApartmentSettings {
+  id         String     @id @default(cuid())
+  propertyId String     @unique
+  property   properties @relation(fields: [propertyId], references: [id])
+
+  apartmentId String?     @unique
+  apartment   apartments? @relation(fields: [apartmentId], references: [id])
+
+  lateFee            Decimal            @default(0.00) @db.Decimal(18, 2)
+  latePaymentFeeType LatePaymentFeeType @default(ONE_TIME)
+
+  landlordId String
+  landlord   landlords @relation(fields: [landlordId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model propertyDocument {
@@ -100,4 +136,6 @@ model apartments {
   inventoryManageMent  inventoryManageMent[]
   maintenanceWhitelist maintenanceWhitelist[]
   transactions         Transaction[]
+
+  settings PropApartmentSettings?
 }

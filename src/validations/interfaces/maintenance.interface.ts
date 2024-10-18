@@ -16,4 +16,5 @@ export interface MaintenanceIF {
   status: string;
   serviceId?: string;
   handleByLandlord: boolean;
+  amount: number;
 }

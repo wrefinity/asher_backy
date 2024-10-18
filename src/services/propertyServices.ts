@@ -3,7 +3,7 @@ import { ICreateProperty } from "../validations/interfaces/properties.interface"
 
 
 class PropertyService {
-    async createProperty(propertyData: ICreateProperty) {
+    createProperty = async (propertyData: ICreateProperty) =>{
         return await prismaClient.properties.create({
             data: {
                 ...propertyData,
@@ -11,7 +11,7 @@ class PropertyService {
         })
     }
 
-    async getProperties() {
+    getProperties = async () => {
         return await prismaClient.properties.findMany({})
     }
     getPropertiesById = async (id: string) => {

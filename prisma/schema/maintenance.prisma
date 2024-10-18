@@ -32,7 +32,7 @@ model maintenance {
   tenant        tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
   tenantId      String
   landlord      landlords?    @relation(name: "landlordUser", fields: [landlordId], references: [id])
-  landlordId    String
+  landlordId    String?
   vendor        vendors?      @relation(name: "vendorUser", fields: [vendorId], references: [id])
   vendorId      String?
   property      properties?   @relation(fields: [propertyId], references: [id])
@@ -53,7 +53,7 @@ model maintenance {
   serviceId String?
 
   //payment
-  paymentStatus TransactionStatus
+  paymentStatus TransactionStatus @default(PENDING)
   amount        Decimal           @db.Decimal(18, 2)
 }
 

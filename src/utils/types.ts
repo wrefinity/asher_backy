@@ -6,7 +6,7 @@ export type JWTPayload = {
     id: string;
     role: string | string[];
     email: string;
-    tenants?:{
+    tenant?:{
         id?:string;
     };
     landlords?:{

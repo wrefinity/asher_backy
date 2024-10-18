@@ -15,26 +15,26 @@ datasource db {
 }
 
 model Ads {
-  id               String        @id @default(cuid())
+  id               String       @id @default(cuid())
   title            String
   description      String
-  amountPaid       Decimal       @db.Decimal(18, 2)
+  amountPaid       Decimal      @db.Decimal(18, 2)
   locations        String[]
   bussinessDetails Json
   contactInfo      String
   startedDate      DateTime
   endDate          DateTime
   attachment       String[]
-  isListed         Boolean       @default(false)
-  views            Int           @default(0)
-  clicks           Int           @default(0)
-  reach            Int           @default(0)
+  isListed         Boolean      @default(false)
+  views            Int          @default(0)
+  clicks           Int          @default(0)
+  reach            Int          @default(0)
   userId           String
-  user             users         @relation(fields: [userId], references: [id])
+  user             users        @relation(fields: [userId], references: [id])
   referenceId      String?
   transaction      Transaction? @relation(fields: [referenceId], references: [id])
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
 
 model landlords {
@@ -53,7 +53,8 @@ model landlords {
   maintenanceWhitelist maintenanceWhitelist[]
   stripeCustomerId     String?                @unique
 
-  Broadcast Broadcast[]
+  Broadcast             Broadcast[]
+  propsApartmentSetting PropApartmentSettings[]
 }
 
 model bankInfo {
@@ -66,7 +67,6 @@ model bankInfo {
   accountNumber String
   accountName   String
 }
-
 
 model agency {
   id         String       @id @default(cuid())
@@ -130,7 +130,7 @@ model vendors {
 }
 
 model tenants {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   tenantId   String? @unique
   landlordId String
 
@@ -161,10 +161,10 @@ model tenants {
   services  services[]
 
   maintenances maintenance[] @relation("tenantUser")
+  bills        bills[]
 
   @@unique([userId, propertyId])
   @@unique([userId])
-  bills bills[]
 }
 
 // user information definition 
@@ -228,6 +228,8 @@ model users {
   vendors          vendors?
   stripeCustomerId String?            @unique
   wallet           wallet?
+
+  nextOfKin nextOfKin[]
 }
 
 model creditScore {
@@ -271,12 +273,12 @@ model Email {
 
 // user wallets
 model wallet {
-  id           String         @id @default(cuid())
-  userId       String?        @unique
-  user         users?         @relation(fields: [userId], references: [id])
-  balance      Decimal        @default(0.00) @db.Decimal(18, 2)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id           String        @id @default(cuid())
+  userId       String?       @unique
+  user         users?        @relation(fields: [userId], references: [id])
+  balance      Decimal       @default(0.00) @db.Decimal(18, 2)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 }
 

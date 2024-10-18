@@ -46,7 +46,7 @@ class MaintenanceService {
   }
 
   createMaintenance = async (maintenanceData: MaintenanceIF) => {
-    const { subcategoryIds, ...rest } = maintenanceData;
+    const { subcategoryIds, tenantId, serviceId, categoryId, propertyId, ...rest } = maintenanceData;
 
     if (subcategoryIds) {
       // Verify that all subcategory IDs exist
@@ -65,11 +65,29 @@ class MaintenanceService {
     }
 
     const createData: any = {
-      ...rest,
+      ...rest, paymentStatus:"PENDING",
+      landlordDecision:"PENDING",
       subcategories: subcategoryIds ? {
         connect: subcategoryIds.map(id => ({ id })),
       } : undefined,
-    };
+      category: {
+        connect: { id: categoryId },
+      },
+      services: {
+        connect:{
+          id: serviceId
+        }
+      },
+      tenant: {
+        connect:{
+          id: tenantId
+        }
+      },
+      property: {
+        connect: {
+          id: propertyId
+      }
+    }}
 
     return await prismaClient.maintenance.create({
       data: createData,

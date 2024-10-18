@@ -17,12 +17,12 @@ class MaintenanceControls {
             const landlordId = req.user.landlords?.id;
             if (!landlordId) return res.status(403).json({ error: "Unauthorized" });
 
-            const categoryExist =  await CateoryService.getCategoryById(value.categoryId)
-            if (!categoryExist) return res.status(400).json({message:"category doesnt exist"})
-            const subCategoryExist =  await SubCateoryService.getSubCategoryById(value.subcategoryId)
-            if (!subCategoryExist) return res.status(400).json({message:"sub category doesnt exist"})
-            const propertyExist =  await PropertyService.getPropertiesById(value.propertyId)
-            if (!propertyExist) return res.status(400).json({message:"property doesnt exist"})
+            const categoryExist = await CateoryService.getCategoryById(value.categoryId)
+            if (!categoryExist) return res.status(400).json({ message: "category doesnt exist" })
+            const subCategoryExist = await SubCateoryService.getSubCategoryById(value.subcategoryId)
+            if (!subCategoryExist) return res.status(400).json({ message: "sub category doesnt exist" })
+            const propertyExist = await PropertyService.getPropertiesById(value.propertyId)
+            if (!propertyExist) return res.status(400).json({ message: "property doesnt exist" })
 
             const newWhitelist = await MaintenanceService.createWhitelist(value, landlordId);
             return res.status(201).json({ message: "Whitelist created successfully", data: newWhitelist });
@@ -99,7 +99,7 @@ class MaintenanceControls {
             if (!landlordId) return res.status(400).json({ message: "kindly log in as a landlord" })
             const maintenanceId = req.params.maintenanceId
             const maintenance = await MaintenanceService.changeLandlordPropertiesMaintenanceDecisionState(landlordId, maintenanceId, maintenanceDecisionStatus.DECLINED);
-            return res.status(200).json({ maintenance})
+            return res.status(200).json({ maintenance })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -110,12 +110,12 @@ class MaintenanceControls {
             if (!landlordId) return res.status(400).json({ message: "kindly log in as a landlord" })
             const maintenanceId = req.params.maintenanceId
             const maintenance = await MaintenanceService.changeLandlordPropertiesMaintenanceDecisionState(landlordId, maintenanceId, maintenanceDecisionStatus.APPROVED);
-            return res.status(200).json({ maintenance})
+            return res.status(200).json({ maintenance })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
     }
-    
+
     getMaintenances = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
@@ -125,6 +125,17 @@ class MaintenanceControls {
             const maintenanceHistory = await MaintenanceService.getLandlordPropertiesMaintenance(landlordId);
 
             return res.status(200).json({ maintenaceRequestedByLandlord, maintenaceRequestedByTenants, maintenanceHistory })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+
+    deleteMaintenance = async (req: CustomRequest, res: Response) => {
+        try {
+            const { maintenanceId } = req.params;
+            const maintenance =  await MaintenanceService.deleteMaintenance(maintenanceId);
+            if(!maintenance)return res.status(500).json({ message:"Ooop try again, maintenance not deleted" })
+            return res.status(500).json({ message:"maintenance  deleted", maintenance })  
         } catch (error) {
             ErrorService.handleError(error, res)
         }

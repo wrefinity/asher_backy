@@ -75,6 +75,8 @@ model nextOfKin {
   // One-to-one relationship with applicantPersonalDetails
   applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
   applicantPersonalDetailsId String?                   @unique
+  userId                     String        
+  user                       users                     @relation(fields: [userId], references: [id])
 }
 
 // Define the residentialInformation model

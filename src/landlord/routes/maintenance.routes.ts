@@ -22,8 +22,22 @@ class LandlordMaintenanceRoute {
         this.router.get('/whitelist', LandlordMaintenanceControls.getWhitelistByLandlord);
         this.router.get('/tenants/tenantId', LandlordMaintenanceControls.getTenantsMaintenances);
         this.router.patch('/whitelist/:whitelistId', LandlordMaintenanceControls.updateWhitelist);
+        this.router.delete('/:maintenanceId', LandlordMaintenanceControls.deleteMaintenance);
     }
 
 }
 
 export default new LandlordMaintenanceRoute().router;
+
+// {
+//     "offer":["100"],
+//     "propertyId": "cm1worljs0003uob6eysm7d3y",
+//     "description":"pipe breaks",
+//     "apartmentId":"clyxgodw70003nuzgt3pkeojg",
+//     "categoryId":"cm1l43ogj000013h90b6uy9st",
+//     "subcategoryIds":["cm1jpxvzx0001zmipgdyhykza"],
+//     "serviceId":"cm1jq290m0001urs2zqm95735",
+//     "scheduleDate": "2024-11-15T00:00:00Z"
+//   }
+
+

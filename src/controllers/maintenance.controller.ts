@@ -76,7 +76,9 @@ class MaintenanceController {
         return res.status(400).json({ message: error.details[0].message });
       }
 
-      const tenantId = req.user.tenants?.id;
+      console.log(req.user)
+
+      const tenantId = req.user.tenant?.id;
       const landlordId = req.user.landlords?.id;
 
       if (!tenantId && !landlordId) {
@@ -92,7 +94,6 @@ class MaintenanceController {
       );
       const handleByLandlord = isWhitelisted || !!landlordId;
 
-  
       const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const maintenance = await maintenanceService.createMaintenance({
         ...data,

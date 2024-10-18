@@ -24,8 +24,12 @@ class PropertyController {
             delete value['cloudinaryUrls']
             delete value['cloudinaryVideoUrls']
             delete value['cloudinaryDocumentUrls']
+
+            const rentalFee = value.rentalFee || 0;
+            // const lateFee = rentalFee * 0.01;
+
             const property = await PropertyServices.createProperty({ ...value, images, videourl, landlordId })
-            return res.status(201).json(property)
+            return res.status(201).json({property})
         } catch (error) {
             console.log(error)
             ErrorService.handleError(error, res)

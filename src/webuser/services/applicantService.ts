@@ -17,18 +17,7 @@ class ApplicantService {
 
 
   createOrUpdatePersonalDetails = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
-    const {
-      title,
-      firstName,
-      middleName,
-      lastName,
-      dob,
-      email,
-      phoneNumber,
-      maritalStatus,
-      nextOfKin,
-    } = data;
-
+    const { title, firstName, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin } = data;
     const nextOfKinData: NextOfKinIF = {
       firstName: nextOfKin.firstName,
       lastName: nextOfKin.lastName,
@@ -38,18 +27,33 @@ class ApplicantService {
       middleName: nextOfKin.middleName || null,
     };
 
-    // Upsert nextOfKin first
-    const upsertedNextOfKin = await prismaClient.nextOfKin.upsert({
-      where: { id: nextOfKin.id || '' },
-      update: {
-        ...nextOfKinData,
-      },
-      create: {
-        ...nextOfKinData,
-      },
-    });
+    let nextOfKinId: string;
 
-    // Then upsert applicantPersonalDetails
+    // If an existing nextOfKin ID is provided, use it
+    if (nextOfKin.id) {
+      // Check if the provided nextOfKin ID exists in the database
+      const existingNextOfKin = await prismaClient.nextOfKin.findUnique({
+        where: { id: nextOfKin.id },
+      });
+
+      if (!existingNextOfKin) {
+        throw new Error("Next of Kin not found with the provided ID");
+      }
+
+      // Use the existing nextOfKin ID
+      nextOfKinId = existingNextOfKin.id;
+    } else {
+      // Otherwise, create nextOfKin
+      const upsertedNextOfKin = await prismaClient.nextOfKin.create({
+        data: {
+          ...nextOfKinData,
+          user: { connect: { id: userId } },
+        },
+      });
+      nextOfKinId = upsertedNextOfKin.id;
+    }
+
+    // Prepare personal details data
     const personalDetailsData: ApplicantPersonalDetailsIF = {
       title,
       firstName,
@@ -60,36 +64,55 @@ class ApplicantService {
       maritalStatus,
     };
 
-    const upsertedPersonalDetails = await prismaClient.applicantPersonalDetails.upsert({
+    // Check if applicantPersonalDetails already exist by email
+    const existingPersonalDetails = await prismaClient.applicantPersonalDetails.findUnique({
       where: { email },
-      update: {
-        ...personalDetailsData,
-        nextOfKin: {
-          connect: { id: upsertedNextOfKin.id },
+    });
+
+    let upsertedPersonalDetails;
+    if (!existingPersonalDetails) {
+      // Create new record if not found
+      upsertedPersonalDetails = await prismaClient.applicantPersonalDetails.create({
+        data: {
+          ...personalDetailsData,
+          email,
+          nextOfKin: { connect: { id: nextOfKinId } },
         },
-      },
-      create: {
-        ...personalDetailsData,
-        email,
-        nextOfKin: {
-          connect: { id: upsertedNextOfKin.id },
+      });
+    }
+    // Get the current date
+    const currentDate = new Date();
+
+    // Calculate the date three months ago (90 days)
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setDate(currentDate.getDate() - 90);
+
+    // Check if the user has an existing application for the same property within the last 3 months
+    const recentApplication = await prismaClient.application.findFirst({
+      where: {
+        userId,
+        propertiesId,
+        createdAt: {
+          gte: threeMonthsAgo, // Get applications made within the last 3 months
         },
-      },
-      include: {
-        nextOfKin: true,
       },
     });
 
+    // If a recent application exists, prevent re-application
+    if (recentApplication) {
+      throw new Error("You have already applied for this property in the last 3 months. Please wait before reapplying.");
+    }
+
     // Create application record
-    await prismaClient.application.create({
+    const app = await prismaClient.application.create({
       data: {
         propertiesId,
         userId,
-        applicantPersonalDetailsId: upsertedPersonalDetails.id,
+        applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
       },
     });
 
-    return upsertedPersonalDetails;
+    return app;
   };
 
   createOrUpdateGuarantor = async (data: GuarantorInformationIF) => {
@@ -268,7 +291,7 @@ class ApplicantService {
 
   }
 
-  deleteApplicant = async (id: string) =>{
+  deleteApplicant = async (id: string) => {
     return await prismaClient.application.update({
       where: { id },
       data: {
@@ -355,7 +378,7 @@ class ApplicantService {
   updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {
     return await prismaClient.application.update({
       where: { id: applicationId },
-      data:{  status}
+      data: { status }
     });
   }
 
@@ -365,7 +388,7 @@ class ApplicantService {
       where: { id: applicationId, status: ApplicationStatus.COMPLETED },
     });
   }
-  
+
   getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus) => {
 
     return await prismaClient.application.findMany({
@@ -429,8 +452,8 @@ class ApplicantService {
     };
   }
 
-  approveApplication = async (tenantData: any) =>{
-    return await userServices.createUser({...tenantData, role:userRoles.TENANT});
+  approveApplication = async (tenantData: any) => {
+    return await userServices.createUser({ ...tenantData, role: userRoles.TENANT });
   }
 }
 

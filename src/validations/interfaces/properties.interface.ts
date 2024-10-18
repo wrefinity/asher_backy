@@ -25,4 +25,6 @@ export interface ICreateProperty {
     videourl?: string[];
     amenities?: string[];
     totalApartments?: number;
+    rentalFee?: number;
+    lateFee?: number; 
 }
