@@ -8,7 +8,7 @@ const nextOfKinSchema = Joi.object({
     email: Joi.string().email().required(),
     phoneNumber: Joi.string().required(),
     middleName: Joi.string().allow(null).optional(),
-  });
+});
 
 const applicantPersonalDetailsSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
@@ -17,12 +17,16 @@ const applicantPersonalDetailsSchema = Joi.object({
     middleName: Joi.string().allow(null).optional(),
     lastName: Joi.string().required(),
     dob: Joi.date().required(),
+    invited: Joi.string().valid(
+        'YES',
+        'NO'
+    ).default('NO'),
     email: Joi.string().email().optional(), // Optional as per interface definition
     phoneNumber: Joi.string().required(),
     maritalStatus: Joi.string().required(),
     nextOfKin: nextOfKinSchema.allow(null).optional(), // Validate nextOfKin using the previous schema
-  });
- 
+});
+
 // Guarantor Information Schema
 const guarantorInformationSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
@@ -94,7 +98,7 @@ const employmentInformationSchema = Joi.object({
     employerEmail: Joi.string().optional(),
     employerPhone: Joi.string().optional(),
     positionTitle: Joi.string().optional()
-  });
+});
 
 export {
     nextOfKinSchema,

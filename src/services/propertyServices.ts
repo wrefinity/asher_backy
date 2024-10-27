@@ -1,6 +1,6 @@
 import { prismaClient } from "..";
 import { ICreateProperty } from "../validations/interfaces/properties.interface";
-
+import {PropsApartmentStatus} from "@prisma/client";
 
 class PropertyService {
     createProperty = async (propertyData: ICreateProperty) =>{
@@ -30,6 +30,12 @@ class PropertyService {
         return await prismaClient.properties.update({
             where: { id, landlordId },
             data: { isDeleted: true }
+        });
+    }
+    updateAvailabiltyStatus = async (landlordId: string, id: string, availability: PropsApartmentStatus) => {
+        return await prismaClient.properties.update({
+            where: { id, landlordId },
+            data: { availability}
         });
     }
 

@@ -12,3 +12,6 @@ export const propApartmentSettingsUpdateSchema = Joi.object({
     lateFee: Joi.number().min(0).precision(2).optional(),
     latePaymentFeeType: Joi.string().valid('ONE_TIME', 'RECURRING').optional(),
 });
+export const propAvailabiltySchema = Joi.object({
+    availability: Joi.string().valid('OCCUPIED', 'VACANT').required(),
+});

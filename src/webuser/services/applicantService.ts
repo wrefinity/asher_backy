@@ -15,9 +15,58 @@ import {
 
 class ApplicantService {
 
-
+  incrementStepCompleted = async (applicationId: string, newField: 'residentialInfo' | 'guarantorInformation' | 'emergencyInfo' | 'employmentInfo' | 'documents') => {
+    // Fetch the current application details with relevant relationships
+    const application = await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        residentialInfo: true,
+        guarantorInformation: true,
+        emergencyInfo: true,
+        employmentInfo: true,
+        documents: true,
+      },
+    });
+  
+    if (!application) {
+      throw new Error(`Application with ID ${applicationId} not found`);
+    }
+  
+    // Initialize the step increment to the current stepCompleted value
+    let stepIncrement = application.stepCompleted ?? 1;
+  
+    // Check if the new field is not connected and increment accordingly
+    switch (newField) {
+      case 'residentialInfo':
+        if (!application.residentialInfo) stepIncrement += 1;
+        break;
+      case 'guarantorInformation':
+        if (!application.guarantorInformation) stepIncrement += 1;
+        break;
+      case 'emergencyInfo':
+        if (!application.emergencyInfo) stepIncrement += 1;
+        break;
+      case 'employmentInfo':
+        if (!application.employmentInfo) stepIncrement += 1;
+        break;
+      case 'documents':
+        if (application.documents.length <= 1) stepIncrement += 1;
+        break;
+      default:
+        throw new Error(`Invalid field: ${newField}`);
+    }
+  
+    // Update the application with the incremented stepCompleted value if it changed
+    if (stepIncrement !== application.stepCompleted) {
+      await prismaClient.application.update({
+        where: { id: applicationId },
+        data: { stepCompleted: stepIncrement },
+      });
+    }
+  };
+  
   createOrUpdatePersonalDetails = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
-    const { title, firstName, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin } = data;
+    const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin } = data;
     const nextOfKinData: NextOfKinIF = {
       firstName: nextOfKin.firstName,
       lastName: nextOfKin.lastName,
@@ -62,6 +111,7 @@ class ApplicantService {
       dob,
       phoneNumber,
       maritalStatus,
+      invited,
     };
 
     // Check if applicantPersonalDetails already exist by email
@@ -111,7 +161,6 @@ class ApplicantService {
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
       },
     });
-
     return app;
   };
 
@@ -137,6 +186,7 @@ class ApplicantService {
         },
       },
     });
+    await this.incrementStepCompleted(applicationId, "guarantorInformation");
     return { ...guarantorInfo, ...updatedApplication };
   }
 
@@ -159,6 +209,7 @@ class ApplicantService {
         },
       },
     });
+    await this.incrementStepCompleted(applicationId, "emergencyInfo");
     return { ...emergencyInfo, ...updatedApplication };
   }
 
@@ -194,6 +245,7 @@ class ApplicantService {
         personalDetails: true,
       }
     });
+    await this.incrementStepCompleted(applicationId, "documents");
     return { ...docInfo, ...updatedApplication };
   }
 
@@ -254,6 +306,7 @@ class ApplicantService {
         },
       },
     });
+    await this.incrementStepCompleted(applicationId, "residentialInfo");
     return { ...resInfo, ...updatedApplication };
   }
 
@@ -287,6 +340,7 @@ class ApplicantService {
         },
       },
     });
+    await this.incrementStepCompleted(applicationId, "employmentInfo");
     return { ...empInfo, ...updatedApplication };
 
   }

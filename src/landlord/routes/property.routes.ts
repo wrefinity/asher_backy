@@ -21,6 +21,7 @@ class ApartmentLandlordRouter {
         this.router.get('/property', PropertyController.getCurrentLandlordProperties)
         this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
+        this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
         this.router.get('/property/showcased', PropertyController.getShowCasedRentals)
 
         //   settings 

@@ -7,16 +7,23 @@ enum ApplicationStatus {
   ACCEPTED
 }
 
+enum InvitedStatus {
+  YES
+  NO
+}
+
 model application {
-  id        String            @id @default(cuid())
+  id            String            @id @default(cuid())
   // leaseStartDate  DateTime?
   // leaseEndDate    DateTime?
   // moveInDate      DateTime?
   // rentAmount      Decimal?
   // securityDeposit Decimal?
   // leaseTerm       String?
-  status    ApplicationStatus @default(PENDING)
-  isDeleted Boolean           @default(false)
+  status        ApplicationStatus @default(PENDING)
+  invited       InvitedStatus?    @default(NO)
+  stepCompleted Int?               @default(1)
+  isDeleted     Boolean           @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -75,7 +82,7 @@ model nextOfKin {
   // One-to-one relationship with applicantPersonalDetails
   applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
   applicantPersonalDetailsId String?                   @unique
-  userId                     String        
+  userId                     String
   user                       users                     @relation(fields: [userId], references: [id])
 }
 

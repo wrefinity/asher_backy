@@ -3,7 +3,7 @@ import PropApartmentSettingsService from '../services/propertySetting.service';
 import {propApartmentSettingsUpdateSchema, propApartmentSettingsSchema } from '../validations/schema/propSettingSchema';
 import { CustomRequest } from '../../utils/types';
 import ErrorService from "../../services/error.service";
-
+import PropertyServices from "../../services/propertyServices";
 
 class PropApartmentSettingsController {
     
@@ -13,9 +13,13 @@ class PropApartmentSettingsController {
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
-
         try {
-            const createdSettings = await PropApartmentSettingsService.create(value);
+            const landlordId = req.user?.landlords?.id;
+            const propertiesId = value.propertyId;
+            const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
+            if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
+            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
+            const createdSettings = await PropApartmentSettingsService.create({...value, landlordId});
             return res.status(201).json(createdSettings);
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -27,6 +31,7 @@ class PropApartmentSettingsController {
         const { id } = req.params;
 
         try {
+            
             const settings = await PropApartmentSettingsService.getById(id);
             if (!settings) {
                 return res.status(404).json({ error: 'Settings not found' });

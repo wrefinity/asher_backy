@@ -48,8 +48,6 @@ class ApplicantControls {
     try {
       const userId = String(req.user.id);
       const propertiesId = req.params.propertiesId;
-      console.log("i was called");
-
       // check for property existance
       const propertyExist = await PropertyServices.getPropertiesById(propertiesId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` }); 

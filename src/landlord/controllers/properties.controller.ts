@@ -2,6 +2,7 @@ import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
 import { createPropertySchema } from "../../validations/schemas/properties.schema"
+import { propAvailabiltySchema } from "../validations/schema/propSettingSchema"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 
@@ -28,7 +29,7 @@ class PropertyController {
             const rentalFee = value.rentalFee || 0;
             // const lateFee = rentalFee * 0.01;
 
-            const property = await PropertyServices.createProperty({ ...value, images, videourl, landlordId })
+            const property = await PropertyServices.createProperty({ ...value,images, videourl, landlordId })
             return res.status(201).json({property})
         } catch (error) {
             console.log(error)
@@ -88,8 +89,26 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+    updatePropertyAvailability = async (req: CustomRequest, res: Response) => {
+        try {
+            const { error, value } = propAvailabiltySchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+            const landlordId = req.user?.landlords?.id;
+            const propertiesId = req.params.propertyId;
+            const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
+            if (!propertyExist) return res.status(404).json({ message: "property does not exists for this landlord" })
+            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
+            const property = await PropertyServices.updateAvailabiltyStatus(landlordId, propertiesId, value.availability);
+            if (!property) return res.status(200).json({ message: "No Property listed yet" })
+            return res.status(200).json({property})
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
 
-    async getPropertyPerformance(req: CustomRequest, res: Response) {
+    getPropertyPerformance = async (req: CustomRequest, res: Response) => {
         const { entityId } = req.params;
         const { isApartment } = req.body
         if (!entityId) return res.status(400).json({ message: 'No propertyId provided' })
@@ -100,7 +119,7 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     }
-    async getPropertyExpenses(req: CustomRequest, res: Response) {
+    getPropertyExpenses = async (req: CustomRequest, res: Response) =>{
         const { landlords } = req.user
         const landlordId = landlords.id
         const { propertyId } = req.params;
@@ -113,7 +132,7 @@ class PropertyController {
         }
     }
 
-    async getRentVSExpense(req: CustomRequest, res: Response) {
+    getRentVSExpense = async (req: CustomRequest, res: Response) =>{
         const { entityId } = req.params;
         const { isApartment, startDate, endDate } = req.body
         if (!entityId) return res.status(400).json({ message: 'No propertyId provided' })
