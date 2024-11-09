@@ -18,3 +18,8 @@ export interface MaintenanceIF {
   handleByLandlord: boolean;
   amount: number;
 }
+
+export interface RescheduleMaintenanceDTO {
+  maintenanceId: string;
+  newScheduleDate: Date;
+}

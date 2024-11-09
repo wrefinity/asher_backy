@@ -1,6 +1,6 @@
 import { TransactionReference, chatType, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "..";
-import { MaintenanceIF } from '../validations/interfaces/maintenance.interface';
+import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
 import walletService from "./wallet.service";
 
@@ -45,6 +45,39 @@ class MaintenanceService {
     });
   }
 
+  rescheduleMaintenance = async (data: RescheduleMaintenanceDTO) => {
+    const { maintenanceId, newScheduleDate } = data;
+    const maintenance = await this.getMaintenanceById(maintenanceId);
+
+    if (!maintenance) {
+      throw new Error('Maintenance request not found');
+    }
+    // Check if reScheduleMax is greater than zero before proceeding
+    if (maintenance.reScheduleMax <= 0) {
+      throw new Error('Maximum reschedules reached, cannot reschedule further');
+    }
+
+    // Add to reschedule history
+    await prismaClient.maintenanceRescheduleHistory.create({
+      data: {
+        maintenanceId,
+        oldDate: maintenance.scheduleDate,
+        newDate: newScheduleDate,
+      },
+    });
+
+    // Update maintenance with new schedule date and increment counter
+
+    return await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        scheduleDate: newScheduleDate,
+        reScheduleDate: newScheduleDate,
+        reScheduleMax: { decrement: maintenance.reScheduleMax > 0 ? 1 : 0 },
+      },
+    });
+  }
+
   createMaintenance = async (maintenanceData: MaintenanceIF) => {
     const { subcategoryIds, tenantId, serviceId, categoryId, propertyId, ...rest } = maintenanceData;
 
@@ -65,8 +98,8 @@ class MaintenanceService {
     }
 
     const createData: any = {
-      ...rest, paymentStatus:"PENDING",
-      landlordDecision:"PENDING",
+      ...rest, paymentStatus: "PENDING",
+      landlordDecision: "PENDING",
       subcategories: subcategoryIds ? {
         connect: subcategoryIds.map(id => ({ id })),
       } : undefined,
@@ -74,20 +107,21 @@ class MaintenanceService {
         connect: { id: categoryId },
       },
       services: {
-        connect:{
+        connect: {
           id: serviceId
         }
       },
       tenant: {
-        connect:{
+        connect: {
           id: tenantId
         }
       },
       property: {
         connect: {
           id: propertyId
+        }
       }
-    }}
+    }
 
     return await prismaClient.maintenance.create({
       data: createData,
@@ -97,52 +131,52 @@ class MaintenanceService {
 
 
 
-  createMaintenanceChat= async(maintenanceId: string, senderId: string, receiverId: string, initialMessage: string) =>{
-  try {
-    // Check if a chat room already exists for this maintenance request
-    let chatRoom = await prismaClient.chatRoom.findFirst({
-      where: {
-        AND: [
-          { user1Id: senderId },
-          { user2Id: receiverId },
-        ],
-      },
-    });
-
-    // If no chat room exists, create one
-    if (!chatRoom) {
-      chatRoom = await prismaClient.chatRoom.create({
-        data: {
-          user1Id: senderId,
-          user2Id: receiverId,
+  createMaintenanceChat = async (maintenanceId: string, senderId: string, receiverId: string, initialMessage: string) => {
+    try {
+      // Check if a chat room already exists for this maintenance request
+      let chatRoom = await prismaClient.chatRoom.findFirst({
+        where: {
+          AND: [
+            { user1Id: senderId },
+            { user2Id: receiverId },
+          ],
         },
       });
+
+      // If no chat room exists, create one
+      if (!chatRoom) {
+        chatRoom = await prismaClient.chatRoom.create({
+          data: {
+            user1Id: senderId,
+            user2Id: receiverId,
+          },
+        });
+      }
+
+      // Associate the chat room with the maintenance request
+      await prismaClient.maintenance.update({
+        where: { id: maintenanceId },
+        data: { chatRoomId: chatRoom.id },
+      });
+
+      // Add the initial message to the chat room
+      const message = await prismaClient.message.create({
+        data: {
+          content: initialMessage,
+          senderId: senderId,
+          receiverId: receiverId,
+          chatRoomId: chatRoom.id,
+          chatType: chatType.MAINTENANCE,
+        },
+      });
+
+      console.log("Chat room created and message sent.");
+      return { chatRoom, message };
+    } catch (error) {
+      console.error("Error creating maintenance chat:", error.message);
+      throw error;
     }
-
-    // Associate the chat room with the maintenance request
-    await prismaClient.maintenance.update({
-      where: { id: maintenanceId },
-      data: { chatRoomId: chatRoom.id },
-    });
-
-    // Add the initial message to the chat room
-    const message = await prismaClient.message.create({
-      data: {
-        content: initialMessage,
-        senderId: senderId,
-        receiverId: receiverId,
-        chatRoomId: chatRoom.id,
-        chatType: chatType.MAINTENANCE, 
-      },
-    });
-
-    console.log("Chat room created and message sent.");
-    return { chatRoom, message };
-  } catch (error) {
-    console.error("Error creating maintenance chat:", error.message);
-    throw error;
   }
-}
 
 
 
@@ -180,7 +214,7 @@ class MaintenanceService {
     return maintenance?.vendorId !== null;
   }
 
-  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string) =>{
+  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string) => {
     try {
       const whitelistEntry = await prismaClient.maintenanceWhitelist.findFirst({
         where: {

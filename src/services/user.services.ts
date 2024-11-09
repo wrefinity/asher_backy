@@ -67,6 +67,31 @@ class UserService {
         return password ? hashSync(password, 10) : null
     };
 
+    generateUniqueTenantCode = async (landlordCode) =>{
+        let isUnique = false;
+        let tenantCode;
+      
+        while (!isUnique) {
+          const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+          tenantCode = `${landlordCode}-${suffix}`;
+          const existingTenant = await prismaClient.tenants.findUnique({ where: { tenantCode } });
+          if (!existingTenant) isUnique = true;
+        }
+      
+        return tenantCode;
+      }
+
+    generateUniqueLandlordCode = async () => {
+        let isUnique = false;
+        let code;
+        while (!isUnique) {
+            code = 'LD' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'); // e.g., LD123456
+            const existingLandlord = await prismaClient.landlords.findUnique({ where: { landlordCode: code } });
+            if (!existingLandlord) isUnique = true;
+        }
+        return code;
+    }
+
     createUser = async (userData: any) => {
         const newUser = await prismaClient.users.create({
             data: {
@@ -94,8 +119,10 @@ class UserService {
         // Based on the role, create the corresponding entry in the related schema
         switch (userData?.role) {
             case userRoles.LANDLORD:
+                const landlordCode = await this.generateUniqueLandlordCode();
                 await prismaClient.landlords.create({
                     data: {
+                        landlordCode, 
                         userId: newUser.id,
                     },
                 });
@@ -109,8 +136,13 @@ class UserService {
                 });
                 break;
             case userRoles.TENANT:
+                const landlord = await prismaClient.landlords.findUnique({ where: { id: userData.landlordId } });
+                if (!landlord) throw new Error('Landlord not found');
+              
+                const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
                 const tenant = await prismaClient.tenants.create({
                     data: {
+                        tenantCode,
                         userId: newUser.id,
                         propertyId: userData?.propertyId,
                         landlordId: userData?.landlordId,
@@ -118,7 +150,7 @@ class UserService {
                         leaseEndDate: userData?.leaseEndDate,
                     },
                 });
-                if (tenant){
+                if (tenant) {
                     // Update application with tenant info
                     await prismaClient.application.update({
                         where: { id: userData.applicationId },

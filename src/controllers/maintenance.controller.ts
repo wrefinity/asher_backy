@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import maintenanceService from '../services/maintenance.service';
 import propertyService from '../services/propertyServices';
-import { maintenanceSchema, checkWhitelistedSchema, maintenanceChatSchema } from '../validations/schemas/maintenance.schema';
+import { maintenanceSchema, rescheduleMaintenanceSchema, checkWhitelistedSchema, maintenanceChatSchema } from '../validations/schemas/maintenance.schema';
 import ServiceServices from "../vendor/services/vendor.services"
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
@@ -47,13 +47,13 @@ class MaintenanceController {
       if (error) {
         return res.status(400).json({ message: error.details[0].message });
       }
-      const tenantId = req.user?.tenants?.id;
+      const tenantId = req.user?.tenant?.id;
       if (!tenantId) {
         return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
       }
 
-      const checkPropertyExist = await propertyService.getPropertiesById(value.propertyId) 
-      if (checkPropertyExist) return res.status(400).json({message:"propery doesnt exist"})
+      const checkPropertyExist = await propertyService.getPropertiesById(value.propertyId)
+      if (checkPropertyExist) return res.status(400).json({ message: "propery doesnt exist" })
 
       const isWhitelisted = await maintenanceService.checkWhitelist(
         checkPropertyExist?.landlordId,
@@ -69,6 +69,18 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
+
+  public rescheduleMaintenanceController = async (req: CustomRequest, res: Response) => {
+    try {
+      const maintenanceId = req.params.maintenanceId;
+      const { error, value } = rescheduleMaintenanceSchema.validate(req.body);
+      if (error) return res.status(400).json({ error: error.details[0].message });
+      const result = await maintenanceService.rescheduleMaintenance({ ...value, maintenanceId });
+      return res.status(200).json({ message: 'Maintenance rescheduled successfully', result });
+    } catch (err) {
+      ErrorService.handleError(err, res);
+    }
+  }
   public createMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const { error, value } = maintenanceSchema.validate(req.body);
@@ -98,27 +110,27 @@ class MaintenanceController {
       const maintenance = await maintenanceService.createMaintenance({
         ...data,
         handleByLandlord,
-        landlordDecision: handleByLandlord? maintenanceDecisionStatus.PENDING : '',
+        landlordDecision: handleByLandlord ? maintenanceDecisionStatus.PENDING : '',
         attachments: cloudinaryUrls,
         tenantId: tenantId || undefined,
         landlordId: landlordId || undefined
       });
 
-      if(isWhitelisted && !landlordId) return res.status(200).json({
-        message:"request created and will be handled by landlord",
-        maintenance 
+      if (isWhitelisted && !landlordId) return res.status(200).json({
+        message: "request created and will be handled by landlord",
+        maintenance
       })
 
-      return res.status(201).json({ maintenance, message:" maintenance request created"  });
+      return res.status(201).json({ maintenance, message: " maintenance request created" });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
   };
 
-  createMaintenanceChat = async (req: CustomRequest, res: Response) =>{
-    const {maintenanceId} = req.params; 
+  createMaintenanceChat = async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
     // Fetch the maintenance request details
-    const {error, value} = maintenanceChatSchema.validate(req.body);
+    const { error, value } = maintenanceChatSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
@@ -126,10 +138,10 @@ class MaintenanceController {
     const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
     const senderId = req.user.id;
     if (!maintenance) {
-      return res.status(200).json({message:"Maintenance request not found."});
+      return res.status(200).json({ message: "Maintenance request not found." });
     }
     const chats = await maintenanceService.createMaintenanceChat(maintenanceId, senderId, value.receiverId, value.message)
-}
+  }
 
   public updateMaintenance = async (req: CustomRequest, res: Response) => {
     try {

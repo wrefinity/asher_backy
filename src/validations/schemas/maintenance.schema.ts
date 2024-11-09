@@ -26,3 +26,8 @@ export const maintenanceChatSchema = Joi.object({
   receiverId: Joi.string().required(),
   message: Joi.string().required(),
 });
+
+export const rescheduleMaintenanceSchema = Joi.object({
+  // maintenanceId: Joi.string().required(),
+  newScheduleDate: Joi.date().greater('now').required(),
+});

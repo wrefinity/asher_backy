@@ -17,16 +17,19 @@ enum vendorAvailability {
 }
 
 model maintenance {
-  id               String                     @id @default(cuid())
-  description      String
-  attachments      String[]
-  offer            String[]
-  scheduleDate     DateTime?
-  createdAt        DateTime                   @default(now())
-  updatedAt        DateTime                   @updatedAt
-  isDeleted        Boolean                    @default(false)
-  handleByLandlord Boolean                    @default(false)
-  landlordDecision maintenanceDecisionStatus? 
+  id                String                         @id @default(cuid())
+  description       String
+  attachments       String[]
+  offer             String[]
+  scheduleDate      DateTime?
+  reScheduleMax     Int?                           @default(1)
+  reScheduleDate    DateTime?
+  reScheduleHistory maintenanceRescheduleHistory[]
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  isDeleted         Boolean                        @default(false)
+  handleByLandlord  Boolean                        @default(false)
+  landlordDecision  maintenanceDecisionStatus?
 
   // relation fields
   tenant        tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
@@ -55,6 +58,14 @@ model maintenance {
   //payment
   paymentStatus TransactionStatus @default(PENDING)
   amount        Decimal           @db.Decimal(18, 2)
+}
+
+model maintenanceRescheduleHistory {
+  id            String      @id @default(cuid())
+  maintenanceId String
+  oldDate       DateTime
+  newDate       DateTime
+  maintenance   maintenance @relation(fields: [maintenanceId], references: [id])
 }
 
 model services {

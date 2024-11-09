@@ -20,6 +20,7 @@ import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
 import { LoginSchema, userLandlordSchema } from "../validations/schemas/auth";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
+import { CustomRequest } from "../utils/types";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -106,7 +107,7 @@ class AuthControls {
         }
     }
 
-    sendPasswordResetCode = async (req: Request, res: Response) => {
+    sendPasswordResetCode = async (req: CustomRequest, res: Response) => {
         const { email } = req.body;
         try {
             let user = await UserServices.findUserByEmail(email);

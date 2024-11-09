@@ -71,7 +71,10 @@ model properties {
 
   //setting 
   settings     PropApartmentSettings?
-  availability PropsApartmentStatus? @default(VACANT)
+  availability PropsApartmentStatus?  @default(VACANT)
+
+  // Relation to applicationInvites
+  applicationInvites applicationInvites[]
 }
 
 model PropApartmentSettings {
@@ -143,5 +146,6 @@ model apartments {
   maintenanceWhitelist maintenanceWhitelist[]
   transactions         Transaction[]
 
-  settings PropApartmentSettings?
+  settings           PropApartmentSettings?
+  applicationInvites applicationInvites[]
 }
