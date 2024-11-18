@@ -2,7 +2,7 @@ import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
 import { createPropertySchema } from "../../validations/schemas/properties.schema"
-import { propAvailabiltySchema } from "../validations/schema/propSettingSchema"
+import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 
@@ -22,6 +22,7 @@ class PropertyController {
             }
             const images = value.cloudinaryUrls;
             const videourl = value.cloudinaryVideoUrls;
+
             delete value['cloudinaryUrls']
             delete value['cloudinaryVideoUrls']
             delete value['cloudinaryDocumentUrls']

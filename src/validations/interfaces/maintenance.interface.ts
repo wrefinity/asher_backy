@@ -17,6 +17,9 @@ export interface MaintenanceIF {
   serviceId?: string;
   handleByLandlord: boolean;
   amount: number;
+  flagCancellation?: boolean,
+  cancelReason?: string;
+  vendorConsentCancellation?: boolean;
 }
 
 export interface RescheduleMaintenanceDTO {

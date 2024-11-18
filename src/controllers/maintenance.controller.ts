@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import maintenanceService from '../services/maintenance.service';
 import propertyService from '../services/propertyServices';
-import { maintenanceSchema, rescheduleMaintenanceSchema, checkWhitelistedSchema, maintenanceChatSchema } from '../validations/schemas/maintenance.schema';
+import { maintenanceSchema, rescheduleMaintenanceSchema, checkWhitelistedSchema, maintenanceChatSchema, maintenanceCancelSchema } from '../validations/schemas/maintenance.schema';
 import ServiceServices from "../vendor/services/vendor.services"
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
@@ -70,6 +70,41 @@ class MaintenanceController {
     }
   };
 
+  public requestMaintenanceCancellation = async (req: CustomRequest, res: Response) => {
+    const maintenanceId = req.params.maintenanceId;
+    const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
+    const tenantId = req.user.tenant?.id;
+
+
+    const { error, value } = maintenanceCancelSchema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+    // Only the assigned tenant can initiate the cancellation request
+    if (maintenance.tenantId !== tenantId) {
+      throw new Error("Unauthorized: Only the assigned tenant can request cancellation.");
+    }
+    // Update the maintenance record with cancellation flag and reason
+    await maintenanceService.updateMaintenance(maintenanceId, {
+      flagCancellation: true,
+      cancelReason: value.reason,
+      status: maintenanceStatus.CANCELLATION_REQUEST
+    });
+  }
+  public confirmCancellationByVendor = async (req: CustomRequest, res: Response) => {
+    const maintenanceId = req.params.maintenanceId;
+    const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);;
+
+    const vendorId = req.user.vendors?.id;
+    // Ensure the vendor providing consent is the assigned vendor
+    if (maintenance.vendorId !== vendorId) {
+      throw new Error("Unauthorized: Only the assigned vendor can consent to cancellation.");
+    }
+    // Update the maintenance record to reflect vendor consent
+    await maintenanceService.updateMaintenance(maintenanceId, {
+      vendorConsentCancellation: true,
+      status: maintenanceStatus.CANCEL,
+    });
+  }
   public rescheduleMaintenanceController = async (req: CustomRequest, res: Response) => {
     try {
       const maintenanceId = req.params.maintenanceId;
@@ -87,16 +122,13 @@ class MaintenanceController {
       if (error) {
         return res.status(400).json({ message: error.details[0].message });
       }
-
-      console.log(req.user)
-
       const tenantId = req.user.tenant?.id;
       const landlordId = req.user.landlords?.id;
 
       if (!tenantId && !landlordId) {
         return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
       }
-
+      // checking if the maitenance category is whitelisted by the landlord
       const isWhitelisted = await maintenanceService.checkWhitelist(
         landlordId,
         value.categoryId,
@@ -107,6 +139,7 @@ class MaintenanceController {
       const handleByLandlord = isWhitelisted || !!landlordId;
 
       const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
+
       const maintenance = await maintenanceService.createMaintenance({
         ...data,
         handleByLandlord,
@@ -141,9 +174,42 @@ class MaintenanceController {
       return res.status(200).json({ message: "Maintenance request not found." });
     }
     const chats = await maintenanceService.createMaintenanceChat(maintenanceId, senderId, value.receiverId, value.message)
+    return res.status(201).json({ chats });
+  }
+  getMaintenanceChat = async (req: CustomRequest, res: Response) => {
+    try {
+      const { maintenanceId } = req.params;
+      const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
+      if (!maintenance) {
+        return res.status(200).json({ message: "Maintenance request not found." });
+      }
+      const chats = await maintenanceService.getMaintenanceChat(maintenanceId);
+      return res.status(201).json({ chats });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
   }
 
   public updateMaintenance = async (req: CustomRequest, res: Response) => {
+    try {
+      const id = req.params.id;
+      const { error } = maintenanceSchema.validate(req.body, { allowUnknown: true });
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
+      const maintenanceExits = await maintenanceService.getMaintenanceById(id);
+      if (!maintenanceExits) {
+        return res.status(404).json({ message: `maintenance with id: ${id} doesnt exist` });
+      }
+
+      const maintenance = await maintenanceService.updateMaintenance(id, req.body);
+      return res.status(200).json({ maintenance });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
+
+  public cancelMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
       const { error } = maintenanceSchema.validate(req.body, { allowUnknown: true });

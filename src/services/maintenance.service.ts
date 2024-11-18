@@ -177,6 +177,18 @@ class MaintenanceService {
       throw error;
     }
   }
+  getMaintenanceChat = async (maintenanceId: string) => {
+    const chatRoom = await prismaClient.chatRoom.findUnique({
+      where: { maintenanceId },
+      include: {
+        messages: {
+          where: { chatType: 'MAINTENANCE' },
+          orderBy: { createdAt: 'asc' }
+        }
+      }
+    });
+    return chatRoom?.messages || [];
+  }
 
 
 

@@ -3,6 +3,8 @@ enum maintenanceStatus {
   UNASSIGNED
   PENDING
   COMPLETED
+  CANCELLATION_REQUEST
+  CANCEL
 }
 
 enum maintenanceDecisionStatus {
@@ -31,20 +33,23 @@ model maintenance {
   handleByLandlord  Boolean                        @default(false)
   landlordDecision  maintenanceDecisionStatus?
 
+  cancelReason              String? // Reason for cancellation
+  flagCancellation          Boolean?      @default(false)
+  vendorConsentCancellation Boolean? // Vendor’s consent for cancellation
   // relation fields
-  tenant        tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
-  tenantId      String
-  landlord      landlords?    @relation(name: "landlordUser", fields: [landlordId], references: [id])
-  landlordId    String?
-  vendor        vendors?      @relation(name: "vendorUser", fields: [vendorId], references: [id])
-  vendorId      String?
-  property      properties?   @relation(fields: [propertyId], references: [id])
-  propertyId    String?
-  apartment     apartments?   @relation(fields: [apartmentId], references: [id])
-  apartmentId   String?
-  category      category      @relation(fields: [categoryId], references: [id])
-  categoryId    String
-  subcategories subCategory[] @relation("SubCategoryMaintenance")
+  tenant                    tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
+  tenantId                  String
+  landlord                  landlords?    @relation(name: "landlordUser", fields: [landlordId], references: [id])
+  landlordId                String?
+  vendor                    vendors?      @relation(name: "vendorUser", fields: [vendorId], references: [id])
+  vendorId                  String?
+  property                  properties?   @relation(fields: [propertyId], references: [id])
+  propertyId                String?
+  apartment                 apartments?   @relation(fields: [apartmentId], references: [id])
+  apartmentId               String?
+  category                  category      @relation(fields: [categoryId], references: [id])
+  categoryId                String
+  subcategories             subCategory[] @relation("SubCategoryMaintenance")
 
   // Chat integration for communication on maintenance issues
   chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])

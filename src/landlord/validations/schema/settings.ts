@@ -6,6 +6,11 @@ export const propApartmentSettingsSchema = Joi.object({
     lateFee: Joi.number().min(0).precision(2).required(),
     latePaymentFeeType: Joi.string().valid('ONE_TIME', 'RECURRING').required(),
 });
+export const GlobalSettingsSchema = Joi.object({
+    percentageOrAmount: Joi.number().required(),
+    type: Joi.string().valid('SECURITY_DEPOSIT', 'RECURRING').required(),
+});
+
 export const propApartmentSettingsUpdateSchema = Joi.object({
     propertyId: Joi.string().optional(),
     apartmentId: Joi.string().optional(),

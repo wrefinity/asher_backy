@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Authorize } from "../../middlewares/authorize";
 import PropertyController from "../controllers/properties.controller";
-import PropApartmentSettingsController from "../controllers/propertySetting.controller";
+import SettingController from "../controllers/setting.controller";
 import upload from "../../configs/multer";
 import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
 
@@ -25,11 +25,20 @@ class ApartmentLandlordRouter {
         this.router.get('/property/showcased', PropertyController.getShowCasedRentals)
 
         //   settings 
-        this.router.post('/settings', PropApartmentSettingsController.createPropApartmentSetting);
-        this.router.get('/settings', PropApartmentSettingsController.getAllPropsApartSetting);
-        this.router.get('/settings/:id', PropApartmentSettingsController.getById);
-        this.router.patch('/settings/:id', PropApartmentSettingsController.updatePropsApartSetting);
-        this.router.delete('/settings/:id', PropApartmentSettingsController.deletePropsApartmentSetting);
+        this.router.post('/settings', SettingController.createPropApartmentSetting);
+        this.router.get('/settings', SettingController.getAllPropsApartSetting);
+        this.router.get('/settings/:id', SettingController.getById);
+        this.router.patch('/settings/:id', SettingController.updatePropsApartSetting);
+        this.router.delete('/settings/:id', SettingController.deletePropsApartmentSetting);
+        // Route to create a global setting
+        this.router.post('/settings/global', SettingController.createGlobalSetting);
+        // Route to get all global settings
+        this.router.get('/settings/global', SettingController.getAllGlobalSettings);
+        // Route to update a specific global setting
+        this.router.put('/settings/global/:id', SettingController.updateLandlordGlobalSetting);
+        // Route to delete a specific global setting
+        this.router.delete('/settings/global/:id', SettingController.deleteLandlordGlobalSetting);
+
     }
 }
 

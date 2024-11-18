@@ -15,7 +15,7 @@ class TransactionRouter {
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize)
         this.router.get('/fund-wallet', transactionsControllers.fundWallet)
-        this.router.patch('/verify/:referenceId', transactionsControllers.verifyPayment)
+        // this.router.patch('/verify/:referenceId', transactionsControllers.verifyPayment)
         this.router.patch('/verify-flutter/:referenceId', transactionsControllers.verifyFlutterWave)
         // this.router.patch('/verify-stripe/:referenceId', transactionsControllers.verifyStripe)
         this.router.post('/pay-bill', transferControllers.makePayment)

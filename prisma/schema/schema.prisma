@@ -55,6 +55,7 @@ model landlords {
   stripeCustomerId     String?                @unique
 
   Broadcast             Broadcast[]
+  globalSettings        Settings[]
   propsApartmentSetting PropApartmentSettings[]
   applicationInvites    applicationInvites[]
 }

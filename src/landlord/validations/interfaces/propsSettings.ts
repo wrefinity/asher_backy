@@ -1,4 +1,4 @@
-import { LatePaymentFeeType } from "@prisma/client";
+import { LatePaymentFeeType, SettingType} from "@prisma/client";
 
 export interface IPropApartmentSettings {
     id?: string;
@@ -9,3 +9,10 @@ export interface IPropApartmentSettings {
     createdAt?: Date;
     updatedAt?: Date;
 }
+
+export interface IGlobalSetting {
+    id: string;
+    percentageOrAmount?: number;
+    type: SettingType;
+    landlordId?: string | null;
+  }

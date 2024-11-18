@@ -28,28 +28,28 @@ class TransactionController {
         }
     }
 
-    async verifyPayment(req: CustomRequest, res: Response) {
-        const { referenceId } = req.params
-        if (!referenceId) return res.status(404).json({ message: 'No refrenceId provided' })
-        const userId = String(req.user.id)
-        try {
-            const verificationResult = await paystackServices.verifyPayment(referenceId);
-            if (verificationResult.status) {
-                await transactionServices.updateReferneceTransaction(referenceId, userId)
-                return res.status(200).json({
-                    message: "Payment successful",
-                    transaction: verificationResult.data,
-                });
-            } else {
-                return res.status(400).json({
-                    message: "Payment Failed",
-                    transaction: verificationResult.data,
-                });
-            }
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
-    }
+    // async verifyPayment(req: CustomRequest, res: Response) {
+    //     const { referenceId } = req.params
+    //     if (!referenceId) return res.status(404).json({ message: 'No refrenceId provided' })
+    //     const userId = String(req.user.id)
+    //     try {
+    //         const verificationResult = await paystackServices.verifyPayment(referenceId);
+    //         if (verificationResult.status) {
+    //             await transactionServices.updateReferneceTransaction(referenceId, userId)
+    //             return res.status(200).json({
+    //                 message: "Payment successful",
+    //                 transaction: verificationResult.data,
+    //             });
+    //         } else {
+    //             return res.status(400).json({
+    //                 message: "Payment Failed",
+    //                 transaction: verificationResult.data,
+    //             });
+    //         }
+    //     } catch (error) {
+    //         errorService.handleError(error, res)
+    //     }
+    // }
 
     async verifyFlutterWave(req: CustomRequest, res: Response) {
         const { referenceId } = req.params
