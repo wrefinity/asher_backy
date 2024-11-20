@@ -1,4 +1,4 @@
-import { Request, Response } from "express"
+import { Response } from "express"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -98,7 +98,6 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-
             await Emailer(tenantInfor.email, "Asher Rentals Invites", htmlContent)
             return res.status(201).json({ invite });
         } catch (error) {

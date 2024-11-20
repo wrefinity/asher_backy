@@ -1,6 +1,6 @@
 import { Response } from "express";
 import errorService from "../services/error.service";
-import paystackServices from "../services/paystack.services";
+// import paystackServices from "../services/paystack.services";
 import transactionServices from "../services/transaction.services";
 import walletService from "../services/wallet.service";
 import { CustomRequest } from "../utils/types";
