@@ -236,16 +236,16 @@ class WalletService {
                 paymentUrl = flutterwavePayment.data.link;
                 break;
 
-            case PaymentGateway.PAYSTACK:
-                const transactionDetails = {
-                    amount: amount,
-                    email: user.email,
-                }
-                const paystackPayment = await paystackServices.initializePayment({ ...transactionDetails });
-                paymentResponse = paystackPayment;
-                referenceId = paystackPayment.data.reference;
-                paymentUrl = paystackPayment.data.authorization_url;
-                break;
+            // case PaymentGateway.PAYSTACK:
+            //     const transactionDetails = {
+            //         amount: amount,
+            //         email: user.email,
+            //     }
+            //     const paystackPayment = await paystackServices.initializePayment({ ...transactionDetails });
+            //     paymentResponse = paystackPayment;
+            //     referenceId = paystackPayment.data.reference;
+            //     paymentUrl = paystackPayment.data.authorization_url;
+            //     break;
 
             default:
                 throw new Error("Unsupported payment gateway");
