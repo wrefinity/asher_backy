@@ -1,11 +1,24 @@
 import { PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
-import paystackServices from "./paystack.services";
+// import paystackServices from "./paystack.services";
 import transactionService from "./transaction.services";
 import stripeService from "./stripe.service";
 import paymentGatewayService from "./paymentGateway.service";
 import flutterWaveService from "./flutterWave.service";
 import { generateIDs } from "../utils/helpers";
+import axios from 'axios';
+import { Decimal } from "@prisma/client/runtime/library";
+
+async function convertCurrency(amount: number, from: string, to: string): Promise<number> {
+    if (from === to) return amount;
+
+    const response = await axios.get(`https://api.exchangerate-api.com/v4/latest/${from}`);
+    const rate = response.data.rates[to];
+
+    if (!rate) throw new Error('Currency conversion rate not found');
+
+    return amount * rate;
+}
 
 
 class WalletService {
@@ -40,44 +53,44 @@ class WalletService {
         return wallet;
     }
 
-    async fundWallet(userId: string, amount: number) {
-        const wallet = await this.getOrCreateWallet(userId);
-        const user = await prismaClient.users.findUnique({
-            where: { id: userId },
-            include: {
-                profile: {
-                    select: {
-                        fullname: true,
-                    }
-                }
-            }
-        });
-        if (!user) {
-            throw new Error("User not found.")
-        }
+    // async fundWallet(userId: string, amount: number) {
+    //     const wallet = await this.getOrCreateWallet(userId);
+    //     const user = await prismaClient.users.findUnique({
+    //         where: { id: userId },
+    //         include: {
+    //             profile: {
+    //                 select: {
+    //                     fullname: true,
+    //                 }
+    //             }
+    //         }
+    //     });
+    //     if (!user) {
+    //         throw new Error("User not found.")
+    //     }
 
-        const transactionDetails = {
-            amount: amount,
-            email: user.email,
-        }
-        console.log(transactionDetails);
-        const paymentResponse = await paystackServices.initializePayment({ ...transactionDetails })
+    //     const transactionDetails = {
+    //         amount: amount,
+    //         email: user.email,
+    //     }
+    //     console.log(transactionDetails);
+    //     const paymentResponse = await paystackServices.initializePayment({ ...transactionDetails })
 
-        const transactionRespDetails = await transactionService.createTransaction({
-            userId,
-            amount: amount,
-            description: `Wallet funding of ${amount}`,
-            type: TransactionType.CREDIT,
-            status: TransactionStatus.PENDING,
-            reference: TransactionReference.FUND_WALLET,
-            walletId: wallet.id,
-            referenceId: paymentResponse.data.reference
-        })
-        return {
-            authorizationUrl: paymentResponse.data.authorization_url,
-            transactionRespDetails
-        };
-    }
+    //     const transactionRespDetails = await transactionService.createTransaction({
+    //         userId,
+    //         amount: amount,
+    //         description: `Wallet funding of ${amount}`,
+    //         type: TransactionType.CREDIT,
+    //         status: TransactionStatus.PENDING,
+    //         reference: TransactionReference.FUND_WALLET,
+    //         walletId: wallet.id,
+    //         referenceId: paymentResponse.data.reference
+    //     })
+    //     return {
+    //         authorizationUrl: paymentResponse.data.authorization_url,
+    //         transactionRespDetails
+    //     };
+    // }
 
     async fundWalletUsingStripe(userId: string, amount: number, currency: string = 'usd') {
         const wallet = await this.getOrCreateWallet(userId);

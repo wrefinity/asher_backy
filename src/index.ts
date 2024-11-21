@@ -18,7 +18,7 @@ import VendorServiceRouter from "./routes/services";
 import StatusRouter from "./routes/status";
 import TransactionRouter from "./routes/transaction";
 import WalletRouter from "./routes/wallet";
-import paystackServices from "./services/paystack.services";
+// import paystackServices from "./services/paystack.services";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
@@ -65,7 +65,7 @@ class Server {
     private configureRoutes() {
         // Add routes here
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
-        this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
+        // this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
         this.app.post("/flutterwave/webhook", (req, res) => flutterWaveService.handleWebhook(req, res))
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/status", StatusRouter);
