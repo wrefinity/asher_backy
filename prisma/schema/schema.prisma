@@ -232,7 +232,7 @@ model users {
   Subscription     Subscription[]
   vendors          vendors?
   stripeCustomerId String?            @unique
-  wallet           wallet?
+  wallet           wallet[]
 
   nextOfKin nextOfKin[]
 }

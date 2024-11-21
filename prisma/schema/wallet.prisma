@@ -1,5 +1,5 @@
 // user wallets
-model Wallet {
+model wallet {
   id           String        @id @default(cuid())
   userId       String
   user         users         @relation(fields: [userId], references: [id])

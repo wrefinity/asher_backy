@@ -271,7 +271,6 @@ class WalletService {
             paymentUrl: paymentUrl,
         };
     }
-
 }
 
 export default new WalletService();
