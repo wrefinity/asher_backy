@@ -21,11 +21,11 @@ model properties {
   agencyId     String?
   agency       agency?   @relation(fields: [agencyId], references: [id])
   agents       agents[]
-
+  currency     String? // Example: USD, EUR, NGN
   // marketValue
-  marketValue Decimal?  @default(0.00) @db.Decimal(18, 2)
-  rentalFee   Decimal?  @default(0.00) @db.Decimal(18, 2)
-  dueDate     DateTime?
+  marketValue  Decimal?  @default(0.00) @db.Decimal(18, 2)
+  rentalFee    Decimal?  @default(0.00) @db.Decimal(18, 2)
+  dueDate      DateTime?
 
   // time attributes
   yearBuilt DateTime?

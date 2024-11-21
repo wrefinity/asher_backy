@@ -276,16 +276,8 @@ model Email {
   reciver          users    @relation("RecievedEmails", fields: [recieverEmail], references: [email])
 }
 
-// user wallets
-model wallet {
-  id           String        @id @default(cuid())
-  userId       String?       @unique
-  user         users?        @relation(fields: [userId], references: [id])
-  balance      Decimal       @default(0.00) @db.Decimal(18, 2)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
-}
+
+
 
 //  status will be in-progress, completed, assigned, aborted
 model status {
