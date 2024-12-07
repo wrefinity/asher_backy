@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "target": "ESNext",
+    "target": "ES2016",
     "outDir": "./build",
     "rootDir": "./src",
+    "resolveJsonModule": true,
+    "typeRoots": ["./utilstypes", "./node_modules/@types"]
   },
-  "include": ["src/**/*.ts", "src/**/*.js"],
+  "include": ["src/**/*.ts", "src/**/**/*.ts", "src/**/*.js", "package.json"],
   "exclude": [
     "node_modules",
     "build"

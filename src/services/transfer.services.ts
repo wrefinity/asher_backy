@@ -1,23 +1,27 @@
 import { TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
+import { Prisma } from "@prisma/client";
 import walletService from "./wallet.service";
 import { randomBytes } from 'crypto';
 import transactionServices from "./transaction.services";
 
 class TransferService {
-    async transferFunds(senderId: string, data: any) {
-        const senderWallet = await walletService.getOrCreateWallet(senderId);
-        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId);
+    transferFunds = async (senderId: string, data: any, currency: string) => {
+        const senderWallet = await walletService.getOrCreateWallet(senderId, currency);
+        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId, currency);
 
+        // check that the receiver and the sender wallet has same currency type
+        if (senderWallet.currency != recieiverWallet.currency)
+            throw new Error("Both the sender and the receiver wallet must have same currency type")
+        // ensure that the sender wallet has sufficient fund
         await walletService.ensureSufficientBalance(senderWallet.id, senderWallet.userId, data.amount);
 
-        const transaction = await prismaClient.$transaction(async (prisma) => {
+        return await prismaClient.$transaction(async (prisma) => {
             //Deduct from sender's wallet
             await prisma.wallet.update({
                 where: { id: senderWallet.id },
                 data: { balance: { decrement: data.amount } }
             })
-
 
             //Add to reciever's wallet
             await prisma.wallet.update({
@@ -36,16 +40,13 @@ class TransferService {
                     status: TransactionStatus.COMPLETED,
                     walletId: senderWallet.id,
                     referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`
-                }
-
+                } as Prisma.TransactionUncheckedCreateInput,
             })
             return transactionRecord;
         })
-
-        return transaction;
     }
 
-    async getTransactionsByUserId(userId: string) {
+    getTransactionsByUserId = async (userId: string) =>{
         return prismaClient.transaction.findMany({
             where: { userId },
             include: {
@@ -54,7 +55,7 @@ class TransferService {
         })
     }
 
-    async payBill(data: any, tenantId: string) {
+    payBill = async (data: any, tenantId: string, currency: string) => {
         //get tenant information
         const tenant = await prismaClient.tenants.findUnique({
             where: { id: tenantId },
@@ -74,8 +75,8 @@ class TransferService {
         if (!tenant) {
             throw new Error('Tenant not found');
         }
-        const tenantWallet = await walletService.getOrCreateWallet(tenant.userId);
-        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlord.userId);
+        const tenantWallet = await walletService.getOrCreateWallet(tenant.userId, currency);
+        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlord.userId, currency);
 
         await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount);
 
@@ -95,18 +96,19 @@ class TransferService {
             // create tenant transaction table
             const propertyTransaction = await prisma.transaction.create({
                 data: {
-                    userId: tenant.userId,
-                    amount: data.amount,
-                    description: `${data.billType} payment transaction`,
-                    type: TransactionType.DEBIT,
-                    reference: data.billType,
-                    status: TransactionStatus.COMPLETED,
-                    walletId: tenantWallet.id,
-                    referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
-                    propertyId: tenant.propertyId,
-                    apartmentId: tenant.apartmentOrFlatNumber.toString(),
-                }
-            })
+                  userId: tenant.userId,
+                  amount: data.amount,
+                  description: `${data.billType} payment transaction`,
+                  type: 'DEBIT',
+                  reference: data.billType,
+                  status: 'COMPLETED',
+                  walletId: tenantWallet.id,
+                  referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
+                  propertyId: tenant.propertyId,
+                  apartmentId: tenant.apartmentOrFlatNumber.toString(),
+                } as Prisma.TransactionUncheckedCreateInput,
+              });
+              
 
             //create landlord transaction
             await transactionServices.createCounterpartyTransaction({
@@ -135,12 +137,10 @@ class TransferService {
                 landlordWallet: updatedLandlordWallet,
             };
         })
-
-
         return transaction;
     }
 
-    async makeAdsPayments(amount: any, userId: string) {
+    async makeAdsPayments(amount: any, userId: string, currency: string) {
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
         })
@@ -149,7 +149,8 @@ class TransferService {
         }
 
         //get tenant wallet
-        const userWallet = await walletService.getOrCreateWallet(user.id);
+
+        const userWallet = await walletService.getOrCreateWallet(user.id, currency);
         await walletService.ensureSufficientBalance(userWallet.id, userWallet.userId, amount);
 
         const transaction = await prismaClient.$transaction(async (prisma) => {

@@ -1,11 +1,24 @@
-import { LatePaymentFeeType, SettingType} from "@prisma/client";
+import { LatePaymentFeeType, SettingType, PropsSettingType, Refundability} from "@prisma/client";
 
 export interface IPropApartmentSettings {
     id?: string;
     propertyId: string;
+    landlordId?: string;
     apartmentId?: string;
-    lateFee: number;
-    latePaymentFeeType: LatePaymentFeeType;
+    // late fee
+    lateFee?: number;
+    lateFeeFrequency?: LatePaymentFeeType;
+    lateFeePercentage?: number;
+    gracePeriodDays?: number;
+    // security deposit
+    depositPercentage?: number;
+    refundTimeframe?: string;
+    // application fee
+    applicationFee?: number; 
+    refundPolicy?: Refundability;
+    
+    settingType: PropsSettingType;
+
     createdAt?: Date;
     updatedAt?: Date;
 }

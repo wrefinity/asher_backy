@@ -102,7 +102,7 @@ class DashboardService {
             }
         } catch (error) {
             console.error("Error fetching dashboard details: ", error)
-            throw new Error("Failed fetching details", error)
+            throw new Error("Failed fetching details" + error)
         }
 
     }

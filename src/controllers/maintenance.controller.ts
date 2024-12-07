@@ -310,7 +310,7 @@ class MaintenanceController {
   public payForMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const maintenanceId = req.params.id;
-      const { amount, vendorId } = req.body;
+      const { amount, vendorId, currency } = req.body;
       const { landlords } = req.user
       const userId = landlords.id;
 
@@ -323,7 +323,7 @@ class MaintenanceController {
         return res.status(400).json({ message: `Payment has already been processed` });
       }
 
-      const updatedMaintenance = await maintenanceService.processPayment(maintenanceId, amount, userId, vendorId);
+      const updatedMaintenance = await maintenanceService.processPayment(maintenanceId, amount, userId, vendorId, currency);
 
       return res.status(200).json({ message: `Payment processed successfully`, updatedMaintenance });
     } catch (error) {

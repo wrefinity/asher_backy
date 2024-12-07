@@ -19,7 +19,7 @@ class AdService {
         }
     }
 
-    async createAd(adData: any, userId: string) {
+    async createAd(adData: any, userId: string, currency: string) {
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             const ads = await prisma.ads.create({
@@ -31,7 +31,7 @@ class AdService {
             
             //TODO: make ads payment
             //if creating ads is a success we create the payment
-            const payment = await transferServices.makeAdsPayments(parseFloat(adData.amountPaid), userId)
+            const payment = await transferServices.makeAdsPayments(parseFloat(adData.amountPaid), userId, currency)
 
             // then we update the ads table
             const updatedAds = await prisma.ads.update({

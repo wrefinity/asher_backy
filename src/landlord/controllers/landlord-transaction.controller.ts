@@ -59,8 +59,8 @@ class LandlordTransactionController {
         try {
             const verificationResult = await landlordTransactionServices.getPropertyTransactionByReference(referenceId);
             if (verificationResult) {
-                if (verificationResult.transactionStatus === TransactionStatus.PENDING) {
-                    await landlordTransactionServices.updatePropertyTransaction(verificationResult.id, verificationResult.landlordsId, {
+                if (verificationResult.status === TransactionStatus.PENDING) {
+                    await landlordTransactionServices.updatePropertyTransaction(verificationResult.id, verificationResult.userId, {
                         transactionStatus: TransactionStatus.COMPLETED,
                     });
                     return res.status(200).json({ message: "Payment successful", transaction: verificationResult });
@@ -97,7 +97,6 @@ class LandlordTransactionController {
             errorService.handleError(error, res);
         }
     }
-
 }
 
 export default new LandlordTransactionController();

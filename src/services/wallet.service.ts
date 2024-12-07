@@ -1,6 +1,7 @@
 import { PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 // import paystackServices from "./paystack.services";
+import { v4 as uuidv4 } from 'uuid';
 import transactionService from "./transaction.services";
 import stripeService from "./stripe.service";
 import paymentGatewayService from "./paymentGateway.service";
@@ -8,48 +9,50 @@ import flutterWaveService from "./flutterWave.service";
 import { generateIDs } from "../utils/helpers";
 import axios from 'axios';
 import { Decimal } from "@prisma/client/runtime/library";
+import { convertCurrency, getCurrentCountryCurrency } from "../utils/helpers"
 
-async function convertCurrency(amount: number, from: string, to: string): Promise<number> {
-    if (from === to) return amount;
-
-    const response = await axios.get(`https://api.exchangerate-api.com/v4/latest/${from}`);
-    const rate = response.data.rates[to];
-
-    if (!rate) throw new Error('Currency conversion rate not found');
-
-    return amount * rate;
-}
 
 
 class WalletService {
 
-    // NOTE: Is there need to be checking hte userId here? 
-    async ensureSufficientBalance(walletId: string, userId: string, amount: number) {
-        const wallet = await prismaClient.wallet.findUnique({
-            where: { id: walletId, userId }
-        });
-        if (!wallet) {
-            throw new Error(`Wallet not found.`);
-        }
-        if (wallet.balance.toNumber() < amount) {
-            throw new Error(`Insufficient balance.`);
-        }
-    }
 
-    async getOrCreateWallet(userId: string) {
-        let wallet = await prismaClient.wallet.findUnique({
-            where: { userId },
+    ensureSufficientBalance = async (walletId: string | null, userId: string | null, amount: Decimal) => {
+        if (!walletId && !userId) {
+            throw new Error("Either walletId or userId must be provided.");
+        }
+        // Build dynamic where clause
+        const whereClause: any = { isActive: true };
+        if (walletId) whereClause.id = walletId;
+        if (userId) whereClause.userId = userId;
+
+        const wallet = await prismaClient.wallet.findFirst({
+            where: whereClause,
         });
 
+        if (!wallet) throw new Error(`Wallet not found.`);
+
+        if (wallet.balance.lt(amount)) {
+            throw new Error('Insufficient wallet balance');
+        }
+    };
+
+
+    getOrCreateWallet = async (userId: string, currency: string) => {
+        let wallet = await prismaClient.wallet.findFirst({
+            where: { userId, currency, isActive:true },
+        });
         if (!wallet) {
             wallet = await prismaClient.wallet.create({
                 data: {
-                    userId,
-                    balance: 0,
+                    user: {
+                        connect: { id: userId },
+                    },
+                    balance: 0.0,
+                    currency,
+                    isActive: true,
                 },
             });
         }
-
         return wallet;
     }
 
@@ -93,7 +96,7 @@ class WalletService {
     // }
 
     async fundWalletUsingStripe(userId: string, amount: number, currency: string = 'usd') {
-        const wallet = await this.getOrCreateWallet(userId);
+        const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -141,7 +144,7 @@ class WalletService {
 
     async fundWalletUsingFlutter(userId: string, amount: number, currency: string = 'usd') {
 
-        const wallet = await this.getOrCreateWallet(userId);
+        const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -187,8 +190,8 @@ class WalletService {
         };
     }
 
-    async fundWalletGeneral(userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway:PaymentGateway) {
-        const wallet = await this.getOrCreateWallet(userId);
+    async fundWalletGeneral(userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway: PaymentGateway) {
+        const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -271,6 +274,101 @@ class WalletService {
             paymentUrl: paymentUrl,
         };
     }
+
+    // function by wrashtech
+    fundWalletGeneric = async (userId: string, amount: number, currency: string) => {
+        const wallet = await this.getOrCreateWallet(userId, currency);
+        if (!wallet) throw new Error('Wallet not found');
+
+        // Use a currency conversion API to normalize the amount
+        // const convertedAmount = await convertCurrency(amount, currency, wallet.currency);
+
+        const wallet_credit = await prismaClient.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: { increment: amount } },
+        });
+        const referenceId = uuidv4();
+        await prismaClient.transaction.create({
+            data: {
+                userId,
+                amount,
+                currency,
+                type: TransactionType.CREDIT,
+                referenceId,
+                reference: TransactionReference.FUND_WALLET,
+                status: TransactionStatus.COMPLETED,
+            },
+        });
+
+        return wallet_credit;
+    }
+    // Note matching currency may come from property.currency intended to be purchased
+    deductBalance = async (userId: string, price: Decimal, currency: string, matchingCurrency: string = null) => {
+        const wallet = await this.getOrCreateWallet(userId, currency);
+        if (!wallet) throw new Error('Wallet not found');
+
+        // handle scenario where a matching currency type is needed for transaction
+        if (matchingCurrency && matchingCurrency != wallet.currency) {
+            throw new Error('transaction needs same currency type');
+        }
+        const { locationCurrency } = await getCurrentCountryCurrency()
+        if (!matchingCurrency && locationCurrency != currency) {
+            `Transaction requires a wallet in ${locationCurrency}, but got ${currency}`
+        }
+        // const convertedPrice = await convertCurrency(price, property.currency, wallet.currency);
+        // Convert price to Decimal if necessary
+        const decimalPrice = price instanceof Decimal ? price : new Decimal(price);
+
+        if (wallet.balance.lt(decimalPrice)) {
+            throw new Error('Insufficient wallet balance');
+        }
+
+
+        // Deduct balance and record the transaction
+        // wallet.balance.minus(decimalPrice)
+        await prismaClient.wallet.update({
+            where: {
+                id: wallet.id,
+                userId_currency: {
+                    userId,
+                    currency,
+                },
+            },
+            data: { balance: { decrement: decimalPrice } },
+        });
+
+
+        const transaction = await prismaClient.transaction.create({
+            data: {
+                userId,
+                amount: decimalPrice,
+                currency: wallet.currency,
+                type: TransactionType.DEBIT,
+                reference: TransactionReference.MAKE_PAYMENT,
+                status: TransactionStatus.COMPLETED,
+                referenceId: uuidv4()
+            },
+        });
+        return transaction
+    }
+
+    activateWallet = async (userId: string, walletId: string) => {
+        // Deactivate all other wallets for the user
+        await prismaClient.wallet.updateMany({
+            where: { userId, isActive: true },
+            data: { isActive: false },
+        });
+
+        // Activate the wallet with the provided walletId
+        const updatedWallet = await prismaClient.wallet.update({
+            where: { id: walletId },
+            data: { isActive: true },
+        });
+
+        return updatedWallet;
+    }
+
+   
 }
 
 export default new WalletService();

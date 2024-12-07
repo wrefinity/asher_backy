@@ -24,7 +24,7 @@ class SettingsController {
             if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
             const createdSettings = await LandlordSettingsService.create({ ...value, landlordId });
-            return res.status(201).json(createdSettings);
+            return res.status(201).json({createdSettings});
         } catch (err) {
             ErrorService.handleError(err, res);
         }

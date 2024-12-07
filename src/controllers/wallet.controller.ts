@@ -4,14 +4,14 @@ import errorService from "../services/error.service";
 import walletService from "../services/wallet.service";
 import { getCountryCodeFromIp } from "../utils/helpers";
 import { PaymentGateway } from '@prisma/client';
-
+import { getCurrentCountryCurrency } from "../utils/helpers";
 class WalletController {
-    async getUserWallet(req: CustomRequest, res: Response) {
+    getUserWallet = async (req: CustomRequest, res: Response) =>{
         const userId = String(req.user.id)
-
+        const {locationCurrency} = await getCurrentCountryCurrency();
         try {
-            const userWallet = await walletService.getOrCreateWallet(userId)
-            res.status(200).json(userWallet)
+            const userWallet = await walletService.getOrCreateWallet(userId, locationCurrency)
+            res.status(200).json({userWallet})
 
         } catch (error) {
             errorService.handleError(error, res);

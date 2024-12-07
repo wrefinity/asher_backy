@@ -22,7 +22,7 @@ class AdController {
             const data = { ...value }
             const attachment = req.body.cloudinaryUrls
             delete data['cloudinaryUrls']
-            const ad = await adsServices.createAd({ ...data, attachment }, userId)
+            const ad = await adsServices.createAd({ ...data, attachment }, userId, value.currency)
             return res.status(201).json(ad)
         } catch (error) {
             errorService.handleError(error, res)

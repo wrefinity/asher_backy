@@ -28,23 +28,23 @@ class ReviewController {
     }
     getCurrentUserReviews = async (req: CustomRequest, res: Response) => {
         try {
-            const { tenants, landlords, vendor } = req.user;;
+            const { tenant, landlords, vendors } = req.user;;
 
             // Build a query condition based on the user's role
             let queryCondition: any = {
                 OR: [],
             };
 
-            if (tenants?.id) {
-                queryCondition.OR.push({ tenantId: tenants.id });
+            if (tenant?.id) {
+                queryCondition.OR.push({ tenantId: tenant.id });
             }
 
             if (landlords?.id) {
                 queryCondition.OR.push({ landlordId: landlords.id });
             }
 
-            if (vendor?.id) {
-                queryCondition.OR.push({ vendorId: vendor.id });
+            if (vendors?.id) {
+                queryCondition.OR.push({ vendorId: vendors.id });
             }
 
             if (!queryCondition.OR.length) {

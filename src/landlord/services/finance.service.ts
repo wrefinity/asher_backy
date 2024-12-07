@@ -1,7 +1,7 @@
 import { BudgetFrequency, PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from '@prisma/client';
 import { prismaClient } from "../..";
 import transactionServices from '../../services/transaction.services';
-import paystackServices from '../../services/paystack.services';
+// import paystackServices from '../../services/paystack.services';
 import { generateIDs } from '../../utils/helpers';
 import flutterWaveService from '../../services/flutterWave.service';
 import stripeService from '../../services/stripe.service';
@@ -53,8 +53,8 @@ class FinanceService {
             throw new Error('Creator or payee not found');
         }
 
-        const creatorWallet = await walletService.getOrCreateWallet(creatorId);
-        const payeeWallet = await walletService.getOrCreateWallet(payeeId);
+        const creatorWallet = await walletService.getOrCreateWallet(creatorId, currency);
+        const payeeWallet = await walletService.getOrCreateWallet(payeeId, currency);
 
         // const gateway = paymentGatewayService.selectGateway(countryCode);
 
@@ -143,7 +143,7 @@ class FinanceService {
         return {
             paymentDetails: paymentResponse,
             transactionDetails: payeeTransaction,
-            paymentUrl: paymentUrl, 
+            paymentUrl: paymentUrl,
         };
     }
 

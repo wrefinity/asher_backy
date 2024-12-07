@@ -17,7 +17,7 @@ class UserService {
             profile: false
         };
     }
-    checkexistance = async (obj: object) => {
+    checkexistance = async (obj: object) : Promise<false | { id: string; tenant?: any; landlords?: any; profile?: any; vendors?: any }> => {
         const user = await prismaClient.users.findFirst({
             where: { ...obj },
             select: {
@@ -39,17 +39,18 @@ class UserService {
     }
     findUserByEmail = async (email: string) => {
         // Find the user first to check if related entities exist
-        const user = await this.checkexistance({ email })
+        const foundUser = await this.checkexistance({ email })
 
-        if (!user) {
+        if (!foundUser) {
             return false;
         }
         // console.log("===========DB Checkers ==========")
         // console.log(this.inclusion)
-        return await prismaClient.users.findFirst({
+        const user = await prismaClient.users.findFirst({
             where: { email },
             include: this.inclusion,
         });
+        return user
     }
 
     findAUserById = async (userId: string) => {

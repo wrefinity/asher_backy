@@ -1,4 +1,5 @@
 // arcticSetup.ts
+import axios from 'axios';
 
 let generateCodeVerifier: () => string;
 let generateState: () => string;
@@ -49,8 +50,6 @@ export function getCommunityurl(name: string) {
   return `${process.env.BASE_URL}/community/${name}`;
 }
 
-import axios from 'axios';
-
 export async function getCountryCodeFromIp(ipAddress) {
   try {
     const response = await axios.get(`https://ipapi.co/${ipAddress}/json/`);
@@ -59,4 +58,24 @@ export async function getCountryCodeFromIp(ipAddress) {
     console.error('Error getting country code:', error);
     return null;
   }
+}
+
+export const getCurrentCountryCurrency = async () => {
+  try {
+    // Get user's current location using an IP-based API
+    const locationResponse = await axios.get('https://ipapi.co/json/');
+    const { country_code, locationCurrency } = locationResponse.data;
+    return {country_code, locationCurrency}
+  } catch (error) {
+    console.error('Error getting country code:', error)
+  }
+}
+
+
+export const convertCurrency = async  (amount: number, from: string, to: string): Promise<number> =>{
+  if (from === to) return amount;
+  const response = await axios.get(`https://api.exchangerate-api.com/v4/latest/${from}`);
+  const rate = response.data.rates[to];
+  if (!rate) throw new Error('Currency conversion rate not found');
+  return amount * rate;
 }

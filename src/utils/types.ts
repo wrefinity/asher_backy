@@ -6,14 +6,14 @@ export type JWTPayload = {
     id: string;
     role: string | string[];
     email: string;
-    tenant?:{
-        id?:string;
+    tenant?: {
+        id?: string;
     };
-    landlords?:{
-        id?:string;
+    landlords?: {
+        id?: string;
     },
-    vendors?:{
-        id?:string;
+    vendors?: {
+        id?: string;
     },
 }
 
@@ -22,9 +22,9 @@ export interface CustomRequest extends Request {
     files: {
         [fieldname: string]: Express.Multer.File[];
     };
-    params:{
-        [key:string]: string;
-    }
+    params: {
+        [key: string]: string | undefined; // Allow `undefined` for compatibility
+    };
 }
 
 // export interface CustomTestRequest extends Request {

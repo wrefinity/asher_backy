@@ -1,11 +1,24 @@
 enum LatePaymentFeeType {
   ONE_TIME
   DAILY
+  WEEKLY
 }
 
 enum PropsApartmentStatus {
   OCCUPIED
   VACANT
+}
+
+enum PropsSettingType {
+  NOT_DEFINED
+  APPLICATION
+  SECURITY_DEPOSIT
+  LATEFEE
+}
+
+enum Refundability {
+  YES
+  NO
 }
 
 model properties {
@@ -79,18 +92,34 @@ model properties {
 
 model PropApartmentSettings {
   id         String     @id @default(cuid())
-  propertyId String     @unique
-  property   properties @relation(fields: [propertyId], references: [id])
-
-  apartmentId String?     @unique
-  apartment   apartments? @relation(fields: [apartmentId], references: [id])
-
-  lateFee            Decimal            @default(0.00) @db.Decimal(18, 2)
-  latePaymentFeeType LatePaymentFeeType @default(ONE_TIME)
-
+  // Optional relationships to differentiate setting scopes
   landlordId String?
   landlord   landlords? @relation(fields: [landlordId], references: [id])
 
+  propertyId String?     @unique // If set, these settings apply to the property
+  property   properties? @relation(fields: [propertyId], references: [id])
+
+  apartmentId String?     @unique // If set, these settings apply to a specific apartment
+  apartment   apartments? @relation(fields: [apartmentId], references: [id])
+
+  // Setting categorization
+  settingType PropsSettingType @default(NOT_DEFINED)
+
+  // late fee settings
+  lateFee           Decimal             @default(0.00) @db.Decimal(18, 2) // for fixed scenario
+  lateFeeFrequency  LatePaymentFeeType?
+  lateFeePercentage Int?                @default(0)
+  gracePeriodDays   Int?
+
+  // security deposit
+  depositPercentage Decimal @default(0.00) @db.Decimal(5, 2)
+  refundTimeframe   String? // Options like '7 days', '30 days'
+
+  // application
+  applicationFee Decimal        @default(0.00) @db.Decimal(5, 2)
+  refundPolicy   Refundability? // Describe refund policy [YES OR NO]
+
+  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

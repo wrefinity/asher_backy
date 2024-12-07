@@ -8,7 +8,7 @@ class TenantBillController {
     }
 
     async getTenantBill(req: CustomRequest, res: Response) {
-        const tenantId = req.user?.tenants?.id;
+        const tenantId = req.user?.tenant?.id;
 
         try {
             const tenantBills = await tenantBillsService.getTenantBills(tenantId);
@@ -20,7 +20,7 @@ class TenantBillController {
     }
 
     async getUpcomingBills(req: CustomRequest, res: Response) {
-        const tenantId = req.user?.tenants?.id;
+        const tenantId = req.user?.tenant?.id;
         const {days} = req.body
 
         try {
@@ -33,7 +33,7 @@ class TenantBillController {
     }
 
     async getOverdueBills(req: CustomRequest, res: Response) {
-        const tenantId = req.user?.tenants?.id;
+        const tenantId = req.user?.tenant?.id;
 
         try {
             const tenantBills = await tenantBillsService.getOverdueBills(tenantId);

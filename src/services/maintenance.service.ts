@@ -244,10 +244,10 @@ class MaintenanceService {
     }
   }
 
-  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string) => {
+  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string, currency:string) => {
 
     // Deduct amount from user's wallet -> Also add transaction type to track expenses
-    await transferServices.transferFunds(userId, { receiverId, amount, reference: TransactionReference.MAINTENANCE_FEE, description: `Payment for maintenance #${maintenanceId}` });
+    await transferServices.transferFunds(userId, { receiverId, amount, reference: TransactionReference.MAINTENANCE_FEE, description: `Payment for maintenance #${maintenanceId}` }, currency);
 
     // Update maintenance record to reflect payment
     return await prismaClient.maintenance.update({

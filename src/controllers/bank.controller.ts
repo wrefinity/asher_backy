@@ -14,7 +14,7 @@ class BankInfoController {
         try {
             // Check if landlordId or vendorId is available from the user
             const landlordId = req.user?.landlords?.id || null;
-            const vendorId = req.user?.vendor?.id || null;
+            const vendorId = req.user?.vendors?.id || null;
 
             // Prevent creation if both landlordId and vendorId are null
             if (!landlordId && !vendorId) {

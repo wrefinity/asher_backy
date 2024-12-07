@@ -1,3 +1,4 @@
+import { current } from "@reduxjs/toolkit";
 import Joi from "joi";
 
 const PaymentType = ["rent_due", "rent_payment", "maintainace_fee", "landlord_payout"]
@@ -13,6 +14,7 @@ class TransactionSchema {
         return Joi.object({
             billType: Joi.string().valid(...PaymentType).required(),
             amount: Joi.number().required(),
+            currency: Joi.number().required(),
             set_auto: Joi.boolean().optional
         });
     }

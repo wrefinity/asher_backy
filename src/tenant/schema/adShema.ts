@@ -3,6 +3,7 @@ import Joi from "joi";
 const adSchema = Joi.object({
     title: Joi.string().required(),
     description: Joi.string().required(),
+    currency: Joi.string().required(),
     startedDate: Joi.date().iso().required(),
     endDate: Joi.date().iso().greater(Joi.ref('startedDate')).required(),
     locations: Joi.array().items(Joi.string()).optional(),
