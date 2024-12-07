@@ -1,4 +1,3 @@
-import { current } from "@reduxjs/toolkit";
 import Joi from "joi";
 
 const PaymentType = ["rent_due", "rent_payment", "maintainace_fee", "landlord_payout"]
