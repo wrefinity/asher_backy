@@ -1,15 +1,30 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",
+    "module": "commonjs",
     "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "target": "ES2016",
-    "outDir": "./build",
+    "target": "es6",
+    "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,
-    "typeRoots": ["./utilstypes", "./node_modules/@types"]
+    "typeRoots": [
+      "./utils/types",
+      "./node_modules/@types"
+    ],
+    "paths": {
+      "*": [
+        "./node_modules/*",
+        "./src/utils/types/*"
+      ]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/**/*.ts", "src/**/*.js", "package.json"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/**/*.ts",
+    "src/**/*.js",
+    "package.json"
+  ],
   "exclude": [
     "node_modules",
     "build"
