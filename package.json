@@ -15,7 +15,11 @@
     "migrate-dev": "prisma migrate dev --name init",
     "generate": "prisma generate"
   },
-  "pre-commit": ["ts.check", "build", "add-build"],
+  "pre-commit": [
+    "ts.check",
+    "build",
+    "add-build"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
