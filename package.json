@@ -5,7 +5,8 @@
   "type": "commonjs",
   "main": "src/index.ts",
   "scripts": {
-    "build": "rimraf build && tsc",
+    "build": "prisma generate  && rimraf build && tsc",
+    "postinstall": "prisma generate",
     "ts.check": "tsc --project tsconfig.json",
     "add-build": "git add build",
     "dev": "nodemon",
