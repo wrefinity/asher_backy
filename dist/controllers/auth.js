@@ -65,21 +65,6 @@ class AuthControls {
                 }
             }
         });
-        // Create a new landlord
-        this.createLandlord = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            try {
-                const { error, value } = auth_1.userLandlordSchema.validate(req.body);
-                if (error) {
-                    return res.status(400).json({ message: error.details[0].message });
-                }
-                const data = value;
-                const landlord = yield user_services_1.default.createLandlord(data);
-                return res.status(201).json({ landlord });
-            }
-            catch (err) {
-                return res.status(500).json({ error: err.message });
-            }
-        });
         this.confirmation = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { email, token } = req.body;
             try {
@@ -112,8 +97,8 @@ class AuthControls {
             const { email } = req.body;
             try {
                 const user = yield user_services_1.default.findUserByEmail(email);
-                if (user)
-                    res.status(400).json({ message: "user exists" });
+                if (!user)
+                    res.status(400).json({ message: "user does exists" });
                 // Ensure user is not null
                 if (user && typeof user !== 'boolean' && 'id' in user) {
                     // Create verification token
@@ -129,8 +114,8 @@ class AuthControls {
             const { email, newPassword, token } = req.body;
             try {
                 let user = yield user_services_1.default.findUserByEmail(email);
-                if (user)
-                    return res.status(400).json({ message: "user exists" });
+                if (!user)
+                    return res.status(400).json({ message: "user doesnt exists" });
                 // Validate verification token
                 let isValidToken = null;
                 if (user) {

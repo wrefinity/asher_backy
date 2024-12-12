@@ -59,21 +59,7 @@ class AuthControls {
         }
 
     }
-    // Create a new landlord
-    createLandlord = async (req: Request, res: Response) => {
-        try {
-            const { error, value } = userLandlordSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ message: error.details[0].message });
-            }
-            const data: CreateLandlordIF = value;
-            
-            const landlord = await UserServices.createLandlord(data);
-            return res.status(201).json({landlord});
-        } catch (err) {
-            return res.status(500).json({ error: err.message });
-        }
-    }
+
     confirmation = async (req: Request, res: Response) => {
         const { email, token } = req.body;
 
@@ -111,7 +97,7 @@ class AuthControls {
         const { email } = req.body;
         try {
             const user = await UserServices.findUserByEmail(email);
-            if (user) res.status(400).json({ message: "user exists" });
+            if (!user) res.status(400).json({ message: "user does exists" });
 
             // Ensure user is not null
             if (user && typeof user !== 'boolean' && 'id' in user) {
@@ -124,14 +110,11 @@ class AuthControls {
         }
     }
 
-
     passwordReset = async (req: Request, res: Response) => {
-
         const { email, newPassword, token } = req.body;
-
         try {
             let user = await UserServices.findUserByEmail(email);
-            if (user) return res.status(400).json({ message: "user exists" });
+            if (!user) return res.status(400).json({ message: "user doesnt exists" });
 
             // Validate verification token
             let isValidToken = null;

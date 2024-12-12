@@ -15,7 +15,6 @@ class BillRouter {
     initializeRoutes() {
         this.router.use(this.authenticateService.authorize);
         this.router.post('/', bill_controller_1.default.createBill);
-        this.router.post('/', bill_controller_1.default.createTenantBill);
         this.router.get('/', bill_controller_1.default.getAllBills);
         this.router.get('/:billId', bill_controller_1.default.getSingleBill);
         this.router.get('/:propertyId', bill_controller_1.default.getBillByPropertyId);

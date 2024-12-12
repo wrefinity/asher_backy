@@ -4,7 +4,7 @@ import { generateIDs } from "../../utils/helpers";
 class BillService {
     constructor() { }
 
-    async createBill(billData: any, landlordId: string) {
+    createBill = async (billData: any, landlordId: string) =>{
         const billId = generateIDs('BILL')
         return prismaClient.bills.create({
             data: {
@@ -16,7 +16,7 @@ class BillService {
         })
     }
 
-    async createTenantBill(billData: any, landlordId: string) {
+    createTenantBill = async (billData: any, landlordId: string) =>{
         const billId = generateIDs('BILL')
         return prismaClient.bills.create({
             data: {
@@ -28,7 +28,7 @@ class BillService {
         })
     }
 
-    async getAllBills(landlordId: string) {
+    getAllBills = async (landlordId: string) =>{
         return prismaClient.bills.findMany({
             where: {
                 landlordId
@@ -36,26 +36,26 @@ class BillService {
         })
     }
 
-    async getBillById(billId: string, landlordId: string) {
+    getBillById = async (billId: string, landlordId: string) =>{
         return prismaClient.bills.findUnique({
             where: { id: billId, landlordId },
         })
     }
 
-    async updateBill(billId: string, billData: any, landlordId: string) {
+    updateBill = async (billId: string, billData: any, landlordId: string) =>{
         return prismaClient.bills.update({
             where: { id: billId, landlordId },
             data: billData,
         })
     }
 
-    async deleteBill(billId: string, landlordId: string) {
+    deleteBill = async (billId: string, landlordId: string) =>{
         return prismaClient.bills.delete({
             where: { id: billId, landlordId },
         })
     }
 
-    async getBillByPropertyId(propertyId: string, landlordId: string) {
+    getBillByPropertyId = async (propertyId: string, landlordId: string) =>{
         return prismaClient.bills.findMany({
             where: {
                 propertyId,

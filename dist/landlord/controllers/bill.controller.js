@@ -25,21 +25,7 @@ class BillController {
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
             try {
                 const bill = yield bill_services_1.default.createBill(value, landlordId);
-                return res.status(201).json(bill);
-            }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
-            }
-        });
-        this.createTenantBill = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
-            const { error, value } = billSchema_1.tenantBillSchema.validate(req.body);
-            if (error)
-                return res.status(400).json({ message: error.details[0].message });
-            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-            try {
-                const bill = yield bill_services_1.default.createTenantBill(value, landlordId);
-                return res.status(201).json(bill);
+                return res.status(201).json({ bill });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

@@ -17,12 +17,12 @@ const secrets_1 = require("../secrets");
 const loggers_1 = __importDefault(require("./loggers"));
 exports.default = (to, subject, html) => __awaiter(void 0, void 0, void 0, function* () {
     const transporter = nodemailer_1.default.createTransport({
-        // service: 'gmail',
-        port: 465,
+        service: 'gmail',
+        port: Number(secrets_1.MAIL_PORT),
         host: secrets_1.MAIL_HOST,
         secure: false,
         auth: {
-            user: secrets_1.MAIL_USERNAME,
+            user: secrets_1.FROM_EMAIL,
             pass: secrets_1.MAIL_PASSWORD
         }
     });
@@ -33,7 +33,7 @@ exports.default = (to, subject, html) => __awaiter(void 0, void 0, void 0, funct
         html: html
     };
     loggers_1.default.info(`Sending mail to - ${to}`);
-    transporter.sendMail(mailOptions, (error, info) => {
+    yield transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
             console.log(error);
             loggers_1.default.error(error);

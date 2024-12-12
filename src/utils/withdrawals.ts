@@ -15,7 +15,7 @@ export const stripeWithdrawals = async (
     try {
         // Retrieve balance to ensure funds are available
         const balance = await stripe.balance.retrieve();
-
+        
         if (!balance?.available || balance.available.length === 0 || balance.available[0].amount < amount) {
             throw new Error("Insufficient funds for the transaction.");
         }

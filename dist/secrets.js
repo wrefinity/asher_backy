@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.STRIPE_LINK = exports.APP_URL = exports.FLUTTERWAVE_SECRET_HASH = exports.STRIPE_WEBHOOK_SECRET = exports.STRIPE_SECRET_KEY = exports.FLUTTERWAVE_SECRET_KEY = exports.PAYSTACK_WEBHOOK_SECRET_KEY = exports.PAYSTACK_SECRET_KEY = exports.MONGODB_URI = exports.PUBLIC_URL = exports.GOOGLE_CLIENT_SECRET = exports.GOOGLE_CLIENT_ID = exports.GOOGLE_PROFILE = exports.CLOUDINARY_FOLDER = exports.CLOUDINARY_SECRET = exports.CLOUDINARY_API_KEY = exports.CLOUDINARY_NAME = exports.APP_SECRET = exports.FROM_EMAIL = exports.MAIL_PASSWORD = exports.MAIL_USERNAME = exports.MAIL_HOST = exports.JWT_SECRET = exports.PORT = void 0;
+exports.STRIPE_LINK = exports.APP_URL = exports.FLUTTERWAVE_SECRET_HASH = exports.STRIPE_WEBHOOK_SECRET = exports.STRIPE_SECRET_KEY = exports.FLUTTERWAVE_SECRET_KEY = exports.PAYSTACK_WEBHOOK_SECRET_KEY = exports.PAYSTACK_SECRET_KEY = exports.MONGODB_URI = exports.PUBLIC_URL = exports.GOOGLE_CLIENT_SECRET = exports.GOOGLE_CLIENT_ID = exports.GOOGLE_PROFILE = exports.CLOUDINARY_FOLDER = exports.CLOUDINARY_SECRET = exports.CLOUDINARY_API_KEY = exports.CLOUDINARY_NAME = exports.APP_SECRET = exports.FROM_EMAIL = exports.MAIL_PORT = exports.MAIL_PASSWORD = exports.MAIL_USERNAME = exports.MAIL_HOST = exports.JWT_SECRET = exports.PORT = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config({ path: ".env" });
 exports.PORT = process.env.PORT;
@@ -11,6 +11,7 @@ exports.JWT_SECRET = process.env.JWT_SECRET;
 exports.MAIL_HOST = process.env.MAIL_HOST;
 exports.MAIL_USERNAME = process.env.MAIL_USERNAME;
 exports.MAIL_PASSWORD = process.env.MAIL_PASSWORD;
+exports.MAIL_PORT = process.env.MAIL_PORT || 587;
 exports.FROM_EMAIL = process.env.FROM_EMAIL;
 exports.APP_SECRET = process.env.APP_SECRET;
 exports.CLOUDINARY_NAME = process.env.CLOUDINARY_NAME;

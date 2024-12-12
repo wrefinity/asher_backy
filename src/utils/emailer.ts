@@ -1,18 +1,20 @@
 import nodemailer from 'nodemailer';
-import { MAIL_HOST, MAIL_USERNAME, FROM_EMAIL, MAIL_PASSWORD } from "../secrets"
+import { MAIL_HOST, MAIL_PORT, MAIL_USERNAME, FROM_EMAIL, MAIL_PASSWORD } from "../secrets"
 import logger from "./loggers";
 
 export default async (to: string, subject: string, html: string) => {
     const transporter = nodemailer.createTransport({
-        // service: 'gmail',
-        port:465,
+        service: 'gmail',
+        port: Number(MAIL_PORT),
         host: MAIL_HOST,
         secure: false,
         auth: {
-            user: MAIL_USERNAME,
+            user: FROM_EMAIL,
             pass: MAIL_PASSWORD
         }
     });
+
+
 
     const mailOptions = {
         from: FROM_EMAIL,
@@ -22,7 +24,7 @@ export default async (to: string, subject: string, html: string) => {
     };
 
     logger.info(`Sending mail to - ${to}`);
-    transporter.sendMail(mailOptions, (error, info) => {
+    await transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
             console.log(error);
             logger.error(error);
@@ -33,4 +35,3 @@ export default async (to: string, subject: string, html: string) => {
 }
 
 
-  
