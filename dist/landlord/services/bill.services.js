@@ -15,43 +15,49 @@ class BillService {
     constructor() {
         this.createBill = (billData, landlordId) => __awaiter(this, void 0, void 0, function* () {
             const billId = (0, helpers_1.generateIDs)('BILL');
-            return __1.prismaClient.bills.create({
+            return yield __1.prismaClient.bills.create({
                 data: Object.assign({ landlordId,
                     billId, description: `Created ${billData.billName}` }, billData),
             });
         });
-        this.createTenantBill = (billData, landlordId) => __awaiter(this, void 0, void 0, function* () {
-            const billId = (0, helpers_1.generateIDs)('BILL');
-            return __1.prismaClient.bills.create({
-                data: Object.assign({ landlordId,
-                    billId, description: `Created ${billData.billName}` }, billData),
+        this.getTenantBills = (tenantId) => __awaiter(this, void 0, void 0, function* () {
+            const tenantBills = yield __1.prismaClient.bills.findMany({
+                where: {
+                    tenantId: tenantId,
+                },
+                include: {
+                    tenant: true,
+                    property: true,
+                    transactions: true,
+                },
             });
+            return tenantBills;
         });
         this.getAllBills = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.bills.findMany({
+            return yield __1.prismaClient.bills.findMany({
                 where: {
                     landlordId
                 },
             });
         });
         this.getBillById = (billId, landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.bills.findUnique({
+            return yield __1.prismaClient.bills.findUnique({
                 where: { id: billId, landlordId },
             });
         });
         this.updateBill = (billId, billData, landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.bills.update({
+            return yield __1.prismaClient.bills.update({
                 where: { id: billId, landlordId },
                 data: billData,
             });
         });
         this.deleteBill = (billId, landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.bills.delete({
+            return yield __1.prismaClient.bills.delete({
                 where: { id: billId, landlordId },
             });
         });
         this.getBillByPropertyId = (propertyId, landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.bills.findMany({
+            return yield __1.prismaClient.bills.findMany({
                 where: {
                     propertyId,
                     landlordId

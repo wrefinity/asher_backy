@@ -36,7 +36,7 @@ export const generateOtp = (): string => {
 }
 
 export const generateIDs = (starter: string) => {
-  const timeStamp = Date.now(); //get the unix timestamp
+  const timeStamp = Date.now(); // get the unix timestamp
   const timeStampToString = timeStamp.toString().slice(-4)
   return `${starter}-${timeStampToString}-${Math.floor(Math.random() * 1000)}`;
 }
@@ -70,7 +70,6 @@ export const getCurrentCountryCurrency = async () => {
     console.error('Error getting country code:', error)
   }
 }
-
 
 export const convertCurrency = async  (amount: number, from: string, to: string): Promise<number> =>{
   if (from === to) return amount;

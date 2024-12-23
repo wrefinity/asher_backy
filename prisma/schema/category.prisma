@@ -1,24 +1,34 @@
+enum CategoryType {
+  SERVICES
+  MAINTENANCE
+  BILL
+}
+
 model category {
-  id          String        @id @default(cuid())
-  name        String
-  image       String[]
-  labels      String[]
-  isDeleted   Boolean       @default(false)
-  subCategory subCategory[]
-  maintenance maintenance[]
-  services    services[]
+  id                   String                 @id @default(cuid())
+  name                 String
+  description          String?
+  image                String[]
+  labels               String[]
+  isDeleted            Boolean                @default(false)
+  // Setting categorization
+  categoryType         CategoryType           @default(MAINTENANCE)
+  subCategory          subCategory[]
+  maintenance          maintenance[]
+  services             services[]
   maintenanceWhiteList maintenanceWhitelist[]
 }
 
 model subCategory {
-  id          String        @id @default(cuid())
-  name        String
-  image       String[]
-  labels      String[]
-  isDeleted   Boolean       @default(false)
-  category    category      @relation(fields: [categoryId], references: [id])
-  categoryId  String
-  maintenance maintenance[] @relation("SubCategoryMaintenance")
-  services    services[]
+  id                   String                 @id @default(cuid())
+  name                 String
+  description          String?
+  image                String[]
+  labels               String[]
+  isDeleted            Boolean                @default(false)
+  category             category               @relation(fields: [categoryId], references: [id])
+  categoryId           String
+  maintenance          maintenance[]          @relation("SubCategoryMaintenance")
+  services             services[]
   maintenanceWhiteList maintenanceWhitelist[]
 }

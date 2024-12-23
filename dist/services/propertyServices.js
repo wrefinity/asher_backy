@@ -18,7 +18,7 @@ class PropertyService {
             });
         });
         this.getProperties = () => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.findMany({});
+            return yield __1.prismaClient.properties.findMany({ where: { isDeleted: false }, });
         });
         this.getPropertiesById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findUnique({
@@ -130,6 +130,63 @@ class PropertyService {
                     landlordId,
                     propertyId,
                 }
+            });
+        });
+        this.getPropertyGlobalFees = (landlordId, settingType) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.propApartmentSettings.findFirst({
+                where: {
+                    landlordId,
+                    settingType
+                }
+            });
+        });
+        // property listings
+        this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}) {
+            const { landlordId, property, minSize, maxSize } = filters;
+            const { type, state, country, } = property || {};
+            return yield __1.prismaClient.propertyListingHistory.findMany({
+                where: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ isActive: true, onListing: true }, (landlordId && {
+                    property: {
+                        landlordId: landlordId,
+                    },
+                })), (type && {
+                    property: {
+                        type: type,
+                    },
+                })), (state && {
+                    property: {
+                        state: state,
+                    },
+                })), (country && {
+                    property: {
+                        country: country,
+                    },
+                })), (minSize || maxSize
+                    ? {
+                        property: {
+                            propertysize: {
+                                gte: minSize !== null && minSize !== void 0 ? minSize : undefined,
+                                lte: maxSize !== null && maxSize !== void 0 ? maxSize : undefined,
+                            },
+                        },
+                    }
+                    : {})),
+                include: {
+                    property: true,
+                    apartment: true,
+                },
+            });
+        });
+        this.createPropertyListing = (data) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.propertyListingHistory.create({
+                data,
+            });
+        });
+        // to update property to listing and not listing
+        this.updateListingStatus = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.propertyListingHistory.update({
+                where: { propertyId },
+                data: { onListing: false },
             });
         });
     }

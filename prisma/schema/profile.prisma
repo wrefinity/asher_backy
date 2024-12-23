@@ -1,17 +1,19 @@
 model profile {
-    id          String    @id @default(cuid())
-    gender      String?
-    phoneNumber String?
-    address     String?
-    dateOfBirth DateTime?
-    fullname    String?
-    profileUrl  String?
-    zip         String?
-    unit        String?
-    state       String?
-    timeZone    String?
-    taxPayerId  String?
-    taxType     String?
+    id            String    @id @default(cuid())
+    gender        String?
+    phoneNumber   String?
+    address       String?
+    maritalStatus String?
+    dateOfBirth   DateTime?
+    fullname      String?
+    profileUrl    String?
+    zip           String?
+    unit          String?
+    state         String?
+    timeZone      String?
+    taxPayerId    String?
+    taxType       String?
+    title         String?
 
     // relations fields 
     users users?

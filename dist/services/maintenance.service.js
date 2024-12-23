@@ -197,21 +197,15 @@ class MaintenanceService {
             return (maintenance === null || maintenance === void 0 ? void 0 : maintenance.vendorId) !== null;
         });
         this.checkWhitelist = (landlordId, categoryId, subcategoryId, propertyId, apartmentId) => __awaiter(this, void 0, void 0, function* () {
-            try {
-                const whitelistEntry = yield __1.prismaClient.maintenanceWhitelist.findFirst({
-                    where: {
-                        landlordId,
-                        categoryId,
-                        subcategoryId: subcategoryId ? subcategoryId : undefined,
-                        propertyId: propertyId ? propertyId : undefined,
-                        apartmentId: apartmentId ? apartmentId : undefined,
-                    },
-                });
-                return whitelistEntry;
-            }
-            catch (error) {
-                throw new Error(`Error checking whitelist: ${error.message}`);
-            }
+            return yield __1.prismaClient.maintenanceWhitelist.findFirst({
+                where: {
+                    landlordId,
+                    categoryId,
+                    subcategoryId: subcategoryId ? subcategoryId : undefined,
+                    propertyId: propertyId ? propertyId : undefined,
+                    apartmentId: apartmentId ? apartmentId : undefined,
+                },
+            });
         });
         this.processPayment = (maintenanceId, amount, userId, receiverId, currency) => __awaiter(this, void 0, void 0, function* () {
             // Deduct amount from user's wallet -> Also add transaction type to track expenses

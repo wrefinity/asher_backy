@@ -265,6 +265,7 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   }
+  // this function is for vendor to update payment to completed
   public updateMaintenanceToCompleted = async (req: CustomRequest, res: Response) => {
     try {
       const maintenanceId = req.params.maintenanceId;
@@ -275,7 +276,7 @@ class MaintenanceController {
         return res.status(404).json({ message: `maintenance with id: ${maintenanceId} doesnt exist` });
       }
 
-      //check  if payment has beeen completed
+      //check if payment has beeen completed
       if (maintenanceExits.paymentStatus !== TransactionStatus.COMPLETED) {
         return res.status(400).json({ message: `Payment has not been completed yet` });
       }
@@ -292,6 +293,7 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
+  
   public deleteMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;

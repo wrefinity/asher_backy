@@ -259,6 +259,7 @@ class MaintenanceController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // this function is for vendor to update payment to completed
         this.updateMaintenanceToCompleted = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const maintenanceId = req.params.maintenanceId;
@@ -267,7 +268,7 @@ class MaintenanceController {
                 if (!maintenanceExits) {
                     return res.status(404).json({ message: `maintenance with id: ${maintenanceId} doesnt exist` });
                 }
-                //check  if payment has beeen completed
+                //check if payment has beeen completed
                 if (maintenanceExits.paymentStatus !== client_1.TransactionStatus.COMPLETED) {
                     return res.status(400).json({ message: `Payment has not been completed yet` });
                 }

@@ -21,6 +21,47 @@ enum Refundability {
   NO
 }
 
+enum ListingType {
+  LISTING_WEBSITE
+  ILS_SYNDICATION
+}
+
+enum ShortletType {
+  MONTHLY
+  DAILY
+}
+
+model propertyListingHistory {
+  id                String        @id @default(cuid())
+  payApplicationFee Boolean       @default(false)
+  isActive          Boolean       @default(true)
+  isShortlet        Boolean       @default(false)
+  shortletDuration  ShortletType? @default(MONTHLY)
+  onListing         Boolean       @default(true) // turn it to be false if is leased out
+
+  type ListingType? @default(LISTING_WEBSITE)
+
+  propertyId String?     @unique // If set, these settings apply to the property
+  property   properties? @relation(fields: [propertyId], references: [id])
+
+  apartmentId String?     @unique // If set, these settings apply to a specific apartment
+  apartment   apartments? @relation(fields: [apartmentId], references: [id])
+
+  // time attributes
+  createdAt DateTime? @default(now())
+}
+
+enum PropertyType {
+  SINGLE_UNIT
+  MULTI_UNIT
+}
+
+enum PropertySpecificationType {
+  COMMERCIAL
+  RESIDENTIAL
+  SHORTLET
+}
+
 model properties {
   id           String    @id @default(cuid())
   name         String
@@ -83,23 +124,28 @@ model properties {
   // create a setting a property setting
 
   //setting 
-  settings     PropApartmentSettings?
-  availability PropsApartmentStatus?  @default(VACANT)
+  settings          propApartmentSettings[]
+  availability      PropsApartmentStatus?      @default(VACANT)
+  type              PropertyType?              @default(SINGLE_UNIT)
+  // specification for use types
+  specificationType PropertySpecificationType? @default(RESIDENTIAL)
+  useTypeCategory   String?
 
   // Relation to applicationInvites
-  applicationInvites applicationInvites[]
+  applicationInvites     applicationInvites[]
+  propertyListingHistory propertyListingHistory[]
 }
 
-model PropApartmentSettings {
+model propApartmentSettings {
   id         String     @id @default(cuid())
   // Optional relationships to differentiate setting scopes
   landlordId String?
   landlord   landlords? @relation(fields: [landlordId], references: [id])
 
-  propertyId String?     @unique // If set, these settings apply to the property
+  propertyId String?
   property   properties? @relation(fields: [propertyId], references: [id])
 
-  apartmentId String?     @unique // If set, these settings apply to a specific apartment
+  apartmentId String?
   apartment   apartments? @relation(fields: [apartmentId], references: [id])
 
   // Setting categorization
@@ -122,6 +168,8 @@ model PropApartmentSettings {
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([propertyId, settingType])
 }
 
 model propertyDocument {
@@ -175,6 +223,7 @@ model apartments {
   maintenanceWhitelist maintenanceWhitelist[]
   transactions         Transaction[]
 
-  settings           PropApartmentSettings?
-  applicationInvites applicationInvites[]
+  settings               propApartmentSettings[]
+  applicationInvites     applicationInvites[]
+  propertyListingHistory propertyListingHistory?
 }

@@ -4,7 +4,7 @@ import SubCategoryControls from '../controllers/subcategory';
 import { Authorize } from "../middlewares/authorize";
 import { uploadToCloudinary } from '../middlewares/multerCloudinary';
 import upload from "../configs/multer";
-class ApplicantRoutes {
+class CategoryRoutes {
     public router: Router;
     authenticateService: Authorize
 
@@ -34,4 +34,4 @@ class ApplicantRoutes {
     }
 }
 
-export default new ApplicantRoutes().router;
+export default new CategoryRoutes().router;

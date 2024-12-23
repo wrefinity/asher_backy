@@ -15,9 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_service_1 = __importDefault(require("../services/error.service"));
 const propertyServices_1 = __importDefault(require("../services/propertyServices"));
 class PropertyController {
-    constructor() { }
-    getProperty(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+    constructor() {
+        this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const properties = yield propertyServices_1.default.getProperties();
                 if (properties.length < 1)
@@ -28,11 +27,18 @@ class PropertyController {
                 error_service_1.default.handleError(error, res);
             }
         });
-    }
-    getPropertyByState(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getPropertyByState = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const properties = yield propertyServices_1.default.getPropertiesByState();
+                return res.status(200).json(properties);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getListedProperties = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const properties = yield propertyServices_1.default.getAllListedProperties();
                 return res.status(200).json(properties);
             }
             catch (error) {

@@ -40,15 +40,16 @@ class BillController {
             try {
                 const bill = yield bill_services_1.default.updateBill(billId, value, landlordId);
                 // NOTE: When we create a new bill we want to alert tenants and show on their side too
-                return res.status(201).json(bill);
+                return res.status(201).json({ bill });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
             }
         });
         this.deleteBill = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             const { billId } = req.params;
-            const landlordId = req.user.landlords.id;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
             try {
                 const bill = yield bill_services_1.default.deleteBill(billId, landlordId);
                 return res.status(201).json({ message: `Deleted Bill ${bill.billName} succesfully` });
@@ -59,7 +60,8 @@ class BillController {
         });
         //NOTE: These are the bills tenants under this landlord will pay
         this.getAllBills = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const landlordId = req.user.landlords.id;
+            var _a, _b;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
             try {
                 const bills = yield bill_services_1.default.getAllBills(landlordId);
                 return res.status(201).json(bills);
@@ -69,8 +71,9 @@ class BillController {
             }
         });
         this.getSingleBill = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             const { billId } = req.params;
-            const landlordId = req.user.landlords.id;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
             try {
                 const bill = yield bill_services_1.default.getBillById(billId, landlordId);
                 return res.status(201).json(bill);
@@ -80,8 +83,9 @@ class BillController {
             }
         });
         this.getBillByPropertyId = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             const { propertyId } = req.params;
-            const landlordId = req.user.landlords.id;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
             try {
                 const bill = yield bill_services_1.default.getBillByPropertyId(propertyId, landlordId);
                 return res.status(201).json(bill);

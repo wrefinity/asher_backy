@@ -1,5 +1,5 @@
-import { LatePaymentFeeType, SettingType, PropsSettingType, Refundability} from "@prisma/client";
-
+import { LatePaymentFeeType, SettingType, PropsSettingType, Refundability } from "@prisma/client";
+import { ListingType, ShortletType } from "@prisma/client";
 export interface IPropApartmentSettings {
     id?: string;
     propertyId: string;
@@ -14,9 +14,9 @@ export interface IPropApartmentSettings {
     depositPercentage?: number;
     refundTimeframe?: string;
     // application fee
-    applicationFee?: number; 
+    applicationFee?: number;
     refundPolicy?: Refundability;
-    
+
     settingType: PropsSettingType;
 
     createdAt?: Date;
@@ -28,4 +28,17 @@ export interface IGlobalSetting {
     percentageOrAmount?: number;
     type: SettingType;
     landlordId?: string | null;
-  }
+}
+
+export interface PropertyListingDTO {
+    payApplicationFee: boolean;
+    isShortlet: boolean;
+    shortletDuration?: ShortletType;
+    type: ListingType;
+    propertyId?: string;
+    apartmentId?: string;
+}
+
+export interface UpdateListingStatusDTO {
+    isLeased: boolean;
+}

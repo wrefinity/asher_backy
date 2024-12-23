@@ -4,11 +4,22 @@ import { IPropApartmentSettings, IGlobalSetting } from '../validations/interface
 
 class LandlordSettingsService {
 
-    create = async (data: IPropApartmentSettings) => {
-        return prismaClient.propApartmentSettings.create({
-            data,
+    createOrUpdate = async (data: IPropApartmentSettings) => {
+        return prismaClient.propApartmentSettings.upsert({
+            where: { 
+                propertyId_settingType: {
+                    propertyId: data.propertyId,
+                    settingType: data.settingType,
+                },
+            },
+            update: {
+                ...data,
+            },
+            create: {
+                ...data,
+            },
         });
-    }
+    };
 
     getById = async (id: string) => {
         return prismaClient.propApartmentSettings.findUnique({
@@ -18,6 +29,11 @@ class LandlordSettingsService {
 
     getAll = async () => {
         return prismaClient.propApartmentSettings.findMany();
+    }
+    getLandlordPropsSetting = async (landlordId) => {
+        return prismaClient.propApartmentSettings.findMany({
+            where:{landlordId}
+        });
     }
 
     update = async (id: string, data: IPropApartmentSettings) => {

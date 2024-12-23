@@ -33,6 +33,41 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getPropertyApplicationFee = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { propertyId } = req.params;
+                // Validate propertyId
+                if (!propertyId) {
+                    return res.status(500).json({ error: 'Property ID is required.' });
+                }
+                console.log(req.params);
+                // Check if property exists
+                const property = yield propertyServices_1.default.getPropertiesById(propertyId);
+                if (!property) {
+                    return res.status(404).json({ error: 'Property does not exist.' });
+                }
+                const { landlordId, rentalFee } = property;
+                // Validate landlord ID and rental fee
+                if (!landlordId || !rentalFee) {
+                    return res.status(400).json({ error: 'Invalid property data.' });
+                }
+                // Fetch global settings for application fees
+                const propsSettings = yield propertyServices_1.default.getPropertyGlobalFees(landlordId, client_1.PropsSettingType.APPLICATION);
+                // Validate propsSettings
+                if (!propsSettings || !propsSettings.applicationFee) {
+                    return res.status(400).json({ error: 'Application fee settings not found.' });
+                }
+                // Calculate application fee
+                const applicationFee = Number(rentalFee) * Number(propsSettings.applicationFee);
+                return res.status(200).json({
+                    property,
+                    applicationFee,
+                });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.completeApplication = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const applicationId = req.params.applicationId;

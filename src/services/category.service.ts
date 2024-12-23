@@ -1,4 +1,5 @@
 import { prismaClient } from "..";
+import { CategoryIF } from "../validations/interfaces/categories.interface";
 
 class categoryService {
     protected inclusion;
@@ -8,7 +9,7 @@ class categoryService {
             subCategory:true
         }
     }
-    createCategory = async (data) => {
+    createCategory = async (data: CategoryIF) => {
         return await prismaClient.category.create({
             data,
         });
@@ -40,7 +41,7 @@ class categoryService {
         return await prismaClient.category.update({
             where: { id },
             data:{
-                isDeleted:false
+                isDeleted:true
             }
         });
     };

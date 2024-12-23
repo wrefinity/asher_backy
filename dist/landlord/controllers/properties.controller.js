@@ -173,6 +173,65 @@ class PropertyController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.createPropertyListing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const { error, value } = properties_schema_1.createPropertyListingSchema.validate(req.body);
+            if (error)
+                return res.status(400).json({ error: error.details[0].message });
+            try {
+                const data = value;
+                // check if property is owned by landlord
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const checkOwnership = yield propertyServices_1.default.checkLandlordPropertyExist(landlordId, value.propertyId);
+                // scenario where property doesnot belong to landlord
+                if (!checkOwnership)
+                    return res.status(400).json({ message: 'property does not exist under landlord' });
+                const listing = yield propertyServices_1.default.createPropertyListing(data);
+                res.status(201).json({ message: 'Property listing created', listing });
+            }
+            catch (err) {
+                error_service_1.default.handleError(err, res);
+            }
+        });
+        // this code get landlord listing of properties including 
+        // using filters base on property size, type and location
+        this.getLandlordPropertyListing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                // Extract landlordId from the authenticated user
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(400).json({ message: "Landlord not found" });
+                }
+                // Extract filters from the query parameters
+                const { state, country, propertySize, type } = req.query;
+                // Prepare the filter object
+                const filters = {
+                    landlordId,
+                };
+                // Add filters to the query if they are provided
+                if (state)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { state: String(state) });
+                if (country)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { country: String(country) });
+                if (propertySize)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { propertysize: Number(propertySize) });
+                if (type)
+                    filters.type = type;
+                // Fetch the filtered properties
+                const properties = yield propertyServices_1.default.getAllListedProperties(filters);
+                // Check if properties are found
+                if (!properties || properties.length === 0) {
+                    return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                }
+                // Return the filtered properties
+                return res.status(200).json({ properties });
+            }
+            catch (err) {
+                // Handle any errors
+                error_service_1.default.handleError(err, res);
+            }
+        });
     }
 }
 exports.default = new PropertyController();

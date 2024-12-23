@@ -56,7 +56,7 @@ model landlords {
 
   Broadcast             Broadcast[]
   globalSettings        Settings[]
-  propsApartmentSetting PropApartmentSettings[]
+  propsApartmentSetting propApartmentSettings[]
   applicationInvites    applicationInvites[]
 }
 

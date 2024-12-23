@@ -19,7 +19,6 @@ class MaintenanceService {
     };
   }
 
-
   getAllMaintenances = async () => {
     return await prismaClient.maintenance.findMany({
       where: {
@@ -56,7 +55,6 @@ class MaintenanceService {
     if (maintenance.reScheduleMax <= 0) {
       throw new Error('Maximum reschedules reached, cannot reschedule further');
     }
-
     // Add to reschedule history
     await prismaClient.maintenanceRescheduleHistory.create({
       data: {
@@ -227,24 +225,18 @@ class MaintenanceService {
   }
 
   checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string) => {
-    try {
-      const whitelistEntry = await prismaClient.maintenanceWhitelist.findFirst({
-        where: {
-          landlordId,
-          categoryId,
-          subcategoryId: subcategoryId ? subcategoryId : undefined,
-          propertyId: propertyId ? propertyId : undefined,
-          apartmentId: apartmentId ? apartmentId : undefined,
-        },
-      });
-
-      return whitelistEntry;
-    } catch (error) {
-      throw new Error(`Error checking whitelist: ${error.message}`);
-    }
+    return await prismaClient.maintenanceWhitelist.findFirst({
+      where: {
+        landlordId,
+        categoryId,
+        subcategoryId: subcategoryId ? subcategoryId : undefined,
+        propertyId: propertyId ? propertyId : undefined,
+        apartmentId: apartmentId ? apartmentId : undefined,
+      },
+    });
   }
 
-  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string, currency:string) => {
+  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string, currency: string) => {
 
     // Deduct amount from user's wallet -> Also add transaction type to track expenses
     await transferServices.transferFunds(userId, { receiverId, amount, reference: TransactionReference.MAINTENANCE_FEE, description: `Payment for maintenance #${maintenanceId}` }, currency);

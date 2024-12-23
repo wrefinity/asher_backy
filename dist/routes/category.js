@@ -9,7 +9,7 @@ const subcategory_1 = __importDefault(require("../controllers/subcategory"));
 const authorize_1 = require("../middlewares/authorize");
 const multerCloudinary_1 = require("../middlewares/multerCloudinary");
 const multer_1 = __importDefault(require("../configs/multer"));
-class ApplicantRoutes {
+class CategoryRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
         this.initializeRoutes = this.initializeRoutes.bind(this);
@@ -31,4 +31,4 @@ class ApplicantRoutes {
         this.router.delete('/:id', this.authenticateService.authorize, category_1.default.deleteCategory);
     }
 }
-exports.default = new ApplicantRoutes().router;
+exports.default = new CategoryRoutes().router;

@@ -13,7 +13,7 @@ class SettingsController {
 
     createPropApartmentSetting = async (req: CustomRequest, res: Response) => {
         const { error, value } = propApartmentSettingsSchema.validate(req.body);
-
+        console.log(error)
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
@@ -23,7 +23,7 @@ class SettingsController {
             const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
             if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-            const createdSettings = await LandlordSettingsService.create({ ...value, landlordId });
+            const createdSettings = await LandlordSettingsService.createOrUpdate({ ...value, landlordId });
             return res.status(201).json({createdSettings});
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -45,9 +45,10 @@ class SettingsController {
     }
 
     // Retrieve all PropApartmentSettings records
-    getAllPropsApartSetting = async (req: Request, res: Response) => {
+    getAllPropsApartSetting = async (req: CustomRequest, res: Response) => {
         try {
-            const settings = await LandlordSettingsService.getAll();
+            const landlordId = req.user?.landlords?.id;
+            const settings = await LandlordSettingsService.getLandlordPropsSetting(landlordId);
             return res.status(200).json(settings);
         } catch (err) {
             ErrorService.handleError(err, res);

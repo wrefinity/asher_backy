@@ -11,7 +11,7 @@ import {
   emergencyContactSchema
 } from '../schemas';
 import ErrorService from "../../services/error.service";
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationStatus, PropsSettingType } from '@prisma/client';
 
 class ApplicantControls {
 
@@ -28,6 +28,52 @@ class ApplicantControls {
     }
   };
 
+  getPropertyApplicationFee = async (req: CustomRequest, res: Response) => {
+    try {
+      const { propertyId } = req.params;
+      
+      // Validate propertyId
+      if (!propertyId) {
+        return res.status(500).json({ error: 'Property ID is required.' });
+      }
+      
+      console.log(req.params)
+      // Check if property exists
+      const property = await PropertyServices.getPropertiesById(propertyId);
+      if (!property) {
+        return res.status(404).json({ error: 'Property does not exist.' });
+      }
+
+      const { landlordId, rentalFee } = property;
+
+      // Validate landlord ID and rental fee
+      if (!landlordId || !rentalFee) {
+        return res.status(400).json({ error: 'Invalid property data.' });
+      }
+
+      // Fetch global settings for application fees
+      const propsSettings = await PropertyServices.getPropertyGlobalFees(
+        landlordId,
+        PropsSettingType.APPLICATION
+      );
+
+      // Validate propsSettings
+      if (!propsSettings || !propsSettings.applicationFee) {
+        return res.status(400).json({ error: 'Application fee settings not found.' });
+      }
+
+      // Calculate application fee
+      const applicationFee = Number(rentalFee) * Number(propsSettings.applicationFee);
+
+      return res.status(200).json({
+        property,
+        applicationFee,
+      });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
+
   completeApplication = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
@@ -37,7 +83,7 @@ class ApplicantControls {
       }
       // check for the existance of application before proceeding
       const applicationExist = await ApplicantService.getApplicationById(applicationId);
-      if(!applicationExist) return  res.status(500).json({ message: "Application Doesn't Exist"}); 
+      if (!applicationExist) return res.status(500).json({ message: "Application Doesn't Exist" });
       const application = await ApplicantService.updateApplicationStatus(applicationId, ApplicationStatus.COMPLETED);
       res.status(200).json(application);
     } catch (error) {
@@ -50,7 +96,7 @@ class ApplicantControls {
       const propertiesId = req.params.propertiesId;
       // check for property existance
       const propertyExist = await PropertyServices.getPropertiesById(propertiesId);
-      if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` }); 
+      if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
 
       const { error } = applicantPersonalDetailsSchema.validate(req.body);
       if (error) {

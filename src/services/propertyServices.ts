@@ -1,9 +1,23 @@
 import { prismaClient } from "..";
+import {PropertyType, PropsSettingType } from "@prisma/client"
+import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings";
 import { ICreateProperty } from "../validations/interfaces/properties.interface";
-import {PropsApartmentStatus} from "@prisma/client";
+import { PropsApartmentStatus } from "@prisma/client";
+
+interface PropertyFilters {
+    landlordId?: string;
+    property?: {
+        state?: string;
+        country?: string;
+        propertysize?: number;
+        type?: PropertyType;
+    };
+    minSize?: number;
+    maxSize?: number;
+}
 
 class PropertyService {
-    createProperty = async (propertyData: ICreateProperty) =>{
+    createProperty = async (propertyData: ICreateProperty) => {
         return await prismaClient.properties.create({
             data: {
                 ...propertyData,
@@ -12,7 +26,7 @@ class PropertyService {
     }
 
     getProperties = async () => {
-        return await prismaClient.properties.findMany({})
+        return await prismaClient.properties.findMany({where: { isDeleted: false },})
     }
     getPropertiesById = async (id: string) => {
         return await prismaClient.properties.findUnique({
@@ -35,7 +49,7 @@ class PropertyService {
     updateAvailabiltyStatus = async (landlordId: string, id: string, availability: PropsApartmentStatus) => {
         return await prismaClient.properties.update({
             where: { id, landlordId },
-            data: { availability}
+            data: { availability }
         });
     }
 
@@ -103,7 +117,7 @@ class PropertyService {
 
         return propertiesByState;
     }
-    showCaseRentals = async (propertyId:string, landlordId:string) => {
+    showCaseRentals = async (propertyId: string, landlordId: string) => {
         return await prismaClient.properties.update({
             where: {
                 landlordId,
@@ -114,11 +128,11 @@ class PropertyService {
             }
         })
     }
-    getShowCasedRentals = async (landlordId:string) => {
+    getShowCasedRentals = async (landlordId: string) => {
         return await prismaClient.properties.findMany({
             where: {
                 landlordId,
-                showCase:true
+                showCase: true
             }
         })
     }
@@ -141,6 +155,74 @@ class PropertyService {
             }
         })
     }
+    getPropertyGlobalFees = async(landlordId: string, settingType: PropsSettingType ) =>{
+        return await prismaClient.propApartmentSettings.findFirst({
+            where:{
+                landlordId,
+                settingType
+            }
+        })
+    }
+    // property listings
+    getAllListedProperties = async (filters: PropertyFilters = {}) => {
+        const { landlordId, property, minSize, maxSize } = filters;
+        const {type, state, country, } = property || {}
+      
+        return await prismaClient.propertyListingHistory.findMany({
+          where: {
+            isActive: true,
+            onListing: true,
+            ...(landlordId && {
+              property: {
+                landlordId: landlordId,
+              },
+            }),
+            ...(type && {
+              property: {
+                type: type,
+              },
+            }),
+            ...(state && {
+              property: {
+                state: state,
+              },
+            }),
+            ...(country && {
+              property: {
+                country: country,
+              },
+            }),
+            ...(minSize || maxSize
+              ? {
+                  property: {
+                    propertysize: {
+                      gte: minSize ?? undefined,
+                      lte: maxSize ?? undefined,
+                    },
+                  },
+                }
+              : {}),
+          },
+          include: {
+            property: true,
+            apartment: true,
+          },
+        });
+      }
+
+    createPropertyListing = async (data: PropertyListingDTO) => {
+        return await prismaClient.propertyListingHistory.create({
+            data,
+        });
+    };
+    // to update property to listing and not listing
+    updateListingStatus = async (propertyId: string) => {
+        return await prismaClient.propertyListingHistory.update({
+            where: { propertyId },
+            data: { onListing: false },
+        });
+    }
+
 }
 
 

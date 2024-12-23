@@ -28,7 +28,7 @@ class BillController {
         try {
             const bill = await billServices.updateBill(billId, value, landlordId);
             // NOTE: When we create a new bill we want to alert tenants and show on their side too
-            return res.status(201).json(bill);
+            return res.status(201).json({bill});
             
         } catch (error) {
             errorService.handleError(error, res)
@@ -37,7 +37,7 @@ class BillController {
 
     deleteBill = async (req: CustomRequest, res: Response) => {
         const { billId } = req.params;
-        const landlordId = req.user.landlords.id;
+        const landlordId = req.user?.landlords?.id;
         try {
             const bill = await billServices.deleteBill(billId, landlordId);
             return res.status(201).json({ message: `Deleted Bill ${bill.billName} succesfully` });
@@ -49,11 +49,10 @@ class BillController {
 
     //NOTE: These are the bills tenants under this landlord will pay
     getAllBills = async (req: CustomRequest, res: Response) => {
-        const landlordId = req.user.landlords.id;
+        const landlordId = req.user?.landlords?.id;
         try {
             const bills = await billServices.getAllBills(landlordId);
             return res.status(201).json(bills);
-
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -61,7 +60,7 @@ class BillController {
 
     getSingleBill = async (req: CustomRequest, res: Response) =>{
         const { billId } = req.params;
-        const landlordId = req.user.landlords.id;
+        const landlordId = req.user?.landlords?.id;
         try {
             const bill = await billServices.getBillById(billId, landlordId);
             return res.status(201).json(bill);
@@ -73,7 +72,7 @@ class BillController {
 
     getBillByPropertyId = async (req: CustomRequest, res: Response) =>{
         const { propertyId } = req.params;
-        const landlordId = req.user.landlords.id;
+        const landlordId = req.user?.landlords?.id;
         try {
             const bill = await billServices.getBillByPropertyId(propertyId, landlordId);
             return res.status(201).json(bill);

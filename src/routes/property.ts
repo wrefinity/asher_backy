@@ -19,6 +19,7 @@ class PropertyRouter {
         this.router.use("/apartments", ApartmentRouter);
         this.router.get('/property', PropertyController.getProperty)
         this.router.get('/property/state', PropertyController.getPropertyByState)
+        this.router.get('/property/listing', PropertyController.getListedProperties)
     }
 }
 

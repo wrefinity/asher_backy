@@ -12,9 +12,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("../..");
 class LandlordSettingsService {
     constructor() {
-        this.create = (data) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.create({
-                data,
+        this.createOrUpdate = (data) => __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.propApartmentSettings.upsert({
+                where: {
+                    propertyId_settingType: {
+                        propertyId: data.propertyId,
+                        settingType: data.settingType,
+                    },
+                },
+                update: Object.assign({}, data),
+                create: Object.assign({}, data),
             });
         });
         this.getById = (id) => __awaiter(this, void 0, void 0, function* () {
@@ -24,6 +31,11 @@ class LandlordSettingsService {
         });
         this.getAll = () => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.propApartmentSettings.findMany();
+        });
+        this.getLandlordPropsSetting = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.propApartmentSettings.findMany({
+                where: { landlordId }
+            });
         });
         this.update = (id, data) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.propApartmentSettings.update({

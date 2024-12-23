@@ -40,7 +40,7 @@ class categoryService {
             return yield __1.prismaClient.category.update({
                 where: { id },
                 data: {
-                    isDeleted: false
+                    isDeleted: true
                 }
             });
         });

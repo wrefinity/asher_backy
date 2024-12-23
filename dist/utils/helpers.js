@@ -77,7 +77,7 @@ const generateOtp = () => {
 };
 exports.generateOtp = generateOtp;
 const generateIDs = (starter) => {
-    const timeStamp = Date.now(); //get the unix timestamp
+    const timeStamp = Date.now(); // get the unix timestamp
     const timeStampToString = timeStamp.toString().slice(-4);
     return `${starter}-${timeStampToString}-${Math.floor(Math.random() * 1000)}`;
 };

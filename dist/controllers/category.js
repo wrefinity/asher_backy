@@ -37,7 +37,8 @@ class CategoryControls {
         this.getAllCategories = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const categories = yield category_service_1.default.getAllCategories();
-                res.status(200).json(categories);
+                console.log(categories);
+                res.status(200).json({ categories });
             }
             catch (err) {
                 res.status(500).json({ error: err.message });

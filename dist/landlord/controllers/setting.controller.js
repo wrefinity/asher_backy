@@ -21,6 +21,7 @@ class SettingsController {
         this.createPropApartmentSetting = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const { error, value } = settings_1.propApartmentSettingsSchema.validate(req.body);
+            console.log(error);
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
@@ -32,7 +33,7 @@ class SettingsController {
                     return res.status(404).json({ message: "property does not exists" });
                 if (!landlordId)
                     return res.status(404).json({ message: "Landlord not found" });
-                const createdSettings = yield propertySetting_service_1.default.create(Object.assign(Object.assign({}, value), { landlordId }));
+                const createdSettings = yield propertySetting_service_1.default.createOrUpdate(Object.assign(Object.assign({}, value), { landlordId }));
                 return res.status(201).json({ createdSettings });
             }
             catch (err) {
@@ -55,8 +56,10 @@ class SettingsController {
         });
         // Retrieve all PropApartmentSettings records
         this.getAllPropsApartSetting = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
-                const settings = yield propertySetting_service_1.default.getAll();
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const settings = yield propertySetting_service_1.default.getLandlordPropsSetting(landlordId);
                 return res.status(200).json(settings);
             }
             catch (err) {

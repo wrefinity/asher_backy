@@ -1,10 +1,11 @@
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertySchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, createPropertySchema } from "../../validations/schemas/properties.schema"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
+import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 
 
 class PropertyController {
@@ -30,8 +31,8 @@ class PropertyController {
             const rentalFee = value.rentalFee || 0;
             // const lateFee = rentalFee * 0.01;
 
-            const property = await PropertyServices.createProperty({ ...value,images, videourl, landlordId })
-            return res.status(201).json({property})
+            const property = await PropertyServices.createProperty({ ...value, images, videourl, landlordId })
+            return res.status(201).json({ property })
         } catch (error) {
             console.log(error)
             ErrorService.handleError(error, res)
@@ -103,7 +104,7 @@ class PropertyController {
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
             const property = await PropertyServices.updateAvailabiltyStatus(landlordId, propertiesId, value.availability);
             if (!property) return res.status(200).json({ message: "No Property listed yet" })
-            return res.status(200).json({property})
+            return res.status(200).json({ property })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -120,7 +121,7 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     }
-    getPropertyExpenses = async (req: CustomRequest, res: Response) =>{
+    getPropertyExpenses = async (req: CustomRequest, res: Response) => {
         const { landlords } = req.user
         const landlordId = landlords.id
         const { propertyId } = req.params;
@@ -133,7 +134,7 @@ class PropertyController {
         }
     }
 
-    getRentVSExpense = async (req: CustomRequest, res: Response) =>{
+    getRentVSExpense = async (req: CustomRequest, res: Response) => {
         const { entityId } = req.params;
         const { isApartment, startDate, endDate } = req.body
         if (!entityId) return res.status(400).json({ message: 'No propertyId provided' })
@@ -144,6 +145,67 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     }
+
+    createPropertyListing = async (req: CustomRequest, res: Response) => {
+        const { error, value } = createPropertyListingSchema.validate(req.body);
+        if (error) return res.status(400).json({ error: error.details[0].message });
+        try {
+            const data: PropertyListingDTO = value;
+            // check if property is owned by landlord
+            const landlordId = req.user?.landlords?.id;
+            const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, value.propertyId);
+            // scenario where property doesnot belong to landlord
+            if (!checkOwnership) return res.status(400).json({ message: 'property does not exist under landlord' });
+            
+            const listing = await PropertyServices.createPropertyListing(data);
+            
+            res.status(201).json({ message: 'Property listing created', listing });
+        } catch (err) {
+            ErrorService.handleError(err, res);
+        }
+    }
+    // this code get landlord listing of properties including 
+    // using filters base on property size, type and location
+    getLandlordPropertyListing = async (req: CustomRequest, res: Response) => {
+        try {
+            // Extract landlordId from the authenticated user
+            const landlordId = req.user?.landlords?.id;
+            
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+    
+            // Extract filters from the query parameters
+            const { state, country, propertySize, type } = req.query;
+    
+            // Prepare the filter object
+            const filters: any = {
+                landlordId,
+            };
+    
+            // Add filters to the query if they are provided
+            if (state) filters.property = { ...filters.property, state: String(state) };
+            if (country) filters.property = { ...filters.property, country: String(country) };
+            if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
+            if (type) filters.type = type;
+
+            // Fetch the filtered properties
+            const properties = await PropertyServices.getAllListedProperties(filters);
+    
+            // Check if properties are found
+            if (!properties || properties.length === 0) {
+                return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+            }
+    
+            // Return the filtered properties
+            return res.status(200).json({ properties });
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+    };
+    
+    
 
 }
 

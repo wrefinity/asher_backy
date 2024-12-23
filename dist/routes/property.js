@@ -19,6 +19,7 @@ class PropertyRouter {
         this.router.use("/apartments", appartment_1.default);
         this.router.get('/property', property_controller_1.default.getProperty);
         this.router.get('/property/state', property_controller_1.default.getPropertyByState);
+        this.router.get('/property/listing', property_controller_1.default.getListedProperties);
     }
 }
 exports.default = new PropertyRouter().router;

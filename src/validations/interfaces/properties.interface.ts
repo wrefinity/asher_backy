@@ -1,3 +1,5 @@
+import {PropertyType, PropertySpecificationType} from "@prisma/client"
+
 export interface IPropertyDocument {
     id?: string;
     name: string;
@@ -19,12 +21,15 @@ export interface ICreateProperty {
     city: string;
     state: string;
     country: string;
+    currency: string;
     zipcode: string;
     location?: string;
+    useTypeCategory?: string;
     images?: string[];
     videourl?: string[];
     amenities?: string[];
     totalApartments?: number;
     rentalFee?: number;
-    lateFee?: number; 
+    type?: PropertyType;
+    specificationType?: PropertySpecificationType;
 }

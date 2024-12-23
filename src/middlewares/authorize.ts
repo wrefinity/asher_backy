@@ -18,7 +18,8 @@ export class Authorize {
         if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
             token = req.headers.authorization.split(" ")[1];
         }
-
+        console.log("==========" + token)
+        
         if (!token) {
             return res.status(401).json({ message: "Not authorized, token failed" });
         }
@@ -31,6 +32,8 @@ export class Authorize {
             }
             
             const user = await UserService.findAUserById(String(decoded.id));
+
+            console.log(user)
             if (!user) {
                 return res.status(401).json({ message: "Not authorized, user not found" });
             }

@@ -28,6 +28,7 @@ class Authorize {
             if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
                 token = req.headers.authorization.split(" ")[1];
             }
+            console.log("==========" + token);
             if (!token) {
                 return res.status(401).json({ message: "Not authorized, token failed" });
             }
@@ -37,6 +38,7 @@ class Authorize {
                     return res.status(401).json({ message: "Not authorized, invalid token" });
                 }
                 const user = yield user_services_1.default.findAUserById(String(decoded.id));
+                console.log(user);
                 if (!user) {
                     return res.status(401).json({ message: "Not authorized, user not found" });
                 }
