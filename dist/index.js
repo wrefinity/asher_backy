@@ -8,6 +8,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const express_1 = __importDefault(require("express"));
 const express_session_1 = __importDefault(require("express-session"));
 const secrets_1 = require("./secrets");
+const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
 const applicant_1 = __importDefault(require("./routes/applicant"));
 const auth_1 = __importDefault(require("./routes/auth"));
@@ -54,6 +55,10 @@ class Server {
             saveUninitialized: false
         }));
         this.app.use((0, cookie_parser_1.default)());
+        this.app.use((0, cors_1.default)({
+            origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://0.0.0.0:3000'],
+            credentials: true,
+        }));
     }
     configureRoutes() {
         // Add routes here

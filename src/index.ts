@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import express, { Express } from "express";
 import session from "express-session";
 import { APP_SECRET, PORT } from "./secrets";
+import cors from 'cors';
 
 import { PrismaClient } from "@prisma/client";
 import ApplicationRouter from "./routes/applicant";
@@ -60,6 +61,12 @@ class Server {
             saveUninitialized: false
         }));
         this.app.use(cookieParser());
+        this.app.use(
+            cors({
+                origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://0.0.0.0:3000'],
+                credentials: true,
+            })
+        );
     }
 
     private configureRoutes() {
