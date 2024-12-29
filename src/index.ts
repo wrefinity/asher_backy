@@ -62,10 +62,7 @@ class Server {
         }));
         this.app.use(cookieParser());
         this.app.use(
-            cors({
-                origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://0.0.0.0:3000'],
-                credentials: true,
-            })
+            cors()
         );
     }
 
