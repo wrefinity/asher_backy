@@ -20,7 +20,7 @@ class StatusController {
         this.getAllStatuses = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const statuses = yield this.statusService.getAllStatuses();
-                res.status(200).json(statuses);
+                return res.status(200).json(statuses);
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

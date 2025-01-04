@@ -3,6 +3,8 @@ model profile {
     gender        String?
     phoneNumber   String?
     address       String?
+    country       String?
+    city          String?
     maritalStatus String?
     dateOfBirth   DateTime?
     fullname      String?

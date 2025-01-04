@@ -33,21 +33,32 @@ class ProfileControls {
                 return res.status(400).json({ message: error.details[0].message });
             }
             try {
-                // const userId = req.user.id;
-                const { profileId } = req.params;
+                const userId = req.user.id;
+                const profileInfo = yield profileServices_1.default.findUserProfileByUserId(userId);
                 const data = Object.assign({}, value);
                 const profileUrl = req.body.cloudinaryUrls[0];
                 delete data['cloudinaryUrls'];
                 delete data['cloudinaryVideoUrls'];
                 delete data['cloudinaryDocumentUrls'];
                 // Update the user profile in the database
-                const updatedUser = yield profileServices_1.default.updateUserProfile(profileId, Object.assign(Object.assign({}, data), { profileUrl }));
+                const updatedUser = yield profileServices_1.default.updateUserProfile(profileInfo.id, Object.assign(Object.assign({}, data), { profileUrl }));
                 const { id } = updatedUser, profile = __rest(updatedUser, ["id"]);
                 res.status(200).json({ message: 'Profile updated successfully', user: profile });
             }
             catch (error) {
                 console.error('Error updating profile:', error);
                 res.status(500).json({ message: 'Internal server error' });
+            }
+        });
+        this.getCurrentUserProfile = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                console.log(req.user);
+                const userId = req.user.id;
+                const profile = yield profileServices_1.default.findUserProfileByUserId(userId);
+                return res.status(200).json({ profile });
+            }
+            catch (error) {
+                res.status(500).json({ message: error.message || 'Internal server error' });
             }
         });
     }

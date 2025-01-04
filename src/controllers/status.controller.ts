@@ -9,7 +9,7 @@ class StatusController {
   public getAllStatuses = async (req: Request, res: Response) => {
     try {
       const statuses = await this.statusService.getAllStatuses();
-      res.status(200).json(statuses);
+      return res.status(200).json(statuses);
     } catch (error) {
         ErrorService.handleError(error, res)
     }

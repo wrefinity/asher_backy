@@ -12,10 +12,12 @@ class ProfileRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
         this.authenticateService = new authorize_1.Authorize();
+        this.router.use(this.authenticateService.authorize);
         this.initializeRoutes();
     }
     initializeRoutes() {
-        this.router.patch('/:profileId', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, profile_1.default.profileUpdate);
+        this.router.post('/update', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, profile_1.default.profileUpdate);
+        this.router.get('/', profile_1.default.getCurrentUserProfile);
     }
 }
 exports.default = new ProfileRoutes().router;

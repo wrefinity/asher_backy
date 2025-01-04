@@ -15,6 +15,15 @@ class ProfileService {
         this.findAUserProfileById = (userId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.profile.findFirst({ where: { id: userId }, include: this.inclusion });
         });
+        this.findUserProfileByUserId = (userId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.profile.findFirst({
+                where: {
+                    users: {
+                        id: userId
+                    }
+                }
+            });
+        });
         this.updateUserProfile = (id, profileData) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.profile.update({
                 where: { id },

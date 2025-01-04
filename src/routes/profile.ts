@@ -11,11 +11,13 @@ class ProfileRoutes {
     constructor() {
         this.router = Router();
         this.authenticateService = new Authorize()
+        this.router.use(this.authenticateService.authorize)
         this.initializeRoutes();
     }
 
     private initializeRoutes(): void {
-        this.router.patch('/:profileId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ProfileControls.profileUpdate);
+        this.router.post('/update', upload.array('files'), uploadToCloudinary, ProfileControls.profileUpdate);
+        this.router.get('/', ProfileControls.getCurrentUserProfile);
     }
 }
 
