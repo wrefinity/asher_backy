@@ -24,7 +24,7 @@ export const createPropertySchema = Joi.object({
   currency: Joi.string().required(),
   zipcode: Joi.string().required(),
   location: Joi.string().optional(),
-  yearBuilt: Joi.date().iso().optional(),
+  yearBuilt: Joi.date().optional(),
   amenities: Joi.array().items(Joi.string()).optional(),
   totalApartments: Joi.number().integer().optional(),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),

@@ -8,9 +8,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../services/landlord.service");
 const auth_1 = require("../../validations/schemas/auth");
+const user_services_1 = __importDefault(require("../../services/user.services"));
 class LandlordController {
     constructor() {
         // Update an existing landlord
@@ -27,6 +32,33 @@ class LandlordController {
                 return res.status(200).json(landlord);
             }
             catch (err) {
+                return res.status(500).json({ error: err.message });
+            }
+        });
+        this.updateLandlordProfile = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const { error, value } = auth_1.updateLandlordSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const landlord = yield user_services_1.default.updateLandlordOrTenantOrVendorInfo(value, landlordId, client_1.userRoles.LANDLORD);
+                return res.status(200).json(landlord);
+            }
+            catch (err) {
+                return res.status(500).json({ error: err.message });
+            }
+        });
+        this.getLandlordInfo = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const landlord = yield this.landlordService.getLandlordById(landlordId);
+                return res.status(200).json(landlord);
+            }
+            catch (err) {
+                console.log(err);
                 return res.status(500).json({ error: err.message });
             }
         });
@@ -56,7 +88,7 @@ class LandlordController {
             }
         });
         // Get a single landlord by ID
-        this.getLandlordById = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.getLandlordUsingId = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.params.id;
                 if (!landlordId) {

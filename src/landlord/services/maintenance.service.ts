@@ -1,6 +1,7 @@
 import { prismaClient } from "../../index";
 import { maintenanceStatus, maintenanceDecisionStatus } from '@prisma/client';
 import { MaintenanceWhitelistInput } from "../validations/interfaces/maintenance";
+import categoryService from "../../services/category.service";
 
 class LandlordMaintenanceService {
   protected inclusion: {
@@ -67,7 +68,7 @@ class LandlordMaintenanceService {
     });
     return maintenaces;
   }
-  
+
   getTenantMaintenance = async (landlordId: string, tenantId: string) => {
     return await prismaClient.maintenance.findMany({
       where: {
@@ -147,7 +148,7 @@ class LandlordMaintenanceService {
         data: {
           categoryId: data.categoryId,
           subcategoryId: data.subcategoryId,
-          propertyId: data.propertyId,
+          propertyId: data.propertyId || null,
           apartmentId: data.apartmentId || null,
           landlordId: landlordId,
         },
@@ -165,6 +166,7 @@ class LandlordMaintenanceService {
       const whitelist = await prismaClient.maintenanceWhitelist.findMany({
         where: {
           landlordId: landlordId,
+          isActive: true
         },
         include: {
           category: true,
@@ -179,6 +181,49 @@ class LandlordMaintenanceService {
       throw new Error(`Error fetching whitelist: ${error.message}`);
     }
   }
+
+
+
+  getMaintenanceCategoriesWithWhitelistStatus = async (landlordId: string) => {
+    // Step 1: Fetch all categories with their subcategories
+    const categories = await categoryService.getAllCategories();
+
+    // Step 2: Fetch whitelisted categories and subcategories for the landlord
+    const whitelistedEntries = await prismaClient.maintenanceWhitelist.findMany({
+      where: {
+        landlordId,
+        isActive: true,
+      },
+      select: {
+        categoryId: true,
+        subcategoryId: true,
+      },
+    });
+
+    // Create sets of whitelisted category and subcategory IDs for quick lookup
+    const whitelistedCategoryIds = new Set(
+      whitelistedEntries.map((entry) => entry.categoryId)
+    );
+    const whitelistedSubcategoryIds = new Set(
+      whitelistedEntries
+        .filter((entry) => entry.subcategoryId !== null)
+        .map((entry) => entry.subcategoryId as string)
+    );
+
+    // Step 3: Combine and structure the data
+    const result = categories.map((category) => ({
+      ...category,
+      isEnabled: whitelistedCategoryIds.has(category.id),
+      subCategories: category.subCategory.map((subCategory) => ({
+        ...subCategory,
+        isEnabled: whitelistedSubcategoryIds.has(subCategory.id),
+      })),
+    }));
+    return result;
+  }
+
+
+
 
   // Update an existing whitelist entry
   updateWhitelist = async (whitelistId: string, data: MaintenanceWhitelistInput) => {
@@ -198,16 +243,41 @@ class LandlordMaintenanceService {
       throw new Error(`Error updating whitelist: ${error.message}`);
     }
   }
+
+  toggleWhitelistStatus = async (subcategoryId: string, currentLandlordId) => {
+
+    // Step 1: Retrieve the current isActive value
+    const whitelistEntry = await prismaClient.maintenanceWhitelist.findFirst({
+      where: { subcategoryId, landlordId: currentLandlordId},
+    });
+
+    if (!whitelistEntry) {
+      throw new Error(`Whitelist entry with subcategoryId: ${subcategoryId} not found.`);
+    }
+    // check if the current landlord was the one that whitelisted it
+    if (whitelistEntry.landlordId !== currentLandlordId) {
+      throw new Error('Unauthorized: You do not have permission to modify this entry.');
+    }
+
+    // Step 2: Toggle the isActive value
+    const updatedEntry = await prismaClient.maintenanceWhitelist.update({
+      where: { id: whitelistEntry.id},
+      data: { isActive: !whitelistEntry.isActive },
+    });
+
+    return updatedEntry;
+  };
+
   deleteMaintenance = async (maintenanceId: string) => {
     return await prismaClient.maintenance.update({
       where: {
-        id:maintenanceId
+        id: maintenanceId
       },
-      data:{
-        isDeleted:true
+      data: {
+        isDeleted: true
       }
     })
-  } 
+  }
 }
 
 export default new LandlordMaintenanceService();

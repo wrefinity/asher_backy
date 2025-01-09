@@ -100,7 +100,7 @@ model services {
 
 model maintenanceWhitelist {
   id            String       @id @default(cuid())
-  category      category     @relation(fields: [categoryId], references: [id])
+  category      category?     @relation(fields: [categoryId], references: [id])
   categoryId    String
   subcategory   subCategory? @relation(fields: [subcategoryId], references: [id])
   subcategoryId String?
@@ -110,4 +110,5 @@ model maintenanceWhitelist {
   propertyId    String?
   apartment     apartments?  @relation(fields: [apartmentId], references: [id])
   apartmentId   String?
+  isActive      Boolean      @default(true)
 }

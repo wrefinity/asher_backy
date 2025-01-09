@@ -20,13 +20,16 @@ export const createLandlordSchema = Joi.object({
 
 // Joi schema for validating landlord update data
 export const updateLandlordSchema = Joi.object({
-    userId: Joi.string().optional(),
-    properties: Joi.array().items(Joi.string().required()).optional(),
-    tenants: Joi.array().items(Joi.string()).optional(), // Optional
-    lnadlordSupportTicket: Joi.array().items(Joi.string()).optional(), // Optional
-    transactions: Joi.array().items(Joi.string()).optional(), // Optional
-    reviews: Joi.array().items(Joi.string()).optional(), // Optional
+    emailDomains: Joi.string().optional(),
 });
+// export const updateLandlordSchema = Joi.object({
+//     userId: Joi.string().optional(),
+//     properties: Joi.array().items(Joi.string().required()).optional(),
+//     tenants: Joi.array().items(Joi.string()).optional(), // Optional
+//     lnadlordSupportTicket: Joi.array().items(Joi.string()).optional(), // Optional
+//     transactions: Joi.array().items(Joi.string()).optional(), // Optional
+//     reviews: Joi.array().items(Joi.string()).optional(), // Optional
+// });
 
 // Joi schema for validating landlord retrieval data (if needed)
 export const landlordSchema = Joi.object({

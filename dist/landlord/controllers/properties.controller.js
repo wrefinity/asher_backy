@@ -12,11 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = __importDefault(require("fs"));
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 const properties_schema_1 = require("../../validations/schemas/properties.schema");
 const settings_1 = require("../validations/schema/settings");
 const property_performance_1 = __importDefault(require("../services/property-performance"));
+const filereader_1 = require("../../utils/filereader");
 class PropertyController {
     constructor() {
         this.createProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -230,6 +232,66 @@ class PropertyController {
             catch (err) {
                 // Handle any errors
                 error_service_1.default.handleError(err, res);
+            }
+        });
+        this.bulkPropsUpload = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'Kindly login as landlord' });
+                }
+                if (!req.file)
+                    return res.status(400).json({ error: 'No CSV file uploaded.' });
+                const filePath = req.file.path;
+                // Read and process the CSV file
+                const dataFetched = yield (0, filereader_1.parseCSV)(filePath);
+                let uploaded = [];
+                let uploadErrors = [];
+                for (const row of dataFetched) {
+                    try {
+                        // Convert semicolon-separated amenities string to an array
+                        if (row.amenities && typeof row.amenities === 'string') {
+                            row.amenities = row.amenities.split(';').map(item => item.trim());
+                        }
+                        // Parse date fields
+                        row.yearBuilt = (0, filereader_1.parseDateField)(row.yearBuilt);
+                        row.dueDate = (0, filereader_1.parseDateField)(row.dueDate);
+                        // Validate the row using Joi validations
+                        const { error, value } = properties_schema_1.createPropertySchema.validate(row, { abortEarly: false });
+                        if (error) {
+                            uploadErrors.push({
+                                name: row.name,
+                                errors: error.details.map(detail => detail.message),
+                            });
+                            continue;
+                        }
+                        const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { landlordId }));
+                        uploaded.push(property);
+                    }
+                    catch (err) {
+                        // Log unexpected errors
+                        uploadErrors.push({
+                            name: row.name,
+                            errors: `Unexpected error: ${err.message}`,
+                        });
+                    }
+                }
+                // Delete the file after processing if needed
+                fs_1.default.unlinkSync(filePath);
+                // Determine response based on upload results
+                if (uploaded.length > 0) {
+                    // Properties were successfully uploaded
+                    return res.status(200).json({ uploaded, uploadErrors });
+                }
+                else {
+                    // No property uploaded
+                    return res.status(400).json({ error: 'No property was uploaded.', uploadErrors });
+                }
+            }
+            catch (error) {
+                // Handle any errors
+                error_service_1.default.handleError(error, res);
             }
         });
     }

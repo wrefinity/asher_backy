@@ -90,7 +90,7 @@ class AuthControls {
             }
             catch (error) {
                 console.error('Error verifying user:', error);
-                res.status(500).json({ message: 'Failed to verify user' });
+                res.status(500).json({ message: error.message || 'Failed to verify user' });
             }
         });
         this.sendPasswordResetCode = (req, res) => __awaiter(this, void 0, void 0, function* () {

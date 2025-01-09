@@ -224,11 +224,12 @@ class MaintenanceService {
     return maintenance?.vendorId !== null;
   }
 
-  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string) => {
+  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string, isActive: boolean = true ) => {
     return await prismaClient.maintenanceWhitelist.findFirst({
       where: {
         landlordId,
         categoryId,
+        isActive,
         subcategoryId: subcategoryId ? subcategoryId : undefined,
         propertyId: propertyId ? propertyId : undefined,
         apartmentId: apartmentId ? apartmentId : undefined,

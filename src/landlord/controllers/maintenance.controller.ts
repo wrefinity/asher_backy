@@ -9,8 +9,11 @@ import PropertyService from "../../services/propertyServices"
 import { maintenanceWhitelistSchema, updateWhitelistSchema } from "../validations/schema/maintenance";
 
 class MaintenanceControls {
+    // <========= whitelisting section ========>
     createWhitelist = async (req: CustomRequest, res: Response) => {
         try {
+            console.log("called now=======")
+            console.log(req.body)
             const { error, value } = maintenanceWhitelistSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
@@ -21,12 +24,17 @@ class MaintenanceControls {
             if (!categoryExist) return res.status(400).json({ message: "category doesnt exist" })
             const subCategoryExist = await SubCateoryService.getSubCategoryById(value.subcategoryId)
             if (!subCategoryExist) return res.status(400).json({ message: "sub category doesnt exist" })
-            const propertyExist = await PropertyService.getPropertiesById(value.propertyId)
-            if (!propertyExist) return res.status(400).json({ message: "property doesnt exist" })
-
+            // Check if the property exists if propertyId is provided
+            if (value.propertyId) {
+                const propertyExist = await PropertyService.getPropertiesById(value.propertyId);
+                if (!propertyExist) {
+                    return res.status(400).json({ message: "Property doesn't exist" });
+                }
+            }
             const newWhitelist = await MaintenanceService.createWhitelist(value, landlordId);
             return res.status(201).json({ message: "Whitelist created successfully", data: newWhitelist });
         } catch (err) {
+            console.log(err)
             return res.status(500).json({ error: err.message });
         }
     }
@@ -43,18 +51,30 @@ class MaintenanceControls {
             ErrorService.handleError(err, res)
         }
     }
-
-    getPropertyMaintenance = async (req: CustomRequest, res: Response) => {
+    getMaintenanceWithWhiteListed = async (req: CustomRequest, res: Response) => {
         try {
-            const propertyId = req.params.propertyId;
-            const maintenances = await MaintenanceService.getPropertyMaintenances(propertyId);
-            if (!maintenances) return res.status(200).json({ message: "No Property listed yet" })
-            return res.status(200).json(maintenances)
-        } catch (error) {
-            ErrorService.handleError(error, res)
+            const landlordId = req.user.landlords?.id;
+            if (!landlordId) return res.status(403).json({ error: "Unauthorized" });
+
+            const whitelist = await MaintenanceService.getMaintenanceCategoriesWithWhitelistStatus(landlordId);
+            return res.status(200).json({ data: whitelist });
+        } catch (err) {
+            ErrorService.handleError(err, res)
         }
     }
+    toggleMaintenanceWhiteList = async (req: CustomRequest, res: Response) => {
+        try {
+            // get the maintenance whitelist id 
+            const { subCategoryId } = req.params;
+            const landlordId = req.user.landlords?.id;
+            if (!landlordId) return res.status(403).json({ error: "Unauthorized" });
 
+            const whitelist = await MaintenanceService.toggleWhitelistStatus(subCategoryId, landlordId);
+            return res.status(200).json({ data: whitelist });
+        } catch (err) {
+            ErrorService.handleError(err, res)
+        }
+    }
     // Update a maintenance whitelist entry
     updateWhitelist = async (req: CustomRequest, res: Response) => {
         try {
@@ -69,6 +89,20 @@ class MaintenanceControls {
             ErrorService.handleError(err, res)
         }
     }
+
+
+    getPropertyMaintenance = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const maintenances = await MaintenanceService.getPropertyMaintenances(propertyId);
+            if (!maintenances) return res.status(200).json({ message: "No Property listed yet" })
+            return res.status(200).json(maintenances)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+
+
 
     getTenantsMaintenances = async (req: CustomRequest, res: Response) => {
         try {
@@ -133,9 +167,9 @@ class MaintenanceControls {
     deleteMaintenance = async (req: CustomRequest, res: Response) => {
         try {
             const { maintenanceId } = req.params;
-            const maintenance =  await MaintenanceService.deleteMaintenance(maintenanceId);
-            if(!maintenance)return res.status(500).json({ message:"Ooop try again, maintenance not deleted" })
-            return res.status(500).json({ message:"maintenance  deleted", maintenance })  
+            const maintenance = await MaintenanceService.deleteMaintenance(maintenanceId);
+            if (!maintenance) return res.status(500).json({ message: "Ooop try again, maintenance not deleted" })
+            return res.status(500).json({ message: "maintenance  deleted", maintenance })
         } catch (error) {
             ErrorService.handleError(error, res)
         }

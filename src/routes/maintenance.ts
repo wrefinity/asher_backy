@@ -27,9 +27,6 @@ class MaintenaceRoutes {
         this.router.put('/:id', this.authenticateService.authorize, MaintenanceController.updateMaintenance);
         this.router.delete('/:id', this.authenticateService.authorize, MaintenanceController.deleteMaintenance);
     }
-
- 
-
 }
 
 export default new MaintenaceRoutes().router;

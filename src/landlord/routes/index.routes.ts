@@ -28,6 +28,15 @@ class LandlordRouter {
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
         this.router.use(this.authenticateService.authorizeRole(userRoles.LANDLORD))
+         // update landlord informations route
+         this.router.get(
+            '/info',
+            LandlordControl.getLandlordInfo
+        );
+        this.router.post(
+            '/info',
+            LandlordControl.updateLandlordProfile
+        );
         this.router.get(
             '/',
             LandlordControl.getAllLandlords
@@ -35,7 +44,7 @@ class LandlordRouter {
 
         this.router.get(
             '/:id',
-            LandlordControl.getLandlordById
+            LandlordControl.getLandlordUsingId
         );
 
         this.router.patch(

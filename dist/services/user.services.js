@@ -26,7 +26,7 @@ class UserService {
                     id: true,
                     tenant: { select: { id: true } },
                     landlords: { select: { id: true } },
-                    profile: { select: { id: true } },
+                    profile: true,
                     vendors: { select: { id: true } },
                 }
             });
@@ -93,11 +93,12 @@ class UserService {
             }
             return code;
         });
-        this.createUser = (userData) => __awaiter(this, void 0, void 0, function* () {
+        this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false) {
             const newUser = yield __1.prismaClient.users.create({
                 data: {
                     email: userData === null || userData === void 0 ? void 0 : userData.email,
                     role: (userData === null || userData === void 0 ? void 0 : userData.role) ? [userData.role] : [client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.WEBUSER],
+                    isVerified: landlordUploads ? true : false,
                     password: this.hashPassword(userData === null || userData === void 0 ? void 0 : userData.password),
                     profile: {
                         create: {
@@ -139,18 +140,25 @@ class UserService {
                     const landlord = yield __1.prismaClient.landlords.findUnique({ where: { id: userData.landlordId } });
                     if (!landlord)
                         throw new Error('Landlord not found');
+                    const property = yield __1.prismaClient.properties.findUnique({
+                        where: { id: userData.propertyId },
+                    });
+                    if (!property) {
+                        throw new Error('Property not found');
+                    }
                     const tenantCode = yield this.generateUniqueTenantCode(landlord.landlordCode);
                     const tenant = yield __1.prismaClient.tenants.create({
                         data: {
                             tenantCode,
                             userId: newUser.id,
+                            tenantWebUserEmail: userData.tenantWebUserEmail,
                             propertyId: userData === null || userData === void 0 ? void 0 : userData.propertyId,
                             landlordId: userData === null || userData === void 0 ? void 0 : userData.landlordId,
                             leaseStartDate: userData === null || userData === void 0 ? void 0 : userData.leaseStartDate,
                             leaseEndDate: userData === null || userData === void 0 ? void 0 : userData.leaseEndDate,
                         },
                     });
-                    if (tenant) {
+                    if (tenant && !landlordUploads) {
                         // Update application with tenant info
                         yield __1.prismaClient.application.update({
                             where: { id: userData.applicationId },
@@ -247,6 +255,26 @@ class UserService {
                     },
                 },
             });
+        });
+        this.updateLandlordOrTenantOrVendorInfo = (data, id, role) => __awaiter(this, void 0, void 0, function* () {
+            let updated;
+            switch (role) {
+                case client_1.userRoles.LANDLORD:
+                    updated = yield __1.prismaClient.landlords.update({
+                        where: { id },
+                        data: {
+                            emailDomains: data === null || data === void 0 ? void 0 : data.emailDomains
+                        },
+                    });
+                    break;
+                case client_1.userRoles.VENDOR:
+                    break;
+                case client_1.userRoles.TENANT:
+                    break;
+                default:
+                    break;
+            }
+            return updated;
         });
         this.inclusion = {
             tenant: false,

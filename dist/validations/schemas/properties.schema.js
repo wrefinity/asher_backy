@@ -28,7 +28,7 @@ exports.createPropertySchema = joi_1.default.object({
     currency: joi_1.default.string().required(),
     zipcode: joi_1.default.string().required(),
     location: joi_1.default.string().optional(),
-    yearBuilt: joi_1.default.date().iso().optional(),
+    yearBuilt: joi_1.default.date().optional(),
     amenities: joi_1.default.array().items(joi_1.default.string()).optional(),
     totalApartments: joi_1.default.number().integer().optional(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),

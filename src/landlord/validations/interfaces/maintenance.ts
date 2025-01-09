@@ -1,7 +1,7 @@
 export interface MaintenanceWhitelistInput {
-    categoryId: string;
-    subcategoryId?: string;
-    propertyId: string;
+    categoryId?: string;
+    subcategoryId: string;
+    propertyId?: string;
     apartmentId?: string;
 }
 

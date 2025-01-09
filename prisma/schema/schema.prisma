@@ -58,6 +58,7 @@ model landlords {
   globalSettings        Settings[]
   propsApartmentSetting propApartmentSettings[]
   applicationInvites    applicationInvites[]
+  emailDomains          String?                 @unique
 }
 
 model bankInfo {
@@ -146,6 +147,8 @@ model tenants {
   dateOfFirstRent              DateTime?                      @default(now()) @db.Timestamptz(6)
   apartmentOrFlatNumber        Int?
   stripeCustomerId             String?                        @unique
+  // tenantwebUserEmail
+  tenantWebUserEmail           String?
   // relationships definitions
   userId                       String
   user                         users                          @relation(fields: [userId], references: [id])

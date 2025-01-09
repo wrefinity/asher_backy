@@ -89,7 +89,7 @@ class AuthControls {
             res.status(200).json({ message: 'User verified successfully', user: userWithoutId });
         } catch (error) {
             console.error('Error verifying user:', error);
-            res.status(500).json({ message: 'Failed to verify user' });
+            res.status(500).json({ message: error.message || 'Failed to verify user' });
         }
     }
 

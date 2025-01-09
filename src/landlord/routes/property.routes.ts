@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Authorize } from "../../middlewares/authorize";
 import PropertyController from "../controllers/properties.controller";
 import SettingController from "../controllers/setting.controller";
-import upload from "../../configs/multer";
+import upload, { uploadcsv } from "../../configs/multer";
 import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
 
 class ApartmentLandlordRouter {
@@ -22,6 +22,7 @@ class ApartmentLandlordRouter {
         this.router.get('/property/property-listing', PropertyController.getLandlordPropertyListing);
         this.router.get('/property', PropertyController.getCurrentLandlordProperties)
         this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
+        this.router.post('/upload', uploadcsv.single("files"), PropertyController.bulkPropsUpload)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
         this.router.get('/property/showcased', PropertyController.getShowCasedRentals)

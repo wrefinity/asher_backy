@@ -24,7 +24,7 @@ class UserService {
                 id: true,
                 tenant: { select: { id: true } },
                 landlords: { select: { id: true } },
-                profile: { select: { id: true } },
+                profile: true,
                 vendors: { select: { id: true } },
             }
         });
@@ -93,11 +93,12 @@ class UserService {
         return code;
     }
 
-    createUser = async (userData: any) => {
+    createUser = async (userData: any, landlordUploads: boolean = false) => {
         const newUser = await prismaClient.users.create({
             data: {
                 email: userData?.email,
                 role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
+                isVerified: landlordUploads ? true : false,
                 password: this.hashPassword(userData?.password),
                 profile: {
                     create: {
@@ -139,19 +140,28 @@ class UserService {
             case userRoles.TENANT:
                 const landlord = await prismaClient.landlords.findUnique({ where: { id: userData.landlordId } });
                 if (!landlord) throw new Error('Landlord not found');
+
+                const property = await prismaClient.properties.findUnique({
+                    where: { id: userData.propertyId },
+                  });
+                  
+                  if (!property) {
+                    throw new Error('Property not found');
+                  }
               
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
                 const tenant = await prismaClient.tenants.create({
                     data: {
                         tenantCode,
                         userId: newUser.id,
+                        tenantWebUserEmail: userData.tenantWebUserEmail,
                         propertyId: userData?.propertyId,
                         landlordId: userData?.landlordId,
                         leaseStartDate: userData?.leaseStartDate,
                         leaseEndDate: userData?.leaseEndDate,
                     },
                 });
-                if (tenant) {
+                if (tenant && !landlordUploads) {
                     // Update application with tenant info
                     await prismaClient.application.update({
                         where: { id: userData.applicationId },
@@ -251,6 +261,31 @@ class UserService {
                 },
             },
         });
+    }
+
+    updateLandlordOrTenantOrVendorInfo =  async ( data:any, id:string, role: string) => {
+    
+        let updated;
+    
+        switch (role) {
+            case userRoles.LANDLORD:
+                updated = await prismaClient.landlords.update({
+                    where: {id},
+                    data: {
+                        emailDomains: data?.emailDomains
+                    },
+                });
+                break;
+
+            case userRoles.VENDOR:
+                break;
+            case userRoles.TENANT:
+                break;
+
+            default:
+                break;
+        }
+        return updated;
     }
 }
 

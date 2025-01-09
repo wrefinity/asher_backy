@@ -21,9 +21,12 @@ const propertyServices_1 = __importDefault(require("../../services/propertyServi
 const maintenance_1 = require("../validations/schema/maintenance");
 class MaintenanceControls {
     constructor() {
+        // <========= whitelisting section ========>
         this.createWhitelist = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
+                console.log("called now=======");
+                console.log(req.body);
                 const { error, value } = maintenance_1.maintenanceWhitelistSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
@@ -36,13 +39,18 @@ class MaintenanceControls {
                 const subCategoryExist = yield subcategory_service_1.default.getSubCategoryById(value.subcategoryId);
                 if (!subCategoryExist)
                     return res.status(400).json({ message: "sub category doesnt exist" });
-                const propertyExist = yield propertyServices_1.default.getPropertiesById(value.propertyId);
-                if (!propertyExist)
-                    return res.status(400).json({ message: "property doesnt exist" });
+                // Check if the property exists if propertyId is provided
+                if (value.propertyId) {
+                    const propertyExist = yield propertyServices_1.default.getPropertiesById(value.propertyId);
+                    if (!propertyExist) {
+                        return res.status(400).json({ message: "Property doesn't exist" });
+                    }
+                }
                 const newWhitelist = yield maintenance_service_1.default.createWhitelist(value, landlordId);
                 return res.status(201).json({ message: "Whitelist created successfully", data: newWhitelist });
             }
             catch (err) {
+                console.log(err);
                 return res.status(500).json({ error: err.message });
             }
         });
@@ -60,16 +68,32 @@ class MaintenanceControls {
                 error_service_1.default.handleError(err, res);
             }
         });
-        this.getPropertyMaintenance = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.getMaintenanceWithWhiteListed = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
-                const propertyId = req.params.propertyId;
-                const maintenances = yield maintenance_service_1.default.getPropertyMaintenances(propertyId);
-                if (!maintenances)
-                    return res.status(200).json({ message: "No Property listed yet" });
-                return res.status(200).json(maintenances);
+                const landlordId = (_a = req.user.landlords) === null || _a === void 0 ? void 0 : _a.id;
+                if (!landlordId)
+                    return res.status(403).json({ error: "Unauthorized" });
+                const whitelist = yield maintenance_service_1.default.getMaintenanceCategoriesWithWhitelistStatus(landlordId);
+                return res.status(200).json({ data: whitelist });
             }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
+            catch (err) {
+                error_service_1.default.handleError(err, res);
+            }
+        });
+        this.toggleMaintenanceWhiteList = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                // get the maintenance whitelist id 
+                const { subCategoryId } = req.params;
+                const landlordId = (_a = req.user.landlords) === null || _a === void 0 ? void 0 : _a.id;
+                if (!landlordId)
+                    return res.status(403).json({ error: "Unauthorized" });
+                const whitelist = yield maintenance_service_1.default.toggleWhitelistStatus(subCategoryId, landlordId);
+                return res.status(200).json({ data: whitelist });
+            }
+            catch (err) {
+                error_service_1.default.handleError(err, res);
             }
         });
         // Update a maintenance whitelist entry
@@ -84,6 +108,18 @@ class MaintenanceControls {
             }
             catch (err) {
                 error_service_1.default.handleError(err, res);
+            }
+        });
+        this.getPropertyMaintenance = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const propertyId = req.params.propertyId;
+                const maintenances = yield maintenance_service_1.default.getPropertyMaintenances(propertyId);
+                if (!maintenances)
+                    return res.status(200).json({ message: "No Property listed yet" });
+                return res.status(200).json(maintenances);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
             }
         });
         this.getTenantsMaintenances = (req, res) => __awaiter(this, void 0, void 0, function* () {

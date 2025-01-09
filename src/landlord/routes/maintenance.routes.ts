@@ -16,13 +16,17 @@ class LandlordMaintenanceRoute {
         this.router.get('/statistics', LandlordMaintenanceControls.getCurrentLandlordMaintenances);
         this.router.get('/', LandlordMaintenanceControls.getMaintenances);
         this.router.get('/property/:propertyId', LandlordMaintenanceControls.getPropertyMaintenance);
-        this.router.post('/whitelist', LandlordMaintenanceControls.createWhitelist);
+
         this.router.post('/accept/:maintenanceId', LandlordMaintenanceControls.acceptMaintenaceRequest);
         this.router.post('/decline/:maintenanceId', LandlordMaintenanceControls.declineMaintenaceRequest);
-        this.router.get('/whitelist', LandlordMaintenanceControls.getWhitelistByLandlord);
         this.router.get('/tenants/tenantId', LandlordMaintenanceControls.getTenantsMaintenances);
-        this.router.patch('/whitelist/:whitelistId', LandlordMaintenanceControls.updateWhitelist);
         this.router.delete('/:maintenanceId', LandlordMaintenanceControls.deleteMaintenance);
+        // whitelisting maintenances
+        this.router.post('/whitelist', LandlordMaintenanceControls.createWhitelist);
+        this.router.patch('/whitelist/toggle/:subCategoryId', LandlordMaintenanceControls.toggleMaintenanceWhiteList);
+        this.router.get('/whitelist', LandlordMaintenanceControls.getWhitelistByLandlord);
+        this.router.get('/whitelist/all', LandlordMaintenanceControls.getMaintenanceWithWhiteListed);
+        this.router.patch('/whitelist/:whitelistId', LandlordMaintenanceControls.updateWhitelist);
     }
 
 }

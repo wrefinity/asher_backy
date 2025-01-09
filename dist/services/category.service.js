@@ -19,8 +19,16 @@ class categoryService {
         });
         this.getAllCategories = () => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.category.findMany({
-                where: { isDeleted: false },
-                include: this.inclusion
+                where: {
+                    isDeleted: false,
+                },
+                include: {
+                    subCategory: {
+                        where: {
+                            isDeleted: false,
+                        },
+                    },
+                },
             });
         });
         this.getCategoryById = (id) => __awaiter(this, void 0, void 0, function* () {

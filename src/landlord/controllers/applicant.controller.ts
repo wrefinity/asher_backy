@@ -3,12 +3,18 @@ import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
 import ApplicationInvitesService from '../services/application.services';
+import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus } from "@prisma/client"
 import { createApplicationInviteSchema, updateApplicationInviteSchema } from '../validations/schema/applicationInvitesSchema';
 import Emailer from "../../utils/emailer";
 
 class ApplicationControls {
+    private landlordService: LandlordService;
+
+    constructor() {
+        this.landlordService = new LandlordService();
+    }
 
     getApplicationStatistics = async (req: CustomRequest, res: Response) => {
         try {
@@ -62,11 +68,24 @@ class ApplicationControls {
         try {
             const landlordId = req.user?.landlords?.id;
             const applicationId = req.params?.applicationId;
-            if (!req.body.email) return res.status(400).json({ message: "kindly supply the new tenant email" })
+            // if (!req.body.email) return res.status(400).json({ message: "kindly supply the new tenant email" })
             const application = await ApplicationService.getApplicationById(applicationId);
+
+            // get the tenant web user email 
             if (!application) return res.status(400).json({ message: "property doesn't exist" });
+            const tenantWebUserEmail = application.user.email;
+            const userEmail = tenantWebUserEmail.toString().split('@')[0];
+            // get the current landlord email domain
+            const landlord = await this.landlordService.getLandlordById(landlordId);
+            if(!landlord) return res.status(403).json({message: "login as a landlord"})
+
+            const email = `${userEmail}${landlord.emailDomains}`;
+            
+            // TODO: check if tenant has been a tenant for the current landlord before and just update the property
             const tenant = await ApplicationService.approveApplication({
                 ...req.body,
+                email,
+                tenantWebUserEmail,
                 propertyId: application.propertiesId,
                 applicationId,
                 password: application?.personalDetails?.firstName,

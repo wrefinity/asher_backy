@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const applicantService_1 = __importDefault(require("../../webuser/services/applicantService"));
 const application_services_1 = __importDefault(require("../services/application.services"));
+const landlord_service_1 = require("../services/landlord.service");
 const tenant_service_1 = __importDefault(require("../../services/tenant.service"));
 const client_1 = require("@prisma/client");
 const applicationInvitesSchema_1 = require("../validations/schema/applicationInvitesSchema");
@@ -85,12 +86,21 @@ class ApplicationControls {
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const applicationId = (_c = req.params) === null || _c === void 0 ? void 0 : _c.applicationId;
-                if (!req.body.email)
-                    return res.status(400).json({ message: "kindly supply the new tenant email" });
+                // if (!req.body.email) return res.status(400).json({ message: "kindly supply the new tenant email" })
                 const application = yield applicantService_1.default.getApplicationById(applicationId);
+                // get the tenant web user email 
                 if (!application)
                     return res.status(400).json({ message: "property doesn't exist" });
-                const tenant = yield applicantService_1.default.approveApplication(Object.assign(Object.assign({}, req.body), { propertyId: application.propertiesId, applicationId, password: (_d = application === null || application === void 0 ? void 0 : application.personalDetails) === null || _d === void 0 ? void 0 : _d.firstName, landlordId }));
+                const tenantWebUserEmail = application.user.email;
+                const userEmail = tenantWebUserEmail.toString().split('@')[0];
+                // get the current landlord email domain
+                const landlord = yield this.landlordService.getLandlordById(landlordId);
+                if (!landlord)
+                    return res.status(403).json({ message: "login as a landlord" });
+                const email = `${userEmail}${landlord.emailDomains}`;
+                // TODO: check if tenant has been a tenant for the current landlord before and just update the property
+                const tenant = yield applicantService_1.default.approveApplication(Object.assign(Object.assign({}, req.body), { email,
+                    tenantWebUserEmail, propertyId: application.propertiesId, applicationId, password: (_d = application === null || application === void 0 ? void 0 : application.personalDetails) === null || _d === void 0 ? void 0 : _d.firstName, landlordId }));
                 return res.status(200).json({ tenant });
             }
             catch (error) {
@@ -168,6 +178,7 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.landlordService = new landlord_service_1.LandlordService();
     }
 }
 exports.default = new ApplicationControls();

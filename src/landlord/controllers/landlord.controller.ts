@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
+import { userRoles } from "@prisma/client";
 import { LandlordService } from '../services/landlord.service';
 import { updateLandlordSchema } from '../../validations/schemas/auth';
 import { UpdateLandlordDTO } from '../../validations/interfaces/auth.interface';
 import { CustomRequest } from '../../utils/types';
+import UserServices from '../../services/user.services';
 
 class LandlordController {
     private landlordService: LandlordService;
@@ -24,6 +26,30 @@ class LandlordController {
             const landlord = await this.landlordService.updateLandlord(landlordId, data);
             return res.status(200).json(landlord);
         } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+    }
+    updateLandlordProfile = async (req: CustomRequest, res: Response) => {
+        try {
+            const { error, value } = updateLandlordSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+            const landlordId = req.user?.landlords?.id;
+
+            const landlord = await UserServices.updateLandlordOrTenantOrVendorInfo(value, landlordId, userRoles.LANDLORD );
+            return res.status(200).json(landlord);
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+    }
+    getLandlordInfo = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            const landlord = await this.landlordService.getLandlordById(landlordId);
+            return res.status(200).json(landlord);
+        } catch (err) {
+            console.log(err)
             return res.status(500).json({ error: err.message });
         }
     }
@@ -54,7 +80,7 @@ class LandlordController {
     }
 
     // Get a single landlord by ID
-    getLandlordById = async (req: CustomRequest, res: Response) => {
+    getLandlordUsingId = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.params.id;
             if (!landlordId) {

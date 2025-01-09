@@ -27,8 +27,11 @@ class LandlordRouter {
     initializeRoutes() {
         this.router.use(this.authenticateService.authorize);
         this.router.use(this.authenticateService.authorizeRole(client_1.userRoles.LANDLORD));
+        // update landlord informations route
+        this.router.get('/info', landlord_controller_1.default.getLandlordInfo);
+        this.router.post('/info', landlord_controller_1.default.updateLandlordProfile);
         this.router.get('/', landlord_controller_1.default.getAllLandlords);
-        this.router.get('/:id', landlord_controller_1.default.getLandlordById);
+        this.router.get('/:id', landlord_controller_1.default.getLandlordUsingId);
         this.router.patch('/:id', landlord_controller_1.default.updateLandlord);
         this.router.delete('/:id', landlord_controller_1.default.deleteLandlord);
         this.router.get('/jobs/current', landlord_controller_1.default.getCurrentJobsForLandordProperties);

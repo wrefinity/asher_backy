@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,7 +30,7 @@ const express_1 = require("express");
 const authorize_1 = require("../../middlewares/authorize");
 const properties_controller_1 = __importDefault(require("../controllers/properties.controller"));
 const setting_controller_1 = __importDefault(require("../controllers/setting.controller"));
-const multer_1 = __importDefault(require("../../configs/multer"));
+const multer_1 = __importStar(require("../../configs/multer"));
 const multerCloudinary_1 = require("../../middlewares/multerCloudinary");
 class ApartmentLandlordRouter {
     constructor() {
@@ -22,6 +45,7 @@ class ApartmentLandlordRouter {
         this.router.get('/property/property-listing', properties_controller_1.default.getLandlordPropertyListing);
         this.router.get('/property', properties_controller_1.default.getCurrentLandlordProperties);
         this.router.post('/property', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, properties_controller_1.default.createProperty);
+        this.router.post('/upload', multer_1.uploadcsv.single("files"), properties_controller_1.default.bulkPropsUpload);
         this.router.delete('/property/:propertyId', properties_controller_1.default.deleteLandlordProperties);
         this.router.patch('/property/status/:propertyId', properties_controller_1.default.updatePropertyAvailability);
         this.router.get('/property/showcased', properties_controller_1.default.getShowCasedRentals);
