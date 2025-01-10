@@ -4,9 +4,14 @@ class TenantService {
     protected inclusion: object;
     constructor() {
         this.inclusion = {
-            user: true,
+            user:  {
+                include: {
+                    profile: true,
+                },
+            },
             property: true,
             history: true,
+            landlord: true,
             apartments: true,
             tenantSupportTicket: true,
             // PropertyTransactions: true,
@@ -58,6 +63,7 @@ class TenantService {
         });
     }
     getAllTenants = async (landlordId: string) => {
+        
         return prismaClient.tenants.findMany({
             where: {
                 landlordId: landlordId,

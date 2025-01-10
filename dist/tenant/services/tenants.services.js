@@ -65,9 +65,14 @@ class TenantService {
             });
         });
         this.inclusion = {
-            user: true,
+            user: {
+                include: {
+                    profile: true,
+                },
+            },
             property: true,
             history: true,
+            landlord: true,
             apartments: true,
             tenantSupportTicket: true,
             // PropertyTransactions: true,
