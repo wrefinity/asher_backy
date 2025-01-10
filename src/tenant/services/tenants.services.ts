@@ -13,6 +13,24 @@ class TenantService {
         }
     }
 
+    getTenantWithUserAndProfile = async (id: string) => {
+
+        return await prismaClient.tenants.findUnique({
+            where: { id },
+            include: {
+                user: {
+                    include: {
+                        profile: true,
+                    },
+                },
+                landlord: true,
+                property: true,
+                apartments: true
+            },
+        });
+
+    };
+
     getPreviousTenantsForLandlord = async (landlordId: string) => {
         // Get previous tenants
         return await prismaClient.tenants.findMany({

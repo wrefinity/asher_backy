@@ -202,5 +202,3 @@ export class LandlordService {
     return currentVendors;
   }
 }
-
-

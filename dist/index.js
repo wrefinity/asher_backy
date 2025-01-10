@@ -28,8 +28,7 @@ const wallet_1 = __importDefault(require("./routes/wallet"));
 const ads_routes_1 = __importDefault(require("./tenant/routes/ads.routes"));
 const community_post_routes_1 = __importDefault(require("./tenant/routes/community-post.routes"));
 const community_routes_1 = __importDefault(require("./tenant/routes/community.routes"));
-const dashboard_routes_1 = __importDefault(require("./tenant/routes/dashboard.routes"));
-const tenant_bills_routes_1 = __importDefault(require("./tenant/routes/tenant-bills.routes"));
+const index_1 = __importDefault(require("./tenant/routes/index"));
 const index_routes_1 = __importDefault(require("./landlord/routes/index.routes"));
 const bank_1 = __importDefault(require("./routes/bank"));
 const flutterWave_service_1 = __importDefault(require("./services/flutterWave.service"));
@@ -80,8 +79,7 @@ class Server {
         this.app.use("/api/reviews", reviews_1.default);
         this.app.use("/api/landlord", index_routes_1.default);
         this.app.use("/api/wallet", wallet_1.default);
-        this.app.use("/api/tenant/dashboard", dashboard_routes_1.default);
-        this.app.use("/api/tenants", tenant_bills_routes_1.default);
+        this.app.use("/api/tenants", index_1.default);
         // bank information routes
         this.app.use("/api/banks/", bank_1.default);
     }

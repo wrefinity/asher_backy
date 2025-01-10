@@ -12,6 +12,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("../..");
 class TenantService {
     constructor() {
+        this.getTenantWithUserAndProfile = (id) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.tenants.findUnique({
+                where: { id },
+                include: {
+                    user: {
+                        include: {
+                            profile: true,
+                        },
+                    },
+                    landlord: true,
+                    property: true,
+                    apartments: true
+                },
+            });
+        });
         this.getPreviousTenantsForLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             // Get previous tenants
             return yield __1.prismaClient.tenants.findMany({
@@ -55,7 +70,7 @@ class TenantService {
             history: true,
             apartments: true,
             tenantSupportTicket: true,
-            PropertyTransactions: true,
+            // PropertyTransactions: true,
         };
     }
 }

@@ -23,8 +23,7 @@ import WalletRouter from "./routes/wallet";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
-import TenantDashboardRouter from "./tenant/routes/dashboard.routes";
-import TenantBillsRouter from "./tenant/routes/tenant-bills.routes";
+import TenantRouter from "./tenant/routes/index";
 
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
@@ -89,8 +88,7 @@ class Server {
         this.app.use("/api/reviews", ReviewsRouter);
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
-        this.app.use("/api/tenant/dashboard", TenantDashboardRouter);
-        this.app.use("/api/tenants", TenantBillsRouter);
+        this.app.use("/api/tenants", TenantRouter);
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
 

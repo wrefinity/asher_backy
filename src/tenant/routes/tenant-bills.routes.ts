@@ -1,8 +1,5 @@
 import { Router } from "express";
 import { Authorize } from "../../middlewares/authorize";
-import upload from "../../configs/multer";
-import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
-import adsController from "../controllers/ads.controller";
 import tenantBillsControllers from "../controllers/tenant-bills.controllers";
 
 class TenantBillRouter {

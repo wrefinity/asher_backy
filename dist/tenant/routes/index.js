@@ -6,19 +6,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authorize_1 = require("../../middlewares/authorize");
 const tenant_controller_1 = __importDefault(require("../controllers/tenant.controller"));
-const multer_1 = require("../../configs/multer");
-class TenantsLandlordRouter {
+const tenant_bills_routes_1 = __importDefault(require("./tenant-bills.routes"));
+const dashboard_routes_1 = __importDefault(require("./dashboard.routes"));
+class TenantRouter {
     constructor() {
         this.router = (0, express_1.Router)();
         this.authenticateService = new authorize_1.Authorize();
         this.initializeRoutes();
     }
     initializeRoutes() {
-        // tenants modules under landlord
-        this.router.get('/get', tenant_controller_1.default.getTenancies);
-        this.router.get('/currents', tenant_controller_1.default.getCurrentTenant);
-        this.router.get('/previous', tenant_controller_1.default.getPreviousTenant);
-        this.router.post('/upload', multer_1.uploadcsv.single("files"), tenant_controller_1.default.bulkTenantUpload);
+        this.router.use(this.authenticateService.authorize);
+        this.router.get('/:tenantId', tenant_controller_1.default.getTenantById);
+        this.router.use('/dashboard', dashboard_routes_1.default);
+        this.router.use('/bills', tenant_bills_routes_1.default);
     }
 }
-exports.default = new TenantsLandlordRouter().router;
+exports.default = new TenantRouter().router;
