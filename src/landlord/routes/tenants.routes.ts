@@ -14,7 +14,7 @@ class TenantsLandlordRouter {
 
     private initializeRoutes() {
          // tenants modules under landlord
-         this.router.get('/', TenantLandlordController.getTenancies);
+         this.router.get('/get', TenantLandlordController.getTenancies);
          this.router.get('/currents',  TenantLandlordController.getCurrentTenant);
          this.router.get('/previous',  TenantLandlordController.getPreviousTenant);
          this.router.post('/upload', uploadcsv.single("files"), TenantLandlordController.bulkTenantUpload)

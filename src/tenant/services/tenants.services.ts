@@ -9,7 +9,7 @@ class TenantService {
             history: true,
             apartments: true,
             tenantSupportTicket: true,
-            PropertyTransactions: true,
+            // PropertyTransactions: true,
         }
     }
 

@@ -21,6 +21,7 @@ class TenantControls {
     getTenancies = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
+            console.log("was called")
             const tenants = await TenantService.getAllTenants(landlordId);
             res.status(200).json({ tenants });
         } catch (error) {
