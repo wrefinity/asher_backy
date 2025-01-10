@@ -15,8 +15,6 @@ class ProfileControls {
         try {
             const userId = req.user.id;
             const profileInfo = await ProfileServices.findUserProfileByUserId(userId)
-
-    
             const data = { ...value };
             const profileUrl = req.body.cloudinaryUrls[0];
             delete data['cloudinaryUrls']
