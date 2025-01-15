@@ -84,10 +84,9 @@ class PropertyController {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 if (!landlordId)
                     return res.status(404).json({ message: "Landlord not found" });
-                const properties = yield propertyServices_1.default.aggregatePropertiesByState(landlordId);
-                if (!properties)
-                    return res.status(200).json({ message: "No Property listed yet" });
-                return res.status(200).json(properties);
+                const propertiesGrouped = yield propertyServices_1.default.aggregatePropertiesByState(landlordId);
+                const propertiesUnGrouped = yield propertyServices_1.default.getPropertiesByLandlord(landlordId);
+                return res.status(200).json({ propertiesGrouped, propertiesUnGrouped });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -222,6 +221,7 @@ class PropertyController {
                     filters.type = type;
                 // Fetch the filtered properties
                 const properties = yield propertyServices_1.default.getAllListedProperties(filters);
+                console.log(landlordId);
                 // Check if properties are found
                 if (!properties || properties.length === 0) {
                     return res.status(404).json({ message: "No properties found for this landlord with the given filters" });

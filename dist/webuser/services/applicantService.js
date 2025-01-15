@@ -39,6 +39,7 @@ class ApplicantService {
                     emergencyInfo: true,
                     employmentInfo: true,
                     documents: true,
+                    referee: true
                 },
             });
             if (!application) {
@@ -64,6 +65,10 @@ class ApplicantService {
                     if (!application.employmentInfo)
                         stepIncrement += 1;
                     break;
+                case 'refereeInfo':
+                    if (!application.referee)
+                        stepIncrement += 1;
+                    break;
                 case 'documents':
                     if (application.documents.length <= 1)
                         stepIncrement += 1;
@@ -81,7 +86,7 @@ class ApplicantService {
         });
         this.createOrUpdatePersonalDetails = (data, propertiesId, userId) => __awaiter(this, void 0, void 0, function* () {
             var _a;
-            const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin } = data;
+            const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate } = data;
             const nextOfKinData = {
                 firstName: nextOfKin.firstName,
                 lastName: nextOfKin.lastName,
@@ -120,6 +125,10 @@ class ApplicantService {
                 phoneNumber,
                 maritalStatus,
                 invited,
+                nationality,
+                identificationType,
+                issuingAuthority,
+                expiryDate
             };
             // Check if applicantPersonalDetails already exist by email
             const existingPersonalDetails = yield __1.prismaClient.applicantPersonalDetails.findUnique({
@@ -204,6 +213,26 @@ class ApplicantService {
             });
             yield this.incrementStepCompleted(applicationId, "emergencyInfo");
             return Object.assign(Object.assign({}, emergencyInfo), updatedApplication);
+        });
+        this.createOrUpdateReferees = (data) => __awaiter(this, void 0, void 0, function* () {
+            const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
+            // Upsert the emergency contact information
+            const refereesInfo = yield __1.prismaClient.referees.upsert({
+                where: { id: id !== null && id !== void 0 ? id : '' },
+                update: rest,
+                create: Object.assign({ id }, rest),
+            });
+            // Update the application with the new or updated referee information
+            const updatedApplication = yield __1.prismaClient.application.update({
+                where: { id: applicationId },
+                data: {
+                    referee: {
+                        connect: { id: refereesInfo.id },
+                    },
+                },
+            });
+            yield this.incrementStepCompleted(applicationId, "refereeInfo");
+            return Object.assign(Object.assign({}, refereesInfo), updatedApplication);
         });
         this.createOrUpdateApplicationDoc = (data) => __awaiter(this, void 0, void 0, function* () {
             const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);

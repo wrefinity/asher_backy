@@ -93,7 +93,7 @@ class UserService {
             }
             return code;
         });
-        this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false) {
+        this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false, createdBy = null) {
             const newUser = yield __1.prismaClient.users.create({
                 data: {
                     email: userData === null || userData === void 0 ? void 0 : userData.email,
@@ -106,7 +106,7 @@ class UserService {
                             phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
                             address: userData === null || userData === void 0 ? void 0 : userData.address,
                             dateOfBirth: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
-                            fullname: userData === null || userData === void 0 ? void 0 : userData.fullname,
+                            fullname: (userData === null || userData === void 0 ? void 0 : userData.lastName) + " " + (userData === null || userData === void 0 ? void 0 : userData.firstName) + " " + ((userData === null || userData === void 0 ? void 0 : userData.middleName) ? " " + userData.middleName : ""),
                             profileUrl: userData === null || userData === void 0 ? void 0 : userData.profileUrl,
                             zip: userData === null || userData === void 0 ? void 0 : userData.zip,
                             unit: userData === null || userData === void 0 ? void 0 : userData.unit,
@@ -166,6 +166,141 @@ class UserService {
                                 status: client_1.ApplicationStatus.ACCEPTED,
                                 tenantId: newUser.id,
                             },
+                        });
+                    }
+                    if (tenant && landlordUploads) {
+                        // create the tenant personal information
+                        const personalDetails = yield __1.prismaClient.applicantPersonalDetails.create({
+                            data: {
+                                title: userData === null || userData === void 0 ? void 0 : userData.title,
+                                maritalStatus: userData === null || userData === void 0 ? void 0 : userData.maritalStatus,
+                                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
+                                email: userData === null || userData === void 0 ? void 0 : userData.email,
+                                dob: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
+                                firstName: userData === null || userData === void 0 ? void 0 : userData.firstName,
+                                lastName: userData === null || userData === void 0 ? void 0 : userData.lastName,
+                                middleName: userData === null || userData === void 0 ? void 0 : userData.middleName,
+                                nationality: userData === null || userData === void 0 ? void 0 : userData.nationality,
+                                identificationType: userData === null || userData === void 0 ? void 0 : userData.identificationType,
+                                issuingAuthority: userData === null || userData === void 0 ? void 0 : userData.issuingAuthority,
+                                expiryDate: userData === null || userData === void 0 ? void 0 : userData.expiryDate,
+                            },
+                        });
+                        // const residentialInfo = await prismaClient.residentialInformation.create({
+                        //     data: {
+                        //       address: userData.address,
+                        //       addressStatus: userData.addressStatus,
+                        //       lengthOfResidence: userData.lengthOfResidence,
+                        //       landlordOrAgencyPhoneNumber: userData.landlordOrAgencyPhoneNumber,
+                        //       landlordOrAgencyEmail: userData.landlordOrAgencyEmail,
+                        //       landlordOrAgencyName: userData.landlordOrAgencyName,
+                        //       userId: newUser.id,
+                        //       prevAddresses:  {
+                        //             create: {
+                        //               address: userData?.prevAddress,
+                        //               lengthOfResidence: userData?.prevAddressLengthOfResidence,
+                        //             },
+                        //           }
+                        //     },
+                        //   });
+                        // Create guarantorInformation if provided
+                        let guarantorInfo = yield __1.prismaClient.guarantorInformation.create({
+                            data: {
+                                fullName: userData === null || userData === void 0 ? void 0 : userData.guarantorFullname,
+                                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.guarantorPhoneNumber,
+                                email: userData === null || userData === void 0 ? void 0 : userData.guarantorEmail,
+                                address: userData === null || userData === void 0 ? void 0 : userData.guarantorAddress,
+                                relationship: userData === null || userData === void 0 ? void 0 : userData.relationshipToGuarantor,
+                                identificationType: userData === null || userData === void 0 ? void 0 : userData.gauratorIdentificationType,
+                                identificationNo: userData === null || userData === void 0 ? void 0 : userData.gauratorIdentificationNo,
+                                monthlyIncome: userData === null || userData === void 0 ? void 0 : userData.gauratorMonthlyIncome,
+                                employerName: userData === null || userData === void 0 ? void 0 : userData.gauratorEmployerName,
+                            }
+                        });
+                        // Create nextOfKin if provided
+                        yield __1.prismaClient.nextOfKin.create({
+                            data: {
+                                lastName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinLastName,
+                                firstName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinFirstName,
+                                relationship: userData === null || userData === void 0 ? void 0 : userData.relationship,
+                                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.nextOfKinPhoneNumber,
+                                email: userData === null || userData === void 0 ? void 0 : userData.nextOfKinEmail,
+                                middleName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinMiddleName,
+                                applicantPersonalDetailsId: personalDetails.id,
+                                userId: newUser.id
+                            }
+                        });
+                        // employement information 
+                        const employmentInfo = yield __1.prismaClient.employmentInformation.create({
+                            data: {
+                                employmentStatus: userData === null || userData === void 0 ? void 0 : userData.employmentStatus,
+                                taxCredit: userData === null || userData === void 0 ? void 0 : userData.taxCredit,
+                                zipCode: userData === null || userData === void 0 ? void 0 : userData.employmentZipCode,
+                                address: userData === null || userData === void 0 ? void 0 : userData.employmentAddress,
+                                city: userData === null || userData === void 0 ? void 0 : userData.employmentCity,
+                                state: userData === null || userData === void 0 ? void 0 : userData.employmentState,
+                                country: userData === null || userData === void 0 ? void 0 : userData.employmentCountry,
+                                startDate: userData === null || userData === void 0 ? void 0 : userData.employmentStartDate,
+                                monthlyOrAnualIncome: userData === null || userData === void 0 ? void 0 : userData.monthlyOrAnualIncome,
+                                childBenefit: userData === null || userData === void 0 ? void 0 : userData.childBenefit,
+                                childMaintenance: userData === null || userData === void 0 ? void 0 : userData.childMaintenance,
+                                disabilityBenefit: userData === null || userData === void 0 ? void 0 : userData.disabilityBenefit,
+                                housingBenefit: userData === null || userData === void 0 ? void 0 : userData.housingBenefit,
+                                others: userData === null || userData === void 0 ? void 0 : userData.others,
+                                pension: userData === null || userData === void 0 ? void 0 : userData.pension,
+                                moreDetails: userData === null || userData === void 0 ? void 0 : userData.moreDetails,
+                                employerCompany: userData === null || userData === void 0 ? void 0 : userData.employerCompany,
+                                employerEmail: userData === null || userData === void 0 ? void 0 : userData.employerEmail,
+                                employerPhone: userData === null || userData === void 0 ? void 0 : userData.employerPhone,
+                                positionTitle: userData === null || userData === void 0 ? void 0 : userData.positionTitle
+                            }
+                        });
+                        // Create emergencyContact
+                        const emergencyInfo = yield __1.prismaClient.emergencyContact.create({
+                            data: {
+                                fullname: (userData === null || userData === void 0 ? void 0 : userData.lastName) + " " + (userData === null || userData === void 0 ? void 0 : userData.firstName) + " " + ((userData === null || userData === void 0 ? void 0 : userData.middleName) ? " " + userData.middleName : ""),
+                                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.emergencyPhoneNumber,
+                                email: userData === null || userData === void 0 ? void 0 : userData.emergencyEmail,
+                                address: userData === null || userData === void 0 ? void 0 : userData.emergencyAddress
+                            },
+                        });
+                        // refrees information
+                        const refreeInfo = yield __1.prismaClient.referees.create({
+                            data: {
+                                professionalReferenceName: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalReferenceName,
+                                personalReferenceName: userData === null || userData === void 0 ? void 0 : userData.refereePersonalReferenceName,
+                                personalEmail: userData === null || userData === void 0 ? void 0 : userData.refereePersonalEmail,
+                                professionalEmail: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalEmail,
+                                personalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereePersonalPhoneNumber,
+                                professionalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalPhoneNumber,
+                                personalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereePersonalRelationship,
+                                professionalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalRelationship,
+                            },
+                        });
+                        // Update application with tenant info
+                        const application = yield __1.prismaClient.application.create({
+                            data: {
+                                status: client_1.ApplicationStatus.COMPLETED,
+                                userId: newUser.id,
+                                tenantId: tenant.id,
+                                residentialId: null, // null because the current user is a tenant and reside in the linked property
+                                emergencyContactId: emergencyInfo.id,
+                                employmentInformationId: employmentInfo.id,
+                                guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
+                                applicantPersonalDetailsId: personalDetails.id,
+                                refereeId: refreeInfo.id,
+                                createdById: createdBy
+                            }
+                        });
+                        // fill the question 
+                        yield __1.prismaClient.applicationQuestions.create({
+                            data: {
+                                havePet: userData.havePet,
+                                youSmoke: userData.youSmoke,
+                                requireParking: userData.requireParking,
+                                haveOutstandingDebts: userData.haveOutstandingDebts,
+                                applicantId: application.id
+                            }
                         });
                     }
                     break;

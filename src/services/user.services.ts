@@ -4,7 +4,7 @@ import { hashSync } from "bcrypt";
 import loggers from "../utils/loggers";
 import { userRoles, ApplicationStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
-
+import ApplicantService from "../webuser/services/applicantService";
 
 class UserService {
     protected inclusion;
@@ -17,7 +17,7 @@ class UserService {
             profile: false
         };
     }
-    checkexistance = async (obj: object) : Promise<false | { id: string; tenant?: any; landlords?: any; profile?: any; vendors?: any }> => {
+    checkexistance = async (obj: object): Promise<false | { id: string; tenant?: any; landlords?: any; profile?: any; vendors?: any }> => {
         const user = await prismaClient.users.findFirst({
             where: { ...obj },
             select: {
@@ -68,19 +68,19 @@ class UserService {
         return password ? hashSync(password, 10) : null
     };
 
-    generateUniqueTenantCode = async (landlordCode) =>{
+    generateUniqueTenantCode = async (landlordCode) => {
         let isUnique = false;
         let tenantCode;
-      
+
         while (!isUnique) {
-          const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-          tenantCode = `${landlordCode}-${suffix}`;
-          const existingTenant = await prismaClient.tenants.findUnique({ where: { tenantCode } });
-          if (!existingTenant) isUnique = true;
+            const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            tenantCode = `${landlordCode}-${suffix}`;
+            const existingTenant = await prismaClient.tenants.findUnique({ where: { tenantCode } });
+            if (!existingTenant) isUnique = true;
         }
-      
+
         return tenantCode;
-      }
+    }
 
     generateUniqueLandlordCode = async () => {
         let isUnique = false;
@@ -93,7 +93,7 @@ class UserService {
         return code;
     }
 
-    createUser = async (userData: any, landlordUploads: boolean = false) => {
+    createUser = async (userData: any, landlordUploads: boolean = false, createdBy:string = null) => {
         const newUser = await prismaClient.users.create({
             data: {
                 email: userData?.email,
@@ -106,7 +106,7 @@ class UserService {
                         phoneNumber: userData?.phoneNumber,
                         address: userData?.address,
                         dateOfBirth: userData?.dateOfBirth,
-                        fullname: userData?.fullname,
+                        fullname: userData?.lastName + " " + userData?.firstName + " " + (userData?.middleName ? " " + userData.middleName : ""),
                         profileUrl: userData?.profileUrl,
                         zip: userData?.zip,
                         unit: userData?.unit,
@@ -124,7 +124,7 @@ class UserService {
                 const landlordCode = await this.generateUniqueLandlordCode();
                 await prismaClient.landlords.create({
                     data: {
-                        landlordCode, 
+                        landlordCode,
                         userId: newUser.id,
                     },
                 });
@@ -143,12 +143,12 @@ class UserService {
 
                 const property = await prismaClient.properties.findUnique({
                     where: { id: userData.propertyId },
-                  });
-                  
-                  if (!property) {
+                });
+
+                if (!property) {
                     throw new Error('Property not found');
-                  }
-              
+                }
+
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
                 const tenant = await prismaClient.tenants.create({
                     data: {
@@ -169,6 +169,148 @@ class UserService {
                             status: ApplicationStatus.ACCEPTED,
                             tenantId: newUser.id,
                         },
+                    });
+                }
+                if (tenant && landlordUploads) {
+                    // create the tenant personal information
+                    const personalDetails = await prismaClient.applicantPersonalDetails.create({
+                        data: {
+                            title: userData?.title,
+                            maritalStatus: userData?.maritalStatus,
+                            phoneNumber: userData?.phoneNumber,
+                            email: userData?.email,
+                            dob: userData?.dateOfBirth,
+                            firstName: userData?.firstName,
+                            lastName: userData?.lastName,
+                            middleName: userData?.middleName,
+                            nationality: userData?.nationality,
+                            identificationType: userData?.identificationType,
+                            issuingAuthority: userData?.issuingAuthority,
+                            expiryDate: userData?.expiryDate,
+                        },
+                    });
+
+                    // const residentialInfo = await prismaClient.residentialInformation.create({
+                    //     data: {
+                    //       address: userData.address,
+                    //       addressStatus: userData.addressStatus,
+                    //       lengthOfResidence: userData.lengthOfResidence,
+                    //       landlordOrAgencyPhoneNumber: userData.landlordOrAgencyPhoneNumber,
+                    //       landlordOrAgencyEmail: userData.landlordOrAgencyEmail,
+                    //       landlordOrAgencyName: userData.landlordOrAgencyName,
+                    //       userId: newUser.id,
+                    //       prevAddresses:  {
+                    //             create: {
+                    //               address: userData?.prevAddress,
+                    //               lengthOfResidence: userData?.prevAddressLengthOfResidence,
+                    //             },
+                    //           }
+                    //     },
+                    //   });
+
+                    // Create guarantorInformation if provided
+                    
+                    let guarantorInfo = await prismaClient.guarantorInformation.create({
+                        data: {
+                            fullName: userData?.guarantorFullname,
+                            phoneNumber: userData?.guarantorPhoneNumber,
+                            email: userData?.guarantorEmail,
+                            address: userData?.guarantorAddress,
+                            relationship: userData?.relationshipToGuarantor,
+                            identificationType: userData?.gauratorIdentificationType,
+                            identificationNo: userData?.gauratorIdentificationNo,
+                            monthlyIncome: userData?.gauratorMonthlyIncome,
+                            employerName: userData?.gauratorEmployerName,
+                        }
+                    });
+                    
+                    // Create nextOfKin if provided
+                    await prismaClient.nextOfKin.create({
+                        data: {
+                            lastName: userData?.nextOfKinLastName,
+                            firstName: userData?.nextOfKinFirstName,
+                            relationship: userData?.relationship,
+                            phoneNumber: userData?.nextOfKinPhoneNumber,
+                            email: userData?.nextOfKinEmail,
+                            middleName: userData?.nextOfKinMiddleName,
+                            applicantPersonalDetailsId: personalDetails.id, 
+                            userId: newUser.id
+                        }
+                    });
+                    // employement information 
+                    const employmentInfo = await prismaClient.employmentInformation.create({
+                        data: {
+                            employmentStatus: userData?.employmentStatus,
+                            taxCredit: userData?.taxCredit,
+                            zipCode: userData?.employmentZipCode,
+                            address: userData?.employmentAddress,
+                            city: userData?.employmentCity,
+                            state: userData?.employmentState,
+                            country: userData?.employmentCountry,
+                            startDate: userData?.employmentStartDate,
+                            monthlyOrAnualIncome: userData?.monthlyOrAnualIncome,
+                            childBenefit: userData?.childBenefit,
+                            childMaintenance: userData?.childMaintenance,
+                            disabilityBenefit: userData?.disabilityBenefit,
+                            housingBenefit: userData?.housingBenefit,
+                            others: userData?.others,
+                            pension: userData?.pension,
+                            moreDetails: userData?.moreDetails,
+                            employerCompany: userData?.employerCompany,
+                            employerEmail: userData?.employerEmail,
+                            employerPhone: userData?.employerPhone,
+                            positionTitle: userData?.positionTitle
+                        }
+                      });
+                
+                    // Create emergencyContact
+                    const emergencyInfo = await prismaClient.emergencyContact.create({
+                        data: {
+                            fullname: userData?.lastName + " " + userData?.firstName + " " + (userData?.middleName ? " " + userData.middleName : ""),
+                            phoneNumber: userData?.emergencyPhoneNumber,
+                            email: userData?.emergencyEmail,
+                            address: userData?.emergencyAddress
+                        },
+                    });
+                    // refrees information
+                    const refreeInfo = await prismaClient.referees.create({
+                        data: {
+                            professionalReferenceName: userData?.refereeProfessionalReferenceName,
+                            personalReferenceName: userData?.refereePersonalReferenceName,
+                            personalEmail: userData?.refereePersonalEmail,
+                            professionalEmail: userData?.refereeProfessionalEmail, 
+                            personalPhoneNumber: userData?.refereePersonalPhoneNumber, 
+                            professionalPhoneNumber: userData?.refereeProfessionalPhoneNumber, 
+                            personalRelationship: userData?.refereePersonalRelationship, 
+                            professionalRelationship: userData?.refereeProfessionalRelationship, 
+                        },
+                    });
+                    
+                    // Update application with tenant info
+                    const application = await prismaClient.application.create({
+                        data:{
+                            status: ApplicationStatus.COMPLETED,
+                            userId: newUser.id,
+                            tenantId: tenant.id,
+                            residentialId: null, // null because the current user is a tenant and reside in the linked property
+                            emergencyContactId: emergencyInfo.id,
+                            employmentInformationId: employmentInfo.id,
+                            guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
+                            applicantPersonalDetailsId: personalDetails.id,
+                            refereeId: refreeInfo.id,
+                            createdById: createdBy
+                        }
+                    });
+
+                    // fill the question 
+                    await prismaClient.applicationQuestions.create({
+                        data: {
+                            havePet: userData.havePet,
+                            youSmoke: userData.youSmoke,
+                            requireParking: userData.requireParking,
+                            haveOutstandingDebts: userData.haveOutstandingDebts,
+                            applicantId: application.id
+                        }
                     });
                 }
                 break;
@@ -263,14 +405,14 @@ class UserService {
         });
     }
 
-    updateLandlordOrTenantOrVendorInfo =  async ( data:any, id:string, role: string) => {
-    
+    updateLandlordOrTenantOrVendorInfo = async (data: any, id: string, role: string) => {
+
         let updated;
-    
+
         switch (role) {
             case userRoles.LANDLORD:
                 updated = await prismaClient.landlords.update({
-                    where: {id},
+                    where: { id },
                     data: {
                         emailDomains: data?.emailDomains
                     },

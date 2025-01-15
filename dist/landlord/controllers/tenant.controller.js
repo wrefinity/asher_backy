@@ -137,8 +137,7 @@ class TenantControls {
                 }
             }
             catch (error) {
-                console.log(error);
-                return res.status(500).json({ error: error.message });
+                error_service_1.default.handleError(error, res);
             }
         });
         this.landlordService = new landlord_service_1.LandlordService();

@@ -73,6 +73,16 @@ class PropertyService {
             return propertiesByState;
         });
         // Function to aggregate properties by state for the current landlord
+        this.getPropertiesByLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            // Group properties by state for the current landlord
+            const unGroundProps = yield __1.prismaClient.properties.findMany({
+                where: {
+                    landlordId,
+                },
+            });
+            return unGroundProps;
+        });
+        // Function to aggregate properties by state for the current landlord
         this.getPropertiesByState = () => __awaiter(this, void 0, void 0, function* () {
             // Group properties by state for the current landlord
             const groupedProperties = yield __1.prismaClient.properties.groupBy({
@@ -145,7 +155,7 @@ class PropertyService {
             const { landlordId, property, minSize, maxSize } = filters;
             const { type, state, country, } = property || {};
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ isActive: true, onListing: true }, (landlordId && {
+                where: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && {
                     property: {
                         landlordId: landlordId,
                     },

@@ -24,6 +24,7 @@ class ApplicantRoutes {
         this.router.post('/emergency-contact/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateEmergencyContact);
         this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateEmploymentInformation);
         this.router.post('/residential-info/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateResidentialInformation);
+        this.router.post('/referees/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateRefree);
         this.router.post('/document/:applicationId', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, applicant_1.default.createApplicantionDocument);
         this.router.get('/:id', this.authenticateService.authorize, applicant_1.default.getApplication);
         this.router.delete('/:id', this.authenticateService.authorize, applicant_1.default.deleteApplicant);

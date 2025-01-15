@@ -146,8 +146,7 @@ class TenantControls {
             }
 
         } catch (error) {
-            console.log(error)
-            return res.status(500).json({ error: error.message });
+            errorService.handleError(error, res)
         }
     }
 

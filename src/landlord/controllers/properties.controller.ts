@@ -72,9 +72,9 @@ class PropertyController {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-            const properties = await PropertyServices.aggregatePropertiesByState(landlordId);
-            if (!properties) return res.status(200).json({ message: "No Property listed yet" })
-            return res.status(200).json(properties)
+            const propertiesGrouped = await PropertyServices.aggregatePropertiesByState(landlordId);
+            const propertiesUnGrouped = await PropertyServices.getPropertiesByLandlord(landlordId);
+            return res.status(200).json({propertiesGrouped, propertiesUnGrouped })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -191,9 +191,11 @@ class PropertyController {
             if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
             if (type) filters.type = type;
 
+            
             // Fetch the filtered properties
             const properties = await PropertyServices.getAllListedProperties(filters);
-
+            
+            console.log(landlordId)
             // Check if properties are found
             if (!properties || properties.length === 0) {
                 return res.status(404).json({ message: "No properties found for this landlord with the given filters" });

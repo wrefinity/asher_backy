@@ -1,8 +1,8 @@
-interface BaseIF{
+interface BaseIF {
   id?: string | null;
   applicationId: string;
 }
-export interface NextOfKinIF{
+export interface NextOfKinIF {
   id?: string | null;
   firstName: string;
   lastName: string;
@@ -12,7 +12,7 @@ export interface NextOfKinIF{
   middleName?: string | null;
 }
 
-export interface ApplicantPersonalDetailsIF{
+export interface ApplicantPersonalDetailsIF {
   id?: string | null;
   title: string;
   invited: string;
@@ -24,6 +24,11 @@ export interface ApplicantPersonalDetailsIF{
   phoneNumber: string;
   maritalStatus: string;
   nextOfKin?: NextOfKinIF;
+  nationality: string,
+  identificationType?: string,
+  identificationNo?: string,
+  issuingAuthority: string,
+  expiryDate: Date,
 }
 
 
@@ -32,6 +37,11 @@ export interface GuarantorInformationIF extends BaseIF {
   phoneNumber: string;
   email: string;
   address: string;
+  relationship: string;
+  identificationType: string,
+  identificationNo: string,
+  monthlyIncome: string,
+  employerName: string,
 }
 
 export interface EmergencyContactIF extends BaseIF {
@@ -39,6 +49,16 @@ export interface EmergencyContactIF extends BaseIF {
   phoneNumber: string;
   email: string;
   address: string;
+}
+export interface RefreeIF extends BaseIF {
+  professionalReferenceName: string;
+  personalReferenceName: string;
+  personalEmail: string;
+  professionalEmail: string;
+  personalPhoneNumber: string;
+  professionalPhoneNumber: string;
+  personalRelationship: string;
+  professionalRelationship: string;
 }
 export interface AppDocumentIF extends BaseIF {
   documentName: string;
@@ -52,9 +72,14 @@ export interface PrevAddressIF {
   lengthOfResidence: string;
 }
 
-export interface ResidentialInformationIF extends BaseIF  {
+export interface ResidentialInformationIF extends BaseIF {
   address: string;
   addressStatus: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  reasonForLeaving: string;
   lengthOfResidence: string;
   landlordOrAgencyPhoneNumber: string;
   landlordOrAgencyEmail: string;
@@ -70,6 +95,13 @@ export interface ResidentialInformationIF extends BaseIF  {
 export interface EmploymentInformationIF extends BaseIF {
   employmentStatus: string;
   taxCredit?: string | null;
+  startDate?: Date;
+  zipCode?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  monthlyOrAnualIncome?: string | null;
   childBenefit?: string | null;
   childMaintenance?: string | null;
   disabilityBenefit?: string | null;
@@ -80,5 +112,5 @@ export interface EmploymentInformationIF extends BaseIF {
   employerCompany?: string | null;
   employerEmail?: string | null;
   employerPhone?: string | null;
-  positionTitle ?: string | null;
+  positionTitle?: string | null;
 }

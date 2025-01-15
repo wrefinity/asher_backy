@@ -238,6 +238,10 @@ model users {
   wallet           wallet[]
 
   nextOfKin nextOfKin[]
+
+  applicationCreatedBy application[] @relation("createdBy")
+
+  applicationUpdatedBy application[] @relation("updatedBy")
 }
 
 model creditScore {

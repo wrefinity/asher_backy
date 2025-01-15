@@ -149,6 +149,28 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.createOrUpdateRefree = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const applicationId = req.params.applicationId;
+                const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
+                if (!existingApplication) {
+                    return res.status(400).json({ error: "wrong application id supplied" });
+                }
+                const isCompletd = yield applicantService_1.default.checkApplicationCompleted(applicationId);
+                if (isCompletd) {
+                    return res.status(400).json({ error: "application completed" });
+                }
+                const { error, value } = schemas_1.refreeSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const referee = yield applicantService_1.default.createOrUpdateReferees(Object.assign(Object.assign({}, value), { applicationId }));
+                return res.status(201).json({ referee });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.createApplicantionDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { error, value } = schemas_1.documentSchema.validate(req.body);

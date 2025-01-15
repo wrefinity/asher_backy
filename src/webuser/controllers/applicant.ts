@@ -8,7 +8,8 @@ import {
   residentialInformationSchema,
   employmentInformationSchema,
   applicantPersonalDetailsSchema,
-  emergencyContactSchema
+  emergencyContactSchema,
+  refreeSchema,
 } from '../schemas';
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, PropsSettingType } from '@prisma/client';
@@ -153,6 +154,29 @@ class ApplicantControls {
 
       const application = await ApplicantService.createOrUpdateEmergencyContact({ ...req.body, applicationId });
       return res.status(201).json({ application });
+    } catch (error: unknown) {
+      ErrorService.handleError(error, res);
+    }
+  }
+  createOrUpdateRefree = async (req: CustomRequest, res: Response) => {
+    try {
+      const applicationId = req.params.applicationId;
+
+      const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
+      if (!existingApplication) {
+        return res.status(400).json({ error: "wrong application id supplied" });
+      }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" });
+      }
+      const { error, value } = refreeSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
+      }
+
+      const referee = await ApplicantService.createOrUpdateReferees({ ...value, applicationId });
+      return res.status(201).json({ referee });
     } catch (error: unknown) {
       ErrorService.handleError(error, res);
     }

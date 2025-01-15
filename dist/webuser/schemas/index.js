@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.residentialInformationSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
+exports.residentialInformationSchema = exports.refreeSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const nextOfKinSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
@@ -26,6 +26,11 @@ const applicantPersonalDetailsSchema = joi_1.default.object({
     email: joi_1.default.string().email().optional(), // Optional as per interface definition
     phoneNumber: joi_1.default.string().required(),
     maritalStatus: joi_1.default.string().required(),
+    nationality: joi_1.default.string().required(),
+    identificationType: joi_1.default.string().required(),
+    identificationNo: joi_1.default.string().required(),
+    issuingAuthority: joi_1.default.string().required(),
+    expiryDate: joi_1.default.date().required(),
     nextOfKin: nextOfKinSchema.allow(null).optional(), // Validate nextOfKin using the previous schema
 });
 exports.applicantPersonalDetailsSchema = applicantPersonalDetailsSchema;
@@ -37,6 +42,11 @@ const guarantorInformationSchema = joi_1.default.object({
     email: joi_1.default.string().email().required(),
     address: joi_1.default.string().required(),
     applicationId: joi_1.default.string().optional(),
+    relationship: joi_1.default.string().required(),
+    identificationType: joi_1.default.string().required(),
+    identificationNo: joi_1.default.string().required(),
+    monthlyIncome: joi_1.default.string().required(),
+    employerName: joi_1.default.string().required(),
 });
 exports.guarantorInformationSchema = guarantorInformationSchema;
 // Emergency Contact Schema
@@ -49,6 +59,20 @@ const emergencyContactSchema = joi_1.default.object({
     applicationId: joi_1.default.string().optional(),
 });
 exports.emergencyContactSchema = emergencyContactSchema;
+// RefreeSchema Contact Schema
+const refreeSchema = joi_1.default.object({
+    id: joi_1.default.string().allow(null).optional(),
+    professionalReferenceName: joi_1.default.string().required(),
+    personalReferenceName: joi_1.default.string().required(),
+    personalEmail: joi_1.default.string().email().required(),
+    professionalEmail: joi_1.default.string().email().required(),
+    personalPhoneNumber: joi_1.default.string().required(),
+    professionalPhoneNumber: joi_1.default.string().required(),
+    personalRelationship: joi_1.default.string().required(),
+    professionalRelationship: joi_1.default.string().required(),
+    applicationId: joi_1.default.string().optional(),
+});
+exports.refreeSchema = refreeSchema;
 const documentSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
     documentName: joi_1.default.string().required(),
@@ -71,10 +95,15 @@ const residentialInformationSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
     address: joi_1.default.string().required(),
     addressStatus: joi_1.default.string().required(),
+    city: joi_1.default.string().required(),
+    state: joi_1.default.string().required(),
+    country: joi_1.default.string().required(),
+    zipCode: joi_1.default.string().required(),
     lengthOfResidence: joi_1.default.string().required(),
     landlordOrAgencyPhoneNumber: joi_1.default.string().required(),
     landlordOrAgencyEmail: joi_1.default.string().email().required(),
     landlordOrAgencyName: joi_1.default.string().required(),
+    reasonForLeaving: joi_1.default.string().optional(),
     userId: joi_1.default.string().allow(null).optional(),
     prevAddresses: joi_1.default.array().items(prevAddressSchema).required(),
     applicationId: joi_1.default.string().allow(null).optional(),
@@ -83,6 +112,13 @@ exports.residentialInformationSchema = residentialInformationSchema;
 const employmentInformationSchema = joi_1.default.object({
     id: joi_1.default.string().optional().allow(null),
     employmentStatus: joi_1.default.string().required(),
+    zipCode: joi_1.default.string().required(),
+    startDate: joi_1.default.date().required(),
+    address: joi_1.default.string().required(),
+    city: joi_1.default.string().required(),
+    state: joi_1.default.string().required(),
+    country: joi_1.default.string().required(),
+    monthlyOrAnualIncome: joi_1.default.string().required(),
     taxCredit: joi_1.default.string().optional().allow(null),
     childBenefit: joi_1.default.string().optional().allow(null),
     childMaintenance: joi_1.default.string().optional().allow(null),
