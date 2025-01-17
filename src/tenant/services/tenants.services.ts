@@ -7,6 +7,7 @@ class TenantService {
             user:  {
                 include: {
                     profile: true,
+                    nextOfKin: true 
                 },
             },
             property: true,
@@ -26,6 +27,7 @@ class TenantService {
                 user: {
                     include: {
                         profile: true,
+                        nextOfKin: true
                     },
                 },
                 landlord: true,
