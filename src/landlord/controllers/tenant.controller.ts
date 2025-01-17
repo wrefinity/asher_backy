@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import moment from 'moment';
 import { Response } from "express"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
@@ -10,6 +10,15 @@ import { userRoles } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantSchema } from '../validations/schema/tenancy.schema';
 
+
+// Helper function to parse the date field into DD/MM/YYYY format
+const parseDateFieldNew = (date: string): string => {
+    const formattedDate = moment(date, 'DD/MM/YYYY', true);
+    if (!formattedDate.isValid()) {
+        return null;
+    }
+    return formattedDate.toISOString(); // Use Moment.js to get ISO 8601 format
+};
 
 class TenantControls {
     private landlordService: LandlordService;
@@ -69,7 +78,7 @@ class TenantControls {
             interface UploadError {
                 email: string;
                 errors: string | string[];
-                
+
             }
 
             let uploadErrors: UploadError[] = [];
@@ -81,22 +90,27 @@ class TenantControls {
             // console.log(dataFetched)
             for (const row of dataFetched) {
                 try {
-                    row.dateOfFirstRent = parseDateField(row.dateOfFirstRent);
-                    row.leaseStartDate = parseDateField(row.leaseStartDate);
-                    row.leaseEndDate = parseDateField(row.leaseEndDate);
-                    row.dateOfBirth = parseDateField(row.dateOfBirth);
+
+                    // Parse and convert date fields to the required format
+                    row.dateOfFirstRent = parseDateFieldNew(row.dateOfFirstRent.toString());
+                    row.leaseStartDate = parseDateFieldNew(row.leaseStartDate.toString());
+                    row.leaseEndDate = parseDateFieldNew(row.leaseEndDate.toString());
+                    row.dateOfBirth = parseDateFieldNew(row.dateOfBirth.toString());
+                    row.expiryDate = parseDateFieldNew(row.expiryDate.toString());
+                    row.employmentStartDate = parseDateFieldNew(row.employmentStartDate.toString());
+                    console.log(row)
 
                     // Ensure `email` is a string
                     if (Array.isArray(row.email)) {
                         row.email = row.email[0]; // Use the first email in the array
                     }
-    
-                
+
                     // Validate the row using joi validations
                     const { error } = tenantSchema.validate(row, { abortEarly: false });
                     if (error) {
+
                         uploadErrors.push({
-                            email: row.email,
+                            email: row.email + "testing",
                             errors: error.details.map(detail => detail.message),
                         });
                         continue;
@@ -127,8 +141,9 @@ class TenantControls {
                     uploaded.push(newUser);
                 } catch (err) {
                     // Log unexpected errors
+                    console.log(err)
                     uploadErrors.push({
-                        email: row.email.toString(),
+                        email: row.email.toString() + "test",
                         errors: `Unexpected error: ${err.message}`,
                     });
                 }
@@ -139,10 +154,10 @@ class TenantControls {
 
             if (uploaded.length > 0) {
                 // Users were successfully uploaded
-                return res.status(200).json({ uploaded, uploadErrors});
+                return res.status(200).json({ uploaded, uploadErrors });
             } else {
                 // No users were uploaded
-                return res.status(400).json({ error: 'No users were uploaded.', uploadErrors});
+                return res.status(400).json({ error: 'No users were uploaded.', uploadErrors });
             }
 
         } catch (error) {
@@ -150,7 +165,7 @@ class TenantControls {
         }
     }
 
-    
+
 }
 
 

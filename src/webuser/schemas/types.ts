@@ -28,7 +28,7 @@ export interface ApplicantPersonalDetailsIF {
   identificationType?: string,
   identificationNo?: string,
   issuingAuthority: string,
-  expiryDate: Date,
+  expiryDate: Date
 }
 
 

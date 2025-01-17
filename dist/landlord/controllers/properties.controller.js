@@ -188,7 +188,7 @@ class PropertyController {
                 if (!checkOwnership)
                     return res.status(400).json({ message: 'property does not exist under landlord' });
                 const listing = yield propertyServices_1.default.createPropertyListing(data);
-                res.status(201).json({ message: 'Property listing created', listing });
+                return res.status(201).json({ message: 'Property listing created', listing });
             }
             catch (err) {
                 error_service_1.default.handleError(err, res);

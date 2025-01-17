@@ -26,6 +26,7 @@ const csvFileFilter = (req, file, cb) => {
 // Configure Multer with storage and file filter
 export const uploadcsv = multer({
   storage: storageCSV,
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: csvFileFilter,
 });
 

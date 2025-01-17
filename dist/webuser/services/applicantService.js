@@ -86,7 +86,7 @@ class ApplicantService {
         });
         this.createOrUpdatePersonalDetails = (data, propertiesId, userId) => __awaiter(this, void 0, void 0, function* () {
             var _a;
-            const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate } = data;
+            const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate, } = data;
             const nextOfKinData = {
                 firstName: nextOfKin.firstName,
                 lastName: nextOfKin.lastName,
@@ -164,6 +164,7 @@ class ApplicantService {
             const app = yield __1.prismaClient.application.create({
                 data: {
                     propertiesId,
+                    createdById: userId,
                     userId,
                     applicantPersonalDetailsId: (_a = upsertedPersonalDetails === null || upsertedPersonalDetails === void 0 ? void 0 : upsertedPersonalDetails.id) !== null && _a !== void 0 ? _a : existingPersonalDetails === null || existingPersonalDetails === void 0 ? void 0 : existingPersonalDetails.id,
                 },
@@ -274,7 +275,7 @@ class ApplicantService {
             return prevAddresses;
         });
         this.createOrUpdateResidentialInformation = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { id, prevAddresses, applicationId } = data, rest = __rest(data, ["id", "prevAddresses", "applicationId"]);
+            const { id, prevAddresses, userId, applicationId } = data, rest = __rest(data, ["id", "prevAddresses", "userId", "applicationId"]);
             let resInfo = null;
             if (prevAddresses && prevAddresses.length > 0) {
                 // Create or update prevAddresses and collect their IDs

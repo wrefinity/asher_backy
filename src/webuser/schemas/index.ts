@@ -65,8 +65,8 @@ const refreeSchema = Joi.object({
     professionalEmail: Joi.string().email().required(),
     personalPhoneNumber: Joi.string().required(),
     professionalPhoneNumber: Joi.string().required(),
-    personalRelationship: Joi.string().required(),
-    professionalRelationship: Joi.string().required(),
+    personalRelationship: Joi.string().optional(),
+    professionalRelationship: Joi.string().optional(),
     applicationId: Joi.string().optional(),
 });
 
@@ -98,7 +98,7 @@ const residentialInformationSchema = Joi.object({
     state: Joi.string().required(),
     country: Joi.string().required(),
     zipCode: Joi.string().required(),
-    lengthOfResidence: Joi.string().required(),
+    lengthOfResidence: Joi.string().valid("Years", "Months").required(),
     landlordOrAgencyPhoneNumber: Joi.string().required(),
     landlordOrAgencyEmail: Joi.string().email().required(),
     landlordOrAgencyName: Joi.string().required(),

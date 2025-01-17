@@ -282,7 +282,7 @@ class UserService {
                             data: {
                                 status: client_1.ApplicationStatus.COMPLETED,
                                 userId: newUser.id,
-                                tenantId: tenant.id,
+                                tenantId: newUser.id,
                                 residentialId: null, // null because the current user is a tenant and reside in the linked property
                                 emergencyContactId: emergencyInfo.id,
                                 employmentInformationId: employmentInfo.id,

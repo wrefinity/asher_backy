@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
+const moment_1 = __importDefault(require("moment"));
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const tenants_services_1 = __importDefault(require("../../tenant/services/tenants.services"));
 const filereader_1 = require("../../utils/filereader");
@@ -20,6 +21,14 @@ const user_services_1 = __importDefault(require("../../services/user.services"))
 const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../services/landlord.service");
 const tenancy_schema_1 = require("../validations/schema/tenancy.schema");
+// Helper function to parse the date field into DD/MM/YYYY format
+const parseDateFieldNew = (date) => {
+    const formattedDate = (0, moment_1.default)(date, 'DD/MM/YYYY', true);
+    if (!formattedDate.isValid()) {
+        return null;
+    }
+    return formattedDate.toISOString(); // Use Moment.js to get ISO 8601 format
+};
 class TenantControls {
     constructor() {
         this.getTenancies = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -83,10 +92,14 @@ class TenantControls {
                 // console.log(dataFetched)
                 for (const row of dataFetched) {
                     try {
-                        row.dateOfFirstRent = (0, filereader_1.parseDateField)(row.dateOfFirstRent);
-                        row.leaseStartDate = (0, filereader_1.parseDateField)(row.leaseStartDate);
-                        row.leaseEndDate = (0, filereader_1.parseDateField)(row.leaseEndDate);
-                        row.dateOfBirth = (0, filereader_1.parseDateField)(row.dateOfBirth);
+                        // Parse and convert date fields to the required format
+                        row.dateOfFirstRent = parseDateFieldNew(row.dateOfFirstRent.toString());
+                        row.leaseStartDate = parseDateFieldNew(row.leaseStartDate.toString());
+                        row.leaseEndDate = parseDateFieldNew(row.leaseEndDate.toString());
+                        row.dateOfBirth = parseDateFieldNew(row.dateOfBirth.toString());
+                        row.expiryDate = parseDateFieldNew(row.expiryDate.toString());
+                        row.employmentStartDate = parseDateFieldNew(row.employmentStartDate.toString());
+                        console.log(row);
                         // Ensure `email` is a string
                         if (Array.isArray(row.email)) {
                             row.email = row.email[0]; // Use the first email in the array
@@ -95,7 +108,7 @@ class TenantControls {
                         const { error } = tenancy_schema_1.tenantSchema.validate(row, { abortEarly: false });
                         if (error) {
                             uploadErrors.push({
-                                email: row.email,
+                                email: row.email + "testing",
                                 errors: error.details.map(detail => detail.message),
                             });
                             continue;
@@ -118,8 +131,9 @@ class TenantControls {
                     }
                     catch (err) {
                         // Log unexpected errors
+                        console.log(err);
                         uploadErrors.push({
-                            email: row.email.toString(),
+                            email: row.email.toString() + "test",
                             errors: `Unexpected error: ${err.message}`,
                         });
                     }

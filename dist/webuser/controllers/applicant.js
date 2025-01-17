@@ -85,6 +85,7 @@ class ApplicantControls {
                 res.status(500).json({ error: error.message });
             }
         });
+        // done
         this.createOrUpdateApplicantBioData = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const userId = String(req.user.id);
@@ -104,6 +105,7 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        //done
         this.createOrUpdateGuarantor = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const userId = req.user.id;
@@ -127,6 +129,7 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // done
         this.createOrUpdateEmergencyContact = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const applicationId = req.params.applicationId;
@@ -149,6 +152,7 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // done
         this.createOrUpdateRefree = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const applicationId = req.params.applicationId;
@@ -171,6 +175,7 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // done
         this.createApplicantionDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { error, value } = schemas_1.documentSchema.validate(req.body);
@@ -206,6 +211,7 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // done
         this.createOrUpdateResidentialInformation = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { error } = schemas_1.residentialInformationSchema.validate(req.body);
@@ -229,6 +235,7 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // done
         this.createOrUpdateEmploymentInformation = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 // Validate request body

@@ -85,7 +85,7 @@ class ApplicantService {
       nationality,
       identificationType,
       issuingAuthority,
-      expiryDate
+      expiryDate,
     } = data;
     const nextOfKinData: NextOfKinIF = {
       firstName: nextOfKin.firstName,
@@ -181,6 +181,7 @@ class ApplicantService {
     const app = await prismaClient.application.create({
       data: {
         propertiesId,
+        createdById: userId,
         userId,
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
       },
@@ -308,7 +309,7 @@ class ApplicantService {
   }
 
   createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {
-    const { id, prevAddresses, applicationId, ...rest } = data;
+    const { id, prevAddresses, userId, applicationId, ...rest } = data;
 
     let resInfo = null;
     if (prevAddresses && prevAddresses.length > 0) {

@@ -160,8 +160,8 @@ class PropertyController {
             if (!checkOwnership) return res.status(400).json({ message: 'property does not exist under landlord' });
 
             const listing = await PropertyServices.createPropertyListing(data);
+            return res.status(201).json({ message: 'Property listing created', listing });
 
-            res.status(201).json({ message: 'Property listing created', listing });
         } catch (err) {
             ErrorService.handleError(err, res);
         }

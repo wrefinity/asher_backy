@@ -91,6 +91,7 @@ class ApplicantControls {
       res.status(500).json({ error: error.message });
     }
   }
+  // done
   createOrUpdateApplicantBioData = async (req: CustomRequest, res: Response) => {
     try {
       const userId = String(req.user.id);
@@ -109,6 +110,7 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   }
+  //done
   createOrUpdateGuarantor = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user.id;
@@ -135,6 +137,7 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   }
+  // done
   createOrUpdateEmergencyContact = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
@@ -158,6 +161,7 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
+  // done
   createOrUpdateRefree = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
@@ -181,6 +185,7 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
+  // done
   createApplicantionDocument = async (req: CustomRequest, res: Response) => {
     try {
       const { error, value } = documentSchema.validate(req.body);
@@ -220,6 +225,7 @@ class ApplicantControls {
     }
   }
 
+  // done
   createOrUpdateResidentialInformation = async (req: CustomRequest, res: Response) => {
     try {
       const { error } = residentialInformationSchema.validate(req.body);
@@ -244,6 +250,7 @@ class ApplicantControls {
     }
   }
 
+  // done
   createOrUpdateEmploymentInformation = async (req: CustomRequest, res: Response) => {
     try {
       // Validate request body
@@ -269,7 +276,6 @@ class ApplicantControls {
       ErrorService.handleError(err, res);
     }
   };
-
 
   getApplication = async (req: CustomRequest, res: Response) => {
     try {
