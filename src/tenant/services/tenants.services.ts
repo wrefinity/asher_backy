@@ -7,7 +7,16 @@ class TenantService {
             user:  {
                 include: {
                     profile: true,
-                    nextOfKin: true 
+                    nextOfKin: true,
+                    residentialInformation: true,
+                    applicantion: {
+                        include:{
+                            employmentInfo: true,
+                            emergencyInfo: true,
+                            guarantorInformation: true,
+                            referee: true
+                        }
+                    },
                 },
             },
             property: true,
@@ -27,9 +36,18 @@ class TenantService {
                 user: {
                     include: {
                         profile: true,
-                        nextOfKin: true
+                        nextOfKin: true,
+                        applicantion: {
+                            include:{
+                                employmentInfo: true,
+                                emergencyInfo: true,
+                                guarantorInformation: true,
+                                referee: true
+                            }
+                        },
                     },
                 },
+                
                 landlord: true,
                 property: true,
                 apartments: true

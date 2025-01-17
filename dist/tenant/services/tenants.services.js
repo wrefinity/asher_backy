@@ -19,7 +19,15 @@ class TenantService {
                     user: {
                         include: {
                             profile: true,
-                            nextOfKin: true
+                            nextOfKin: true,
+                            applicantion: {
+                                include: {
+                                    employmentInfo: true,
+                                    emergencyInfo: true,
+                                    guarantorInformation: true,
+                                    referee: true
+                                }
+                            },
                         },
                     },
                     landlord: true,
@@ -69,7 +77,16 @@ class TenantService {
             user: {
                 include: {
                     profile: true,
-                    nextOfKin: true
+                    nextOfKin: true,
+                    residentialInformation: true,
+                    applicantion: {
+                        include: {
+                            employmentInfo: true,
+                            emergencyInfo: true,
+                            guarantorInformation: true,
+                            referee: true
+                        }
+                    },
                 },
             },
             property: true,
