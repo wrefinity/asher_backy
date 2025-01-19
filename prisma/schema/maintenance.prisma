@@ -38,7 +38,7 @@ model maintenance {
   vendorConsentCancellation Boolean? // Vendor’s consent for cancellation
   // relation fields
   tenant                    tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
-  tenantId                  String
+  tenantId                  String?
   landlord                  landlords?    @relation(name: "landlordUser", fields: [landlordId], references: [id])
   landlordId                String?
   vendor                    vendors?      @relation(name: "vendorUser", fields: [vendorId], references: [id])

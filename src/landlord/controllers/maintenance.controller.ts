@@ -12,8 +12,7 @@ class MaintenanceControls {
     // <========= whitelisting section ========>
     createWhitelist = async (req: CustomRequest, res: Response) => {
         try {
-            console.log("called now=======")
-            console.log(req.body)
+           
             const { error, value } = maintenanceWhitelistSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 

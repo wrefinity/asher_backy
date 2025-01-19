@@ -115,7 +115,7 @@ class LandlordMaintenanceService {
         }
       },
       data: {
-        ...(status && { status: status as any }),
+        ...(status && { landlordDecision: status as any }),
         isDeleted: false,
       },
       include: {

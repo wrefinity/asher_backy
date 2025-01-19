@@ -3,7 +3,7 @@ import Joi from 'joi';
 // Joi validation schema
 export const serviceSchema = Joi.object({
   currentJobs: Joi.number().optional(),
-  availability: Joi.string().valid('YES', 'NO').required(),
+  availability: Joi.string().valid('YES', 'NO').default("YES").optional(),
   standardPriceRange: Joi.string().required(),
   mediumPriceRange: Joi.string().required(),
   premiumPriceRange: Joi.string().required(),

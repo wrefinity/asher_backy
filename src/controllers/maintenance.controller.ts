@@ -136,7 +136,12 @@ class MaintenanceController {
         value.propertyId,
         value.apartmentId
       );
-      const handleByLandlord = isWhitelisted || !!landlordId;
+      // Determine if maintenance should be handled by the landlord
+      const handleByLandlord = !!landlordId || isWhitelisted;
+      console.log("checking the handled by field =====")
+      console.log(handleByLandlord)
+      console.log("=================")
+
 
       const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
 
@@ -293,7 +298,7 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
-  
+
   public deleteMaintenance = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;

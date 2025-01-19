@@ -22,6 +22,7 @@ class UserService {
             profile: false
         };
     }
+    // cm641qu2d00003wf057tudib7
     checkexistance = async (obj: object): Promise<false | { id: string; tenant?: any; landlords?: any; profile?: any; vendors?: any }> => {
         const user = await prismaClient.users.findFirst({
             where: { ...obj },

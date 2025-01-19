@@ -25,8 +25,6 @@ class MaintenanceControls {
         this.createWhitelist = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
-                console.log("called now=======");
-                console.log(req.body);
                 const { error, value } = maintenance_1.maintenanceWhitelistSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });

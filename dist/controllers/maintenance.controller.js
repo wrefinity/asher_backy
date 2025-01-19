@@ -151,7 +151,11 @@ class MaintenanceController {
                 }
                 // checking if the maitenance category is whitelisted by the landlord
                 const isWhitelisted = yield maintenance_service_1.default.checkWhitelist(landlordId, value.categoryId, value.subcategoryId, value.propertyId, value.apartmentId);
-                const handleByLandlord = isWhitelisted || !!landlordId;
+                // Determine if maintenance should be handled by the landlord
+                const handleByLandlord = !!landlordId || isWhitelisted;
+                console.log("checking the handled by field =====");
+                console.log(handleByLandlord);
+                console.log("=================");
                 const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls } = value, data = __rest(value, ["cloudinaryUrls", "cloudinaryDocumentUrls", "cloudinaryVideoUrls"]);
                 const maintenance = yield maintenance_service_1.default.createMaintenance(Object.assign(Object.assign({}, data), { handleByLandlord, landlordDecision: handleByLandlord ? client_1.maintenanceDecisionStatus.PENDING : '', attachments: cloudinaryUrls, tenantId: tenantId || undefined, landlordId: landlordId || undefined }));
                 if (isWhitelisted && !landlordId)

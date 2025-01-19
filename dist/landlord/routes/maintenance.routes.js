@@ -29,6 +29,8 @@ class LandlordMaintenanceRoute {
         this.router.patch('/whitelist/:whitelistId', maintenance_controller_1.default.updateWhitelist);
     }
 }
+// cm57schfs0000refzg0j13jpx - categpory
+// cm57swrez0002refzkdqv44x6 - subcategory
 exports.default = new LandlordMaintenanceRoute().router;
 // {
 //     "offer":["100"],

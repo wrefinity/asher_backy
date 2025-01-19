@@ -8,7 +8,7 @@ const joi_1 = __importDefault(require("joi"));
 // Joi validation schema
 exports.serviceSchema = joi_1.default.object({
     currentJobs: joi_1.default.number().optional(),
-    availability: joi_1.default.string().valid('YES', 'NO').required(),
+    availability: joi_1.default.string().valid('YES', 'NO').default("YES").optional(),
     standardPriceRange: joi_1.default.string().required(),
     mediumPriceRange: joi_1.default.string().required(),
     premiumPriceRange: joi_1.default.string().required(),

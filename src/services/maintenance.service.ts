@@ -77,7 +77,7 @@ class MaintenanceService {
   }
 
   createMaintenance = async (maintenanceData: MaintenanceIF) => {
-    const { subcategoryIds, tenantId, serviceId, categoryId, propertyId, ...rest } = maintenanceData;
+    const { subcategoryIds, tenantId, landlordId, serviceId, categoryId, propertyId, ...rest } = maintenanceData;
 
     if (subcategoryIds) {
       // Verify that all subcategory IDs exist
@@ -104,21 +104,26 @@ class MaintenanceService {
       category: {
         connect: { id: categoryId },
       },
-      services: {
-        connect: {
-          id: serviceId
+      services: serviceId
+        ? {
+          connect: { id: serviceId },
         }
-      },
-      tenant: {
-        connect: {
-          id: tenantId
+        : undefined,
+      tenant: tenantId
+        ? {
+          connect: { id: tenantId },
         }
-      },
-      property: {
-        connect: {
-          id: propertyId
+        : undefined,
+      landlord: landlordId
+        ? {
+          connect: { id: landlordId },
         }
-      }
+        : undefined,
+      property: propertyId
+        ? {
+          connect: { id: propertyId },
+        }
+        : undefined,
     }
 
     return await prismaClient.maintenance.create({
@@ -224,7 +229,7 @@ class MaintenanceService {
     return maintenance?.vendorId !== null;
   }
 
-  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string, isActive: boolean = true ) => {
+  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string, isActive: boolean = true) => {
     return await prismaClient.maintenanceWhitelist.findFirst({
       where: {
         landlordId,

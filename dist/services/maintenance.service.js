@@ -80,7 +80,7 @@ class MaintenanceService {
             });
         });
         this.createMaintenance = (maintenanceData) => __awaiter(this, void 0, void 0, function* () {
-            const { subcategoryIds, tenantId, serviceId, categoryId, propertyId } = maintenanceData, rest = __rest(maintenanceData, ["subcategoryIds", "tenantId", "serviceId", "categoryId", "propertyId"]);
+            const { subcategoryIds, tenantId, landlordId, serviceId, categoryId, propertyId } = maintenanceData, rest = __rest(maintenanceData, ["subcategoryIds", "tenantId", "landlordId", "serviceId", "categoryId", "propertyId"]);
             if (subcategoryIds) {
                 // Verify that all subcategory IDs exist
                 const existingSubcategories = yield __1.prismaClient.subCategory.findMany({
@@ -98,19 +98,23 @@ class MaintenanceService {
                     connect: subcategoryIds.map(id => ({ id })),
                 } : undefined, category: {
                     connect: { id: categoryId },
-                }, services: {
-                    connect: {
-                        id: serviceId
+                }, services: serviceId
+                    ? {
+                        connect: { id: serviceId },
                     }
-                }, tenant: {
-                    connect: {
-                        id: tenantId
+                    : undefined, tenant: tenantId
+                    ? {
+                        connect: { id: tenantId },
                     }
-                }, property: {
-                    connect: {
-                        id: propertyId
+                    : undefined, landlord: landlordId
+                    ? {
+                        connect: { id: landlordId },
                     }
-                } });
+                    : undefined, property: propertyId
+                    ? {
+                        connect: { id: propertyId },
+                    }
+                    : undefined });
             return yield __1.prismaClient.maintenance.create({
                 data: createData,
                 include: this.inclusion,

@@ -76,7 +76,7 @@ class LandlordMaintenanceService {
                         landlordId
                     }
                 },
-                data: Object.assign(Object.assign({}, (status && { status: status })), { isDeleted: false }),
+                data: Object.assign(Object.assign({}, (status && { landlordDecision: status })), { isDeleted: false }),
                 include: Object.assign({ landlord: true, tenant: true }, this.inclusion),
             });
         });

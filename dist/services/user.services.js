@@ -25,6 +25,7 @@ const nextkin_services_1 = __importDefault(require("../services/nextkin.services
 const personaldetails_services_1 = __importDefault(require("../services/personaldetails.services"));
 class UserService {
     constructor() {
+        // cm641qu2d00003wf057tudib7
         this.checkexistance = (obj) => __awaiter(this, void 0, void 0, function* () {
             const user = yield __1.prismaClient.users.findFirst({
                 where: Object.assign({}, obj),
