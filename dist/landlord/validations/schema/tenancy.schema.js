@@ -43,6 +43,7 @@ exports.tenantSchema = joi_1.default.object({
     taxPayerId: joi_1.default.string().required(),
     taxType: joi_1.default.string().required(),
     title: joi_1.default.string().required(),
+    invited: joi_1.default.string().valid("YES", "NO").optional(),
     nationality: joi_1.default.string().required(),
     identificationType: joi_1.default.string().required(),
     issuingAuthority: joi_1.default.string().required(),
@@ -50,6 +51,7 @@ exports.tenantSchema = joi_1.default.object({
         'date.base': 'Expiry date must be a valid date in ISO 8601 format (YYYY-MM-DD).',
     }),
     // Guarantor Information
+    guarantorId: joi_1.default.string().optional(),
     guarantorFullname: joi_1.default.string().required(),
     guarantorPhoneNumber: joi_1.default.string().required(),
     guarantorEmail: joi_1.default.string().required(),
@@ -90,10 +92,12 @@ exports.tenantSchema = joi_1.default.object({
     employerPhone: joi_1.default.string().required(),
     positionTitle: joi_1.default.string().optional(),
     // Emergency Information
+    emergencyInfoId: joi_1.default.string().optional(),
     emergencyPhoneNumber: joi_1.default.string().optional(),
     emergencyEmail: joi_1.default.string().optional(),
     emergencyAddress: joi_1.default.string().optional(),
     // Referees Information
+    refereeId: joi_1.default.string().optional(),
     refereeProfessionalReferenceName: joi_1.default.string().required(),
     refereePersonalReferenceName: joi_1.default.string().required(),
     refereePersonalEmail: joi_1.default.string().required(),

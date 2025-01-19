@@ -86,6 +86,7 @@ class ApplicantControls {
             }
         });
         // done
+        // creating an application 
         this.createOrUpdateApplicantBioData = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const userId = String(req.user.id);
@@ -94,11 +95,11 @@ class ApplicantControls {
                 const propertyExist = yield propertyServices_1.default.getPropertiesById(propertiesId);
                 if (!propertyExist)
                     return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
-                const { error } = schemas_1.applicantPersonalDetailsSchema.validate(req.body);
+                const { error, value } = schemas_1.applicantPersonalDetailsSchema.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                const application = yield applicantService_1.default.createOrUpdatePersonalDetails(Object.assign(Object.assign({}, req.body), { userId }), propertiesId, userId);
+                const application = yield applicantService_1.default.createApplication(Object.assign(Object.assign({}, value), { userId }), propertiesId, userId);
                 return res.status(201).json({ application });
             }
             catch (error) {
@@ -122,7 +123,7 @@ class ApplicantControls {
                 if (isCompletd) {
                     return res.status(400).json({ error: "application completed" });
                 }
-                const application = yield applicantService_1.default.createOrUpdateGuarantor(Object.assign(Object.assign({}, req.body), { applicationId }));
+                const application = yield applicantService_1.default.createOrUpdateGuarantor(Object.assign(Object.assign({}, req.body), { applicationId, userId }));
                 return res.status(201).json({ application });
             }
             catch (error) {
@@ -133,6 +134,7 @@ class ApplicantControls {
         this.createOrUpdateEmergencyContact = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const applicationId = req.params.applicationId;
+                const userId = req.user.id;
                 const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
                 if (!existingApplication) {
                     return res.status(400).json({ error: "wrong application id supplied" });
@@ -141,11 +143,11 @@ class ApplicantControls {
                 if (isCompletd) {
                     return res.status(400).json({ error: "application completed" });
                 }
-                const { error } = schemas_1.emergencyContactSchema.validate(req.body);
+                const { error, value } = schemas_1.emergencyContactSchema.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                const application = yield applicantService_1.default.createOrUpdateEmergencyContact(Object.assign(Object.assign({}, req.body), { applicationId }));
+                const application = yield applicantService_1.default.createOrUpdateEmergencyContact(Object.assign(Object.assign({}, value), { userId, applicationId }));
                 return res.status(201).json({ application });
             }
             catch (error) {
@@ -156,6 +158,7 @@ class ApplicantControls {
         this.createOrUpdateRefree = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const applicationId = req.params.applicationId;
+                const userId = req.user.id;
                 const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
                 if (!existingApplication) {
                     return res.status(400).json({ error: "wrong application id supplied" });
@@ -168,7 +171,7 @@ class ApplicantControls {
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                const referee = yield applicantService_1.default.createOrUpdateReferees(Object.assign(Object.assign({}, value), { applicationId }));
+                const referee = yield applicantService_1.default.createOrUpdateReferees(Object.assign(Object.assign({}, value), { applicationId, userId }));
                 return res.status(201).json({ referee });
             }
             catch (error) {
@@ -219,6 +222,7 @@ class ApplicantControls {
                     return res.status(400).json({ error: error.details[0].message });
                 }
                 const applicationId = req.params.applicationId;
+                const userId = req.user.id;
                 const data = req.body;
                 const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
                 if (!existingApplication) {
@@ -228,7 +232,7 @@ class ApplicantControls {
                 if (isCompletd) {
                     return res.status(400).json({ error: "application completed" });
                 }
-                const result = yield applicantService_1.default.createOrUpdateResidentialInformation(Object.assign(Object.assign({}, data), { applicationId }));
+                const result = yield applicantService_1.default.createOrUpdateResidentialInformation(Object.assign(Object.assign({}, data), { applicationId, userId }));
                 res.status(200).json(result);
             }
             catch (error) {
@@ -244,6 +248,7 @@ class ApplicantControls {
                     return res.status(400).json({ error: error.details[0].message });
                 }
                 const applicationId = req.params.applicationId;
+                const userId = req.user.id;
                 const data = req.body;
                 const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
                 if (!existingApplication) {
@@ -253,7 +258,7 @@ class ApplicantControls {
                 if (isCompletd) {
                     return res.status(400).json({ error: "application completed" });
                 }
-                const employmentInformation = yield applicantService_1.default.createOrUpdateEmploymentInformation(Object.assign(Object.assign({}, data), { applicationId }));
+                const employmentInformation = yield applicantService_1.default.createOrUpdateEmploymentInformation(Object.assign(Object.assign({}, data), { applicationId, userId }));
                 return res.status(200).json(employmentInformation);
             }
             catch (err) {

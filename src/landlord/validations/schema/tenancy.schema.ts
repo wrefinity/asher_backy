@@ -41,6 +41,7 @@ export const tenantSchema = Joi.object({
   taxPayerId: Joi.string().required(),
   taxType: Joi.string().required(),
   title: Joi.string().required(),
+  invited: Joi.string().valid("YES","NO").optional(),
 
   nationality: Joi.string().required(),
   identificationType: Joi.string().required(),
@@ -50,6 +51,7 @@ export const tenantSchema = Joi.object({
   }),
 
   // Guarantor Information
+  guarantorId: Joi.string().optional(),
   guarantorFullname: Joi.string().required(),
   guarantorPhoneNumber: Joi.string().required(),
   guarantorEmail: Joi.string().required(),
@@ -94,11 +96,13 @@ export const tenantSchema = Joi.object({
   positionTitle: Joi.string().optional(),
 
   // Emergency Information
+  emergencyInfoId:Joi.string().optional(), 
   emergencyPhoneNumber: Joi.string().optional(),
   emergencyEmail: Joi.string().optional(),
   emergencyAddress: Joi.string().optional(),
 
   // Referees Information
+  refereeId: Joi.string().optional(),
   refereeProfessionalReferenceName: Joi.string().required(),
   refereePersonalReferenceName: Joi.string().required(),
   refereePersonalEmail: Joi.string().required(),

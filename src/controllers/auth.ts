@@ -140,20 +140,32 @@ class AuthControls {
 
 
     login = async (req: Request, res: Response) => {
-        const { email } = req.body;
 
         try {
-            const { error } = LoginSchema.validate(req.body);
+            const { error, value } = LoginSchema.validate(req.body);
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
-            
-            let user = await UserServices.findUserByEmail(email);
-            if (!user) {
-                return res.status(400).json({ message: "User does not exist" });
+            const { email, tenantCode } = value;
+            // Ensure at least one identifier is provided
+            if (!email && !tenantCode) {
+                return res.status(400).json({ message: "Email or tenant code is required." });
             }
-            if (!compareSync(req.body.password, user.password!)) {
-                return res.status(400).json({ message: "Invalid login credentials" });
+
+            // Find user by email or tenantCode
+            let user = null;
+            if (email) {
+                user = await UserServices.findUserByEmail(email);
+            }
+            if (!user && tenantCode) {
+                user = await UserServices.findUserByTenantCode(tenantCode);
+            }
+            if (!user) {
+                return res.status(404).json({ message: "User does not exist." });
+            }
+            // Verify password
+            if (!user.password || !compareSync(value.password, user.password)) {
+                return res.status(400).json({ message: "Invalid login credentials." });
             }
 
             if (!user.isVerified) {
@@ -163,8 +175,13 @@ class AuthControls {
 
             const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
 
-            const { password, id, ...userDetails } = user;
-            return res.status(200).json({ message: "User logged in successfully", token, userDetails });
+            // Exclude sensitive fields and return user details
+            const { password: _, id: __, ...userDetails } = user;
+            return res.status(200).json({
+                message: "User logged in successfully.",
+                token,
+                userDetails,
+            });
         } catch (error: unknown) {
             ErrorService.handleError(error, res)
         }

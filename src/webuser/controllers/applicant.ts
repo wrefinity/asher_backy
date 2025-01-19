@@ -92,6 +92,7 @@ class ApplicantControls {
     }
   }
   // done
+  // creating an application 
   createOrUpdateApplicantBioData = async (req: CustomRequest, res: Response) => {
     try {
       const userId = String(req.user.id);
@@ -100,11 +101,11 @@ class ApplicantControls {
       const propertyExist = await PropertyServices.getPropertiesById(propertiesId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
 
-      const { error } = applicantPersonalDetailsSchema.validate(req.body);
+      const { error, value} = applicantPersonalDetailsSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
-      const application = await ApplicantService.createOrUpdatePersonalDetails({ ...req.body, userId }, propertiesId, userId);
+      const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
@@ -131,7 +132,7 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const application = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId });
+      const application = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId, userId });
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
@@ -141,6 +142,7 @@ class ApplicantControls {
   createOrUpdateEmergencyContact = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
+      const userId = req.user.id;
 
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
@@ -150,12 +152,12 @@ class ApplicantControls {
       if (isCompletd) {
         return res.status(400).json({ error: "application completed" });
       }
-      const { error } = emergencyContactSchema.validate(req.body);
+      const { error, value } = emergencyContactSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      const application = await ApplicantService.createOrUpdateEmergencyContact({ ...req.body, applicationId });
+      const application = await ApplicantService.createOrUpdateEmergencyContact({ ...value, userId, applicationId });
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res);
@@ -165,6 +167,7 @@ class ApplicantControls {
   createOrUpdateRefree = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
+      const userId = req.user.id;
 
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
@@ -179,7 +182,7 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      const referee = await ApplicantService.createOrUpdateReferees({ ...value, applicationId });
+      const referee = await ApplicantService.createOrUpdateReferees({ ...value, applicationId, userId });
       return res.status(201).json({ referee });
     } catch (error: unknown) {
       ErrorService.handleError(error, res);
@@ -233,6 +236,7 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
       const applicationId = req.params.applicationId;
+      const userId = req.user.id;
       const data = req.body;
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
@@ -243,7 +247,7 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const result = await ApplicantService.createOrUpdateResidentialInformation({ ...data, applicationId });
+      const result = await ApplicantService.createOrUpdateResidentialInformation({ ...data, applicationId, userId });
       res.status(200).json(result);
     } catch (error) {
       ErrorService.handleError(error, res);
@@ -260,6 +264,7 @@ class ApplicantControls {
       }
 
       const applicationId = req.params.applicationId;
+      const userId = req.user.id;
       const data = req.body;
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
@@ -270,7 +275,7 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const employmentInformation = await ApplicantService.createOrUpdateEmploymentInformation({ ...data, applicationId });
+      const employmentInformation = await ApplicantService.createOrUpdateEmploymentInformation({ ...data, applicationId, userId});
       return res.status(200).json(employmentInformation);
     } catch (err) {
       ErrorService.handleError(err, res);

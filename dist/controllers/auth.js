@@ -136,26 +136,43 @@ class AuthControls {
             }
         });
         this.login = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const { email } = req.body;
             try {
-                const { error } = auth_1.LoginSchema.validate(req.body);
+                const { error, value } = auth_1.LoginSchema.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                let user = yield user_services_1.default.findUserByEmail(email);
-                if (!user) {
-                    return res.status(400).json({ message: "User does not exist" });
+                const { email, tenantCode } = value;
+                // Ensure at least one identifier is provided
+                if (!email && !tenantCode) {
+                    return res.status(400).json({ message: "Email or tenant code is required." });
                 }
-                if (!(0, bcrypt_1.compareSync)(req.body.password, user.password)) {
-                    return res.status(400).json({ message: "Invalid login credentials" });
+                // Find user by email or tenantCode
+                let user = null;
+                if (email) {
+                    user = yield user_services_1.default.findUserByEmail(email);
+                }
+                if (!user && tenantCode) {
+                    user = yield user_services_1.default.findUserByTenantCode(tenantCode);
+                }
+                if (!user) {
+                    return res.status(404).json({ message: "User does not exist." });
+                }
+                // Verify password
+                if (!user.password || !(0, bcrypt_1.compareSync)(value.password, user.password)) {
+                    return res.status(400).json({ message: "Invalid login credentials." });
                 }
                 if (!user.isVerified) {
                     yield this.verificationTokenCreator(user.id, email);
                     return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
                 }
                 const token = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
-                const { password, id } = user, userDetails = __rest(user, ["password", "id"]);
-                return res.status(200).json({ message: "User logged in successfully", token, userDetails });
+                // Exclude sensitive fields and return user details
+                const { password: _, id: __ } = user, userDetails = __rest(user, ["password", "id"]);
+                return res.status(200).json({
+                    message: "User logged in successfully.",
+                    token,
+                    userDetails,
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

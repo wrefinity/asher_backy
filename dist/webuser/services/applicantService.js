@@ -26,6 +26,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("../..");
 const client_1 = require("@prisma/client");
 const user_services_1 = __importDefault(require("../../services/user.services"));
+const emergencyinfo_services_1 = __importDefault(require("../../services/emergencyinfo.services"));
+const guarantor_services_1 = __importDefault(require("../../services/guarantor.services"));
+const referees_services_1 = __importDefault(require("../../services/referees.services"));
+const residentialinfo_services_1 = __importDefault(require("../../services/residentialinfo.services"));
+const employmentinfo_services_1 = __importDefault(require("../../services/employmentinfo.services"));
+const personaldetails_services_1 = __importDefault(require("../../services/personaldetails.services"));
+const nextkin_services_1 = __importDefault(require("../../services/nextkin.services"));
 class ApplicantService {
     constructor() {
         this.incrementStepCompleted = (applicationId, newField) => __awaiter(this, void 0, void 0, function* () {
@@ -84,14 +91,16 @@ class ApplicantService {
                 });
             }
         });
-        this.createOrUpdatePersonalDetails = (data, propertiesId, userId) => __awaiter(this, void 0, void 0, function* () {
+        this.createApplication = (data, propertiesId, userId) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate, } = data;
             const nextOfKinData = {
+                id: nextOfKin === null || nextOfKin === void 0 ? void 0 : nextOfKin.id,
                 firstName: nextOfKin.firstName,
                 lastName: nextOfKin.lastName,
                 relationship: nextOfKin.relationship,
                 email: nextOfKin.email,
+                userId: userId,
                 phoneNumber: nextOfKin.phoneNumber,
                 middleName: nextOfKin.middleName || null,
             };
@@ -99,9 +108,7 @@ class ApplicantService {
             // If an existing nextOfKin ID is provided, use it
             if (nextOfKin.id) {
                 // Check if the provided nextOfKin ID exists in the database
-                const existingNextOfKin = yield __1.prismaClient.nextOfKin.findUnique({
-                    where: { id: nextOfKin.id },
-                });
+                const existingNextOfKin = yield nextkin_services_1.default.getNextOfKinById(nextOfKin.id);
                 if (!existingNextOfKin) {
                     throw new Error("Next of Kin not found with the provided ID");
                 }
@@ -110,9 +117,7 @@ class ApplicantService {
             }
             else {
                 // Otherwise, create nextOfKin
-                const upsertedNextOfKin = yield __1.prismaClient.nextOfKin.create({
-                    data: Object.assign(Object.assign({}, nextOfKinData), { user: { connect: { id: userId } } }),
-                });
+                const upsertedNextOfKin = yield nextkin_services_1.default.upsertNextOfKinInfo(Object.assign({}, nextOfKinData));
                 nextOfKinId = upsertedNextOfKin.id;
             }
             // Prepare personal details data
@@ -131,9 +136,7 @@ class ApplicantService {
                 expiryDate
             };
             // Check if applicantPersonalDetails already exist by email
-            const existingPersonalDetails = yield __1.prismaClient.applicantPersonalDetails.findUnique({
-                where: { email },
-            });
+            const existingPersonalDetails = yield personaldetails_services_1.default.getApplicantPersonalDetailsByEmail(email);
             let upsertedPersonalDetails;
             if (!existingPersonalDetails) {
                 // Create new record if not found
@@ -172,16 +175,12 @@ class ApplicantService {
             return app;
         });
         this.createOrUpdateGuarantor = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
-            const guarantorInfo = yield __1.prismaClient.guarantorInformation.upsert({
-                where: { id: id !== null && id !== void 0 ? id : '' },
-                update: rest,
-                create: Object.assign({ id }, rest),
-            });
+            const { id, applicationId, userId } = data, rest = __rest(data, ["id", "applicationId", "userId"]);
+            const guarantorInfo = yield guarantor_services_1.default.upsertGuarantorInfo(Object.assign(Object.assign({}, rest), { id, userId }));
             // Find the application associated with the guarantor
             yield __1.prismaClient.application.findUnique({
                 where: { id: applicationId },
-                include: { guarantorInformation: true }, // Include the current guarantor information
+                include: { guarantorInformation: true },
             });
             // Update the application with the new or updated guarantor information
             const updatedApplication = yield __1.prismaClient.application.update({
@@ -196,13 +195,9 @@ class ApplicantService {
             return Object.assign(Object.assign({}, guarantorInfo), updatedApplication);
         });
         this.createOrUpdateEmergencyContact = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
+            const { applicationId, id, userId } = data, rest = __rest(data, ["applicationId", "id", "userId"]);
             // Upsert the emergency contact information
-            const emergencyInfo = yield __1.prismaClient.emergencyContact.upsert({
-                where: { id: id !== null && id !== void 0 ? id : '' },
-                update: rest,
-                create: Object.assign({ id }, rest),
-            });
+            const emergencyInfo = yield emergencyinfo_services_1.default.upsertEmergencyContact(Object.assign(Object.assign({}, rest), { id, userId }));
             // Update the application with the new or updated emergency contact information
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
@@ -218,11 +213,7 @@ class ApplicantService {
         this.createOrUpdateReferees = (data) => __awaiter(this, void 0, void 0, function* () {
             const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
             // Upsert the emergency contact information
-            const refereesInfo = yield __1.prismaClient.referees.upsert({
-                where: { id: id !== null && id !== void 0 ? id : '' },
-                update: rest,
-                create: Object.assign({ id }, rest),
-            });
+            const refereesInfo = yield referees_services_1.default.upsertRefereeInfo(Object.assign(Object.assign({}, rest), { id }));
             // Update the application with the new or updated referee information
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
@@ -263,45 +254,10 @@ class ApplicantService {
             yield this.incrementStepCompleted(applicationId, "documents");
             return Object.assign(Object.assign({}, docInfo), updatedApplication);
         });
-        this.createOrUpdatePrevAddresses = (prevAddressesInput) => __awaiter(this, void 0, void 0, function* () {
-            const prevAddresses = yield Promise.all(prevAddressesInput.map((input) => __awaiter(this, void 0, void 0, function* () {
-                const { id } = input, rest = __rest(input, ["id"]);
-                return yield __1.prismaClient.prevAddress.upsert({
-                    where: { id: id !== null && id !== void 0 ? id : '' },
-                    update: rest,
-                    create: rest,
-                });
-            })));
-            return prevAddresses;
-        });
         this.createOrUpdateResidentialInformation = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { id, prevAddresses, userId, applicationId } = data, rest = __rest(data, ["id", "prevAddresses", "userId", "applicationId"]);
-            let resInfo = null;
-            if (prevAddresses && prevAddresses.length > 0) {
-                // Create or update prevAddresses and collect their IDs
-                const prevAddressesRes = yield this.createOrUpdatePrevAddresses(prevAddresses);
-                const prevAddressesConnect = prevAddressesRes.map((prevAddress) => ({
-                    id: prevAddress.id,
-                }));
-                // Upsert residentialInformation with prevAddresses connected
-                resInfo = yield __1.prismaClient.residentialInformation.upsert({
-                    where: { id: id !== null && id !== void 0 ? id : '' },
-                    update: Object.assign(Object.assign({}, rest), { prevAddresses: {
-                            set: prevAddressesConnect,
-                        } }),
-                    create: Object.assign(Object.assign({}, rest), { prevAddresses: {
-                            connect: prevAddressesConnect,
-                        } }),
-                });
-            }
-            else {
-                // No prevAddresses provided, directly upsert residentialInformation
-                resInfo = yield __1.prismaClient.residentialInformation.upsert({
-                    where: { id: id !== null && id !== void 0 ? id : '' },
-                    update: rest,
-                    create: rest,
-                });
-            }
+            const { userId, applicationId } = data, rest = __rest(data, ["userId", "applicationId"]);
+            // Upsert residentialInformation with prevAddresses connected
+            let resInfo = yield residentialinfo_services_1.default.upsertResidentialInformation(Object.assign(Object.assign({}, rest), { userId }));
             // Update the application with the new or updated residential info
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
@@ -315,16 +271,8 @@ class ApplicantService {
             return Object.assign(Object.assign({}, resInfo), updatedApplication);
         });
         this.createOrUpdateEmploymentInformation = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
-            const empInfo = yield __1.prismaClient.employmentInformation.upsert({
-                where: { id: id !== null && id !== void 0 ? id : '' },
-                update: Object.assign(Object.assign({}, rest), { application: {
-                        connect: { id: applicationId },
-                    } }),
-                create: Object.assign(Object.assign({}, rest), { application: {
-                        connect: { id: applicationId },
-                    } }),
-            });
+            const { id, applicationId, userId } = data, rest = __rest(data, ["id", "applicationId", "userId"]);
+            const empInfo = yield employmentinfo_services_1.default.upsertEmploymentInfo(Object.assign(Object.assign({}, rest), { id, userId }));
             if (!empInfo) {
                 throw new Error(`Failed to create or update EmploymentInformation`);
             }

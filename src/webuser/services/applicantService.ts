@@ -1,6 +1,13 @@
 import { prismaClient } from "../..";
 import { ApplicationStatus, userRoles } from '@prisma/client';
 import userServices from "../../services/user.services";
+import EmergencyinfoServices from "../../services/emergencyinfo.services";
+import GuarantorServices from "../../services/guarantor.services";
+import RefereesServices from "../../services/referees.services";
+import ResidentialinfoServices from "../../services/residentialinfo.services";
+import EmploymentinfoServices from "../../services/employmentinfo.services";
+import PersonaldetailsServices from "../../services/personaldetails.services";
+import NextkinServices from "../../services/nextkin.services";
 import {
   RefreeIF,
   NextOfKinIF,
@@ -9,7 +16,6 @@ import {
   EmergencyContactIF,
   AppDocumentIF,
   ResidentialInformationIF,
-  PrevAddressIF,
   EmploymentInformationIF
 } from "../schemas/types"
 
@@ -70,7 +76,7 @@ class ApplicantService {
     }
   };
 
-  createOrUpdatePersonalDetails = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
+  createApplication = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
     const { 
       title, 
       firstName, 
@@ -88,22 +94,24 @@ class ApplicantService {
       expiryDate,
     } = data;
     const nextOfKinData: NextOfKinIF = {
+      id: nextOfKin?.id,
       firstName: nextOfKin.firstName,
       lastName: nextOfKin.lastName,
       relationship: nextOfKin.relationship,
       email: nextOfKin.email,
+      userId: userId,
       phoneNumber: nextOfKin.phoneNumber,
       middleName: nextOfKin.middleName || null,
     };
+
+    
 
     let nextOfKinId: string;
 
     // If an existing nextOfKin ID is provided, use it
     if (nextOfKin.id) {
       // Check if the provided nextOfKin ID exists in the database
-      const existingNextOfKin = await prismaClient.nextOfKin.findUnique({
-        where: { id: nextOfKin.id },
-      });
+      const existingNextOfKin = await NextkinServices.getNextOfKinById(nextOfKin.id);
 
       if (!existingNextOfKin) {
         throw new Error("Next of Kin not found with the provided ID");
@@ -113,11 +121,8 @@ class ApplicantService {
       nextOfKinId = existingNextOfKin.id;
     } else {
       // Otherwise, create nextOfKin
-      const upsertedNextOfKin = await prismaClient.nextOfKin.create({
-        data: {
-          ...nextOfKinData,
-          user: { connect: { id: userId } },
-        },
+      const upsertedNextOfKin = await NextkinServices.upsertNextOfKinInfo({
+          ...nextOfKinData  
       });
       nextOfKinId = upsertedNextOfKin.id;
     }
@@ -139,9 +144,7 @@ class ApplicantService {
     };
 
     // Check if applicantPersonalDetails already exist by email
-    const existingPersonalDetails = await prismaClient.applicantPersonalDetails.findUnique({
-      where: { email },
-    });
+    const existingPersonalDetails = await PersonaldetailsServices.getApplicantPersonalDetailsByEmail(email );
 
     let upsertedPersonalDetails;
     if (!existingPersonalDetails) {
@@ -190,16 +193,12 @@ class ApplicantService {
   };
 
   createOrUpdateGuarantor = async (data: GuarantorInformationIF) => {
-    const { id, applicationId, ...rest } = data;
-    const guarantorInfo = await prismaClient.guarantorInformation.upsert({
-      where: { id: id ?? '' },
-      update: rest,
-      create: { id, ...rest },
-    });
+    const { id, applicationId, userId, ...rest } = data;
+    const guarantorInfo = await GuarantorServices.upsertGuarantorInfo({...rest, id, userId});
     // Find the application associated with the guarantor
     await prismaClient.application.findUnique({
       where: { id: applicationId },
-      include: { guarantorInformation: true }, // Include the current guarantor information
+      include: { guarantorInformation: true }, 
     });
 
     // Update the application with the new or updated guarantor information
@@ -216,14 +215,10 @@ class ApplicantService {
   }
 
   createOrUpdateEmergencyContact = async (data: EmergencyContactIF) => {
-    const { id, applicationId, ...rest } = data;
+    const { applicationId, id, userId, ...rest } = data;
 
     // Upsert the emergency contact information
-    const emergencyInfo = await prismaClient.emergencyContact.upsert({
-      where: { id: id ?? '' },
-      update: rest,
-      create: { id, ...rest },
-    });
+    const emergencyInfo = await EmergencyinfoServices.upsertEmergencyContact({...rest, id, userId});
 
     // Update the application with the new or updated emergency contact information
     const updatedApplication = await prismaClient.application.update({
@@ -241,11 +236,7 @@ class ApplicantService {
     const { id, applicationId, ...rest } = data;
 
     // Upsert the emergency contact information
-    const refereesInfo = await prismaClient.referees.upsert({
-      where: { id: id ?? '' },
-      update: rest,
-      create: { id, ...rest },
-    });
+    const refereesInfo = await RefereesServices.upsertRefereeInfo({ ...rest, id });
 
     // Update the application with the new or updated referee information
     const updatedApplication = await prismaClient.application.update({
@@ -296,54 +287,12 @@ class ApplicantService {
     return { ...docInfo, ...updatedApplication };
   }
 
-  createOrUpdatePrevAddresses = async (prevAddressesInput: PrevAddressIF[]) => {
-    const prevAddresses = await Promise.all(prevAddressesInput.map(async (input) => {
-      const { id, ...rest } = input;
-      return await prismaClient.prevAddress.upsert({
-        where: { id: id ?? '' },
-        update: rest,
-        create: rest,
-      });
-    }));
-    return prevAddresses;
-  }
 
   createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {
-    const { id, prevAddresses, userId, applicationId, ...rest } = data;
-
-    let resInfo = null;
-    if (prevAddresses && prevAddresses.length > 0) {
-      // Create or update prevAddresses and collect their IDs
-      const prevAddressesRes = await this.createOrUpdatePrevAddresses(prevAddresses);
-      const prevAddressesConnect = prevAddressesRes.map((prevAddress) => ({
-        id: prevAddress.id,
-      }));
-
-      // Upsert residentialInformation with prevAddresses connected
-      resInfo = await prismaClient.residentialInformation.upsert({
-        where: { id: id ?? '' },
-        update: {
-          ...rest,
-          prevAddresses: {
-            set: prevAddressesConnect,
-          },
-        },
-        create: {
-          ...rest,
-          prevAddresses: {
-            connect: prevAddressesConnect,
-          },
-        },
-      });
-    } else {
-      // No prevAddresses provided, directly upsert residentialInformation
-      resInfo = await prismaClient.residentialInformation.upsert({
-        where: { id: id ?? '' },
-        update: rest,
-        create: rest,
-      });
-    }
-
+    const { userId, applicationId, ...rest } = data;
+    // Upsert residentialInformation with prevAddresses connected
+    let resInfo = await ResidentialinfoServices.upsertResidentialInformation({...rest, userId});
+    
     // Update the application with the new or updated residential info
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
@@ -358,26 +307,11 @@ class ApplicantService {
   }
 
   createOrUpdateEmploymentInformation = async (data: EmploymentInformationIF) => {
-    const { id, applicationId, ...rest } = data;
-    const empInfo = await prismaClient.employmentInformation.upsert({
-      where: { id: id ?? '' },
-      update: {
-        ...rest,
-        application: {
-          connect: { id: applicationId },
-        },
-      },
-      create: {
-        ...rest,
-        application: {
-          connect: { id: applicationId },
-        },
-      },
-    });
+    const { id, applicationId, userId, ...rest } = data;
+    const empInfo = await EmploymentinfoServices.upsertEmploymentInfo({...rest, id, userId});
     if (!empInfo) {
       throw new Error(`Failed to create or update EmploymentInformation`);
     }
-
     // Update the application with the new or employemnt infor
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },

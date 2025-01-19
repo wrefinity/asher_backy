@@ -4,7 +4,8 @@ import { profileSchema } from '../schemas/profile';
 
 export const LoginSchema = Joi.object({
   password: Joi.string().required(),
-  email: Joi.string().email().required(),
+  email: Joi.string().email().optional(),
+  tenantCode: Joi.string().optional(),
 });
 
 

@@ -242,6 +242,18 @@ model users {
   applicationCreatedBy application[] @relation("createdBy")
 
   applicationUpdatedBy application[] @relation("updatedBy")
+
+  guarantorInformation guarantorInformation[]
+
+  emergencyContact emergencyContact[]
+
+  referees referees[]
+
+  document document[]
+
+  EmploymentInformation EmploymentInformation[]
+
+  applicantPersonalDetails applicantPersonalDetails[]
 }
 
 model creditScore {

@@ -1,6 +1,6 @@
 interface BaseIF {
   id?: string | null;
-  applicationId: string;
+  applicationId?: string;
 }
 export interface NextOfKinIF {
   id?: string | null;
@@ -10,7 +10,11 @@ export interface NextOfKinIF {
   email: string;
   phoneNumber: string;
   middleName?: string | null;
+  userId: string;
+  applicantPersonalDetailsId?: string | null;
 }
+
+
 
 export interface ApplicantPersonalDetailsIF {
   id?: string | null;
@@ -23,12 +27,13 @@ export interface ApplicantPersonalDetailsIF {
   email?: string;
   phoneNumber: string;
   maritalStatus: string;
-  nextOfKin?: NextOfKinIF;
+  nextOfKin?: NextOfKinIF | null;
   nationality: string,
   identificationType?: string,
   identificationNo?: string,
   issuingAuthority: string,
   expiryDate: Date
+  userId?: string | null;  
 }
 
 
@@ -42,14 +47,18 @@ export interface GuarantorInformationIF extends BaseIF {
   identificationNo: string,
   monthlyIncome: string,
   employerName: string,
+  userId: string | null;
 }
 
 export interface EmergencyContactIF extends BaseIF {
+  id?: string;
   fullname: string;
   phoneNumber: string;
   email: string;
   address: string;
+  userId?: string;
 }
+
 export interface RefreeIF extends BaseIF {
   professionalReferenceName: string;
   personalReferenceName: string;
@@ -59,6 +68,7 @@ export interface RefreeIF extends BaseIF {
   professionalPhoneNumber: string;
   personalRelationship: string;
   professionalRelationship: string;
+  userId?: string | null
 }
 export interface AppDocumentIF extends BaseIF {
   documentName: string;
@@ -113,4 +123,5 @@ export interface EmploymentInformationIF extends BaseIF {
   employerEmail?: string | null;
   employerPhone?: string | null;
   positionTitle?: string | null;
+  userId: string | null;
 }

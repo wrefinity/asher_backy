@@ -5,7 +5,12 @@ import loggers from "../utils/loggers";
 import { userRoles, ApplicationStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import ApplicantService from "../webuser/services/applicantService";
-
+import GuarantorService from "../services/guarantor.services"
+import RefereeService from "../services/referees.services"
+import EmergencyContactService from "../services/emergencyinfo.services"
+import EmploymentService from "../services/employmentinfo.services"
+import NextOfKinService from "../services/nextkin.services"
+import ApplicantPersonalDetailsService from "../services/personaldetails.services"
 class UserService {
     protected inclusion;
 
@@ -53,6 +58,19 @@ class UserService {
         return user
     }
 
+    findUserByTenantCode = async (tenantCode: string) => {
+        return await prismaClient.users.findFirst({
+            where: {
+                tenant: {
+                    tenantCode,
+                },
+            },
+            include: {
+                tenant: true,
+            },
+        });
+    }
+
     findAUserById = async (userId: string) => {
         // Find the user first to check if related entities exist
         const user = await this.checkexistance({ id: String(userId) })
@@ -93,7 +111,7 @@ class UserService {
         return code;
     }
 
-    createUser = async (userData: any, landlordUploads: boolean = false, createdBy:string = null) => {
+    createUser = async (userData: any, landlordUploads: boolean = false, createdBy: string = null) => {
         const newUser = await prismaClient.users.create({
             data: {
                 email: userData?.email,
@@ -173,122 +191,103 @@ class UserService {
                 }
                 if (tenant && landlordUploads) {
                     // create the tenant personal information
-                    const personalDetails = await prismaClient.applicantPersonalDetails.create({
-                        data: {
-                            title: userData?.title,
-                            maritalStatus: userData?.maritalStatus,
-                            phoneNumber: userData?.phoneNumber,
-                            email: userData?.email,
-                            dob: userData?.dateOfBirth,
-                            firstName: userData?.firstName,
-                            lastName: userData?.lastName,
-                            middleName: userData?.middleName,
-                            nationality: userData?.nationality,
-                            identificationType: userData?.identificationType,
-                            issuingAuthority: userData?.issuingAuthority,
-                            expiryDate: userData?.expiryDate,
-                        },
+                    const personalDetails = await ApplicantPersonalDetailsService.upsertApplicantPersonalDetails({
+                        title: userData?.title,
+                        invited: userData?.invited,
+                        maritalStatus: userData?.maritalStatus,
+                        phoneNumber: userData?.phoneNumber,
+                        email: userData?.email,
+                        dob: userData?.dateOfBirth,
+                        firstName: userData?.firstName,
+                        lastName: userData?.lastName,
+                        middleName: userData?.middleName,
+                        nationality: userData?.nationality,
+                        identificationType: userData?.identificationType,
+                        issuingAuthority: userData?.issuingAuthority,
+                        expiryDate: userData?.expiryDate,
+                        userId: newUser.id
                     });
 
-                    // const residentialInfo = await prismaClient.residentialInformation.create({
-                    //     data: {
-                    //       address: userData.address,
-                    //       addressStatus: userData.addressStatus,
-                    //       lengthOfResidence: userData.lengthOfResidence,
-                    //       landlordOrAgencyPhoneNumber: userData.landlordOrAgencyPhoneNumber,
-                    //       landlordOrAgencyEmail: userData.landlordOrAgencyEmail,
-                    //       landlordOrAgencyName: userData.landlordOrAgencyName,
-                    //       userId: newUser.id,
-                    //       prevAddresses:  {
-                    //             create: {
-                    //               address: userData?.prevAddress,
-                    //               lengthOfResidence: userData?.prevAddressLengthOfResidence,
-                    //             },
-                    //           }
-                    //     },
-                    //   });
 
                     // Create guarantorInformation if provided
-                    
-                    let guarantorInfo = await prismaClient.guarantorInformation.create({
-                        data: {
-                            fullName: userData?.guarantorFullname,
-                            phoneNumber: userData?.guarantorPhoneNumber,
-                            email: userData?.guarantorEmail,
-                            address: userData?.guarantorAddress,
-                            relationship: userData?.relationshipToGuarantor,
-                            identificationType: userData?.gauratorIdentificationType,
-                            identificationNo: userData?.gauratorIdentificationNo,
-                            monthlyIncome: userData?.gauratorMonthlyIncome,
-                            employerName: userData?.gauratorEmployerName,
-                        }
+                    const guarantorInfo = await GuarantorService.upsertGuarantorInfo({
+                        id: userData?.guarantorId || null, // Optional ID for update (if provided)
+                        fullName: userData?.guarantorFullname || '', // Default to empty string if not provided
+                        phoneNumber: userData?.guarantorPhoneNumber || '',
+                        email: userData?.guarantorEmail || '',
+                        address: userData?.guarantorAddress || '',
+                        relationship: userData?.relationshipToGuarantor || '',
+                        identificationType: userData?.guarantorIdentificationType || '',
+                        identificationNo: userData?.guarantorIdentificationNo || '',
+                        monthlyIncome: userData?.guarantorMonthlyIncome || null, // Default to null for nullable fields
+                        employerName: userData?.guarantorEmployerName || null,
+                        userId: newUser.id, // Ensure this is valid
                     });
-                    
+
+
                     // Create nextOfKin if provided
-                    await prismaClient.nextOfKin.create({
-                        data: {
-                            lastName: userData?.nextOfKinLastName,
-                            firstName: userData?.nextOfKinFirstName,
-                            relationship: userData?.relationship,
-                            phoneNumber: userData?.nextOfKinPhoneNumber,
-                            email: userData?.nextOfKinEmail,
-                            middleName: userData?.nextOfKinMiddleName,
-                            applicantPersonalDetailsId: personalDetails.id, 
-                            userId: newUser.id
-                        }
+                    await NextOfKinService.upsertNextOfKinInfo({
+                        lastName: userData?.nextOfKinLastName,
+                        firstName: userData?.nextOfKinFirstName,
+                        relationship: userData?.relationship,
+                        phoneNumber: userData?.nextOfKinPhoneNumber,
+                        email: userData?.nextOfKinEmail,
+                        middleName: userData?.nextOfKinMiddleName,
+                        applicantPersonalDetailsId: personalDetails.id,
+                        userId: newUser.id
                     });
+
                     // employement information 
-                    const employmentInfo = await prismaClient.employmentInformation.create({
-                        data: {
-                            employmentStatus: userData?.employmentStatus,
-                            taxCredit: userData?.taxCredit,
-                            zipCode: userData?.employmentZipCode,
-                            address: userData?.employmentAddress,
-                            city: userData?.employmentCity,
-                            state: userData?.employmentState,
-                            country: userData?.employmentCountry,
-                            startDate: userData?.employmentStartDate,
-                            monthlyOrAnualIncome: userData?.monthlyOrAnualIncome,
-                            childBenefit: userData?.childBenefit,
-                            childMaintenance: userData?.childMaintenance,
-                            disabilityBenefit: userData?.disabilityBenefit,
-                            housingBenefit: userData?.housingBenefit,
-                            others: userData?.others,
-                            pension: userData?.pension,
-                            moreDetails: userData?.moreDetails,
-                            employerCompany: userData?.employerCompany,
-                            employerEmail: userData?.employerEmail,
-                            employerPhone: userData?.employerPhone,
-                            positionTitle: userData?.positionTitle
-                        }
-                      });
-                
+                    const employmentInfo = await EmploymentService.upsertEmploymentInfo({
+                        employmentStatus: userData?.employmentStatus,
+                        taxCredit: userData?.taxCredit,
+                        zipCode: userData?.employmentZipCode,
+                        address: userData?.employmentAddress,
+                        city: userData?.employmentCity,
+                        state: userData?.employmentState,
+                        country: userData?.employmentCountry,
+                        startDate: userData?.employmentStartDate,
+                        monthlyOrAnualIncome: userData?.monthlyOrAnualIncome,
+                        childBenefit: userData?.childBenefit,
+                        childMaintenance: userData?.childMaintenance,
+                        disabilityBenefit: userData?.disabilityBenefit,
+                        housingBenefit: userData?.housingBenefit,
+                        others: userData?.others,
+                        pension: userData?.pension,
+                        moreDetails: userData?.moreDetails,
+                        employerCompany: userData?.employerCompany,
+                        employerEmail: userData?.employerEmail,
+                        employerPhone: userData?.employerPhone,
+                        positionTitle: userData?.positionTitle,
+                        userId: newUser.id
+                    });
+
                     // Create emergencyContact
-                    const emergencyInfo = await prismaClient.emergencyContact.create({
-                        data: {
-                            fullname: userData?.lastName + " " + userData?.firstName + " " + (userData?.middleName ? " " + userData.middleName : ""),
-                            phoneNumber: userData?.emergencyPhoneNumber,
-                            email: userData?.emergencyEmail,
-                            address: userData?.emergencyAddress
-                        },
+                    const emergencyInfo = await EmergencyContactService.upsertEmergencyContact({
+                        id: userData?.emergencyInfoId || null,
+                        fullname: userData?.lastName + " " + userData?.firstName + " " + (userData?.middleName ? " " + userData.middleName : ""),
+                        phoneNumber: userData?.emergencyPhoneNumber,
+                        email: userData?.emergencyEmail,
+                        address: userData?.emergencyAddress,
+                        userId: newUser.id
                     });
                     // refrees information
-                    const refreeInfo = await prismaClient.referees.create({
-                        data: {
-                            professionalReferenceName: userData?.refereeProfessionalReferenceName,
-                            personalReferenceName: userData?.refereePersonalReferenceName,
-                            personalEmail: userData?.refereePersonalEmail,
-                            professionalEmail: userData?.refereeProfessionalEmail, 
-                            personalPhoneNumber: userData?.refereePersonalPhoneNumber, 
-                            professionalPhoneNumber: userData?.refereeProfessionalPhoneNumber, 
-                            personalRelationship: userData?.refereePersonalRelationship, 
-                            professionalRelationship: userData?.refereeProfessionalRelationship, 
-                        },
+                    const refreeInfo = await RefereeService.upsertRefereeInfo({
+                        id: userData?.refereeId || null,
+                        professionalReferenceName: userData?.refereeProfessionalReferenceName,
+                        personalReferenceName: userData?.refereePersonalReferenceName,
+                        personalEmail: userData?.refereePersonalEmail,
+                        professionalEmail: userData?.refereeProfessionalEmail,
+                        personalPhoneNumber: userData?.refereePersonalPhoneNumber,
+                        professionalPhoneNumber: userData?.refereeProfessionalPhoneNumber,
+                        personalRelationship: userData?.refereePersonalRelationship,
+                        professionalRelationship: userData?.refereeProfessionalRelationship,
+                        userId: newUser.id
                     });
-                    
+
                     // Update application with tenant info
                     const application = await prismaClient.application.create({
-                        data:{
+                        data: {
                             status: ApplicationStatus.COMPLETED,
                             userId: newUser.id,
                             tenantId: newUser.id,

@@ -83,7 +83,7 @@ model applicantPersonalDetails {
   middleName         String?
   lastName           String
   dob                DateTime
-  email              String        @unique
+  email              String?        @unique
   phoneNumber        String
   maritalStatus      String
   nationality        String?
@@ -92,6 +92,8 @@ model applicantPersonalDetails {
   expiryDate         DateTime
   application        application[]
   nextOfKin          nextOfKin[]
+  user               users?        @relation(fields: [userId], references: [id])
+  userId             String? // Ensure this is nullable
 }
 
 model nextOfKin {
@@ -159,6 +161,8 @@ model guarantorInformation {
   monthlyIncome      String?
   employerName       String?
   application        application[]
+  userId             String?
+  user               users?        @relation(fields: [userId], references: [id])
 }
 
 model emergencyContact {
@@ -168,6 +172,8 @@ model emergencyContact {
   email       String
   address     String
   application application[]
+  userId      String?
+  user        users?        @relation(fields: [userId], references: [id])
 }
 
 model referees {
@@ -183,6 +189,9 @@ model referees {
 
   // Foreign key to application
   application application[] @relation("referee")
+
+  userId String?
+  user   users?  @relation(fields: [userId], references: [id])
 }
 
 // Define the document model
@@ -195,6 +204,9 @@ model document {
 
   applicantId String
   application application @relation(fields: [applicantId], references: [id])
+
+  userId String?
+  user   users?  @relation(fields: [userId], references: [id])
 }
 
 // Define the EmploymentInformation model
@@ -221,6 +233,9 @@ model EmploymentInformation {
   employerPhone        String?
   positionTitle        String?
   application          application[]
+
+  userId String?
+  user   users?  @relation(fields: [userId], references: [id])
 }
 
 model applicationInvites {
