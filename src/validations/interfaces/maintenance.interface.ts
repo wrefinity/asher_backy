@@ -3,7 +3,7 @@ export interface MaintenanceIF {
   description?: string;
   availability?:string;
   attachments?: string[];
-  offer: string[];
+  offer?: string[];
   scheduleDate: Date;
   updatedAt?: Date;
   tenantId?: string;
