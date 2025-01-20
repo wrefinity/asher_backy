@@ -27,6 +27,16 @@ class PropertyController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getPropertyById = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const propertyId = req.params.id;
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                return res.status(200).json({ property });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.getPropertyByState = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const properties = yield propertyServices_1.default.getPropertiesByState();

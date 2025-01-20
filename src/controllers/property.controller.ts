@@ -16,6 +16,15 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+    getPropertyById = async (req: Request, res: Response) => {
+        try {
+            const propertyId = req.params.id;
+            const property = await PropertyServices.getPropertyById(propertyId)
+            return res.status(200).json({ property})
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
     getPropertyByState = async (req: Request, res: Response) => {
         try {
             const properties = await PropertyServices.getPropertiesByState()

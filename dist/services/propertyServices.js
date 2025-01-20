@@ -199,6 +199,17 @@ class PropertyService {
                 data: { onListing: false },
             });
         });
+        // to update property to listing and not listing
+        this.getPropertyById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.properties.findFirst({
+                where: { id: propertyId },
+                include: {
+                    landlord: true,
+                    reviews: true,
+                    applicant: true,
+                }
+            });
+        });
     }
 }
 exports.default = new PropertyService();

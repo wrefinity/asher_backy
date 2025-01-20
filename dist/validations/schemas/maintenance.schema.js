@@ -8,7 +8,7 @@ const joi_1 = __importDefault(require("joi"));
 exports.maintenanceSchema = joi_1.default.object({
     description: joi_1.default.string().optional(),
     scheduleDate: joi_1.default.date().required(),
-    offer: joi_1.default.array().items(joi_1.default.string()).required(),
+    offer: joi_1.default.array().items(joi_1.default.string()).optional(),
     amount: joi_1.default.number(),
     propertyId: joi_1.default.string().optional(),
     apartmentId: joi_1.default.string().optional(),

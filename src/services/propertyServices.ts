@@ -232,6 +232,17 @@ class PropertyService {
             data: { onListing: false },
         });
     }
+    // to update property to listing and not listing
+    getPropertyById = async (propertyId: string) => {
+        return await prismaClient.properties.findFirst({
+            where: { id: propertyId },
+            include: {
+                landlord: true,
+                reviews: true, 
+                applicant: true,  
+            }
+        });
+    }
 
 }
 
