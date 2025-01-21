@@ -7,7 +7,7 @@ exports.assignRoleSchema = exports.userLandlordSchema = exports.landlordSchema =
 const joi_1 = __importDefault(require("joi"));
 const profile_1 = require("../schemas/profile");
 exports.LoginSchema = joi_1.default.object({
-    password: joi_1.default.string().required(),
+    password: joi_1.default.string().optional(),
     email: joi_1.default.string().email().optional(),
     tenantCode: joi_1.default.string().optional(),
 });

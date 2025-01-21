@@ -3,7 +3,7 @@ import { profileSchema } from '../schemas/profile';
 
 
 export const LoginSchema = Joi.object({
-  password: Joi.string().required(),
+  password: Joi.string().optional(),
   email: Joi.string().email().optional(),
   tenantCode: Joi.string().optional(),
 });

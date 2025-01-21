@@ -146,14 +146,32 @@ class AuthControls {
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
-            const { email, tenantCode } = value;
+            const { email, tenantCode, password: userPassword } = value;
+
+            let user = null;
+            // Handle scenario where only tenantCode is supplied
+            if (tenantCode && !email && !userPassword) {
+                user = await UserServices.findUserByTenantCode(tenantCode);
+
+                if (!user) {
+                    return res.status(404).json({ message: "No user found for the provided tenant code." });
+                }
+
+                // Exclude sensitive fields and return user details
+                const { password: _, id: __, ...userDetails } = user;
+
+                return res.status(200).json({
+                    message: "Tenant-specific user retrieved successfully.",
+                    userDetails,
+                });
+            }
+
             // Ensure at least one identifier is provided
             if (!email && !tenantCode) {
                 return res.status(400).json({ message: "Email or tenant code is required." });
             }
 
             // Find user by email or tenantCode
-            let user = null;
             if (email) {
                 user = await UserServices.findUserByEmail(email);
             }
@@ -164,7 +182,7 @@ class AuthControls {
                 return res.status(404).json({ message: "User does not exist." });
             }
             // Verify password
-            if (!user.password || !compareSync(value.password, user.password)) {
+            if (!user.password || !compareSync(userPassword, user.password)) {
                 return res.status(400).json({ message: "Invalid login credentials." });
             }
 
