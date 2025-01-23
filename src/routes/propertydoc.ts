@@ -24,7 +24,7 @@ class PropertyDocsRouter {
         );
 
         this.router.get(
-            '/',
+            '/props/:propertyId',
             propertyDocument.findAll
         );
 

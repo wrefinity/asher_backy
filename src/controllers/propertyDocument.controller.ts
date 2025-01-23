@@ -5,10 +5,15 @@ import { createPropertyDocumentSchema, updatePropertyDocumentSchema } from '../v
 import { CustomRequest } from '../utils/types';
 
 class PropertyDocumentController {
+
+    // constructor(){
+
+    // }
     private propertyDocumentService = new PropertyDocumentService();
 
-    async create(req: CustomRequest, res: Response) {
+    create = async (req: CustomRequest, res: Response) =>{
         try {
+            console.log(req.body)
             const { error, value } = createPropertyDocumentSchema.validate(req.body);
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
@@ -23,20 +28,23 @@ class PropertyDocumentController {
             const propertyDocument = await this.propertyDocumentService.create(data);
             res.status(201).json({propertyDocument});
         } catch (error) {
+            console.log(error)
             res.status(500).json({ message: 'Failed to create property document', error });
         }
     }
 
-    async findAll(req: CustomRequest, res: Response) {
+    findAll = async (req: CustomRequest, res: Response) =>{
         try {
-            const propertyDocuments = await this.propertyDocumentService.findAll();
+            console.log("========called======")
+            const propertyId = req.params.propertyId;
+            const propertyDocuments = await this.propertyDocumentService.findAll(propertyId);
             res.status(200).json(propertyDocuments);
         } catch (error) {
             res.status(500).json({ message: 'Failed to retrieve property documents', error });
         }
     }
 
-    async findById(req: CustomRequest, res: Response) {
+    findById = async (req: CustomRequest, res: Response) =>{
         try {
             const { id } = req.params;
             const propertyDocument = await this.propertyDocumentService.findById(id);

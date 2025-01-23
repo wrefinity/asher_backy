@@ -8,8 +8,12 @@ export class PropertyDocumentService {
     return prismaClient.propertyDocument.create({ data });
   }
 
-  findAll = async () => {
-    return prismaClient.propertyDocument.findMany();
+  findAll = async (propertyId) => {
+    return prismaClient.propertyDocument.findMany({
+      where:{
+        propertyId
+      }
+    });
   }
 
   findById = async (id: string) => {

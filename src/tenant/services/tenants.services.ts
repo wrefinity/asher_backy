@@ -58,6 +58,8 @@ class TenantService {
 
     getPreviousTenantsForLandlord = async (landlordId: string) => {
         // Get previous tenants
+        // TODO: get grace period and add the grace period to the 
+        // lease end date, then check if cyrrent is greater than it
         return await prismaClient.tenants.findMany({
             where: {
                 landlordId: landlordId,

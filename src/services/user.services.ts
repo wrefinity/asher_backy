@@ -46,12 +46,9 @@ class UserService {
     findUserByEmail = async (email: string) => {
         // Find the user first to check if related entities exist
         const foundUser = await this.checkexistance({ email })
-
         if (!foundUser) {
             return false;
         }
-        // console.log("===========DB Checkers ==========")
-        // console.log(this.inclusion)
         const user = await prismaClient.users.findFirst({
             where: { email },
             include: this.inclusion,
@@ -68,6 +65,7 @@ class UserService {
             },
             include: {
                 tenant: true,
+                profile:true,
             },
         });
     }
