@@ -9,7 +9,7 @@ class TaskService {
         })
     };
 
-    async updateTask(taskId: string, taskData: any) {
+    updateTask = async (taskId: string, taskData: any) =>{
         const updatedData: any = { ...taskData }
         if (taskData.status === StatusType.COMPLETED) {
             updatedData.completed = true;
@@ -20,15 +20,16 @@ class TaskService {
         })
     }
 
-    async deleteTask(taskId: string) {
-        return await prismaClient.taskManagement.delete({
+    deleteTask = async (taskId: string) =>{
+        return await prismaClient.taskManagement.update({
             where: { id: taskId },
+            data: {isDeleted:true}
         })
     }
 
     async getAllTasksByProperty(propertyId: string) {
         return await prismaClient.taskManagement.findMany({
-            where: { propertyId },
+            where: { propertyId, isDeleted:false },
         })
     }
 
@@ -38,8 +39,12 @@ class TaskService {
         })
     }
 
-    async getAllTask() {
+    getAllTask = async (propertyId)=>{
         return await prismaClient.taskManagement.findMany({
+            where:{
+                propertyId,
+                isDeleted:true,
+            },
             include: {
                 property: true,
             }

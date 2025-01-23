@@ -1,5 +1,5 @@
 import errorService from "../../services/error.service";
-import { taskSchema } from "../validations/schema/taskSchema";
+import { taskSchema, taskUpdateSchema } from "../validations/schema/taskSchema";
 import { Request, Response } from 'express';
 import taskServices from "../services/task.services";
 import { CustomRequest } from "../../utils/types";
@@ -18,7 +18,8 @@ class TaskController {
 
     getAllTasks = async (req: Request, res: Response) =>{
         try {
-            const tasks = await taskServices.getAllTask();
+            const propertyId = req.params.propertyId;
+            const tasks = await taskServices.getAllTask(propertyId);
             return res.status(200).json(tasks);
         } catch (error) {
             errorService.handleError(error, res);
@@ -37,10 +38,10 @@ class TaskController {
     }
 
     updateTask = async (req: CustomRequest, res: Response)=>{
-        // const { value, error } = await taskSchema.validate(req.body);
-        // if (error) return res.status(400).json({ message: error.details[0].message });
+        const { error, value  } = await taskUpdateSchema.validate(req.body);
+        if (error) return res.status(400).json({ message: error.details[0].message });
         try {
-            const updatedTask = await taskServices.updateTask(req.params.id, req.body);
+            const updatedTask = await taskServices.updateTask(req.params.taskId, value);
             if (!updatedTask) return res.status(404).json({ message: "Task not found" });
             return res.status(200).json(updatedTask);
         } catch (error) {
@@ -50,7 +51,7 @@ class TaskController {
 
     deleteTask = async (req: CustomRequest, res: Response) =>{
         try {
-            const deletedTask = await taskServices.deleteTask(req.params.id);
+            const deletedTask = await taskServices.deleteTask(req.params.taskId);
             if (!deletedTask) return res.status(404).json({ message: "Task not found" });
             return res.status(200).json(deletedTask);
         } catch (error) {

@@ -4,18 +4,26 @@ enum StatusType {
   IN_PROGRESS
 }
 
+enum PriorityType {
+  LOW
+  HIGH
+  MEDIUM
+}
+
 model taskManagement {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   taskName    String
   description String
   dueDate     DateTime
-  completed   Boolean    @default(false)
-  status      StatusType @default(PENDING)
+  completed   Boolean      @default(false)
+  status      StatusType   @default(PENDING)
+  priority    PriorityType @default(LOW)
   propertyId  String
-  property    properties @relation(fields: [propertyId], references: [id])
+  property    properties   @relation(fields: [propertyId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isDeleted   Boolean      @default(false)
 }
 
 enum InventoryType {
