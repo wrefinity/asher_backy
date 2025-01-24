@@ -67,8 +67,8 @@ exports.updatePropertySchema = joi_1.default.object({
 exports.createPropertyDocumentSchema = joi_1.default.object({
     name: joi_1.default.string().required(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
-    // cloudinaryUrls: Joi.array().items(Joi.string()).optional(),
-    // cloudinaryVideoUrls: Joi.array().items(Joi.string()).optional(),
+    cloudinaryUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
+    cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
 });

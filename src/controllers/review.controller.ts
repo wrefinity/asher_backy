@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import ReviewService from "../services/review.service";
 import { CustomRequest } from "../utils/types";
-import { createReviewSchema } from "../validations/schemas/review.schema";
+import { createReviewSchema, updateReviewSchema } from "../validations/schemas/review.schema";
 
 
 class ReviewController {
@@ -81,7 +81,10 @@ class ReviewController {
 
     updateReview = async (req: CustomRequest, res: Response) => {
         try {
-            const review = await ReviewService.updateReview(req.params.id, req.body);
+            const { error, value } = updateReviewSchema.validate(req.body);
+            if (error) return res.status(400).json({ error: error.details[0].message });
+
+            const review = await ReviewService.updateReview(req.params.id, value);
             return res.status(200).json(review);
         } catch (error) {
             return res.status(500).json({ error: error.message });
@@ -90,17 +93,25 @@ class ReviewController {
 
     deleteReview = async (req: CustomRequest, res: Response) => {
         try {
-            await ReviewService.deleteReview(req.params.id);
-            return res.status(204).send();
+            const review = await ReviewService.deleteReview(req.params.id);
+            return res.status(200).json({review});
         } catch (error) {
             return res.status(500).json({ error: error.message });
         }
     }
+  
     getReviewsByProperty = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
             const reviews = await ReviewService.aggregateReviews({ propertyId });
-            return res.status(200).json(reviews);
+            
+            const { year } = req.query;
+            let propsRating;
+            if(year){
+                propsRating = await ReviewService.getPropertyRatings(propertyId, Number(year));
+            }
+
+            return res.status(200).json({reviews, propsRating});
         } catch (error) {
             return res.status(500).json({ message: "Failed to get reviews by property", error });
         }

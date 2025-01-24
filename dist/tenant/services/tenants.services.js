@@ -38,6 +38,8 @@ class TenantService {
         });
         this.getPreviousTenantsForLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             // Get previous tenants
+            // TODO: get grace period and add the grace period to the 
+            // lease end date, then check if cyrrent is greater than it
             return yield __1.prismaClient.tenants.findMany({
                 where: {
                     landlordId: landlordId,

@@ -13,12 +13,13 @@ const propertyDocument_service_1 = require("../services/propertyDocument.service
 const properties_schema_1 = require("../validations/schemas/properties.schema");
 class PropertyDocumentController {
     constructor() {
+        // constructor(){
+        // }
         this.propertyDocumentService = new propertyDocument_service_1.PropertyDocumentService();
-    }
-    create(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.create = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
+                console.log(req.body);
                 const { error, value } = properties_schema_1.createPropertyDocumentSchema.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
@@ -33,23 +34,22 @@ class PropertyDocumentController {
                 res.status(201).json({ propertyDocument });
             }
             catch (error) {
+                console.log(error);
                 res.status(500).json({ message: 'Failed to create property document', error });
             }
         });
-    }
-    findAll(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.findAll = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const propertyDocuments = yield this.propertyDocumentService.findAll();
+                console.log("========called======");
+                const propertyId = req.params.propertyId;
+                const propertyDocuments = yield this.propertyDocumentService.findAll(propertyId);
                 res.status(200).json(propertyDocuments);
             }
             catch (error) {
                 res.status(500).json({ message: 'Failed to retrieve property documents', error });
             }
         });
-    }
-    findById(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.findById = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { id } = req.params;
                 const propertyDocument = yield this.propertyDocumentService.findById(id);

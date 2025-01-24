@@ -16,7 +16,7 @@ class PropertyDocsRouter {
     }
     initializeRoutes() {
         this.router.post('/', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, propertyDocument_controller_1.default.create);
-        this.router.get('/', propertyDocument_controller_1.default.findAll);
+        this.router.get('/props/:propertyId', propertyDocument_controller_1.default.findAll);
         this.router.get('/:id', propertyDocument_controller_1.default.findById);
         this.router.put('/:id', propertyDocument_controller_1.default.update);
         this.router.delete('/:id', propertyDocument_controller_1.default.delete);

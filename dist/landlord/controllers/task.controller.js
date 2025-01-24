@@ -31,7 +31,8 @@ class TaskController {
         });
         this.getAllTasks = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const tasks = yield task_services_1.default.getAllTask();
+                const propertyId = req.params.propertyId;
+                const tasks = yield task_services_1.default.getAllTask(propertyId);
                 return res.status(200).json(tasks);
             }
             catch (error) {
@@ -51,10 +52,11 @@ class TaskController {
             }
         });
         this.updateTask = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            // const { value, error } = await taskSchema.validate(req.body);
-            // if (error) return res.status(400).json({ message: error.details[0].message });
+            const { error, value } = yield taskSchema_1.taskUpdateSchema.validate(req.body);
+            if (error)
+                return res.status(400).json({ message: error.details[0].message });
             try {
-                const updatedTask = yield task_services_1.default.updateTask(req.params.id, req.body);
+                const updatedTask = yield task_services_1.default.updateTask(req.params.taskId, value);
                 if (!updatedTask)
                     return res.status(404).json({ message: "Task not found" });
                 return res.status(200).json(updatedTask);
@@ -65,7 +67,7 @@ class TaskController {
         });
         this.deleteTask = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const deletedTask = yield task_services_1.default.deleteTask(req.params.id);
+                const deletedTask = yield task_services_1.default.deleteTask(req.params.taskId);
                 if (!deletedTask)
                     return res.status(404).json({ message: "Task not found" });
                 return res.status(200).json(deletedTask);

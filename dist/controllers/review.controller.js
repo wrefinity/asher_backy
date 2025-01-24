@@ -91,7 +91,10 @@ class ReviewController {
         });
         this.updateReview = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const review = yield review_service_1.default.updateReview(req.params.id, req.body);
+                const { error, value } = review_schema_1.updateReviewSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const review = yield review_service_1.default.updateReview(req.params.id, value);
                 return res.status(200).json(review);
             }
             catch (error) {
@@ -100,8 +103,8 @@ class ReviewController {
         });
         this.deleteReview = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                yield review_service_1.default.deleteReview(req.params.id);
-                return res.status(204).send();
+                const review = yield review_service_1.default.deleteReview(req.params.id);
+                return res.status(200).json({ review });
             }
             catch (error) {
                 return res.status(500).json({ error: error.message });
@@ -111,7 +114,12 @@ class ReviewController {
             try {
                 const propertyId = req.params.propertyId;
                 const reviews = yield review_service_1.default.aggregateReviews({ propertyId });
-                return res.status(200).json(reviews);
+                const { year } = req.query;
+                let propsRating;
+                if (year) {
+                    propsRating = yield review_service_1.default.getPropertyRatings(propertyId, Number(year));
+                }
+                return res.status(200).json({ reviews, propsRating });
             }
             catch (error) {
                 return res.status(500).json({ message: "Failed to get reviews by property", error });

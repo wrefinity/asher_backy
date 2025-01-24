@@ -55,8 +55,6 @@ class UserService {
             if (!foundUser) {
                 return false;
             }
-            // console.log("===========DB Checkers ==========")
-            // console.log(this.inclusion)
             const user = yield __1.prismaClient.users.findFirst({
                 where: { email },
                 include: this.inclusion,
@@ -72,6 +70,7 @@ class UserService {
                 },
                 include: {
                     tenant: true,
+                    profile: true,
                 },
             });
         });

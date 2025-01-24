@@ -16,8 +16,12 @@ class PropertyDocumentService {
         this.create = (data) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.propertyDocument.create({ data });
         });
-        this.findAll = () => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propertyDocument.findMany();
+        this.findAll = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.propertyDocument.findMany({
+                where: {
+                    propertyId
+                }
+            });
         });
         this.findById = (id) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.propertyDocument.findUnique({ where: { id } });
