@@ -2,28 +2,46 @@ import { StatusType } from "@prisma/client";
 import { prismaClient } from "../..";
 
 class InventoryService {
-    async createInventory(inventoryData: any) {
-        //NOTE: Check the property ID if it exist before inserting into the table
+    createInventory = async (inventoryData: any) => {
+        const { propertyId, ...rest } = inventoryData;
+
+        // Validate that the propertyId exists
+        const propertyExists = await prismaClient.properties.findUnique({
+            where: { id: inventoryData.propertyId },
+        });
+
+        if (!propertyExists) {
+            throw new Error(`Property with ID ${inventoryData.propertyId} does not exist`);
+        }
+
         return await prismaClient.inventoryManageMent.create({
-            data: inventoryData,
+            data: {
+                ...rest,
+                property: {
+                    connect: {
+                        id: propertyId,
+                    },
+                }
+            }
         })
     };
 
-    async updateInventory(inventoryId: string, inventoryData: any) {
-        
+    updateInventory = async (inventoryId: string, inventoryData: any) => {
+
         return await prismaClient.inventoryManageMent.update({
             where: { id: inventoryId },
             data: inventoryData,
         })
     }
 
-    async deleteInventory(inventoryId: string) {
-        return await prismaClient.inventoryManageMent.delete({
+    deleteInventory = async (inventoryId: string) =>{
+        return await prismaClient.inventoryManageMent.update({
             where: { id: inventoryId },
+            data: {isDeleted:true},
         })
     }
 
-    async getAllInventoriesByProperty(propertyId: string) {
+    getAllInventoriesByProperty = async (propertyId: string) =>{
         return await prismaClient.inventoryManageMent.findMany({
             where: { propertyId },
         })

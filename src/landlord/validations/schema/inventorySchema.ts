@@ -10,5 +10,13 @@ const inventorySchema = Joi.object({
     status: Joi.string().valid(...InventorySchemaType).required(),
     propertyId: Joi.string().required()
 })
+const inventoryUpdateSchema = Joi.object({
+    itemName: Joi.string().optional(),
+    description: Joi.string().optional(),
+    quantity: Joi.number().optional(),
+    itemLocation: Joi.string().optional(),
+    status: Joi.string().valid(...InventorySchemaType).optional(),
+    propertyId: Joi.string().optional()
+})
 
-export { inventorySchema };
+export { inventorySchema, inventoryUpdateSchema};
