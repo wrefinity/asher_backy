@@ -85,7 +85,7 @@ class PropertyPerformaceService {
         return (occupiedApartments / totalApartments) * 100;
     }
 
-    async getNetOperatingIncome(propertyId: string) {
+    getNetOperatingIncome = async (propertyId: string) => {
         //total rent income
         const rentalIncome = await prismaClient.transaction.aggregate({
             where:

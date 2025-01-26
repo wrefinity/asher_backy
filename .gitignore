@@ -3,3 +3,4 @@ node_modules
 # build
 prisma/migrations/*
 prisma/migrations
+../asher_vendor

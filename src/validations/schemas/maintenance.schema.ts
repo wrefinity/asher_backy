@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const maintenanceSchema = Joi.object({
   description: Joi.string().optional(),
-  scheduleDate: Joi.date().required(),
+  scheduleDate: Joi.date().optional(),
   offer: Joi.array().items(Joi.string()).optional(),
   amount: Joi.number(),
   propertyId: Joi.string().optional(),
