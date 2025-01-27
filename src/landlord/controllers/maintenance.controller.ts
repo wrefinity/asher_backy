@@ -45,6 +45,7 @@ class MaintenanceControls {
             if (!landlordId) return res.status(403).json({ error: "Unauthorized" });
 
             const whitelist = await MaintenanceService.getWhitelistByLandlord(landlordId);
+            
             return res.status(200).json({ data: whitelist });
         } catch (err) {
             ErrorService.handleError(err, res)

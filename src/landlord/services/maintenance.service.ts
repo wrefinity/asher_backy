@@ -213,7 +213,7 @@ class LandlordMaintenanceService {
     // Step 3: Combine and structure the data
     const result = categories.map((category) => ({
       ...category,
-      isEnabled: whitelistedCategoryIds.has(category.id),
+      // isEnabled: whitelistedCategoryIds.has(category.id),
       subCategories: category.subCategory.map((subCategory) => ({
         ...subCategory,
         isEnabled: whitelistedSubcategoryIds.has(subCategory.id),

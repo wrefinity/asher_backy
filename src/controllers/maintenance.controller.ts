@@ -40,6 +40,23 @@ class MaintenanceController {
       ErrorService.handleError(error, res)
     }
   };
+  public scheduleMaintenanceDate = async (req: CustomRequest, res: Response) => {
+    try {
+
+      const maintenanceId = req.params.maintenanceId;
+      const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
+      if (!maintenance){
+        res.status(404).json({ message: 'Maintenance not found' });
+      }
+      const { error, value } = rescheduleMaintenanceSchema.validate(req.body);
+      if (error) return res.status(400).json({ error: error.details[0].message });
+
+      const updatedMaintenance = await maintenanceService.updateMaintenance(maintenanceId,  value)
+      return res.status(200).json({ message: 'Maintenance scheduled successfully', updatedMaintenance });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
   // tenancy function to check if a property maintenance is whitelisted
   public checkIfMaintenanceWhitelisted = async (req: CustomRequest, res: Response) => {
     try {

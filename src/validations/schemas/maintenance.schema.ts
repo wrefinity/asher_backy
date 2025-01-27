@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const maintenanceSchema = Joi.object({
   description: Joi.string().optional(),
-  scheduleDate: Joi.date().optional(),
+  scheduleDate: Joi.date().iso().optional(),
   offer: Joi.array().items(Joi.string()).optional(),
   amount: Joi.number(),
   propertyId: Joi.string().optional(),
@@ -13,7 +13,7 @@ export const maintenanceSchema = Joi.object({
   cloudinaryUrls: Joi.array().items(Joi.string()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-  serviceId: Joi.string().required(),
+  serviceId: Joi.string().optional(),
 });
 
 export const maintenanceCancelSchema = Joi.object({
@@ -34,5 +34,5 @@ export const maintenanceChatSchema = Joi.object({
 
 export const rescheduleMaintenanceSchema = Joi.object({
   // maintenanceId: Joi.string().required(),
-  newScheduleDate: Joi.date().greater('now').required(),
+  scheduleDate: Joi.date().greater('now').required(),
 });

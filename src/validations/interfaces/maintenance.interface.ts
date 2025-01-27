@@ -24,5 +24,5 @@ export interface MaintenanceIF {
 
 export interface RescheduleMaintenanceDTO {
   maintenanceId: string;
-  newScheduleDate: Date;
+  scheduleDate: Date;
 }

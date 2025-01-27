@@ -1,6 +1,8 @@
 import { Router } from "express";
 import MaintenanceController from '../controllers/maintenance.controller';
 import { Authorize } from "../middlewares/authorize";
+import { uploadToCloudinary } from '../middlewares/multerCloudinary';
+import upload from "../configs/multer";
 
 class MaintenaceRoutes {
     public router: Router;
@@ -20,10 +22,11 @@ class MaintenaceRoutes {
         this.router.get('/request-confirm/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.confirmCancellationByVendor);
         this.router.post('/completed/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.updateMaintenanceToCompleted);
         this.router.post('/reschedule/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.rescheduleMaintenanceController);
+        this.router.post('/schedule/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.scheduleMaintenanceDate);
         this.router.post('/whitelisted', this.authenticateService.authorize,  MaintenanceController.checkIfMaintenanceWhitelisted);
         this.router.get('/', MaintenanceController.getAllMaintenances);
         this.router.get('/:id', this.authenticateService.authorize, MaintenanceController.getMaintenanceById);
-        this.router.post('/', this.authenticateService.authorize,  MaintenanceController.createMaintenance);
+        this.router.post('/', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary,  MaintenanceController.createMaintenance);
         this.router.put('/:id', this.authenticateService.authorize, MaintenanceController.updateMaintenance);
         this.router.delete('/:id', this.authenticateService.authorize, MaintenanceController.deleteMaintenance);
     }

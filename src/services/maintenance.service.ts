@@ -45,7 +45,7 @@ class MaintenanceService {
   }
 
   rescheduleMaintenance = async (data: RescheduleMaintenanceDTO) => {
-    const { maintenanceId, newScheduleDate } = data;
+    const { maintenanceId, scheduleDate } = data;
     const maintenance = await this.getMaintenanceById(maintenanceId);
 
     if (!maintenance) {
@@ -60,17 +60,15 @@ class MaintenanceService {
       data: {
         maintenanceId,
         oldDate: maintenance.scheduleDate,
-        newDate: newScheduleDate,
+        newDate: scheduleDate,
       },
     });
 
     // Update maintenance with new schedule date and increment counter
-
     return await prismaClient.maintenance.update({
       where: { id: maintenanceId },
       data: {
-        scheduleDate: newScheduleDate,
-        reScheduleDate: newScheduleDate,
+        reScheduleDate: scheduleDate,
         reScheduleMax: { decrement: maintenance.reScheduleMax > 0 ? 1 : 0 },
       },
     });
@@ -78,19 +76,22 @@ class MaintenanceService {
 
   createMaintenance = async (maintenanceData: MaintenanceIF) => {
     const { subcategoryIds, tenantId, landlordId, serviceId, categoryId, propertyId, ...rest } = maintenanceData;
-
+    // Remove duplicates
+    let subcategoryIdsUnique = [...new Set(subcategoryIds)];
     if (subcategoryIds) {
       // Verify that all subcategory IDs exist
       const existingSubcategories = await prismaClient.subCategory.findMany({
         where: {
-          id: { in: subcategoryIds }
+          id: { in: subcategoryIdsUnique }
         },
         select: { id: true }
       });
 
       const existingSubcategoryIds = existingSubcategories.map(subCategory => subCategory.id);
-
-      if (existingSubcategoryIds.length !== subcategoryIds.length) {
+      // console.log("++++catgpri+++")
+      // console.log(existingSubcategoryIds)
+      // console.log(subcategoryIds)
+      if (existingSubcategoryIds.length !== subcategoryIdsUnique.length) {
         throw new Error('One or more subcategories do not exist');
       }
     }
@@ -98,8 +99,8 @@ class MaintenanceService {
     const createData: any = {
       ...rest, paymentStatus: "PENDING",
       landlordDecision: "PENDING",
-      subcategories: subcategoryIds ? {
-        connect: subcategoryIds.map(id => ({ id })),
+      subcategories: subcategoryIdsUnique ? {
+        connect: subcategoryIdsUnique.map(id => ({ id })),
       } : undefined,
       category: {
         connect: { id: categoryId },
