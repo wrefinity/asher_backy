@@ -6,12 +6,20 @@ class BillService {
 
     createBill = async (billData: any, landlordId: string) => {
         const billId = generateIDs('BILL')
+        const {propertyId, ...rest} = billData;
+
         return await prismaClient.bills.create({
             data: {
-                landlordId,
                 billId,
                 description: `Created ${billData.billName}`,
-                ...billData,
+                ...rest,
+                // propertyId,
+                property: {
+                    connect: {id:propertyId}
+                },
+                landlord: {
+                    connect: {id:landlordId}
+                }
             },
         })
     }
@@ -62,6 +70,9 @@ class BillService {
                 propertyId,
                 landlordId
             },
+            include:{
+                property: true
+            }
         })
     }
 }

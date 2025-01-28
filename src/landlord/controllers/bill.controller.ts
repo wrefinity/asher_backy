@@ -1,7 +1,7 @@
 import { Response } from "express";
 import errorService from "../../services/error.service";
 import { CustomRequest } from "../../utils/types";
-import { billSchema } from "../validations/schema/billSchema";
+import { billSchema, billUpdateSchema } from "../validations/schema/billSchema";
 import billServices from "../services/bill.services";
 
 class BillController {
@@ -21,7 +21,7 @@ class BillController {
 
     updateBill = async (req: CustomRequest, res: Response) => {
         const { billId } = req.params;
-        const { value, error } = billSchema.validate(req.body);
+        const { value, error } = billUpdateSchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
         const landlordId = req.user.landlords.id;
 

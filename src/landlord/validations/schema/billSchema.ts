@@ -5,6 +5,7 @@ const payableByValues = Object.values(PayableBy);
 
 const billSchema = Joi.object({
     billName: Joi.string().required(),
+    description: Joi.string().required(),
     billCategory: Joi.string().required(),
     amount: Joi.number().required(),
     billFrequency: Joi.string().valid(...billFrequencyType).required(),
@@ -12,6 +13,19 @@ const billSchema = Joi.object({
     propertyId: Joi.string().optional(),
     apartmentId: Joi.string().optional(),
     payableBy: Joi.string().valid(...payableByValues).default(PayableBy.LANDLORD).required(),
+    // tenants bills should be optional
+    tenantId: Joi.string().optional()
+})
+const billUpdateSchema = Joi.object({
+    billName: Joi.string().optional(),
+    description: Joi.string().optional(),
+    billCategory: Joi.string().optional(),
+    amount: Joi.number().optional(),
+    billFrequency: Joi.string().valid(...billFrequencyType).optional(),
+    dueDate: Joi.date().iso().optional(),
+    propertyId: Joi.string().optional(),
+    apartmentId: Joi.string().optional(),
+    payableBy: Joi.string().valid(...payableByValues).default(PayableBy.LANDLORD).optional(),
     // tenants bills should be optional
     tenantId: Joi.string().optional()
 })
@@ -28,4 +42,4 @@ const billSchema = Joi.object({
 // })
 
 // export { billSchema, tenantBillSchema };
-export { billSchema };
+export { billSchema, billUpdateSchema };
