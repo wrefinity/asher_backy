@@ -8,8 +8,9 @@ import transactionScheam from "../validations/schemas/transaction.scheam";
 import flutterWaveService from "../services/flutterWave.service";
 import stripeService from "../services/stripe.service";
 
+
 class TransactionController {
-    async fundWallet(req: CustomRequest, res: Response) {
+    fundWallet = async (req: CustomRequest, res: Response) => {
         const userId = String(req.user.id);
         const { value, error } = transactionScheam.create().validate(req.body)
         if (error) {
@@ -21,7 +22,7 @@ class TransactionController {
             // const authorizationUrl = await walletService.fundWallet(userId, amount)
             // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
             const authorizationUrl = await walletService.fundWalletUsingStripe(userId, amount)
-            res.status(201).json(authorizationUrl)
+            res.status(201).json({authorizationUrl})
 
         } catch (error) {
             errorService.handleError(error, res)

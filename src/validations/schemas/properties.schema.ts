@@ -91,6 +91,16 @@ export const createPropertyListingSchema = Joi.object({
   propertyId: Joi.string().optional(),
   apartmentId: Joi.string().optional(),
 });
+export const updatePropertyListingSchema = Joi.object({
+  payApplicationFee: Joi.boolean().optional(),
+  isShortlet: Joi.boolean().optional(),
+  shortletDuration: Joi.string().valid(...shortletType).default(ShortletType.MONTHLY).optional(),
+  type: Joi.string().valid(...listingTypes).default(ListingType.LISTING_WEBSITE).optional(),
+  // propertyId: Joi.string().optional(),
+  apartmentId: Joi.string().optional(),
+  isActive: Joi.boolean().optional(),
+  onListing: Joi.boolean().optional()
+});
 
 export const updateListingStatusSchema = Joi.object({
   isLeased: Joi.boolean().required(),

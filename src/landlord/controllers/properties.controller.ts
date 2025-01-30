@@ -2,12 +2,13 @@ import fs from 'fs';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertyListingSchema, createPropertySchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema } from "../../validations/schemas/properties.schema"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV, parseDateField } from "../../utils/filereader";
+import { PropertySpecificationType } from "@prisma/client"
 
 
 class PropertyController {
@@ -74,7 +75,24 @@ class PropertyController {
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
             const propertiesGrouped = await PropertyServices.aggregatePropertiesByState(landlordId);
             const propertiesUnGrouped = await PropertyServices.getPropertiesByLandlord(landlordId);
-            return res.status(200).json({propertiesGrouped, propertiesUnGrouped })
+            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+
+    categorizedPropsInRentals = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
+            const properties = await PropertyServices.getLandlordProperties(landlordId);
+            // Group properties based on specificationType
+            const categorizedProperties = {
+                COMMERCIAL: properties.filter((prop) => prop.specificationType === PropertySpecificationType.COMMERCIAL),
+                RESIDENTIAL: properties.filter((prop) => prop.specificationType === PropertySpecificationType.RESIDENTIAL),
+                SHORTLET: properties.filter((prop) => prop.specificationType === PropertySpecificationType.SHORTLET),
+            };
+            return res.status(200).json({ data: categorizedProperties });
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -191,10 +209,10 @@ class PropertyController {
             if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
             if (type) filters.type = type;
 
-            
+
             // Fetch the filtered properties
             const properties = await PropertyServices.getAllListedProperties(filters);
-            
+
             console.log(landlordId)
             // Check if properties are found
             if (!properties || properties.length === 0) {
@@ -209,6 +227,55 @@ class PropertyController {
         }
     };
 
+    getActiveOrInactivePropsListing = async (req: CustomRequest, res: Response) => {
+
+        try {
+            // Extract landlordId from the authenticated user
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+            // get listing
+            const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
+            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false);
+
+            // Return the ative and inactive property listing
+            return res.status(200).json({ activePropsListing, inActivePropsListing });
+
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+
+
+    }
+    updatePropsListing = async (req: CustomRequest, res: Response) => {
+
+        try {
+            const { error, value } = updatePropertyListingSchema.validate(req.body);
+            if (error) return res.status(400).json({ error: error.details[0].message });
+            const propertyId = req.params.propertyId;
+            // Extract landlordId from the authenticated user
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+            // update listing
+            const listing = await PropertyServices.updatePropertyListing(value, propertyId, landlordId);
+
+            // Return the update property listing
+            return res.status(200).json({ listing });
+
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+
+
+    }
+
     bulkPropsUpload = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
@@ -216,7 +283,7 @@ class PropertyController {
                 return res.status(404).json({ error: 'Kindly login as landlord' });
             }
             if (!req.file) return res.status(400).json({ error: 'No CSV file uploaded.' });
-    
+
             const filePath = req.file.path;
             // Read and process the CSV file
             const dataFetched = await parseCSV(filePath);
@@ -225,21 +292,21 @@ class PropertyController {
                 name: string | string[];
                 errors: string | string[];
             }
-            
-    
+
+
             let uploadErrors: UploadError[] = [];
-    
+
             for (const row of dataFetched) {
                 try {
                     // Convert semicolon-separated amenities string to an array
                     if (row.amenities && typeof row.amenities === 'string') {
                         row.amenities = row.amenities.split(';').map(item => item.trim());
                     }
-    
+
                     // Parse date fields
                     row.yearBuilt = parseDateField(row.yearBuilt);
                     row.dueDate = parseDateField(row.dueDate);
-    
+
                     // Validate the row using Joi validations
                     const { error, value } = createPropertySchema.validate(row, { abortEarly: false });
                     if (error) {
@@ -249,7 +316,7 @@ class PropertyController {
                         });
                         continue;
                     }
-    
+
                     const property = await PropertyServices.createProperty({ ...value, landlordId });
                     uploaded.push(property);
                 } catch (err) {
@@ -260,10 +327,10 @@ class PropertyController {
                     });
                 }
             }
-    
+
             // Delete the file after processing if needed
             fs.unlinkSync(filePath);
-    
+
             // Determine response based on upload results
             if (uploaded.length > 0) {
                 // Properties were successfully uploaded
@@ -277,7 +344,7 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     };
-    
+
 }
 
 export default new PropertyController()

@@ -29,6 +29,7 @@ enum ListingType {
 enum ShortletType {
   MONTHLY
   DAILY
+  YEARLY
 }
 
 model propertyListingHistory {

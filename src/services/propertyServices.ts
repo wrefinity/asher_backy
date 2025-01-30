@@ -28,6 +28,15 @@ class PropertyService {
     getProperties = async () => {
         return await prismaClient.properties.findMany({ where: { isDeleted: false }, })
     }
+    getLandlordProperties = async (landlordId: string) => {
+        return await prismaClient.properties.findMany({ 
+            where: { isDeleted: false, landlordId },
+            include: {
+                propertyListingHistory: true,
+                apartments: true,
+            }
+        })
+    }
     getPropertiesById = async (id: string) => {
         return await prismaClient.properties.findUnique({
             where: { id },
@@ -146,6 +155,7 @@ class PropertyService {
             }
         })
     }
+    
 
     checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 
@@ -174,14 +184,28 @@ class PropertyService {
         })
     }
     // property listings
+    getActiveOrInactivePropsListing= async (landlordId: string, isActive: boolean = true ) => {
+        return await prismaClient.propertyListingHistory.findMany({
+            where: {
+                isActive,
+                property:{
+                    landlordId
+                }
+            },
+            include: {
+                property: true,
+                apartment: true,
+            }
+        });
+    }
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const { landlordId, property, minSize, maxSize } = filters;
         const { type, state, country, } = property || {}
 
         return await prismaClient.propertyListingHistory.findMany({
             where: {
-                // isActive: true,
-                // onListing: true,
+                isActive: true,
+                onListing: true,
                 ...(landlordId && {
                     property: {
                         landlordId: landlordId,
@@ -221,12 +245,40 @@ class PropertyService {
     }
 
     createPropertyListing = async (data: PropertyListingDTO) => {
+        await this.getPropsListedById(data.propertyId);
         return await prismaClient.propertyListingHistory.create({
             data,
         });
     };
-    // to update property to listing and not listing
+    getPropsListedById = async (propertyId: string) => {
+        const propsListed = await prismaClient.propertyListingHistory.findFirst({
+            where: {
+                propertyId
+            },
+            include: {
+                property: true,
+                apartment: true,
+            }
+        });
+        if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
+        return propsListed
+    }
+    // to update property listings
+    updatePropertyListing = async (data: Partial<PropertyListingDTO>, propertyId: string, landlordId: string) => {
+        const propsListed = await this.getPropsListedById(propertyId);
+
+        if (propsListed?.property?.landlordId !== landlordId) {
+            throw new Error("only landlord that created this props listing can update props listing");
+        }
+
+        return await prismaClient.propertyListingHistory.update({
+            where: { propertyId },
+            data,
+        });
+    }
+    // to update property to listing and not listing 
     updateListingStatus = async (propertyId: string) => {
+        await this.getPropsListedById(propertyId);
         return await prismaClient.propertyListingHistory.update({
             where: { propertyId },
             data: { onListing: false },
@@ -238,8 +290,8 @@ class PropertyService {
             where: { id: propertyId },
             include: {
                 landlord: true,
-                reviews: true, 
-                applicant: true,  
+                reviews: true,
+                applicant: true,
             }
         });
     }
