@@ -43,7 +43,7 @@ class TaskController {
         try {
             const updatedTask = await taskServices.updateTask(req.params.taskId, value);
             if (!updatedTask) return res.status(404).json({ message: "Task not found" });
-            return res.status(200).json(updatedTask);
+            return res.status(200).json({updatedTask});
         } catch (error) {
             errorService.handleError(error, res);
         }

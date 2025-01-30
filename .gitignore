@@ -4,3 +4,6 @@ node_modules
 prisma/migrations/*
 prisma/migrations
 ../asher_vendor
+
+selection.py
+merge_sort.py
