@@ -269,7 +269,8 @@ class PropertyService {
     }
     // to update property to listing and not listing 
     updateListingStatus = async (propertyId: string) => {
-        await this.getPropsListedById(propertyId);
+        const propsListed = await this.getPropsListedById(propertyId);
+        if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
         return await prismaClient.propertyListingHistory.update({
             where: { propertyId },
             data: { onListing: false },

@@ -207,7 +207,20 @@ class PropertyController {
             if (state) filters.property = { ...filters.property, state: String(state) };
             if (country) filters.property = { ...filters.property, country: String(country) };
             if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
-            if (isActive) filters.property = { ...filters.property, isActive: Boolean(isActive) };
+            if (isActive) {
+                // Convert isActive to a number
+                const isActiveNumber = parseInt(isActive.toString(), 10);
+
+                if (!isNaN(isActiveNumber)) {
+                    filters.property = {
+                        ...filters.property,
+                        isActive: isActiveNumber === 1
+                    };
+                } else {
+                    throw new Error(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
+                }
+            }
+
             // Validate specificationType against the enum
             if (specificationType) {
                 const isValidSpecificationType = Object.values(PropertySpecificationType).includes(specificationType as PropertySpecificationType);
@@ -225,7 +238,7 @@ class PropertyController {
                     throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
                 }
             }
-        
+
 
             console.log(filters)
 

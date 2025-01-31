@@ -47,7 +47,7 @@ model Transaction {
   id                          String                         @id @default(cuid())
   description                 String?
   amount                      Decimal                        @db.Decimal(18, 2)
-  userId                      String                         @unique
+  userId                      String                        
   user                        users                          @relation(fields: [userId], references: [id])
   walletId                    String?
   wallet                      wallet?                        @relation(fields: [walletId], references: [id])

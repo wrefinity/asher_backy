@@ -1,5 +1,5 @@
 import Joi from "joi";
-import {PaymentGateway} from "@prisma/client"
+import { PaymentGateway, TransactionReference } from "@prisma/client"
 
 const PaymentType = ["rent_due", "rent_payment", "maintainace_fee", "landlord_payout"]
 
@@ -11,6 +11,20 @@ class TransactionSchema {
             gateWayType: Joi.string().valid(...Object.values(PaymentGateway)).required(),
         });
     }
+    static transactSchema() {
+        return Joi.object({
+            paymentGateway: Joi.string().valid(...Object.values(PaymentGateway)).optional(),
+            reference: Joi.string().valid(...Object.values(TransactionReference)).optional(),
+            propertyId: Joi.string().optional(),
+            billId: Joi.string().optional(),
+            apartmentId: Joi.string().optional(),
+            walletId: Joi.string().optional(),
+            amount: Joi.number().required(),
+            currency: Joi.string().optional(),
+            description: Joi.string().optional(),
+        })
+    }
+    
 
     static makePayment() {
         return Joi.object({
