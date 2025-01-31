@@ -82,7 +82,7 @@ class LandlordRouter {
         // bills routes routes
         this.router.use("/bills", BillRouter);
 
-        this.router.use("/transaction", LandlordTransactionRouter);
+        this.router.use("/transactions", LandlordTransactionRouter);
         this.router.use("/finance", FinanceRouter);
 
         //braodcast routes

@@ -262,7 +262,7 @@ class StripeService {
         // TODO: Implement any necessary cleanup or notification logic
     }
 
-    async createOrGetStripeCustomer(userId: string): Promise<StripeCustomer> {
+    createOrGetStripeCustomer = async (userId: string): Promise<StripeCustomer> =>{
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: { profile: true },

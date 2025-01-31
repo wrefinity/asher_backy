@@ -9,6 +9,8 @@ interface PropertyFilters {
     property?: {
         state?: string;
         country?: string;
+        isActive?: boolean;
+        specificationType?: string;
         propertysize?: number;
         type?: PropertyType;
     };
@@ -200,52 +202,41 @@ class PropertyService {
     }
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const { landlordId, property, minSize, maxSize } = filters;
-        const { type, state, country, } = property || {}
-
+        const { type, state, country, specificationType, isActive } = property || {};
+    
         return await prismaClient.propertyListingHistory.findMany({
             where: {
-                isActive: true,
-                onListing: true,
-                ...(landlordId && {
-                    property: {
-                        landlordId: landlordId,
-                    },
-                }),
-                ...(type && {
-                    property: {
-                        type: type,
-                    },
-                }),
-                ...(state && {
-                    property: {
-                        state: state,
-                    },
-                }),
-                ...(country && {
-                    property: {
-                        country: country,
-                    },
-                }),
-                ...(minSize || maxSize
-                    ? {
-                        property: {
+                ...(isActive !== undefined && { isActive }),
+                ...(isActive !== undefined && { onListing: isActive }),
+                property: {
+                    ...(landlordId && { landlordId }),
+                    ...(type && { type }),
+                    ...(specificationType && { specificationType }),
+                    ...(state && { state }),
+                    ...(country && { country }),
+                    ...(minSize || maxSize
+                        ? {
                             propertysize: {
                                 gte: minSize ?? undefined,
                                 lte: maxSize ?? undefined,
                             },
-                        },
-                    }
-                    : {}),
+                        }
+                        : {}),
+                } as any,
             },
             include: {
                 property: true,
                 apartment: true,
             },
         });
-    }
+    };
+    
+    
+    
 
     createPropertyListing = async (data: PropertyListingDTO) => {
-        await this.getPropsListedById(data.propertyId);
+        const propListed = await this.getPropsListedById(data.propertyId);
+        if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
         return await prismaClient.propertyListingHistory.create({
             data,
         });
@@ -260,13 +251,13 @@ class PropertyService {
                 apartment: true,
             }
         });
-        if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
+        
         return propsListed
     }
     // to update property listings
     updatePropertyListing = async (data: Partial<PropertyListingDTO>, propertyId: string, landlordId: string) => {
         const propsListed = await this.getPropsListedById(propertyId);
-
+        if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
         if (propsListed?.property?.landlordId !== landlordId) {
             throw new Error("only landlord that created this props listing can update props listing");
         }

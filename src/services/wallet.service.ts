@@ -190,7 +190,7 @@ class WalletService {
         };
     }
 
-    async fundWalletGeneral(userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway: PaymentGateway) {
+    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway: PaymentGateway) =>{
         const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },

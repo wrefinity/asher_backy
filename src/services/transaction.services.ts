@@ -4,7 +4,7 @@ import { WebHookData } from "../utils/types";
 import { randomBytes } from 'crypto';
 
 class TransactionService {
-    async createTransaction(transactionData: {
+    createTransaction = async (transactionData: {
         description: string;
         amount: number;
         userId: string;
@@ -18,21 +18,31 @@ class TransactionService {
         propertyId?: string;
         apartmentId?: string;
         billId?: string;
-    }) {
+    }) =>{
         return prismaClient.transaction.create({
             data: transactionData,
         });
     }
 
-    async getTransactionsByUser(userId: string) {
+    getTransactionsByUser = async (userId: string) =>{
         return prismaClient.transaction.findMany({
             where: {
                 userId
             },
         });
     }
+    getTransactionByProps = async (propertyId: string, landlordId: string = null) =>{
+        return prismaClient.transaction.findMany({
+            where: {
+                property:{
+                    id: propertyId,
+                    ...(landlordId ? { landlordId } : {}), 
+                }
+            },
+        });
+    }
 
-    async getTransactionById(id: string) {
+    getTransactionById = async (id: string) =>{
         return prismaClient.transaction.findUnique({
             where: {
                 id
@@ -40,7 +50,7 @@ class TransactionService {
         });
     }
 
-    async getTransactionByReference(referenceId: string) {
+    getTransactionByReference = async (referenceId: string) =>{
         return prismaClient.transaction.findFirst({
             where: {
                 referenceId
@@ -48,7 +58,7 @@ class TransactionService {
         });
     }
 
-    async updateTransaction(transactionId: string, userId: string, transactionData: Partial<{
+    updateTransaction = async (transactionId: string, userId: string, transactionData: Partial<{
         description: string;
         amount: number;
         type: TransactionType;
@@ -56,7 +66,7 @@ class TransactionService {
         status: TransactionStatus;
         paymentGateway?: PaymentGateway;
         stripePaymentIntentId?: string;
-    }>) {
+    }>) =>{
         return prismaClient.transaction.update({
             where: {
                 id: transactionId,
@@ -66,7 +76,7 @@ class TransactionService {
         });
     }
 
-    async updateReferenceTransaction(userId: string) {
+    updateReferenceTransaction = async (userId: string) =>{
         console.log("got here");
         return prismaClient.transaction.update({
             where: {
@@ -78,7 +88,7 @@ class TransactionService {
         });
     }
 
-    async handleSuccessfulPayment(respData: WebHookData) {
+    handleSuccessfulPayment = async (respData: WebHookData) => {
         const transaction = await this.getTransactionByReference(respData.reference);
         if (!transaction) {
             throw new Error('Transaction not found');
@@ -100,7 +110,7 @@ class TransactionService {
         }
     }
 
-    async handleFailedPayment(data: any) {
+    handleFailedPayment = async (data: any) =>{
         const transaction = await this.getTransactionByReference(data.reference);
         if (!transaction) {
             throw new Error('Transaction not found');
@@ -110,7 +120,7 @@ class TransactionService {
         });
     }
 
-    async createCounterpartyTransaction(data: {
+    createCounterpartyTransaction = async (data: {
         userId: string;
         amount: number;
         description: string;
@@ -119,7 +129,7 @@ class TransactionService {
         propertyId?: string;
         apartmentId?: string;
         billId?: string;
-    }) {
+    }) =>{
         return prismaClient.transaction.create({
             data: {
                 ...data,

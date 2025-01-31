@@ -5,8 +5,13 @@ import transactionServices from "../services/transaction.services";
 import walletService from "../services/wallet.service";
 import { CustomRequest } from "../utils/types";
 import transactionScheam from "../validations/schemas/transaction.scheam";
+import { PaymentGateway } from "@prisma/client"
 import flutterWaveService from "../services/flutterWave.service";
 import stripeService from "../services/stripe.service";
+import { getCurrentCountryCurrency } from "../utils/helpers";
+
+
+
 
 
 class TransactionController {
@@ -21,7 +26,33 @@ class TransactionController {
             const amount = Number(value.amount);
             // const authorizationUrl = await walletService.fundWallet(userId, amount)
             // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
-            const authorizationUrl = await walletService.fundWalletUsingStripe(userId, amount)
+            let authorizationUrl; 
+            const locationData = await getCurrentCountryCurrency();
+            // if(value.gateWayType == GateWayType.STRIPE){
+            authorizationUrl = await walletService.fundWalletGeneral(userId, amount, locationData?.locationCurrency, locationData.country_code, value.gateWayType)
+            // }
+            res.status(201).json({authorizationUrl})
+
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getTransaction = async (req: CustomRequest, res: Response) => {
+        const userId = String(req.user.id);
+        const { value, error } = transactionScheam.create().validate(req.body)
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message })
+        }
+
+        try {
+            const amount = Number(value.amount);
+            // const authorizationUrl = await walletService.fundWallet(userId, amount)
+            // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
+            let authorizationUrl; 
+            const locationData = await getCurrentCountryCurrency();
+            // if(value.gateWayType == GateWayType.STRIPE){
+            authorizationUrl = await walletService.fundWalletGeneral(userId, amount, locationData?.locationCurrency, locationData.country_code, value.gateWayType)
+            // }
             res.status(201).json({authorizationUrl})
 
         } catch (error) {

@@ -1,11 +1,14 @@
 import Joi from "joi";
+import {PaymentGateway} from "@prisma/client"
 
 const PaymentType = ["rent_due", "rent_payment", "maintainace_fee", "landlord_payout"]
+
 
 class TransactionSchema {
     static create() {
         return Joi.object({
             amount: Joi.number().required(),
+            gateWayType: Joi.string().valid(...Object.values(PaymentGateway)).required(),
         });
     }
 

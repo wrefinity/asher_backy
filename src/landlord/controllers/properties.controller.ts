@@ -8,7 +8,7 @@ import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV, parseDateField } from "../../utils/filereader";
-import { PropertySpecificationType } from "@prisma/client"
+import { PropertySpecificationType, PropertyType } from "@prisma/client"
 
 
 class PropertyController {
@@ -196,7 +196,7 @@ class PropertyController {
             }
 
             // Extract filters from the query parameters
-            const { state, country, propertySize, type } = req.query;
+            const { state, country, propertySize, type, isActive, specificationType } = req.query;
 
             // Prepare the filter object
             const filters: any = {
@@ -207,7 +207,27 @@ class PropertyController {
             if (state) filters.property = { ...filters.property, state: String(state) };
             if (country) filters.property = { ...filters.property, country: String(country) };
             if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
-            if (type) filters.type = type;
+            if (isActive) filters.property = { ...filters.property, isActive: Boolean(isActive) };
+            // Validate specificationType against the enum
+            if (specificationType) {
+                const isValidSpecificationType = Object.values(PropertySpecificationType).includes(specificationType as PropertySpecificationType);
+                if (isValidSpecificationType) {
+                    filters.property = { ...filters.property, specificationType: String(specificationType) };
+                } else {
+                    throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(PropertySpecificationType).join(', ')}`);
+                }
+            }
+            if (type) {
+                const isValidType = Object.values(PropertyType).includes(type as PropertyType);
+                if (isValidType) {
+                    filters.property = { ...filters.property, type: String(type) };
+                } else {
+                    throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
+                }
+            }
+        
+
+            console.log(filters)
 
 
             // Fetch the filtered properties
