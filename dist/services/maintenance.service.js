@@ -52,7 +52,7 @@ class MaintenanceService {
             });
         });
         this.rescheduleMaintenance = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { maintenanceId, newScheduleDate } = data;
+            const { maintenanceId, scheduleDate } = data;
             const maintenance = yield this.getMaintenanceById(maintenanceId);
             if (!maintenance) {
                 throw new Error('Maintenance request not found');
@@ -66,36 +66,40 @@ class MaintenanceService {
                 data: {
                     maintenanceId,
                     oldDate: maintenance.scheduleDate,
-                    newDate: newScheduleDate,
+                    newDate: scheduleDate,
                 },
             });
             // Update maintenance with new schedule date and increment counter
             return yield __1.prismaClient.maintenance.update({
                 where: { id: maintenanceId },
                 data: {
-                    scheduleDate: newScheduleDate,
-                    reScheduleDate: newScheduleDate,
+                    reScheduleDate: scheduleDate,
                     reScheduleMax: { decrement: maintenance.reScheduleMax > 0 ? 1 : 0 },
                 },
             });
         });
         this.createMaintenance = (maintenanceData) => __awaiter(this, void 0, void 0, function* () {
             const { subcategoryIds, tenantId, landlordId, serviceId, categoryId, propertyId } = maintenanceData, rest = __rest(maintenanceData, ["subcategoryIds", "tenantId", "landlordId", "serviceId", "categoryId", "propertyId"]);
+            // Remove duplicates
+            let subcategoryIdsUnique = [...new Set(subcategoryIds)];
             if (subcategoryIds) {
                 // Verify that all subcategory IDs exist
                 const existingSubcategories = yield __1.prismaClient.subCategory.findMany({
                     where: {
-                        id: { in: subcategoryIds }
+                        id: { in: subcategoryIdsUnique }
                     },
                     select: { id: true }
                 });
                 const existingSubcategoryIds = existingSubcategories.map(subCategory => subCategory.id);
-                if (existingSubcategoryIds.length !== subcategoryIds.length) {
+                // console.log("++++catgpri+++")
+                // console.log(existingSubcategoryIds)
+                // console.log(subcategoryIds)
+                if (existingSubcategoryIds.length !== subcategoryIdsUnique.length) {
                     throw new Error('One or more subcategories do not exist');
                 }
             }
-            const createData = Object.assign(Object.assign({}, rest), { paymentStatus: "PENDING", landlordDecision: "PENDING", subcategories: subcategoryIds ? {
-                    connect: subcategoryIds.map(id => ({ id })),
+            const createData = Object.assign(Object.assign({}, rest), { paymentStatus: "PENDING", landlordDecision: "PENDING", subcategories: subcategoryIdsUnique ? {
+                    connect: subcategoryIdsUnique.map(id => ({ id })),
                 } : undefined, category: {
                     connect: { id: categoryId },
                 }, services: serviceId

@@ -16,33 +16,29 @@ const error_service_1 = __importDefault(require("../../services/error.service"))
 const inventory_services_1 = __importDefault(require("../services/inventory.services"));
 const inventorySchema_1 = require("../validations/schema/inventorySchema");
 class InventoryController {
-    createInventory(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+    constructor() {
+        this.createInventory = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { value, error } = yield inventorySchema_1.inventorySchema.validate(req.body);
             if (error)
                 return res.status(400).json({ message: error.details[0].message });
             try {
                 const inventory = yield inventory_services_1.default.createInventory(value);
-                return res.status(201).json(inventory);
+                return res.status(201).json({ inventory });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
             }
         });
-    }
-    getAllInventorys(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getAllInventorys = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const inventorys = yield inventory_services_1.default.getAllInventory();
-                return res.status(200).json(inventorys);
+                return res.status(200).json({ inventorys });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
             }
         });
-    }
-    getInventoryById(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getInventoryById = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { inventoryId } = req.params;
                 const inventory = yield inventory_services_1.default.getInventoryById(inventoryId);
@@ -54,43 +50,40 @@ class InventoryController {
                 error_service_1.default.handleError(error, res);
             }
         });
-    }
-    updateInventory(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.updateInventory = (req, res) => __awaiter(this, void 0, void 0, function* () {
             // const { value, error } = await inventorySchema.validate(req.body);
             // if (error) return res.status(400).json({ message: error.details[0].message });
             try {
-                const updatedInventory = yield inventory_services_1.default.updateInventory(req.params.id, req.body);
+                const { value, error } = yield inventorySchema_1.inventoryUpdateSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ message: error.details[0].message });
+                const updatedInventory = yield inventory_services_1.default.updateInventory(req.params.inventoryId, value);
                 if (!updatedInventory)
                     return res.status(404).json({ message: "Inventory not found" });
-                return res.status(200).json(updatedInventory);
+                return res.status(200).json({ updatedInventory });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
             }
         });
-    }
-    deleteInventory(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.deleteInventory = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const deletedInventory = yield inventory_services_1.default.deleteInventory(req.params.id);
+                const deletedInventory = yield inventory_services_1.default.deleteInventory(req.params.inventoryId);
                 if (!deletedInventory)
                     return res.status(404).json({ message: "Inventory not found" });
-                return res.status(200).json(deletedInventory);
+                return res.status(200).json({ deletedInventory });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
             }
         });
-    }
-    getAllInventorysByProperty(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getAllInventorysByProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { propertyId } = req.params;
                 const inventorys = yield inventory_services_1.default.getAllInventoriesByProperty(propertyId);
                 if (inventorys.length === 0)
                     return res.status(404).json({ message: "No inventorys found" });
-                return res.status(200).json(inventorys);
+                return res.status(200).json({ inventorys });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

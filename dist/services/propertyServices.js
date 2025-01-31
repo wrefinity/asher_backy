@@ -20,6 +20,15 @@ class PropertyService {
         this.getProperties = () => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findMany({ where: { isDeleted: false }, });
         });
+        this.getLandlordProperties = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.properties.findMany({
+                where: { isDeleted: false, landlordId },
+                include: {
+                    propertyListingHistory: true,
+                    apartments: true,
+                }
+            });
+        });
         this.getPropertiesById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findUnique({
                 where: { id },
@@ -151,36 +160,32 @@ class PropertyService {
             });
         });
         // property listings
+        this.getActiveOrInactivePropsListing = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, isActive = true) {
+            return yield __1.prismaClient.propertyListingHistory.findMany({
+                where: {
+                    isActive,
+                    property: {
+                        landlordId
+                    }
+                },
+                include: {
+                    property: true,
+                    apartment: true,
+                }
+            });
+        });
         this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}) {
             const { landlordId, property, minSize, maxSize } = filters;
-            const { type, state, country, } = property || {};
+            const { type, state, country, specificationType, isActive } = property || {};
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && {
-                    property: {
-                        landlordId: landlordId,
-                    },
-                })), (type && {
-                    property: {
-                        type: type,
-                    },
-                })), (state && {
-                    property: {
-                        state: state,
-                    },
-                })), (country && {
-                    property: {
-                        country: country,
-                    },
-                })), (minSize || maxSize
-                    ? {
-                        property: {
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && { state })), (country && { country })), (minSize || maxSize
+                        ? {
                             propertysize: {
                                 gte: minSize !== null && minSize !== void 0 ? minSize : undefined,
                                 lte: maxSize !== null && maxSize !== void 0 ? maxSize : undefined,
                             },
-                        },
-                    }
-                    : {})),
+                        }
+                        : {})) }),
                 include: {
                     property: true,
                     apartment: true,
@@ -188,12 +193,44 @@ class PropertyService {
             });
         });
         this.createPropertyListing = (data) => __awaiter(this, void 0, void 0, function* () {
+            const propListed = yield this.getPropsListedById(data.propertyId);
+            if (propListed)
+                throw new Error(`The props with ID ${data.propertyId} have been listed`);
             return yield __1.prismaClient.propertyListingHistory.create({
                 data,
             });
         });
-        // to update property to listing and not listing
+        this.getPropsListedById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            const propsListed = yield __1.prismaClient.propertyListingHistory.findFirst({
+                where: {
+                    propertyId
+                },
+                include: {
+                    property: true,
+                    apartment: true,
+                }
+            });
+            return propsListed;
+        });
+        // to update property listings
+        this.updatePropertyListing = (data, propertyId, landlordId) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const propsListed = yield this.getPropsListedById(propertyId);
+            if (!propsListed)
+                throw new Error(`The props with ID ${propertyId} have not been listed`);
+            if (((_a = propsListed === null || propsListed === void 0 ? void 0 : propsListed.property) === null || _a === void 0 ? void 0 : _a.landlordId) !== landlordId) {
+                throw new Error("only landlord that created this props listing can update props listing");
+            }
+            return yield __1.prismaClient.propertyListingHistory.update({
+                where: { propertyId },
+                data,
+            });
+        });
+        // to update property to listing and not listing 
         this.updateListingStatus = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            const propsListed = yield this.getPropsListedById(propertyId);
+            if (!propsListed)
+                throw new Error(`The props with ID ${propertyId} have not been listed`);
             return yield __1.prismaClient.propertyListingHistory.update({
                 where: { propertyId },
                 data: { onListing: false },

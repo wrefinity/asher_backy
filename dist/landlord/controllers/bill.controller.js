@@ -33,7 +33,7 @@ class BillController {
         });
         this.updateBill = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { billId } = req.params;
-            const { value, error } = billSchema_1.billSchema.validate(req.body);
+            const { value, error } = billSchema_1.billUpdateSchema.validate(req.body);
             if (error)
                 return res.status(400).json({ message: error.details[0].message });
             const landlordId = req.user.landlords.id;

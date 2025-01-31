@@ -154,7 +154,9 @@ class LandlordMaintenanceService {
                 .filter((entry) => entry.subcategoryId !== null)
                 .map((entry) => entry.subcategoryId));
             // Step 3: Combine and structure the data
-            const result = categories.map((category) => (Object.assign(Object.assign({}, category), { isEnabled: whitelistedCategoryIds.has(category.id), subCategories: category.subCategory.map((subCategory) => (Object.assign(Object.assign({}, subCategory), { isEnabled: whitelistedSubcategoryIds.has(subCategory.id) }))) })));
+            const result = categories.map((category) => (Object.assign(Object.assign({}, category), { 
+                // isEnabled: whitelistedCategoryIds.has(category.id),
+                subCategories: category.subCategory.map((subCategory) => (Object.assign(Object.assign({}, subCategory), { isEnabled: whitelistedSubcategoryIds.has(subCategory.id) }))) })));
             return result;
         });
         // Update an existing whitelist entry

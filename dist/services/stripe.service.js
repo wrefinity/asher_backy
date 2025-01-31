@@ -25,6 +25,43 @@ const stripe = new stripe_1.default(STRIPE_SECRET_KEY, {
     apiVersion: '2024-06-20',
 });
 class StripeService {
+    constructor() {
+        this.createOrGetStripeCustomer = (userId) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const user = yield __1.prismaClient.users.findUnique({
+                where: { id: userId },
+                include: { profile: true },
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            if (user.stripeCustomerId) {
+                // If the user already has a Stripe Customer ID, fetch and return the customer
+                const stripeCustomer = yield stripe.customers.retrieve(user.stripeCustomerId);
+                return {
+                    id: stripeCustomer.id,
+                    email: stripeCustomer.email,
+                    name: stripeCustomer.name,
+                };
+            }
+            // If the user doesn't have a Stripe Customer ID, create a new customer
+            const customer = yield stripe.customers.create({
+                email: user.email,
+                name: ((_a = user.profile) === null || _a === void 0 ? void 0 : _a.fullname) || user.email,
+                metadata: { userId: user.id },
+            });
+            // Save the Stripe Customer ID to the user record
+            yield __1.prismaClient.users.update({
+                where: { id: userId },
+                data: { stripeCustomerId: customer.id },
+            });
+            return {
+                id: customer.id,
+                email: customer.email,
+                name: customer.name,
+            };
+        });
+    }
     createCustomer(email, name) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -235,43 +272,6 @@ class StripeService {
                 },
             });
             // TODO: Implement any necessary cleanup or notification logic
-        });
-    }
-    createOrGetStripeCustomer(userId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            var _a;
-            const user = yield __1.prismaClient.users.findUnique({
-                where: { id: userId },
-                include: { profile: true },
-            });
-            if (!user) {
-                throw new Error('User not found');
-            }
-            if (user.stripeCustomerId) {
-                // If the user already has a Stripe Customer ID, fetch and return the customer
-                const stripeCustomer = yield stripe.customers.retrieve(user.stripeCustomerId);
-                return {
-                    id: stripeCustomer.id,
-                    email: stripeCustomer.email,
-                    name: stripeCustomer.name,
-                };
-            }
-            // If the user doesn't have a Stripe Customer ID, create a new customer
-            const customer = yield stripe.customers.create({
-                email: user.email,
-                name: ((_a = user.profile) === null || _a === void 0 ? void 0 : _a.fullname) || user.email,
-                metadata: { userId: user.id },
-            });
-            // Save the Stripe Customer ID to the user record
-            yield __1.prismaClient.users.update({
-                where: { id: userId },
-                data: { stripeCustomerId: customer.id },
-            });
-            return {
-                id: customer.id,
-                email: customer.email,
-                name: customer.name,
-            };
         });
     }
     handleLinkSuccessfulPayment(sessionId) {

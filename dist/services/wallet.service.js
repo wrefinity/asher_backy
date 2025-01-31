@@ -62,6 +62,63 @@ class WalletService {
             }
             return wallet;
         });
+        this.fundWalletGeneral = (userId_1, amount_1, ...args_1) => __awaiter(this, [userId_1, amount_1, ...args_1], void 0, function* (userId, amount, currency = 'usd', countryCode, paymentGateway) {
+            var _a;
+            const wallet = yield this.getOrCreateWallet(userId, currency);
+            const user = yield __1.prismaClient.users.findUnique({
+                where: { id: userId },
+                include: {
+                    profile: {
+                        select: {
+                            fullname: true,
+                        }
+                    }
+                }
+            });
+            if (!user) {
+                throw new Error("User not found.");
+            }
+            console.log(countryCode);
+            const gateway = paymentGateway ? paymentGateway : paymentGateway_service_1.default.selectGateway(countryCode);
+            console.log(gateway);
+            let paymentResponse;
+            let referenceId;
+            let paymentUrl;
+            switch (gateway) {
+                case client_1.PaymentGateway.STRIPE:
+                    const stripeCustomer = yield stripe_service_1.default.createOrGetStripeCustomer(userId);
+                    const paymentIntent = yield stripe_service_1.default.createPaymentIntent(amount * 100, // Stripe expects amounts in cents
+                    currency, stripeCustomer.id);
+                    paymentResponse = paymentIntent;
+                    referenceId = paymentIntent.id;
+                    break;
+                case client_1.PaymentGateway.FLUTTERWAVE:
+                    referenceId = (0, helpers_1.generateIDs)('FTWREF');
+                    const flutterwavePayment = yield flutterWave_service_1.default.initializePayment(amount, currency, user.email, ((_a = user.profile) === null || _a === void 0 ? void 0 : _a.fullname) || user.email, referenceId);
+                    paymentResponse = flutterwavePayment;
+                    paymentUrl = flutterwavePayment.data.link;
+                    break;
+                // case PaymentGateway.PAYSTACK:
+                //     const transactionDetails = {
+                //         amount: amount,
+                //         email: user.email,
+                //     }
+                //     const paystackPayment = await paystackServices.initializePayment({ ...transactionDetails });
+                //     paymentResponse = paystackPayment;
+                //     referenceId = paystackPayment.data.reference;
+                //     paymentUrl = paystackPayment.data.authorization_url;
+                //     break;
+                default:
+                    throw new Error("Unsupported payment gateway");
+            }
+            // Create a transaction record
+            const transaction = yield transaction_services_1.default.createTransaction(Object.assign({ userId, amount: amount, description: `Wallet funding of ${amount} ${currency.toUpperCase()} via ${gateway}`, type: client_1.TransactionType.CREDIT, status: client_1.TransactionStatus.PENDING, reference: client_1.TransactionReference.FUND_WALLET, walletId: wallet.id, referenceId: referenceId, paymentGateway: gateway }, (gateway === client_1.PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId })));
+            return {
+                paymentDetails: paymentResponse,
+                transactionDetails: transaction,
+                paymentUrl: paymentUrl,
+            };
+        });
         // function by wrashtech
         this.fundWalletGeneric = (userId, amount, currency) => __awaiter(this, void 0, void 0, function* () {
             const wallet = yield this.getOrCreateWallet(userId, currency);
@@ -257,65 +314,6 @@ class WalletService {
                 paymentUrl: paymentUrl,
                 transactionDetails: transaction,
                 paymentResponse: paymentResponse,
-            };
-        });
-    }
-    fundWalletGeneral(userId_1, amount_1) {
-        return __awaiter(this, arguments, void 0, function* (userId, amount, currency = 'usd', countryCode, paymentGateway) {
-            var _a;
-            const wallet = yield this.getOrCreateWallet(userId, currency);
-            const user = yield __1.prismaClient.users.findUnique({
-                where: { id: userId },
-                include: {
-                    profile: {
-                        select: {
-                            fullname: true,
-                        }
-                    }
-                }
-            });
-            if (!user) {
-                throw new Error("User not found.");
-            }
-            console.log(countryCode);
-            const gateway = paymentGateway ? paymentGateway : paymentGateway_service_1.default.selectGateway(countryCode);
-            console.log(gateway);
-            let paymentResponse;
-            let referenceId;
-            let paymentUrl;
-            switch (gateway) {
-                case client_1.PaymentGateway.STRIPE:
-                    const stripeCustomer = yield stripe_service_1.default.createOrGetStripeCustomer(userId);
-                    const paymentIntent = yield stripe_service_1.default.createPaymentIntent(amount * 100, // Stripe expects amounts in cents
-                    currency, stripeCustomer.id);
-                    paymentResponse = paymentIntent;
-                    referenceId = paymentIntent.id;
-                    break;
-                case client_1.PaymentGateway.FLUTTERWAVE:
-                    referenceId = (0, helpers_1.generateIDs)('FTWREF');
-                    const flutterwavePayment = yield flutterWave_service_1.default.initializePayment(amount, currency, user.email, ((_a = user.profile) === null || _a === void 0 ? void 0 : _a.fullname) || user.email, referenceId);
-                    paymentResponse = flutterwavePayment;
-                    paymentUrl = flutterwavePayment.data.link;
-                    break;
-                // case PaymentGateway.PAYSTACK:
-                //     const transactionDetails = {
-                //         amount: amount,
-                //         email: user.email,
-                //     }
-                //     const paystackPayment = await paystackServices.initializePayment({ ...transactionDetails });
-                //     paymentResponse = paystackPayment;
-                //     referenceId = paystackPayment.data.reference;
-                //     paymentUrl = paystackPayment.data.authorization_url;
-                //     break;
-                default:
-                    throw new Error("Unsupported payment gateway");
-            }
-            // Create a transaction record
-            const transaction = yield transaction_services_1.default.createTransaction(Object.assign({ userId, amount: amount, description: `Wallet funding of ${amount} ${currency.toUpperCase()} via ${gateway}`, type: client_1.TransactionType.CREDIT, status: client_1.TransactionStatus.PENDING, reference: client_1.TransactionReference.FUND_WALLET, walletId: wallet.id, referenceId: referenceId, paymentGateway: gateway }, (gateway === client_1.PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId })));
-            return {
-                paymentDetails: paymentResponse,
-                transactionDetails: transaction,
-                paymentUrl: paymentUrl,
             };
         });
     }

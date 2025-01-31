@@ -59,7 +59,7 @@ class TaskController {
                 const updatedTask = yield task_services_1.default.updateTask(req.params.taskId, value);
                 if (!updatedTask)
                     return res.status(404).json({ message: "Task not found" });
-                return res.status(200).json(updatedTask);
+                return res.status(200).json({ updatedTask });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

@@ -13,11 +13,24 @@ const client_1 = require("@prisma/client");
 const __1 = require("../..");
 class TaskService {
     constructor() {
+        this.createTask = (taskData) => __awaiter(this, void 0, void 0, function* () {
+            //NOTE: Check the property ID if it exist before inserting into the table
+            return yield __1.prismaClient.taskManagement.create({
+                data: taskData,
+            });
+        });
         this.updateTask = (taskId, taskData) => __awaiter(this, void 0, void 0, function* () {
+            // Check if task exists
+            const existingTask = yield this.getTaskById(taskId);
+            if (!existingTask) {
+                throw new Error(`Task with ID ${taskId} not found`);
+            }
+            // Prepare update data
             const updatedData = Object.assign({}, taskData);
             if (taskData.status === client_1.StatusType.COMPLETED) {
                 updatedData.completed = true;
             }
+            // Update the task
             return yield __1.prismaClient.taskManagement.update({
                 where: { id: taskId },
                 data: updatedData,
@@ -29,6 +42,16 @@ class TaskService {
                 data: { isDeleted: true }
             });
         });
+        this.getAllTasksByProperty = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.taskManagement.findMany({
+                where: { propertyId, isDeleted: false },
+            });
+        });
+        this.getTaskById = (taskId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.taskManagement.findUnique({
+                where: { id: taskId },
+            });
+        });
         this.getAllTask = (propertyId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.taskManagement.findMany({
                 where: {
@@ -38,29 +61,6 @@ class TaskService {
                 include: {
                     property: true,
                 }
-            });
-        });
-    }
-    createTask(taskData) {
-        return __awaiter(this, void 0, void 0, function* () {
-            //NOTE: Check the property ID if it exist before inserting into the table
-            return yield __1.prismaClient.taskManagement.create({
-                data: taskData,
-            });
-        });
-    }
-    ;
-    getAllTasksByProperty(propertyId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.taskManagement.findMany({
-                where: { propertyId, isDeleted: false },
-            });
-        });
-    }
-    getTaskById(taskId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.taskManagement.findUnique({
-                where: { id: taskId },
             });
         });
     }

@@ -12,43 +12,89 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const __1 = require("..");
 const crypto_1 = require("crypto");
+const helpers_1 = require("../utils/helpers");
 class TransactionService {
-    createTransaction(transactionData) {
-        return __awaiter(this, void 0, void 0, function* () {
+    constructor() {
+        this.createTransact = (data) => __awaiter(this, void 0, void 0, function* () {
+            // Map TransactionIF to Prisma's TransactionCreateInput
+            const prismaData = {
+                id: data.id,
+                description: data.description,
+                amount: data.amount,
+                user: { connect: { id: data.userId } },
+                wallet: data.walletId ? { connect: { id: data.walletId } } : undefined,
+                type: data.type ? data.type : client_1.TransactionType.DEBIT,
+                reference: data.reference,
+                status: data.status ? data.status : client_1.TransactionStatus.PENDING, // Initial status (e.g., PENDING)
+                referenceId: data.referenceId ? data.referenceId : (0, helpers_1.generateIDs)(`RF-${data.reference}`),
+                paymentGateway: data.paymentGateway,
+                stripePaymentIntentId: data.stripePaymentIntentId,
+                property: data.propertyId ? { connect: { id: data.propertyId } } : undefined,
+                apartment: data.apartmentId ? { connect: { id: data.apartmentId } } : undefined,
+                bill: data.billId ? { connect: { id: data.billId } } : undefined,
+                currency: data.currency,
+            };
+            // Create the transaction
+            const transaction = yield __1.prismaClient.transaction.create({
+                data: prismaData,
+            });
+            if (!transaction) {
+                throw new Error('Transaction not found');
+            }
+            // Update the wallet balance
+            if (transaction.walletId) {
+                yield __1.prismaClient.wallet.update({
+                    where: { id: transaction.walletId },
+                    data: {
+                        balance: {
+                            decrement: transaction.amount,
+                        },
+                    },
+                });
+                // Update the transaction status to COMPLETED
+                yield __1.prismaClient.transaction.update({
+                    where: { id: transaction.id },
+                    data: {
+                        status: client_1.TransactionStatus.COMPLETED, // Update status to COMPLETED
+                    },
+                });
+            }
+            return transaction;
+        });
+        this.createTransaction = (transactionData) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.transaction.create({
                 data: transactionData,
             });
         });
-    }
-    getTransactionsByUser(userId) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getTransactionsByUser = (userId) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.transaction.findMany({
                 where: {
                     userId
                 },
             });
         });
-    }
-    getTransactionById(id) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getTransactionByProps = (propertyId_1, ...args_1) => __awaiter(this, [propertyId_1, ...args_1], void 0, function* (propertyId, landlordId = null) {
+            return __1.prismaClient.transaction.findMany({
+                where: {
+                    property: Object.assign({ id: propertyId }, (landlordId ? { landlordId } : {}))
+                },
+            });
+        });
+        this.getTransactionById = (id) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.transaction.findUnique({
                 where: {
                     id
                 },
             });
         });
-    }
-    getTransactionByReference(referenceId) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getTransactionByReference = (referenceId) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.transaction.findFirst({
                 where: {
                     referenceId
                 },
             });
         });
-    }
-    updateTransaction(transactionId, userId, transactionData) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.updateTransaction = (transactionId, userId, transactionData) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.transaction.update({
                 where: {
                     id: transactionId,
@@ -57,22 +103,19 @@ class TransactionService {
                 data: transactionData,
             });
         });
-    }
-    updateReferenceTransaction(userId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            console.log("got here");
-            return __1.prismaClient.transaction.update({
-                where: {
-                    userId
-                },
-                data: {
-                    status: client_1.TransactionStatus.COMPLETED,
-                },
-            });
-        });
-    }
-    handleSuccessfulPayment(respData) {
-        return __awaiter(this, void 0, void 0, function* () {
+        // TODO: 
+        // updateReferenceTransaction = async (userId: string) => {
+        //     console.log("got here");
+        //     return prismaClient.transaction.update({
+        //         where: {
+        //             userId
+        //         },
+        //         data: {
+        //             status: TransactionStatus.COMPLETED,
+        //         },
+        //     });
+        // }
+        this.handleSuccessfulPayment = (respData) => __awaiter(this, void 0, void 0, function* () {
             const transaction = yield this.getTransactionByReference(respData.reference);
             if (!transaction) {
                 throw new Error('Transaction not found');
@@ -92,9 +135,7 @@ class TransactionService {
                 });
             }
         });
-    }
-    handleFailedPayment(data) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.handleFailedPayment = (data) => __awaiter(this, void 0, void 0, function* () {
             const transaction = yield this.getTransactionByReference(data.reference);
             if (!transaction) {
                 throw new Error('Transaction not found');
@@ -103,9 +144,7 @@ class TransactionService {
                 status: client_1.TransactionStatus.FAILED,
             });
         });
-    }
-    createCounterpartyTransaction(data) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.createCounterpartyTransaction = (data) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.transaction.create({
                 data: Object.assign(Object.assign({}, data), { type: client_1.TransactionType.CREDIT, status: client_1.TransactionStatus.COMPLETED, referenceId: `REF-${Date.now()}-${(0, crypto_1.randomBytes)(4).toString('hex')}` })
             });

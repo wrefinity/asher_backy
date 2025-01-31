@@ -148,18 +148,18 @@ class TransactionService {
             data: transactionData,
         });
     }
-
-    updateReferenceTransaction = async (userId: string) => {
-        console.log("got here");
-        return prismaClient.transaction.update({
-            where: {
-                userId
-            },
-            data: {
-                status: TransactionStatus.COMPLETED,
-            },
-        });
-    }
+    // TODO: 
+    // updateReferenceTransaction = async (userId: string) => {
+    //     console.log("got here");
+    //     return prismaClient.transaction.update({
+    //         where: {
+    //             userId
+    //         },
+    //         data: {
+    //             status: TransactionStatus.COMPLETED,
+    //         },
+    //     });
+    // }
 
     handleSuccessfulPayment = async (respData: WebHookData) => {
         const transaction = await this.getTransactionByReference(respData.reference);

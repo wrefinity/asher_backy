@@ -65,6 +65,23 @@ class MaintenanceController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.scheduleMaintenanceDate = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const maintenanceId = req.params.maintenanceId;
+                const maintenance = yield maintenance_service_1.default.getMaintenanceById(maintenanceId);
+                if (!maintenance) {
+                    res.status(404).json({ message: 'Maintenance not found' });
+                }
+                const { error, value } = maintenance_schema_1.rescheduleMaintenanceSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const updatedMaintenance = yield maintenance_service_1.default.updateMaintenance(maintenanceId, value);
+                return res.status(200).json({ message: 'Maintenance scheduled successfully', updatedMaintenance });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         // tenancy function to check if a property maintenance is whitelisted
         this.checkIfMaintenanceWhitelisted = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;

@@ -20,6 +20,29 @@ const generateReportQueue = new bull_1.default('generateReportQueue');
 class PropertyPerformaceService {
     constructor(redisService) {
         this.redisService = redisService;
+        this.getNetOperatingIncome = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            //total rent income
+            const rentalIncome = yield __1.prismaClient.transaction.aggregate({
+                where: {
+                    propertyId: propertyId,
+                    reference: client_1.TransactionReference.RENT_PAYMENT,
+                    status: client_1.TransactionStatus.COMPLETED
+                },
+                _sum: { amount: true }
+            });
+            // total operating income
+            const operatingIncome = yield __1.prismaClient.transaction.aggregate({
+                where: {
+                    propertyId: propertyId,
+                    reference: { in: [client_1.TransactionReference.MAINTENANCE_FEE] },
+                    status: client_1.TransactionStatus.COMPLETED
+                },
+                _sum: { amount: true }
+            });
+            const rentalIncomeAmount = rentalIncome._sum.amount ? parseFloat(rentalIncome._sum.amount.toString()) : 0;
+            const operatingIncomeAmount = operatingIncome._sum.amount ? parseFloat(operatingIncome._sum.amount.toString()) : 0;
+            return rentalIncomeAmount - operatingIncomeAmount;
+        });
     }
     rungenerateReport() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -96,31 +119,6 @@ class PropertyPerformaceService {
             const occupiedApartments = property.transactions.length;
             const totalApartments = property.totalApartments;
             return (occupiedApartments / totalApartments) * 100;
-        });
-    }
-    getNetOperatingIncome(propertyId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            //total rent income
-            const rentalIncome = yield __1.prismaClient.transaction.aggregate({
-                where: {
-                    propertyId: propertyId,
-                    reference: client_1.TransactionReference.RENT_PAYMENT,
-                    status: client_1.TransactionStatus.COMPLETED
-                },
-                _sum: { amount: true }
-            });
-            // total operating income
-            const operatingIncome = yield __1.prismaClient.transaction.aggregate({
-                where: {
-                    propertyId: propertyId,
-                    reference: { in: [client_1.TransactionReference.MAINTENANCE_FEE] },
-                    status: client_1.TransactionStatus.COMPLETED
-                },
-                _sum: { amount: true }
-            });
-            const rentalIncomeAmount = rentalIncome._sum.amount ? parseFloat(rentalIncome._sum.amount.toString()) : 0;
-            const operatingIncomeAmount = operatingIncome._sum.amount ? parseFloat(operatingIncome._sum.amount.toString()) : 0;
-            return rentalIncomeAmount - operatingIncomeAmount;
         });
     }
     //tenant satisfaction rate

@@ -4,16 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const authorize_1 = require("../../middlewares/authorize");
 const inventory_controller_1 = __importDefault(require("../controllers/inventory.controller"));
 class InventoryRouter {
     constructor() {
         this.router = (0, express_1.Router)();
-        this.authenticateService = new authorize_1.Authorize();
         this.initializeRoutes();
     }
     initializeRoutes() {
-        this.router.use(this.authenticateService.authorize);
         this.router.post('/', inventory_controller_1.default.createInventory);
         this.router.get('/', inventory_controller_1.default.getAllInventorys);
         this.router.get('/:inventoryId', inventory_controller_1.default.getInventoryById);

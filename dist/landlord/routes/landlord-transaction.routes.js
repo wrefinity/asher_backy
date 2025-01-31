@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authorize_1 = require("../../middlewares/authorize");
 const landlord_transaction_controller_1 = __importDefault(require("../controllers/landlord-transaction.controller"));
+const transactions_controllers_1 = __importDefault(require("../controllers/transactions.controllers"));
 class LandlordTransactionRouter {
     constructor() {
         this.router = (0, express_1.Router)();
@@ -15,9 +16,9 @@ class LandlordTransactionRouter {
     initializeRoutes() {
         this.router.use(this.authenticateService.authorize);
         // Landlord Transactions Routes
-        this.router.post('/landlord-transaction/:propertyId', landlord_transaction_controller_1.default.createTransaction);
-        this.router.get('/landlord-transaction/:propertyId', landlord_transaction_controller_1.default.getTransactions);
-        this.router.get('/landlord-transaction/:Id', landlord_transaction_controller_1.default.getTransactionById);
+        this.router.post('/:propertyId', landlord_transaction_controller_1.default.createTransaction);
+        this.router.get('/:propertyId', transactions_controllers_1.default.getTransaction);
+        this.router.get('/transact/:Id', landlord_transaction_controller_1.default.getTransactionById);
         this.router.get('/verify/:referenceId', landlord_transaction_controller_1.default.verifyPropertyPayment);
         this.router.get('/summary', landlord_transaction_controller_1.default.getTransactionSummary);
     }

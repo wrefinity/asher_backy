@@ -8,35 +8,51 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("../..");
 class InventoryService {
-    createInventory(inventoryData) {
-        return __awaiter(this, void 0, void 0, function* () {
-            //NOTE: Check the property ID if it exist before inserting into the table
+    constructor() {
+        this.createInventory = (inventoryData) => __awaiter(this, void 0, void 0, function* () {
+            const { propertyId } = inventoryData, rest = __rest(inventoryData, ["propertyId"]);
+            // Validate that the propertyId exists
+            const propertyExists = yield __1.prismaClient.properties.findUnique({
+                where: { id: inventoryData.propertyId },
+            });
+            if (!propertyExists) {
+                throw new Error(`Property with ID ${inventoryData.propertyId} does not exist`);
+            }
             return yield __1.prismaClient.inventoryManageMent.create({
-                data: inventoryData,
+                data: Object.assign(Object.assign({}, rest), { property: {
+                        connect: {
+                            id: propertyId,
+                        },
+                    } })
             });
         });
-    }
-    ;
-    updateInventory(inventoryId, inventoryData) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.updateInventory = (inventoryId, inventoryData) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.inventoryManageMent.update({
                 where: { id: inventoryId },
                 data: inventoryData,
             });
         });
-    }
-    deleteInventory(inventoryId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.inventoryManageMent.delete({
+        this.deleteInventory = (inventoryId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.inventoryManageMent.update({
                 where: { id: inventoryId },
+                data: { isDeleted: true },
             });
         });
-    }
-    getAllInventoriesByProperty(propertyId) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getAllInventoriesByProperty = (propertyId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.inventoryManageMent.findMany({
                 where: { propertyId },
             });

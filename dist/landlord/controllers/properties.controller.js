@@ -19,6 +19,7 @@ const properties_schema_1 = require("../../validations/schemas/properties.schema
 const settings_1 = require("../validations/schema/settings");
 const property_performance_1 = __importDefault(require("../services/property-performance"));
 const filereader_1 = require("../../utils/filereader");
+const client_1 = require("@prisma/client");
 class PropertyController {
     constructor() {
         this.createProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -87,6 +88,25 @@ class PropertyController {
                 const propertiesGrouped = yield propertyServices_1.default.aggregatePropertiesByState(landlordId);
                 const propertiesUnGrouped = yield propertyServices_1.default.getPropertiesByLandlord(landlordId);
                 return res.status(200).json({ propertiesGrouped, propertiesUnGrouped });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.categorizedPropsInRentals = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId)
+                    return res.status(404).json({ message: "Landlord not found" });
+                const properties = yield propertyServices_1.default.getLandlordProperties(landlordId);
+                // Group properties based on specificationType
+                const categorizedProperties = {
+                    COMMERCIAL: properties.filter((prop) => prop.specificationType === client_1.PropertySpecificationType.COMMERCIAL),
+                    RESIDENTIAL: properties.filter((prop) => prop.specificationType === client_1.PropertySpecificationType.RESIDENTIAL),
+                    SHORTLET: properties.filter((prop) => prop.specificationType === client_1.PropertySpecificationType.SHORTLET),
+                };
+                return res.status(200).json({ data: categorizedProperties });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -205,7 +225,7 @@ class PropertyController {
                     return res.status(400).json({ message: "Landlord not found" });
                 }
                 // Extract filters from the query parameters
-                const { state, country, propertySize, type } = req.query;
+                const { state, country, propertySize, type, isActive, specificationType } = req.query;
                 // Prepare the filter object
                 const filters = {
                     landlordId,
@@ -217,8 +237,36 @@ class PropertyController {
                     filters.property = Object.assign(Object.assign({}, filters.property), { country: String(country) });
                 if (propertySize)
                     filters.property = Object.assign(Object.assign({}, filters.property), { propertysize: Number(propertySize) });
-                if (type)
-                    filters.type = type;
+                if (isActive) {
+                    // Convert isActive to a number
+                    const isActiveNumber = parseInt(isActive.toString(), 10);
+                    if (!isNaN(isActiveNumber)) {
+                        filters.property = Object.assign(Object.assign({}, filters.property), { isActive: isActiveNumber === 1 });
+                    }
+                    else {
+                        throw new Error(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
+                    }
+                }
+                // Validate specificationType against the enum
+                if (specificationType) {
+                    const isValidSpecificationType = Object.values(client_1.PropertySpecificationType).includes(specificationType);
+                    if (isValidSpecificationType) {
+                        filters.property = Object.assign(Object.assign({}, filters.property), { specificationType: String(specificationType) });
+                    }
+                    else {
+                        throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(client_1.PropertySpecificationType).join(', ')}`);
+                    }
+                }
+                if (type) {
+                    const isValidType = Object.values(client_1.PropertyType).includes(type);
+                    if (isValidType) {
+                        filters.property = Object.assign(Object.assign({}, filters.property), { type: String(type) });
+                    }
+                    else {
+                        throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(client_1.PropertyType).join(', ')}`);
+                    }
+                }
+                console.log(filters);
                 // Fetch the filtered properties
                 const properties = yield propertyServices_1.default.getAllListedProperties(filters);
                 console.log(landlordId);
@@ -228,6 +276,47 @@ class PropertyController {
                 }
                 // Return the filtered properties
                 return res.status(200).json({ properties });
+            }
+            catch (err) {
+                // Handle any errors
+                error_service_1.default.handleError(err, res);
+            }
+        });
+        this.getActiveOrInactivePropsListing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                // Extract landlordId from the authenticated user
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(400).json({ message: "Landlord not found" });
+                }
+                // get listing
+                const activePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId);
+                const inActivePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId, false);
+                // Return the ative and inactive property listing
+                return res.status(200).json({ activePropsListing, inActivePropsListing });
+            }
+            catch (err) {
+                // Handle any errors
+                error_service_1.default.handleError(err, res);
+            }
+        });
+        this.updatePropsListing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const { error, value } = properties_schema_1.updatePropertyListingSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const propertyId = req.params.propertyId;
+                // Extract landlordId from the authenticated user
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(400).json({ message: "Landlord not found" });
+                }
+                // update listing
+                const listing = yield propertyServices_1.default.updatePropertyListing(value, propertyId, landlordId);
+                // Return the update property listing
+                return res.status(200).json({ listing });
             }
             catch (err) {
                 // Handle any errors

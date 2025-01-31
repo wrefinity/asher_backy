@@ -52,7 +52,7 @@ class LandlordRouter {
         this.router.use("/inventory", inventory_routes_1.default);
         // bills routes routes
         this.router.use("/bills", bill_routes_1.default);
-        this.router.use("/transaction", landlord_transaction_routes_1.default);
+        this.router.use("/transactions", landlord_transaction_routes_1.default);
         this.router.use("/finance", finance_routes_1.default);
         //braodcast routes
         this.router.use('/broadcast', braodcast_routes_1.default);

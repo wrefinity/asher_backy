@@ -15,11 +15,12 @@ class TransactionRouter {
     }
     initializeRoutes() {
         this.router.use(this.authenticateService.authorize);
-        this.router.get('/fund-wallet', transactions_controllers_1.default.fundWallet);
+        this.router.post('/fund-wallet', transactions_controllers_1.default.fundWallet);
         // this.router.patch('/verify/:referenceId', transactionsControllers.verifyPayment)
-        this.router.patch('/verify-flutter/:referenceId', transactions_controllers_1.default.verifyFlutterWave);
+        // this.router.patch('/verify-flutter/:referenceId', transactionsControllers.verifyFlutterWave)
         // this.router.patch('/verify-stripe/:referenceId', transactionsControllers.verifyStripe)
-        this.router.post('/pay-bill', transfer_controllers_1.default.makePayment);
+        // this.router.post('/pay-bill', transferControllers.makePayment)
+        this.router.post('/pay-bill', transactions_controllers_1.default.makeTransaction);
         this.router.post('/transfer', transfer_controllers_1.default.transferFunds);
     }
 }

@@ -7,7 +7,7 @@ exports.rescheduleMaintenanceSchema = exports.maintenanceChatSchema = exports.ch
 const joi_1 = __importDefault(require("joi"));
 exports.maintenanceSchema = joi_1.default.object({
     description: joi_1.default.string().optional(),
-    scheduleDate: joi_1.default.date().required(),
+    scheduleDate: joi_1.default.date().iso().optional(),
     offer: joi_1.default.array().items(joi_1.default.string()).optional(),
     amount: joi_1.default.number(),
     propertyId: joi_1.default.string().optional(),
@@ -18,7 +18,7 @@ exports.maintenanceSchema = joi_1.default.object({
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
-    serviceId: joi_1.default.string().required(),
+    serviceId: joi_1.default.string().optional(),
 });
 exports.maintenanceCancelSchema = joi_1.default.object({
     reason: joi_1.default.string().optional(),
@@ -36,5 +36,5 @@ exports.maintenanceChatSchema = joi_1.default.object({
 });
 exports.rescheduleMaintenanceSchema = joi_1.default.object({
     // maintenanceId: Joi.string().required(),
-    newScheduleDate: joi_1.default.date().greater('now').required(),
+    scheduleDate: joi_1.default.date().greater('now').required(),
 });

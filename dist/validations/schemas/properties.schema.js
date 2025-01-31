@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateListingStatusSchema = exports.createPropertyListingSchema = exports.updatePropertyDocumentSchema = exports.createPropertyDocumentSchema = exports.updatePropertySchema = exports.createPropertySchema = void 0;
+exports.updateListingStatusSchema = exports.updatePropertyListingSchema = exports.createPropertyListingSchema = exports.updatePropertyDocumentSchema = exports.createPropertyDocumentSchema = exports.updatePropertySchema = exports.createPropertySchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const propertyType = Object.values(client_1.PropertyType);
@@ -88,6 +88,16 @@ exports.createPropertyListingSchema = joi_1.default.object({
     type: joi_1.default.string().valid(...listingTypes).default(client_1.ListingType.LISTING_WEBSITE).required(),
     propertyId: joi_1.default.string().optional(),
     apartmentId: joi_1.default.string().optional(),
+});
+exports.updatePropertyListingSchema = joi_1.default.object({
+    payApplicationFee: joi_1.default.boolean().optional(),
+    isShortlet: joi_1.default.boolean().optional(),
+    shortletDuration: joi_1.default.string().valid(...shortletType).default(client_1.ShortletType.MONTHLY).optional(),
+    type: joi_1.default.string().valid(...listingTypes).default(client_1.ListingType.LISTING_WEBSITE).optional(),
+    // propertyId: Joi.string().optional(),
+    apartmentId: joi_1.default.string().optional(),
+    isActive: joi_1.default.boolean().optional(),
+    onListing: joi_1.default.boolean().optional()
 });
 exports.updateListingStatusSchema = joi_1.default.object({
     isLeased: joi_1.default.boolean().required(),
