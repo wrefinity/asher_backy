@@ -64,7 +64,7 @@ export const getCurrentCountryCurrency = async () => {
   try {
     // Get user's current location using an IP-based API
     const locationResponse = await axios.get('https://ipapi.co/json/');
-    const { country_code, locationCurrency } = locationResponse.data;
+    const { country_code, currency: locationCurrency } = locationResponse.data;
     return {country_code, locationCurrency}
   } catch (error) {
     console.error('Error getting country code:', error)

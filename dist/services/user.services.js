@@ -23,6 +23,8 @@ const emergencyinfo_services_1 = __importDefault(require("../services/emergencyi
 const employmentinfo_services_1 = __importDefault(require("../services/employmentinfo.services"));
 const nextkin_services_1 = __importDefault(require("../services/nextkin.services"));
 const personaldetails_services_1 = __importDefault(require("../services/personaldetails.services"));
+const wallet_service_1 = __importDefault(require("./wallet.service"));
+const helpers_1 = require("../utils/helpers");
 class UserService {
     constructor() {
         // cm641qu2d00003wf057tudib7
@@ -136,6 +138,10 @@ class UserService {
                     }
                 },
             });
+            const countryData = yield (0, helpers_1.getCurrentCountryCurrency)();
+            if (newUser) {
+                yield wallet_service_1.default.getOrCreateWallet(newUser.id, countryData.locationCurrency);
+            }
             // Based on the role, create the corresponding entry in the related schema
             switch (userData === null || userData === void 0 ? void 0 : userData.role) {
                 case client_1.userRoles.LANDLORD:

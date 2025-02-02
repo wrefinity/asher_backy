@@ -15,7 +15,7 @@ class LandlordMaintenanceRoute {
     }
     initializeRoutes() {
         this.router.get('/statistics', maintenance_controller_1.default.getCurrentLandlordMaintenances);
-        this.router.get('/', maintenance_controller_1.default.getMaintenances);
+        this.router.get('/requests', maintenance_controller_1.default.getMaintenances);
         this.router.get('/property/:propertyId', maintenance_controller_1.default.getPropertyMaintenance);
         this.router.post('/accept/:maintenanceId', maintenance_controller_1.default.acceptMaintenaceRequest);
         this.router.post('/decline/:maintenanceId', maintenance_controller_1.default.declineMaintenaceRequest);

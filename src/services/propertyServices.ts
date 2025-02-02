@@ -42,6 +42,11 @@ class PropertyService {
     getPropertiesById = async (id: string) => {
         return await prismaClient.properties.findUnique({
             where: { id },
+            include: {
+                landlord: true,
+                propertyListingHistory: true,
+                apartments: true,
+            }
         });
     }
 

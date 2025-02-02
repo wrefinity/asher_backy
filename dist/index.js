@@ -11,6 +11,7 @@ const secrets_1 = require("./secrets");
 const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
 const applicant_1 = __importDefault(require("./routes/applicant"));
+const complaint_1 = __importDefault(require("./routes/complaint"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const category_1 = __importDefault(require("./routes/category"));
 const chats_1 = __importDefault(require("./routes/chats"));
@@ -82,6 +83,7 @@ class Server {
         this.app.use("/api/tenants", index_1.default);
         // bank information routes
         this.app.use("/api/banks/", bank_1.default);
+        this.app.use("/api/complaints", complaint_1.default);
     }
     start() {
         this.app.listen(this.port, () => {

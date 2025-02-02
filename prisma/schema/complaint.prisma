@@ -1,0 +1,31 @@
+model Complaint {
+    id          String            @id @default(uuid())
+    date        DateTime          @default(now())
+    category    ComplaintCategory @default(MAINTENANCE)
+    subject     String
+    createdBy   users?            @relation(fields: [createdById], references: [id])
+    createdById String?
+    createdAt   DateTime          @default(now())
+    updatedAt   DateTime          @updatedAt
+    isDeleted   Boolean           @default(false)
+    property    properties?       @relation(fields: [propertyId], references: [id])
+    propertyId  String?
+    priority    ComplaintPriority          @default(LOW)
+    status      ComplaintStatus            @default(IN_PROGRESS)
+}
+
+enum ComplaintCategory {
+    MAINTENANCE
+    NOISY
+}
+
+enum ComplaintPriority {
+    LOW
+    MEDIUM
+    HIGH
+}
+
+enum ComplaintStatus {
+    IN_PROGRESS
+    RESOLVED
+}

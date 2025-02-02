@@ -32,6 +32,11 @@ class PropertyService {
         this.getPropertiesById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findUnique({
                 where: { id },
+                include: {
+                    landlord: true,
+                    propertyListingHistory: true,
+                    apartments: true,
+                }
             });
         });
         this.updateProperty = (id, data) => __awaiter(this, void 0, void 0, function* () {

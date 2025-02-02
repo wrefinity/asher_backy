@@ -44,7 +44,12 @@ class WalletService {
                 throw new Error('Insufficient wallet balance');
             }
         });
-        this.getOrCreateWallet = (userId, currency) => __awaiter(this, void 0, void 0, function* () {
+        this.getUserWallet = (userId, currency) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.wallet.findFirst({
+                where: { userId, currency, isActive: true },
+            });
+        });
+        this.getOrCreateWallet = (userId_1, ...args_1) => __awaiter(this, [userId_1, ...args_1], void 0, function* (userId, currency = "NGN") {
             let wallet = yield __1.prismaClient.wallet.findFirst({
                 where: { userId, currency, isActive: true },
             });

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const __1 = require("../..");
+const __1 = require("..");
 class ChatServices {
     constructor() {
         this.createChatRoom = (user1Id, user2Id) => __awaiter(this, void 0, void 0, function* () {
@@ -49,7 +49,23 @@ class ChatServices {
                 orderBy: {
                     createdAt: 'asc',
                 },
+                include: {
+                    sender: {
+                        select: this.selection,
+                    },
+                    receiver: {
+                        select: this.selection,
+                    },
+                },
             });
+        });
+        this.selection = Object.freeze({
+            id: true,
+            email: true,
+            isVerified: true,
+            profileId: true,
+            stripeCustomerId: true,
+            profile: true,
         });
     }
 }

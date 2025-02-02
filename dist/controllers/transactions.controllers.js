@@ -18,20 +18,26 @@ const transaction_services_1 = __importDefault(require("../services/transaction.
 const wallet_service_1 = __importDefault(require("../services/wallet.service"));
 const transaction_scheam_1 = __importDefault(require("../validations/schemas/transaction.scheam"));
 const helpers_1 = require("../utils/helpers");
+const propertyServices_1 = __importDefault(require("../services/propertyServices"));
 class TransactionController {
     constructor() {
         this.makeTransaction = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             const userId = String(req.user.id);
             const { value, error } = transaction_scheam_1.default.transactSchema().validate(req.body);
             if (error)
                 return res.status(400).json({ message: error.details[0].message });
             try {
                 const amount = Number(value.amount);
-                // const authorizationUrl = await walletService.fundWallet(userId, amount)
-                // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
+                // get the props to ensure that props exist and also get the landlord from it
+                const props = yield propertyServices_1.default.getPropertiesById(value.propertyId);
+                if (!props)
+                    return res.status(400).json({ message: "property does not exist" });
+                // get the landlordId
+                const landlordUserId = (_a = props.landlord) === null || _a === void 0 ? void 0 : _a.userId;
                 let transaction;
                 const locationData = yield (0, helpers_1.getCurrentCountryCurrency)();
-                transaction = yield transaction_services_1.default.createTransact(Object.assign(Object.assign({ userId, currency: locationData === null || locationData === void 0 ? void 0 : locationData.locationCurrency }, value), { amount }));
+                transaction = yield transaction_services_1.default.createTransact(Object.assign(Object.assign({ userId, currency: locationData === null || locationData === void 0 ? void 0 : locationData.locationCurrency }, value), { amount }), landlordUserId);
                 res.status(201).json({ transaction });
             }
             catch (error) {

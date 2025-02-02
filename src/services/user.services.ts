@@ -11,6 +11,8 @@ import EmergencyContactService from "../services/emergencyinfo.services"
 import EmploymentService from "../services/employmentinfo.services"
 import NextOfKinService from "../services/nextkin.services"
 import ApplicantPersonalDetailsService from "../services/personaldetails.services"
+import WalletService from "./wallet.service";
+import { getCurrentCountryCurrency } from "../utils/helpers";
 class UserService {
     protected inclusion;
 
@@ -135,6 +137,11 @@ class UserService {
                 }
             },
         });
+
+        const countryData = await getCurrentCountryCurrency()
+        if(newUser) {
+            await WalletService.getOrCreateWallet(newUser.id, countryData.locationCurrency)
+        }
         // Based on the role, create the corresponding entry in the related schema
         switch (userData?.role) {
             case userRoles.LANDLORD:

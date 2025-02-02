@@ -1,5 +1,5 @@
 import { Router } from "express";
-import ChatControls from '../controllers/chats';
+import ComplaintController from '../controllers/complaint.controller';
 import { Authorize } from "../middlewares/authorize";
 
 class ChatRoutes {
@@ -14,8 +14,9 @@ class ChatRoutes {
     }
 
     private initializeRoutes(): void {
-        this.router.post('/room/message',  this.authenticateService.authorize, ChatControls.createChatRoomAndMessage.bind(ChatControls));
-        this.router.get('/room/:receiverId',  this.authenticateService.authorize, ChatControls.getChatsBetweenUsers.bind(ChatControls),);
+        this.router.post('/',  this.authenticateService.authorize, ComplaintController.createComplaint.bind(ComplaintController));
+        this.router.get('/',  this.authenticateService.authorize, ComplaintController.getAllComplaints.bind(ComplaintController),);
+        this.router.get('/:id',  this.authenticateService.authorize, ComplaintController.getComplaintById.bind(ComplaintController),);
     }
 
    

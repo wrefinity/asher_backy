@@ -7,6 +7,7 @@ import { CustomRequest } from "../utils/types";
 import transactionScheam from "../validations/schemas/transaction.scheam";
 import { PaymentGateway } from "@prisma/client"
 import { getCurrentCountryCurrency } from "../utils/helpers";
+import PropertyServices from "../services/propertyServices";
 
 
 
@@ -15,14 +16,18 @@ class TransactionController {
         const userId = String(req.user.id);
         const { value, error } = transactionScheam.transactSchema().validate(req.body)
         if (error) return res.status(400).json({ message: error.details[0].message })
-        
+
         try {
             const amount = Number(value.amount);
-            // const authorizationUrl = await walletService.fundWallet(userId, amount)
-            // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
+            // get the props to ensure that props exist and also get the landlord from it
+            const props = await PropertyServices.getPropertiesById(value.propertyId);
+            if (!props) return res.status(400).json({ message: "property does not exist" })
+            // get the landlordId
+            const landlordUserId = props.landlord?.userId;
+
             let transaction;
             const locationData = await getCurrentCountryCurrency();
-            transaction = await transactionServices.createTransact({ userId, currency: locationData?.locationCurrency, ...value, amount })
+            transaction = await transactionServices.createTransact({ userId, currency: locationData?.locationCurrency, ...value, amount }, landlordUserId)
             res.status(201).json({ transaction })
 
         } catch (error) {

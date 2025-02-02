@@ -12,6 +12,7 @@ const tenants_routes_1 = __importDefault(require("./tenants.routes"));
 const property_routes_1 = __importDefault(require("./property.routes"));
 const apartment_routes_1 = __importDefault(require("./apartment.routes"));
 const maintenance_routes_1 = __importDefault(require("./maintenance.routes"));
+const complaint_routes_1 = __importDefault(require("./complaint.routes"));
 const task_routes_1 = __importDefault(require("./task.routes"));
 const inventory_routes_1 = __importDefault(require("./inventory.routes"));
 const bill_routes_1 = __importDefault(require("./bill.routes"));
@@ -36,6 +37,8 @@ class LandlordRouter {
         this.router.delete('/:id', landlord_controller_1.default.deleteLandlord);
         this.router.get('/jobs/current', landlord_controller_1.default.getCurrentJobsForLandordProperties);
         this.router.get('/jobs/completed', landlord_controller_1.default.getCompletedVendorsJobsForLandordProperties);
+        // complaints modules under landlord
+        this.router.use("/complaints", complaint_routes_1.default);
         // maintenances modules under landlord
         this.router.use("/maintenance", maintenance_routes_1.default);
         // tenants modules under landlord

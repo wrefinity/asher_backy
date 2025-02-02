@@ -254,6 +254,8 @@ model users {
   EmploymentInformation EmploymentInformation[]
 
   applicantPersonalDetails applicantPersonalDetails[]
+
+  Complaint Complaint[]
 }
 
 model creditScore {

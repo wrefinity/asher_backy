@@ -37,7 +37,13 @@ class WalletService {
     };
 
 
-    getOrCreateWallet = async (userId: string, currency: string) => {
+    getUserWallet = async (userId: string, currency: string) => {
+        return await prismaClient.wallet.findFirst({
+            where: { userId, currency, isActive:true },
+        });
+    }
+
+    getOrCreateWallet = async (userId: string, currency: string = "NGN") => {
         let wallet = await prismaClient.wallet.findFirst({
             where: { userId, currency, isActive:true },
         });

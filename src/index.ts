@@ -6,6 +6,7 @@ import cors from 'cors';
 
 import { PrismaClient } from "@prisma/client";
 import ApplicationRouter from "./routes/applicant";
+import ComplaintRoutes from "./routes/complaint";
 import AuthRouter from "./routes/auth";
 import CategoryRouter from "./routes/category";
 import ChatRoomRouter from "./routes/chats";
@@ -91,6 +92,7 @@ class Server {
         this.app.use("/api/tenants", TenantRouter);
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
+        this.app.use("/api/complaints", ComplaintRoutes);
 
     }
 

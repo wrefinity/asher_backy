@@ -4,6 +4,9 @@ import { WebHookData } from "../utils/types";
 import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { generateIDs } from "../utils/helpers";
+import WalletService from "./wallet.service";
+import { Decimal } from "@prisma/client/runtime/library";
+
 
 export interface TransactionIF {
     id: string;
@@ -25,7 +28,17 @@ export interface TransactionIF {
 
 class TransactionService {
 
-    createTransact = async (data: TransactionIF) => {
+    createTransact = async (data: TransactionIF, landlordId: string = null) => {
+
+        // 1. check for sufficient balance
+        await WalletService.ensureSufficientBalance(data.walletId, data.userId, new Decimal(data.amount))
+
+        // 2. check if the landlord has an account for this transaction same with the tenant
+        const landlordWalletExitForSameCurrency = await WalletService.getUserWallet(landlordId, data.currency)
+        
+        if(!landlordWalletExitForSameCurrency) 
+            throw new Error("The landlord does not have same currency wallet, contact the landlord for the exact currency exchange wallet to use")
+        
         // Map TransactionIF to Prisma's TransactionCreateInput
         const prismaData: Prisma.TransactionCreateInput = {
             id: data.id,

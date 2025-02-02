@@ -135,6 +135,8 @@ model properties {
   // Relation to applicationInvites
   applicationInvites     applicationInvites[]
   propertyListingHistory propertyListingHistory[]
+
+  Complaint Complaint[]
 }
 
 model propApartmentSettings {

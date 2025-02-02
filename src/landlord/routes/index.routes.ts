@@ -7,6 +7,7 @@ import TenantsRouter from "./tenants.routes";
 import PropertyRouter from "./property.routes";
 import AppartmentRoute from "./apartment.routes";
 import MaintenanceRouter from "./maintenance.routes";
+import ComplaintRouterRouter from "./complaint.routes";
 
 import TaskRouter from './task.routes';
 import InventoryRouter from './inventory.routes';
@@ -65,6 +66,8 @@ class LandlordRouter {
             '/jobs/completed',
             LandlordControl.getCompletedVendorsJobsForLandordProperties
         );
+        // complaints modules under landlord
+        this.router.use("/complaints", ComplaintRouterRouter)
         // maintenances modules under landlord
         this.router.use("/maintenance", MaintenanceRouter)
         // tenants modules under landlord

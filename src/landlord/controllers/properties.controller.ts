@@ -97,6 +97,8 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
+
     deleteLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;

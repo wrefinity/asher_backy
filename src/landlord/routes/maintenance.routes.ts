@@ -14,7 +14,7 @@ class LandlordMaintenanceRoute {
     }
     private initializeRoutes(): void {
         this.router.get('/statistics', LandlordMaintenanceControls.getCurrentLandlordMaintenances);
-        this.router.get('/', LandlordMaintenanceControls.getMaintenances);
+        this.router.get('/requests', LandlordMaintenanceControls.getMaintenances);
         this.router.get('/property/:propertyId', LandlordMaintenanceControls.getPropertyMaintenance);
 
         this.router.post('/accept/:maintenanceId', LandlordMaintenanceControls.acceptMaintenaceRequest);

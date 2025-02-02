@@ -8,14 +8,25 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const __1 = require("..");
 const crypto_1 = require("crypto");
 const helpers_1 = require("../utils/helpers");
+const wallet_service_1 = __importDefault(require("./wallet.service"));
+const library_1 = require("@prisma/client/runtime/library");
 class TransactionService {
     constructor() {
-        this.createTransact = (data) => __awaiter(this, void 0, void 0, function* () {
+        this.createTransact = (data_1, ...args_1) => __awaiter(this, [data_1, ...args_1], void 0, function* (data, landlordId = null) {
+            // 1. check for sufficient balance
+            yield wallet_service_1.default.ensureSufficientBalance(data.walletId, data.userId, new library_1.Decimal(data.amount));
+            // 2. check if the landlord has an account for this transaction same with the tenant
+            const landlordWalletExitForSameCurrency = yield wallet_service_1.default.getUserWallet(landlordId, data.currency);
+            if (!landlordWalletExitForSameCurrency)
+                throw new Error("The landlord does not have same currency wallet, contact the landlord for the exact currency exchange wallet to use");
             // Map TransactionIF to Prisma's TransactionCreateInput
             const prismaData = {
                 id: data.id,
