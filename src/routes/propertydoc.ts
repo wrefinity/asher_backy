@@ -16,7 +16,7 @@ class PropertyDocsRouter {
 
     private initializeRoutes() {
         this.router.post(
-            '/',
+            '/uploads',
             this.authenticateService.authorize,
             upload.array('files'),
             uploadToCloudinary,

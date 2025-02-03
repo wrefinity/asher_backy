@@ -9,6 +9,7 @@ import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV, parseDateField } from "../../utils/filereader";
 import { PropertySpecificationType, PropertyType } from "@prisma/client"
+import TenantService from '../../services/tenant.service';
 
 
 class PropertyController {
@@ -380,6 +381,30 @@ class PropertyController {
         }
     };
 
-}
+     // Get all tenants for a specific property
+  getTenantsForProperty = async (req: CustomRequest, res: Response) => {
+    try {
+      const propertyId = req.params.propertyId; // Get propertyId from the request params
 
-export default new PropertyController()
+      // Step 1: Validate the property exists (optional)
+      const property = await PropertyServices.getPropertyById(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: 'Property not found' });
+      }
+
+      // Step 2: Retrieve all tenants for the given property
+      const tenants = await TenantService.getTenantsForProperty(propertyId);
+
+      // Step 3: Return the list of tenants
+      return res.status(200).json({
+        propertyId,
+        tenants,
+      });
+
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+ }
+export default new PropertyController() 

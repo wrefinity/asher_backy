@@ -31,8 +31,8 @@ class ChatServices {
             },
         });
     }
-    
-    
+
+
 
     getChatRooms = async (user1Id: string, user2Id: string) => {
         // check if a conversation exist between the users
@@ -76,6 +76,29 @@ class ChatServices {
             },
         });
     };
+
+    getChatRoomsForUser = async (userId: string) => {
+
+        // Find chat rooms where user is either user1 or user2
+        return await prismaClient.chatRoom.findMany({
+            where: {
+                OR: [
+                    { user1Id: userId },
+                    { user2Id: userId },
+                ]
+            },
+            include: {
+                user1: true,
+                user2: true,
+                messages: {
+                    // take: 1,  
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
+        });
+    }
+
 }
 
 export default new ChatServices();
+

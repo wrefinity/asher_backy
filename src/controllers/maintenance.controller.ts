@@ -155,18 +155,14 @@ class MaintenanceController {
       );
       // Determine if maintenance should be handled by the landlord
       const handleByLandlord = !!landlordId || isWhitelisted;
-      console.log("checking the handled by field =====")
-      console.log(handleByLandlord)
-      console.log("=================")
 
-
-      const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
+      // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
 
       const maintenance = await maintenanceService.createMaintenance({
-        ...data,
+        ...value,
         handleByLandlord,
         landlordDecision: handleByLandlord ? maintenanceDecisionStatus.PENDING : '',
-        attachments: cloudinaryUrls,
+        // attachments: cloudinaryUrls,
         tenantId: tenantId || undefined,
         landlordId: landlordId || undefined
       });

@@ -9,7 +9,7 @@ class SelectionSort:
         n = len(self.arr)
 
         # selection part with i pointing the index for selection
-        # i references the selection part for the selected element
+        # i refere the selection part for the selected element
         for i in range(n-1):
             # assume that the current position holds the min elements
             min_index = i
@@ -34,4 +34,32 @@ if __name__ == "__main__":
     sorted_arr = ss.selection_sort()
     print(f"sorted arr: {sorted_arr}")
 
+
+
+# recursion 
+def quickSort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[0]
+    #  left handside for those element less than the pivot
+    left_arr = []
+    # right handside for those greater than the pivot
+    right_arr = []
+
+    # loop through the array or sub-array
+    for index in range(1, len(arr)):
+        # check those element less than pivot
+        if arr[index] < pivot:
+            # put in the left hand side or left array
+            left_arr.append(arr[index])
+        # check those element greater than pivot
+        else:
+            # put in the right hand side or right array
+            right_arr.append(arr[index])
     
+    # recursively sort
+    return quickSort(left_arr) + list([pivot]) + quickSort(right_arr) 
+
+arr = [7, 2, 1, 6, 8, 5, 3, 4] 
+sorted_arr = quickSort(arr=arr)
+print(sorted_arr)

@@ -8,6 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import ApplicationRouter from "./routes/applicant";
 import ComplaintRoutes from "./routes/complaint";
 import AuthRouter from "./routes/auth";
+import FileUploads from './routes/fileuploads';
 import CategoryRouter from "./routes/category";
 import ChatRoomRouter from "./routes/chats";
 import EmailRouter from "./routes/email";
@@ -72,6 +73,7 @@ class Server {
         // this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
         this.app.post("/flutterwave/webhook", (req, res) => flutterWaveService.handleWebhook(req, res))
         this.app.use("/api/auth", AuthRouter);
+        this.app.use("/api/file-uploads", FileUploads);
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/notification", NotificationRouter)
         this.app.use("/api/categories", CategoryRouter)
