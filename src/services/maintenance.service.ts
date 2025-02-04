@@ -262,7 +262,7 @@ class MaintenanceService {
   }
 
   // Fetch vendors for a property based on their maintenance services
-  getVendorsForPropertyMaintenance = async (propertyId: string) =>{
+  getVendorsForPropertyMaintenance = async (propertyId: string) => {
     try {
       const maintenanceRecords = await prismaClient.maintenance.findMany({
         where: {
@@ -274,7 +274,22 @@ class MaintenanceService {
             include: {
               vendor: {
                 include: {
-                  user: true
+                  user: {
+                    select: {
+                      id: true,           // Include user ID
+                      email: true,        // Include email
+                      isVerified: true,   // Include verification status
+                      createdAt: true,    // Include account creation date
+                      updatedAt: true,    // Include account update date
+                      role: true,         // Include roles
+                      profileId: true,    // Include profile ID
+                      stripeCustomerId: true, // Include Stripe customer ID
+                      profile: true
+                    },
+                    // include:{
+                    //   profile: true,
+                    // }
+                  }
                 }
               },  // Get the vendor attached to the service
             },

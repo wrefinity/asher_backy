@@ -21,6 +21,8 @@ class PropertyRouter {
         this.router.get('/property/:id', property_controller_1.default.getPropertyById);
         this.router.get('/property/state', property_controller_1.default.getPropertyByState);
         this.router.get('/property/listing', property_controller_1.default.getListedProperties);
+        this.router.get('/property/maintenance/:propertyId', property_controller_1.default.getPropsMaintenance);
+        this.router.get('/property/vendors/:propertyId', property_controller_1.default.getVendorsServicesOnProps);
     }
 }
 exports.default = new PropertyRouter().router;

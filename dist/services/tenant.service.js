@@ -36,7 +36,6 @@ class TenantService {
             const tenants = yield __1.prismaClient.tenants.findMany({
                 where: {
                     propertyId: propertyId,
-                    isCurrentLease,
                 },
                 include: {
                     user: true,

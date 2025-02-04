@@ -404,6 +404,22 @@ class PropertyController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getPropertiesWithoutTenants = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'Kindly login as landlord' });
+                }
+                // Get the properties without tenants
+                const properties = yield propertyServices_1.default.getPropertiesWithoutTenants(landlordId);
+                // Return the properties
+                return res.status(200).json(properties);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
     }
 }
 exports.default = new PropertyController();

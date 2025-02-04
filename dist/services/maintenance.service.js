@@ -228,6 +228,60 @@ class MaintenanceService {
                 }
             });
         });
+        this.getPropertyMaintenance = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.maintenance.findMany({
+                where: { propertyId },
+                include: this.inclusion,
+            });
+        });
+        // Fetch vendors for a property based on their maintenance services
+        this.getVendorsForPropertyMaintenance = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const maintenanceRecords = yield __1.prismaClient.maintenance.findMany({
+                    where: {
+                        propertyId: propertyId,
+                        isDeleted: false, // Ensure you are not fetching deleted records
+                    },
+                    include: {
+                        services: {
+                            include: {
+                                vendor: {
+                                    include: {
+                                        user: {
+                                            select: {
+                                                id: true, // Include user ID
+                                                email: true, // Include email
+                                                isVerified: true, // Include verification status
+                                                createdAt: true, // Include account creation date
+                                                updatedAt: true, // Include account update date
+                                                role: true, // Include roles
+                                                profileId: true, // Include profile ID
+                                                stripeCustomerId: true, // Include Stripe customer ID
+                                                profile: true
+                                            },
+                                            // include:{
+                                            //   profile: true,
+                                            // }
+                                        }
+                                    }
+                                }, // Get the vendor attached to the service
+                            },
+                        },
+                    },
+                });
+                // Extracting vendors associated with the maintenance services
+                const vendors = maintenanceRecords.map((record) => {
+                    if (record.services && record.services.vendor) {
+                        return record.services.vendor;
+                    }
+                    return null;
+                }).filter(Boolean); // Filter out null values
+                return vendors;
+            }
+            catch (error) {
+                throw new Error('Error fetching vendors for property maintenance');
+            }
+        });
         this.inclusion = {
             tenant: true,
             landlord: true,

@@ -252,6 +252,21 @@ class PropertyService {
                 }
             });
         });
+        this.getPropertiesWithoutTenants = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            // Fetch all properties where there are no tenants associated
+            const properties = yield __1.prismaClient.properties.findMany({
+                where: {
+                    landlordId,
+                    tenants: {
+                        none: {}
+                    },
+                },
+                include: {
+                    tenants: true,
+                },
+            });
+            return properties;
+        });
     }
 }
 exports.default = new PropertyService();
