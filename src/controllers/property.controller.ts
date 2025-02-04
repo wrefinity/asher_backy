@@ -56,7 +56,6 @@ class PropertyController {
     }
     getVendorsServicesOnProps = async (req: Request, res: Response) => {
         try {
-            
             const propertyId = req.params.propertyId;
             const property = await PropertyServices.getPropertyById(propertyId);
             if (!property) {

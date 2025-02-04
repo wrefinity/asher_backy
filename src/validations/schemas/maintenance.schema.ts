@@ -4,7 +4,7 @@ export const maintenanceSchema = Joi.object({
   description: Joi.string().optional(),
   scheduleDate: Joi.date().iso().optional(),
   offer: Joi.array().items(Joi.string()).optional(),
-  amount: Joi.number(),
+  amount: Joi.number().optional(),
   propertyId: Joi.string().optional(),
   apartmentId: Joi.string().optional(),
   categoryId: Joi.string().required(),

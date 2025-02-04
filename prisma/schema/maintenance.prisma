@@ -62,7 +62,7 @@ model maintenance {
 
   //payment
   paymentStatus TransactionStatus @default(PENDING)
-  amount        Decimal           @db.Decimal(18, 2)
+  amount        Decimal?           @db.Decimal(18, 2)
 }
 
 model maintenanceRescheduleHistory {
