@@ -393,12 +393,13 @@ class PropertyController {
       }
 
       // Step 2: Retrieve all tenants for the given property
-      const tenants = await TenantService.getTenantsForProperty(propertyId);
+      const currentTenants = await TenantService.getTenantsForProperty(propertyId);
+      const previousTenants = await TenantService.getTenantsForProperty(propertyId, false);
 
       // Step 3: Return the list of tenants
       return res.status(200).json({
-        propertyId,
-        tenants,
+        currentTenants,
+        previousTenants,
       });
 
     } catch (error) {

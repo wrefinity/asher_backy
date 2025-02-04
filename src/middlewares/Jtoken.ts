@@ -11,7 +11,7 @@ export class Jtoken {
 
     async createToken(payload: JWTPayload): Promise<string> {
         return new Promise((resolve, reject) => {
-            jwt.sign(payload, this.secret, { expiresIn: "1h" }, (err, token) => {
+            jwt.sign(payload, this.secret, {  expiresIn: "2d" }, (err, token) => {
                 if (err) {
                     reject(err);
                 } else {

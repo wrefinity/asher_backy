@@ -23,11 +23,12 @@ class TenantService {
     return tenant?.user || null;
   }
   // Fetch all tenants for a given property
-  getTenantsForProperty = async (propertyId: string) => {
+  getTenantsForProperty = async (propertyId: string, isCurrentLease: boolean = false) => {
     // Query the tenants table to get all tenants linked to the propertyId
     const tenants = await prismaClient.tenants.findMany({
       where: {
         propertyId: propertyId,
+        isCurrentLease,
       },
       include: {
         user: true,
