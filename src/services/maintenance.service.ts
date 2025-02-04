@@ -133,8 +133,6 @@ class MaintenanceService {
     });
   }
 
-
-
   createMaintenanceChat = async (maintenanceId: string, senderId: string, receiverId: string, initialMessage: string) => {
     try {
       // Check if a chat room already exists for this maintenance request
@@ -193,8 +191,6 @@ class MaintenanceService {
     });
     return chatRoom?.messages || [];
   }
-
-
 
   updateMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>) => {
     const { subcategoryIds, ...rest } = maintenanceData;
@@ -256,6 +252,48 @@ class MaintenanceService {
         amount
       }
     });
+  }
+
+  getPropertyMaintenance = async (propertyId: string) => {
+    return await prismaClient.maintenance.findMany({
+      where: { propertyId },
+      include: this.inclusion,
+    });
+  }
+
+  // Fetch vendors for a property based on their maintenance services
+  getVendorsForPropertyMaintenance = async (propertyId: string) =>{
+    try {
+      const maintenanceRecords = await prismaClient.maintenance.findMany({
+        where: {
+          propertyId: propertyId,
+          isDeleted: false, // Ensure you are not fetching deleted records
+        },
+        include: {
+          services: {
+            include: {
+              vendor: {
+                include: {
+                  user: true
+                }
+              },  // Get the vendor attached to the service
+            },
+          },
+        },
+      });
+
+      // Extracting vendors associated with the maintenance services
+      const vendors = maintenanceRecords.map((record) => {
+        if (record.services && record.services.vendor) {
+          return record.services.vendor;
+        }
+        return null;
+      }).filter(Boolean); // Filter out null values
+
+      return vendors;
+    } catch (error) {
+      throw new Error('Error fetching vendors for property maintenance');
+    }
   }
 
 }

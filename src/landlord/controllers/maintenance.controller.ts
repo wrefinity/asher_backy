@@ -90,7 +90,6 @@ class MaintenanceControls {
         }
     }
 
-
     getPropertyMaintenance = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
@@ -101,8 +100,6 @@ class MaintenanceControls {
             ErrorService.handleError(error, res)
         }
     }
-
-
 
     getTenantsMaintenances = async (req: CustomRequest, res: Response) => {
         try {

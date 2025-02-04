@@ -21,6 +21,9 @@ class PropertyRouter {
         this.router.get('/property/:id', PropertyController.getPropertyById)
         this.router.get('/property/state', PropertyController.getPropertyByState)
         this.router.get('/property/listing', PropertyController.getListedProperties)
+        this.router.get('/property/maintenance/:propertyId', PropertyController.getPropsMaintenance)
+        this.router.get('/property/vendors/:propertyId', PropertyController.getVendorsServicesOnProps)
+        
     }
 }
 

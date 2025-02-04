@@ -382,30 +382,44 @@ class PropertyController {
         }
     };
 
-     // Get all tenants for a specific property
-  getTenantsForProperty = async (req: CustomRequest, res: Response) => {
-    try {
-      const propertyId = req.params.propertyId; // Get propertyId from the request params
+    // Get all tenants for a specific property
+    getTenantsForProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId; // Get propertyId from the request params
 
-      // Step 1: Validate the property exists (optional)
-      const property = await PropertyServices.getPropertyById(propertyId);
-      if (!property) {
-        return res.status(404).json({ message: 'Property not found' });
-      }
+            // Step 1: Validate the property exists (optional)
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
 
-      // Step 2: Retrieve all tenants for the given property
-      const tenant = await TenantService.getTenantsByLeaseStatus(propertyId);
-      // Step 3: Return the list of tenants
-      return res.status(200).json({
-        tenant
-      });
+            // Step 2: Retrieve all tenants for the given property
+            const tenant = await TenantService.getTenantsByLeaseStatus(propertyId);
+            // Step 3: Return the list of tenants
+            return res.status(200).json({
+                tenant
+            });
 
-    } catch (error) {
-      ErrorService.handleError(error, res);
-    }
-  };
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
 
-  
+    getPropertiesWithoutTenants = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'Kindly login as landlord' });
+            }
+            // Get the properties without tenants
+            const properties = await PropertyServices.getPropertiesWithoutTenants(landlordId);
 
- }
+            // Return the properties
+            return res.status(200).json(properties);
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
+
+}
 export default new PropertyController() 

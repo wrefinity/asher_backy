@@ -31,7 +31,7 @@ class PropertyService {
         return await prismaClient.properties.findMany({ where: { isDeleted: false }, })
     }
     getLandlordProperties = async (landlordId: string) => {
-        return await prismaClient.properties.findMany({ 
+        return await prismaClient.properties.findMany({
             where: { isDeleted: false, landlordId },
             include: {
                 propertyListingHistory: true,
@@ -162,7 +162,7 @@ class PropertyService {
             }
         })
     }
-    
+
 
     checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 
@@ -191,11 +191,11 @@ class PropertyService {
         })
     }
     // property listings
-    getActiveOrInactivePropsListing= async (landlordId: string, isActive: boolean = true ) => {
+    getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true) => {
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 isActive,
-                property:{
+                property: {
                     landlordId
                 }
             },
@@ -208,7 +208,7 @@ class PropertyService {
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const { landlordId, property, minSize, maxSize } = filters;
         const { type, state, country, specificationType, isActive } = property || {};
-    
+
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -235,9 +235,9 @@ class PropertyService {
             },
         });
     };
-    
-    
-    
+
+
+
 
     createPropertyListing = async (data: PropertyListingDTO) => {
         const propListed = await this.getPropsListedById(data.propertyId);
@@ -256,7 +256,7 @@ class PropertyService {
                 apartment: true,
             }
         });
-        
+
         return propsListed
     }
     // to update property listings
@@ -291,6 +291,23 @@ class PropertyService {
                 applicant: true,
             }
         });
+    }
+    getPropertiesWithoutTenants = async (landlordId: string) => {
+
+        // Fetch all properties where there are no tenants associated
+        const properties = await prismaClient.properties.findMany({
+            where: {
+                landlordId,
+                tenants: {
+                    none: {} 
+                  },
+            },
+            include: {
+                tenants: true,
+            },
+        });
+
+        return properties;
     }
 
 }

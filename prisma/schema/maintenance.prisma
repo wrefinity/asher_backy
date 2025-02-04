@@ -112,4 +112,3 @@ model maintenanceWhitelist {
   apartmentId   String?
   isActive      Boolean      @default(true)
 }
-
