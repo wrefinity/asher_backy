@@ -10,6 +10,7 @@ import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV, parseDateField } from "../../utils/filereader";
 import { PropertySpecificationType, PropertyType } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
+import { prismaClient } from '../..';
 
 
 class PropertyController {
@@ -393,20 +394,18 @@ class PropertyController {
       }
 
       // Step 2: Retrieve all tenants for the given property
-      const currentTenants = await TenantService.getTenantsForProperty(propertyId);
-      const previousTenants = await TenantService.getTenantsForProperty(propertyId, false);
-
+      const tenant = await TenantService.getTenantsByLeaseStatus(propertyId);
       // Step 3: Return the list of tenants
       return res.status(200).json({
-        currentTenants,
-        previousTenants,
-        futureTenants: [],
+        tenant
       });
 
     } catch (error) {
       ErrorService.handleError(error, res);
     }
   };
+
+  
 
  }
 export default new PropertyController() 
