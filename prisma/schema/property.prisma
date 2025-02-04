@@ -137,6 +137,8 @@ model properties {
   propertyListingHistory propertyListingHistory[]
 
   Complaint Complaint[]
+
+  Log Log[] @relation("props")
 }
 
 model propApartmentSettings {

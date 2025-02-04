@@ -251,17 +251,10 @@ class MaintenanceService {
                                             select: {
                                                 id: true, // Include user ID
                                                 email: true, // Include email
-                                                isVerified: true, // Include verification status
-                                                createdAt: true, // Include account creation date
-                                                updatedAt: true, // Include account update date
                                                 role: true, // Include roles
                                                 profileId: true, // Include profile ID
-                                                stripeCustomerId: true, // Include Stripe customer ID
                                                 profile: true
-                                            },
-                                            // include:{
-                                            //   profile: true,
-                                            // }
+                                            }
                                         }
                                     }
                                 }, // Get the vendor attached to the service

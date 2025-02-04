@@ -1,0 +1,11 @@
+model Log {
+    id            String       @id @default(cuid())          // Unique ID for the log entry
+    events        String                                  // Events or log description
+    createdAt     DateTime     @default(now())             // Log creation timestamp
+    propertyId    String?                                 // Foreign key for the property (optional)
+    property      properties?  @relation("props", fields: [propertyId], references: [id])
+    transactionId String?                                 // Foreign key for the transaction (optional)
+    transaction   Transaction? @relation("transactions", fields: [transactionId], references: [id])
+    createdById String?                                 // Foreign key for the transaction (optional)
+    users   users? @relation("users", fields: [createdById], references: [id])
+}

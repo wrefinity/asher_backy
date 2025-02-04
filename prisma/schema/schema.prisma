@@ -256,6 +256,8 @@ model users {
   applicantPersonalDetails applicantPersonalDetails[]
 
   Complaint Complaint[]
+
+  Log Log[] @relation("users")
 }
 
 model creditScore {

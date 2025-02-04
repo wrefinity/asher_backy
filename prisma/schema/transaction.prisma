@@ -69,6 +69,8 @@ model Transaction {
   apartmentTransactionHistory appartmentTransactionHistory[]
 
   Ads Ads[]
+
+  Log Log[] @relation("transactions")
 }
 
 model tenantPaymentHistory {
