@@ -14,13 +14,35 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const chatServices_1 = __importDefault(require("../services/chatServices"));
 const helpers_1 = require("../utils/helpers");
+const user_services_1 = __importDefault(require("../services/user.services"));
+const error_service_1 = __importDefault(require("../services/error.service"));
 class ChatMessageAuth {
     constructor() {
+        // Get all chat rooms for the current logged-in user
+        this.getAllChatRoomsForUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const userId = (0, helpers_1.String)(req.user.id); // The logged-in user ID
+                // Step 1: Find all chat rooms where the user is either user1 or user2
+                const chatRooms = yield chatServices_1.default.getChatRoomsForUser(userId);
+                if (chatRooms.length === 0) {
+                    return res.status(404).json({ message: 'No chat rooms found for this user.' });
+                }
+                // Step 2: Return the list of chat rooms
+                return res.status(200).json({
+                    chatRooms,
+                });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.createChatRoomAndMessage = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 // cm6021qtd00006emjscwd5w5f
                 const senderId = (0, helpers_1.String)(req.user.id); // Sender is the current logged-in user
                 const { receiverId, content } = req.body; // Receiver ID and message content from the request body
+                // check for user existance
+                yield user_services_1.default.findAUserById(receiverId);
                 // Step 1: Check if a chat room already exists between the two users
                 let chatRoom = yield chatServices_1.default.getChatRooms(senderId, receiverId);
                 // Step 2: If no chat room exists, create a new one
@@ -36,8 +58,7 @@ class ChatMessageAuth {
                 });
             }
             catch (error) {
-                console.error('Error in createChatRoomAndMessage:', error);
-                return res.status(500).json({ message: 'Internal server error' });
+                error_service_1.default.handleError(error, res);
             }
         });
         // getChatRoomMessage = async (req: CustomRequest, res: Response) => {
@@ -53,6 +74,8 @@ class ChatMessageAuth {
             try {
                 const senderId = (0, helpers_1.String)(req.user.id); // Current logged-in user
                 const { receiverId } = req.params; // Receiver ID from the request params
+                // check for user existance
+                yield user_services_1.default.findAUserById(receiverId);
                 // Step 1: Find the chat room between the two users
                 const chatRoom = yield chatServices_1.default.getChatRooms(senderId, receiverId);
                 if (!chatRoom) {
@@ -67,7 +90,7 @@ class ChatMessageAuth {
                 });
             }
             catch (error) {
-                return res.status(500).json({ message: 'Internal server error' });
+                error_service_1.default.handleError(error, res);
             }
         });
     }

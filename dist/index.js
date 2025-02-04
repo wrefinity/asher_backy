@@ -13,6 +13,7 @@ const client_1 = require("@prisma/client");
 const applicant_1 = __importDefault(require("./routes/applicant"));
 const complaint_1 = __importDefault(require("./routes/complaint"));
 const auth_1 = __importDefault(require("./routes/auth"));
+const fileuploads_1 = __importDefault(require("./routes/fileuploads"));
 const category_1 = __importDefault(require("./routes/category"));
 const chats_1 = __importDefault(require("./routes/chats"));
 const email_1 = __importDefault(require("./routes/email"));
@@ -63,6 +64,7 @@ class Server {
         // this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
         this.app.post("/flutterwave/webhook", (req, res) => flutterWave_service_1.default.handleWebhook(req, res));
         this.app.use("/api/auth", auth_1.default);
+        this.app.use("/api/file-uploads", fileuploads_1.default);
         this.app.use("/api/status", status_1.default);
         this.app.use("/api/notification", notification_1.default);
         this.app.use("/api/categories", category_1.default);

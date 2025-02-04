@@ -21,7 +21,7 @@ class Jtoken {
     createToken(payload) {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
-                jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "1h" }, (err, token) => {
+                jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "2d" }, (err, token) => {
                     if (err) {
                         reject(err);
                     }

@@ -15,9 +15,10 @@ exports.maintenanceSchema = joi_1.default.object({
     categoryId: joi_1.default.string().required(),
     vendorId: joi_1.default.string().optional(),
     subcategoryIds: joi_1.default.array().items(joi_1.default.string()).required(),
-    cloudinaryUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
-    cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
-    cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
+    attachments: joi_1.default.array().items(joi_1.default.string()).optional(),
+    // images: Joi.array().items(Joi.string()).optional(),
+    // videos: Joi.array().items(Joi.string().uri()).optional(),
+    // documents: Joi.array().items(Joi.string().uri()).optional(),
     serviceId: joi_1.default.string().optional(),
 });
 exports.maintenanceCancelSchema = joi_1.default.object({

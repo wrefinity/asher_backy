@@ -20,6 +20,7 @@ const settings_1 = require("../validations/schema/settings");
 const property_performance_1 = __importDefault(require("../services/property-performance"));
 const filereader_1 = require("../../utils/filereader");
 const client_1 = require("@prisma/client");
+const tenant_service_1 = __importDefault(require("../../services/tenant.service"));
 class PropertyController {
     constructor() {
         this.createProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -380,6 +381,26 @@ class PropertyController {
             }
             catch (error) {
                 // Handle any errors
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        // Get all tenants for a specific property
+        this.getTenantsForProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const propertyId = req.params.propertyId; // Get propertyId from the request params
+                // Step 1: Validate the property exists (optional)
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!property) {
+                    return res.status(404).json({ message: 'Property not found' });
+                }
+                // Step 2: Retrieve all tenants for the given property
+                const tenant = yield tenant_service_1.default.getTenantsByLeaseStatus(propertyId);
+                // Step 3: Return the list of tenants
+                return res.status(200).json({
+                    tenant
+                });
+            }
+            catch (error) {
                 error_service_1.default.handleError(error, res);
             }
         });

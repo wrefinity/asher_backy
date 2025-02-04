@@ -59,6 +59,25 @@ class ChatServices {
                 },
             });
         });
+        this.getChatRoomsForUser = (userId) => __awaiter(this, void 0, void 0, function* () {
+            // Find chat rooms where user is either user1 or user2
+            return yield __1.prismaClient.chatRoom.findMany({
+                where: {
+                    OR: [
+                        { user1Id: userId },
+                        { user2Id: userId },
+                    ]
+                },
+                include: {
+                    user1: true,
+                    user2: true,
+                    messages: {
+                        // take: 1,  
+                        orderBy: { createdAt: 'desc' },
+                    },
+                },
+            });
+        });
         this.selection = Object.freeze({
             id: true,
             email: true,

@@ -52,6 +52,7 @@ class ApartmentLandlordRouter {
         this.router.delete('/property/:propertyId', properties_controller_1.default.deleteLandlordProperties);
         this.router.patch('/property/status/:propertyId', properties_controller_1.default.updatePropertyAvailability);
         this.router.get('/property/showcased', properties_controller_1.default.getShowCasedRentals);
+        this.router.get('/property/tenants/:propertyId', properties_controller_1.default.getTenantsForProperty);
         //   settings 
         this.router.post('/settings', setting_controller_1.default.createPropApartmentSetting);
         this.router.get('/settings', setting_controller_1.default.getAllPropsApartSetting);

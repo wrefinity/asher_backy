@@ -28,7 +28,7 @@ class TenantService {
     const tenants = await prismaClient.tenants.findMany({
       where: {
         propertyId: propertyId,
-        isCurrentLease,
+        
       },
       include: {
         user: true,

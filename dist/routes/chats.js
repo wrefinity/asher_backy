@@ -16,6 +16,7 @@ class ChatRoutes {
     initializeRoutes() {
         this.router.post('/room/message', this.authenticateService.authorize, chats_1.default.createChatRoomAndMessage.bind(chats_1.default));
         this.router.get('/room/:receiverId', this.authenticateService.authorize, chats_1.default.getChatsBetweenUsers.bind(chats_1.default));
+        this.router.get('/rooms/', this.authenticateService.authorize, chats_1.default.getAllChatRoomsForUser.bind(chats_1.default));
     }
 }
 exports.default = new ChatRoutes().router;
