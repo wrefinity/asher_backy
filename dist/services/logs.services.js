@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const client_1 = require("@prisma/client");
 class LogService {
     constructor() {
         this.createLog = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -42,6 +43,24 @@ class LogService {
                         landlordId
                     },
                     createdById: userId
+                },
+                include: {
+                    property: true,
+                    users: true
+                }
+            });
+        });
+        this.getCommunicationLog = (propertyId, userId, landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.log.findMany({
+                where: {
+                    propertyId: propertyId,
+                    createdById: userId,
+                    property: {
+                        landlordId
+                    },
+                    type: {
+                        in: [client_1.LogType.EMAIL, client_1.LogType.MESSAGE]
+                    }
                 },
                 include: {
                     property: true,

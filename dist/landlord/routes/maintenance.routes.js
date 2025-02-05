@@ -20,7 +20,7 @@ class LandlordMaintenanceRoute {
         this.router.get('/property/:propertyId', maintenance_controller_1.default.getPropertyMaintenance);
         this.router.post('/accept/:maintenanceId', maintenance_controller_1.default.acceptMaintenaceRequest);
         this.router.post('/decline/:maintenanceId', maintenance_controller_1.default.declineMaintenaceRequest);
-        this.router.get('/tenants/tenantId', maintenance_controller_1.default.getTenantsMaintenances);
+        this.router.get('/tenants/:tenantId', maintenance_controller_1.default.getTenantsMaintenances);
         this.router.delete('/:maintenanceId', maintenance_controller_1.default.deleteMaintenance);
         // whitelisting maintenances
         this.router.post('/whitelist', maintenance_controller_1.default.createWhitelist);

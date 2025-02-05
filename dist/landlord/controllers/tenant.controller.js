@@ -34,6 +34,7 @@ const landlord_service_1 = require("../services/landlord.service");
 const tenancy_schema_1 = require("../validations/schema/tenancy.schema");
 const logs_schema_1 = require("../../validations/schemas/logs.schema");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
+const complaintServices_1 = __importDefault(require("../../services/complaintServices"));
 // Helper function to parse the date field into DD/MM/YYYY format
 const parseDateFieldNew = (date) => {
     const formattedDate = (0, moment_1.default)(date, 'DD/MM/YYYY', true);
@@ -205,11 +206,54 @@ class TenantControls {
                     return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
                 // get the property attached to current tenant
                 const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(tenantUserId, landlordId);
-                console.log("prints tenants=================");
-                console.log(tenantUserId);
-                console.log(tenant);
+                if (!(tenant === null || tenant === void 0 ? void 0 : tenant.propertyId))
+                    return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
                 const milestones = yield logs_services_1.default.getLandlordTenantsLogsByProperty(tenant.propertyId, tenantUserId, landlordId);
                 return res.status(200).json({ milestones });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getTenantComplaints = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const tenantUserId = req.params.tenantUserId;
+                const userExist = user_services_1.default.getUserById(String(tenantUserId));
+                if (!userExist)
+                    return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+                // get the property attached to current tenant
+                const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(tenantUserId, landlordId);
+                if (!(tenant === null || tenant === void 0 ? void 0 : tenant.propertyId))
+                    return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
+                const complaints = yield complaintServices_1.default.getLandlordPropsTenantComplaints(tenantUserId, tenant === null || tenant === void 0 ? void 0 : tenant.propertyId, landlordId);
+                return res.status(200).json({ complaints });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getTenantCommunicationLogs = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const tenantUserId = req.params.tenantUserId;
+                const userExist = user_services_1.default.getUserById(String(tenantUserId));
+                if (!userExist)
+                    return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+                // get the property attached to current tenant
+                const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(tenantUserId, landlordId);
+                if (!(tenant === null || tenant === void 0 ? void 0 : tenant.propertyId))
+                    return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
+                const complaints = yield logs_services_1.default.getCommunicationLog(tenant === null || tenant === void 0 ? void 0 : tenant.propertyId, tenantUserId, landlordId);
+                return res.status(200).json({ complaints });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

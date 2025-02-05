@@ -45,6 +45,19 @@ class ComplaintServices {
                 throw new Error(`Failed to fetch complaints: ${error.message}`);
             }
         });
+        this.getLandlordPropsTenantComplaints = (tenantUserId, propertyId, landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.complaint.findMany({
+                where: {
+                    isDeleted: false,
+                    propertyId,
+                    property: {
+                        landlordId
+                    },
+                    createdById: tenantUserId
+                },
+                include: { createdBy: true, property: true },
+            });
+        });
         this.getAllLandlordComplaints = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 return yield __1.prismaClient.complaint.findMany({

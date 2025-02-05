@@ -250,6 +250,31 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+    getTenantCommunicationLogs= async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const tenantUserId = req.params.tenantUserId
+            const userExist = UserServices.getUserById(String(tenantUserId));
+            if (!userExist)
+                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+            // get the property attached to current tenant
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            if(!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
+            
+            const complaints = await LogsServices.getCommunicationLog(
+                tenant?.propertyId,
+                tenantUserId,
+                landlordId
+            );
+            return res.status(200).json({ complaints });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
 
 
 }

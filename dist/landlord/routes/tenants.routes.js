@@ -21,6 +21,9 @@ class TenantsLandlordRouter {
         this.router.post('/upload', multer_1.uploadcsv.single("files"), tenant_controller_1.default.bulkTenantUpload);
         this.router.post('/milestones/', tenant_controller_1.default.createTenantMileStones);
         this.router.get('/milestones/:tenantUserId', tenant_controller_1.default.getTenantMileStones);
+        this.router.get('/communication-logs/:tenantUserId', tenant_controller_1.default.getTenantCommunicationLogs);
+        //  tenant complaints 
+        this.router.get('/complaints/:tenantUserId', tenant_controller_1.default.getTenantComplaints);
     }
 }
 exports.default = new TenantsLandlordRouter().router;

@@ -2,10 +2,15 @@ enum LogType {
     MAINTENANCE
     APPLICATION
     TRANSACTION
+    // communication logs
+    CALL
+    MESSAGE
+    EMAIL
 }
 
 model Log {
     id            String       @id @default(cuid()) // Unique ID for the log entry
+    subjects      String? 
     events        String // Events or log description
     type          LogType? // Events or log description
     createdAt     DateTime     @default(now()) // Log creation timestamp

@@ -4,6 +4,7 @@ import {LogType} from "@prisma/client"
 interface LogIF {
   events: string;
   propertyId?: string;
+  subjects?: string;
   type?: LogType;
   transactionId?: string;
   createdById?: string;
@@ -48,6 +49,24 @@ class LogService {
           landlordId
         },
         createdById: userId
+      },
+      include: {
+        property: true,
+        users: true
+      }
+    });
+  }
+  getCommunicationLog = async(propertyId: string, userId: string, landlordId: string)=>{
+    return await prismaClient.log.findMany({
+      where: {
+        propertyId: propertyId,
+        createdById: userId,
+        property: {
+          landlordId
+        },
+        type: {
+          in: [LogType.EMAIL, LogType.MESSAGE]
+        }
       },
       include: {
         property: true,

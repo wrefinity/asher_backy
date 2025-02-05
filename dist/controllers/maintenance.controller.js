@@ -151,20 +151,20 @@ class MaintenanceController {
                     return res.status(400).json({ message: error.details[0].message });
                 }
                 const tenantId = (_a = req.user.tenant) === null || _a === void 0 ? void 0 : _a.id;
-                const landlordId = (_b = req.user.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                let landlordId = (_b = req.user.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 if (!tenantId && !landlordId) {
                     return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
                 }
                 // checking if the maitenance category is whitelisted by the landlord
                 const isWhitelisted = yield maintenance_service_1.default.checkWhitelist(landlordId, value.categoryId, value.subcategoryId, value.propertyId, value.apartmentId);
                 // Determine if maintenance should be handled by the landlord
-                const handleByLandlord = !!landlordId || isWhitelisted;
+                const handleByLandlord = landlordId || isWhitelisted;
                 // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
                 const property = yield propertyServices_1.default.getPropertyById(value === null || value === void 0 ? void 0 : value.propertyId);
                 if (!property) {
                     return res.status(404).json({ message: 'Property not found' });
                 }
-                const maintenance = yield maintenance_service_1.default.createMaintenance(Object.assign(Object.assign({}, value), { handleByLandlord, landlordDecision: handleByLandlord ? client_1.maintenanceDecisionStatus.PENDING : '', 
+                const maintenance = yield maintenance_service_1.default.createMaintenance(Object.assign(Object.assign({}, value), { handleByLandlord: handleByLandlord || false, landlordDecision: handleByLandlord ? client_1.maintenanceDecisionStatus.PENDING : '', 
                     // attachments: cloudinaryUrls,
                     tenantId: tenantId || undefined, landlordId: landlordId || undefined }));
                 if (isWhitelisted && !landlordId)

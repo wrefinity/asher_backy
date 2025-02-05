@@ -20,10 +20,9 @@ class TenantsLandlordRouter {
          this.router.post('/upload', uploadcsv.single("files"), TenantLandlordController.bulkTenantUpload)
          this.router.post('/milestones/', TenantLandlordController.createTenantMileStones)
          this.router.get('/milestones/:tenantUserId', TenantLandlordController.getTenantMileStones)
+         this.router.get('/communication-logs/:tenantUserId', TenantLandlordController.getTenantCommunicationLogs)
          //  tenant complaints 
-         this.router.get('/complaints/:tenantUserId', TenantLandlordController.getTenantComplaints)
-
- 
+         this.router.get('/complaints/:tenantUserId', TenantLandlordController.getTenantComplaints) 
     }
 }
 
