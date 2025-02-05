@@ -210,9 +210,6 @@ class TenantControls {
                 return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
             // get the property attached to current tenant
             const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
-            console.log("prints tenants=================")
-            console.log(tenantUserId)
-            console.log(tenant)
             const milestones = await LogsServices.getLandlordTenantsLogsByProperty(
                 tenant.propertyId,
                 tenantUserId,

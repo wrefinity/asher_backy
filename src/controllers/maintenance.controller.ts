@@ -140,7 +140,7 @@ class MaintenanceController {
         return res.status(400).json({ message: error.details[0].message });
       }
       const tenantId = req.user.tenant?.id;
-      const landlordId = req.user.landlords?.id;
+      let landlordId = req.user.landlords?.id;
 
       if (!tenantId && !landlordId) {
         return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
@@ -154,7 +154,7 @@ class MaintenanceController {
         value.apartmentId
       );
       // Determine if maintenance should be handled by the landlord
-      const handleByLandlord = !!landlordId || isWhitelisted;
+      const handleByLandlord = landlordId || isWhitelisted;
 
       // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const property = await propertyService.getPropertyById(value?.propertyId);
@@ -163,7 +163,7 @@ class MaintenanceController {
       }
       const maintenance = await maintenanceService.createMaintenance({
         ...value,
-        handleByLandlord,
+        handleByLandlord: handleByLandlord || false,
         landlordDecision: handleByLandlord ? maintenanceDecisionStatus.PENDING : '',
         // attachments: cloudinaryUrls,
         tenantId: tenantId || undefined,

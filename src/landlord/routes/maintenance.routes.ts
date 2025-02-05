@@ -20,7 +20,7 @@ class LandlordMaintenanceRoute {
 
         this.router.post('/accept/:maintenanceId', LandlordMaintenanceControls.acceptMaintenaceRequest);
         this.router.post('/decline/:maintenanceId', LandlordMaintenanceControls.declineMaintenaceRequest);
-        this.router.get('/tenants/tenantId', LandlordMaintenanceControls.getTenantsMaintenances);
+        this.router.get('/tenants/:tenantId', LandlordMaintenanceControls.getTenantsMaintenances);
         this.router.delete('/:maintenanceId', LandlordMaintenanceControls.deleteMaintenance);
         // whitelisting maintenances
         this.router.post('/whitelist', LandlordMaintenanceControls.createWhitelist);

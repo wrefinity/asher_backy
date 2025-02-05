@@ -4,7 +4,6 @@ import { hashSync } from "bcrypt";
 import loggers from "../utils/loggers";
 import { userRoles, ApplicationStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
-import ApplicantService from "../webuser/services/applicantService";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
 import EmergencyContactService from "../services/emergencyinfo.services"
