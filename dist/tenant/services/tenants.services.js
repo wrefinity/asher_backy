@@ -75,6 +75,21 @@ class TenantService {
                 include: this.inclusion,
             });
         });
+        this.getTenantByUserIdAndLandlordId = (userId, landlordId) => __awaiter(this, void 0, void 0, function* () {
+            // Query the tenant based on the userId
+            const tenant = yield __1.prismaClient.tenants.findFirst({
+                where: {
+                    userId: userId, // Filtering by userId
+                    property: {
+                        landlordId,
+                    }
+                },
+                include: {
+                    property: true, // Include related property data
+                },
+            });
+            return tenant;
+        });
         this.inclusion = {
             user: {
                 include: {

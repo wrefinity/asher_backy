@@ -9,7 +9,7 @@ exports.maintenanceSchema = joi_1.default.object({
     description: joi_1.default.string().optional(),
     scheduleDate: joi_1.default.date().iso().optional(),
     offer: joi_1.default.array().items(joi_1.default.string()).optional(),
-    amount: joi_1.default.number(),
+    amount: joi_1.default.number().optional(),
     propertyId: joi_1.default.string().optional(),
     apartmentId: joi_1.default.string().optional(),
     categoryId: joi_1.default.string().required(),

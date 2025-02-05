@@ -4,13 +4,13 @@ class TenantService {
     protected inclusion: object;
     constructor() {
         this.inclusion = {
-            user:  {
+            user: {
                 include: {
                     profile: true,
                     nextOfKin: true,
                     residentialInformation: true,
                     applicantion: {
-                        include:{
+                        include: {
                             employmentInfo: true,
                             emergencyInfo: true,
                             guarantorInformation: true,
@@ -38,7 +38,7 @@ class TenantService {
                         profile: true,
                         nextOfKin: true,
                         applicantion: {
-                            include:{
+                            include: {
                                 employmentInfo: true,
                                 emergencyInfo: true,
                                 guarantorInformation: true,
@@ -47,7 +47,7 @@ class TenantService {
                         },
                     },
                 },
-                
+
                 landlord: true,
                 property: true,
                 apartments: true
@@ -85,7 +85,7 @@ class TenantService {
         });
     }
     getAllTenants = async (landlordId: string) => {
-        
+
         return prismaClient.tenants.findMany({
             where: {
                 landlordId: landlordId,
@@ -95,6 +95,23 @@ class TenantService {
             },
             include: this.inclusion,
         });
+    }
+
+    getTenantByUserIdAndLandlordId = async (userId: string, landlordId: string) => {
+
+        // Query the tenant based on the userId
+        const tenant = await prismaClient.tenants.findFirst({
+            where: {
+                userId: userId, // Filtering by userId
+                property:{
+                    landlordId,
+                }
+            },
+            include: {
+                property: true, // Include related property data
+            },
+        });
+        return tenant
     }
     // getApplicationRequests = async (landlordId: string) => {
 

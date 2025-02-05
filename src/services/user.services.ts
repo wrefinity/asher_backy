@@ -58,6 +58,13 @@ class UserService {
         return user
     }
 
+    getUserById = async (id: string) => {
+        return await prismaClient.users.findFirst({
+            where: { id },
+            include: this.inclusion,
+        });
+    }
+
     findUserByTenantCode = async (tenantCode: string) => {
         return await prismaClient.users.findFirst({
             where: {
@@ -67,7 +74,7 @@ class UserService {
             },
             include: {
                 tenant: true,
-                profile:true,
+                profile: true,
             },
         });
     }
@@ -139,7 +146,7 @@ class UserService {
         });
 
         const countryData = await getCurrentCountryCurrency()
-        if(newUser) {
+        if (newUser) {
             await WalletService.getOrCreateWallet(newUser.id, countryData.locationCurrency)
         }
         // Based on the role, create the corresponding entry in the related schema

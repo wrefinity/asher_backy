@@ -30,6 +30,8 @@ export interface ICreateProperty {
     amenities?: string[];
     totalApartments?: number;
     rentalFee?: number;
+    latitude?: number;
+    longitude?: number;
     type?: PropertyType;
     specificationType?: PropertySpecificationType;
 }

@@ -160,6 +160,17 @@ class MaintenanceControls {
             ErrorService.handleError(error, res)
         }
     }
+    getMaintenancesCounts = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(400).json({ message: "kindly log in as a landlord" })
+            const maintenanceStats = await MaintenanceService.getMaintenanceCounts(landlordId);
+
+            return res.status(200).json({ maintenanceStats })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
 
     deleteMaintenance = async (req: CustomRequest, res: Response) => {
         try {

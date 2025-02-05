@@ -111,6 +111,8 @@ model properties {
   taskManagement       taskManagement[]
   inventoryManageMent  inventoryManageMent[]
   maintenanceWhitelist maintenanceWhitelist[]
+  longitude            Decimal?               @db.Decimal(18, 6)
+  latitude             Decimal?               @db.Decimal(18, 6)
 
   //transaction can be expenses incurred or income generated
   transactions Transaction[]

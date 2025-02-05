@@ -1,8 +1,10 @@
-import { TransactionReference, chatType, TransactionStatus } from "@prisma/client";
+import { TransactionReference, maintenanceStatus, chatType, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
 import walletService from "./wallet.service";
+
+
 
 class MaintenanceService {
   protected inclusion;
@@ -303,6 +305,13 @@ class MaintenanceService {
       throw new Error('Error fetching vendors for property maintenance');
     }
   }
+
+
+
+
+
+
+
 
 }
 

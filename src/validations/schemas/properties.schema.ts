@@ -12,6 +12,8 @@ export const createPropertySchema = Joi.object({
   // isWholeRent: Joi.boolean().required(),
   marketValue: Joi.number().optional(),
   rentalFee: Joi.number().optional(),
+  longitude: Joi.number().optional(),
+  latitude: Joi.number().optional(),
   // latePaymentFeeType: Joi.string().valid('ONE_TIME', 'DAILY').optional(),
   dueDate: Joi.date().optional(),
   type:   Joi.string().valid(...propertyType).default(PropertyType.SINGLE_UNIT).required(),

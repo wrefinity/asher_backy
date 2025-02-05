@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -21,6 +32,8 @@ const user_services_1 = __importDefault(require("../../services/user.services"))
 const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../services/landlord.service");
 const tenancy_schema_1 = require("../validations/schema/tenancy.schema");
+const logs_schema_1 = require("../../validations/schemas/logs.schema");
+const logs_services_1 = __importDefault(require("../../services/logs.services"));
 // Helper function to parse the date field into DD/MM/YYYY format
 const parseDateFieldNew = (date) => {
     const formattedDate = (0, moment_1.default)(date, 'DD/MM/YYYY', true);
@@ -149,6 +162,54 @@ class TenantControls {
                     // No users were uploaded
                     return res.status(400).json({ error: 'No users were uploaded.', uploadErrors });
                 }
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        // tenants milestone section
+        this.createTenantMileStones = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const { error, value } = yield logs_schema_1.LogsSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ message: error.details[0].message });
+                // LogsSchema
+                const { userId } = value, data = __rest(value, ["userId"]);
+                const userExist = user_services_1.default.getUserById(String(userId));
+                if (!userExist)
+                    return res.status(404).json({ error: `tenant with the userId :  ${userId} doesnot exist` });
+                // get the property attached to current tenant
+                const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(userId, landlordId);
+                const milestones = yield logs_services_1.default.createLog(Object.assign({ propertyId: tenant.propertyId, createdById: userId }, data));
+                return res.status(201).json({ milestones });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getTenantMileStones = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const tenantUserId = req.params.tenantUserId;
+                const userExist = user_services_1.default.getUserById(String(tenantUserId));
+                if (!userExist)
+                    return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+                // get the property attached to current tenant
+                const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(tenantUserId, landlordId);
+                console.log("prints tenants=================");
+                console.log(tenantUserId);
+                console.log(tenant);
+                const milestones = yield logs_services_1.default.getLandlordTenantsLogsByProperty(tenant.propertyId, tenantUserId, landlordId);
+                return res.status(200).json({ milestones });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

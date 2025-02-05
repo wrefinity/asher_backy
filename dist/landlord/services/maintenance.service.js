@@ -17,6 +17,55 @@ const client_1 = require("@prisma/client");
 const category_service_1 = __importDefault(require("../../services/category.service"));
 class LandlordMaintenanceService {
     constructor() {
+        this.getMaintenanceCounts = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            // Count maintenance records with status "PENDING"
+            const pendingCount = yield index_1.prismaClient.maintenance.count({
+                where: {
+                    property: {
+                        landlordId
+                    },
+                    status: client_1.maintenanceStatus.PENDING,
+                    isDeleted: false, // Ensure no deleted records
+                },
+            });
+            // Count maintenance records with status "COMPLETED"
+            const completedCount = yield index_1.prismaClient.maintenance.count({
+                where: {
+                    property: {
+                        landlordId
+                    },
+                    status: client_1.maintenanceStatus.COMPLETED,
+                    isDeleted: false,
+                },
+            });
+            // Count maintenance records with status "ASSIGNED" or "IN_PROGRESS"
+            const inProgressCount = yield index_1.prismaClient.maintenance.count({
+                where: {
+                    property: {
+                        landlordId
+                    },
+                    status: { in: ['ASSIGNED', 'UNASSIGNED'] },
+                    isDeleted: false,
+                },
+            });
+            // Count maintenance records with status "CANCELLATION_REQUEST"
+            const tenantRequestCount = yield index_1.prismaClient.maintenance.count({
+                where: {
+                    property: {
+                        landlordId
+                    },
+                    handleByLandlord: false,
+                    isDeleted: false,
+                },
+            });
+            // Return the counts as an object
+            return {
+                pending: pendingCount,
+                completed: completedCount,
+                inProgress: inProgressCount,
+                tenantRequest: tenantRequestCount,
+            };
+        });
         this.getRequestedMaintenanceByLandlord = (landlordId, status) => __awaiter(this, void 0, void 0, function* () {
             const maintenanceRequests = yield index_1.prismaClient.maintenance.findMany({
                 where: Object.assign({ landlordId: landlordId, property: {

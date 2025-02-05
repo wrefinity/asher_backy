@@ -160,6 +160,10 @@ class MaintenanceController {
                 // Determine if maintenance should be handled by the landlord
                 const handleByLandlord = !!landlordId || isWhitelisted;
                 // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
+                const property = yield propertyServices_1.default.getPropertyById(value === null || value === void 0 ? void 0 : value.propertyId);
+                if (!property) {
+                    return res.status(404).json({ message: 'Property not found' });
+                }
                 const maintenance = yield maintenance_service_1.default.createMaintenance(Object.assign(Object.assign({}, value), { handleByLandlord, landlordDecision: handleByLandlord ? client_1.maintenanceDecisionStatus.PENDING : '', 
                     // attachments: cloudinaryUrls,
                     tenantId: tenantId || undefined, landlordId: landlordId || undefined }));

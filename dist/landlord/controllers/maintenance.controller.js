@@ -190,6 +190,19 @@ class MaintenanceControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getMaintenancesCounts = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId)
+                    return res.status(400).json({ message: "kindly log in as a landlord" });
+                const maintenanceStats = yield maintenance_service_1.default.getMaintenanceCounts(landlordId);
+                return res.status(200).json({ maintenanceStats });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.deleteMaintenance = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { maintenanceId } = req.params;

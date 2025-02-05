@@ -9,6 +9,8 @@ import UserServices from '../../services/user.services';
 import { userRoles } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantSchema } from '../validations/schema/tenancy.schema';
+import { LogsSchema } from '../../validations/schemas/logs.schema';
+import LogsServices from '../../services/logs.services';
 
 
 // Helper function to parse the date field into DD/MM/YYYY format
@@ -52,7 +54,7 @@ class TenantControls {
         const previousTenants = await TenantService.getPreviousTenantsForLandlord(landlordId);
         return res.status(200).json({ previousTenants });
     }
-    
+
     getApplicationCurrentLandlord = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
         if (!landlordId) {
@@ -161,6 +163,62 @@ class TenantControls {
                 return res.status(400).json({ error: 'No users were uploaded.', uploadErrors });
             }
 
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    // tenants milestone section
+
+    createTenantMileStones = async (req: CustomRequest, res: Response) => {
+
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const { error, value } = await LogsSchema.validate(req.body);
+            if (error) return res.status(400).json({ message: error.details[0].message });
+
+            // LogsSchema
+            const { userId, ...data } = value;
+
+            const userExist = UserServices.getUserById(String(userId));
+            if (!userExist)
+                return res.status(404).json({ error: `tenant with the userId :  ${userId} doesnot exist` });
+            // get the property attached to current tenant
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(userId, landlordId)
+
+            const milestones = await LogsServices.createLog({
+                propertyId: tenant.propertyId,
+                createdById: userId,
+                ...data
+            });
+            return res.status(201).json({ milestones });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getTenantMileStones = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const tenantUserId = req.params.tenantUserId
+            const userExist = UserServices.getUserById(String(tenantUserId));
+            if (!userExist)
+                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+            // get the property attached to current tenant
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            console.log("prints tenants=================")
+            console.log(tenantUserId)
+            console.log(tenant)
+            const milestones = await LogsServices.getLandlordTenantsLogsByProperty(
+                tenant.propertyId,
+                tenantUserId,
+                landlordId
+            );
+            return res.status(200).json({ milestones });
         } catch (error) {
             errorService.handleError(error, res)
         }

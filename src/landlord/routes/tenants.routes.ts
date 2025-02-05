@@ -18,6 +18,8 @@ class TenantsLandlordRouter {
          this.router.get('/currents',  TenantLandlordController.getCurrentTenant);
          this.router.get('/previous',  TenantLandlordController.getPreviousTenant);
          this.router.post('/upload', uploadcsv.single("files"), TenantLandlordController.bulkTenantUpload)
+         this.router.post('/milestones/', TenantLandlordController.createTenantMileStones)
+         this.router.get('/milestones/:tenantUserId', TenantLandlordController.getTenantMileStones)
  
     }
 }

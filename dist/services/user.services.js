@@ -63,6 +63,12 @@ class UserService {
             });
             return user;
         });
+        this.getUserById = (id) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.users.findFirst({
+                where: { id },
+                include: this.inclusion,
+            });
+        });
         this.findUserByTenantCode = (tenantCode) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.users.findFirst({
                 where: {

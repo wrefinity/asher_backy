@@ -17,6 +17,7 @@ class LogService {
                 data: {
                     events: data.events,
                     propertyId: data.propertyId,
+                    type: data.type,
                     transactionId: data.transactionId,
                     createdById: data.createdById,
                 },
@@ -29,6 +30,22 @@ class LogService {
                 },
                 include: {
                     property: true,
+                }
+            });
+        });
+        // for milestone on maintenances
+        this.getLandlordTenantsLogsByProperty = (propertyId, userId, landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.log.findMany({
+                where: {
+                    propertyId: propertyId,
+                    property: {
+                        landlordId
+                    },
+                    createdById: userId
+                },
+                include: {
+                    property: true,
+                    users: true
                 }
             });
         });

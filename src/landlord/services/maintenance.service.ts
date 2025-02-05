@@ -3,6 +3,15 @@ import { maintenanceStatus, maintenanceDecisionStatus } from '@prisma/client';
 import { MaintenanceWhitelistInput } from "../validations/interfaces/maintenance";
 import categoryService from "../../services/category.service";
 
+
+
+interface MaintenanceCounts {
+  pending: number;
+  completed: number;
+  inProgress: number;
+  tenantRequest: number;
+}
+
 class LandlordMaintenanceService {
   protected inclusion: {
     vendor: boolean;
@@ -19,6 +28,59 @@ class LandlordMaintenanceService {
       category: true,
     };
   }
+  getMaintenanceCounts = async (landlordId: string): Promise<MaintenanceCounts> => {
+    // Count maintenance records with status "PENDING"
+    const pendingCount = await prismaClient.maintenance.count({
+      where: {
+        property: {
+          landlordId
+        },
+        status: maintenanceStatus.PENDING,
+        isDeleted: false,  // Ensure no deleted records
+      },
+    });
+
+    // Count maintenance records with status "COMPLETED"
+    const completedCount = await prismaClient.maintenance.count({
+      where: {
+        property: {
+          landlordId
+        },
+        status: maintenanceStatus.COMPLETED,
+        isDeleted: false,
+      },
+    });
+
+    // Count maintenance records with status "ASSIGNED" or "IN_PROGRESS"
+    const inProgressCount = await prismaClient.maintenance.count({
+      where: {
+        property: {
+          landlordId
+        },
+        status: { in: ['ASSIGNED', 'UNASSIGNED'] },
+        isDeleted: false,
+      },
+    });
+
+    // Count maintenance records with status "CANCELLATION_REQUEST"
+    const tenantRequestCount = await prismaClient.maintenance.count({
+      where: {
+        property: {
+          landlordId
+        },
+        handleByLandlord: false,
+        isDeleted: false,
+      },
+    });
+
+    // Return the counts as an object
+    return {
+      pending: pendingCount,
+      completed: completedCount,
+      inProgress: inProgressCount,
+      tenantRequest: tenantRequestCount,
+    }
+  };
 
   getRequestedMaintenanceByLandlord = async (landlordId: string, status?: maintenanceStatus) => {
     const maintenanceRequests = await prismaClient.maintenance.findMany({
@@ -183,7 +245,6 @@ class LandlordMaintenanceService {
   }
 
 
-
   getMaintenanceCategoriesWithWhitelistStatus = async (landlordId: string) => {
     // Step 1: Fetch all categories with their subcategories
     const categories = await categoryService.getAllCategories();
@@ -221,8 +282,6 @@ class LandlordMaintenanceService {
     }));
     return result;
   }
-
-
 
 
   // Update an existing whitelist entry

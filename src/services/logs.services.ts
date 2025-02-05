@@ -1,9 +1,10 @@
 import { prismaClient } from "..";
-
+import {LogType} from "@prisma/client"
 // Interface for Log creation
 interface LogIF {
   events: string;
   propertyId?: string;
+  type?: LogType;
   transactionId?: string;
   createdById?: string;
 }
@@ -21,6 +22,7 @@ class LogService {
       data: {
         events: data.events,
         propertyId: data.propertyId,
+        type: data.type,
         transactionId: data.transactionId,
         createdById: data.createdById,
       },
@@ -33,6 +35,23 @@ class LogService {
       },
       include: {
         property: true,
+      }
+    });
+  }
+
+  // for milestone on maintenances
+  getLandlordTenantsLogsByProperty = async (propertyId: string, userId: string, landlordId: string) => {
+    return await prismaClient.log.findMany({
+      where: {
+        propertyId: propertyId,
+        property: {
+          landlordId
+        },
+        createdById: userId
+      },
+      include: {
+        property: true,
+        users: true
       }
     });
   }
