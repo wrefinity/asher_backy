@@ -141,6 +141,7 @@ model properties {
   Complaint Complaint[]
 
   Log Log[] @relation("props")
+  violation violation[] @relation("violations")
 }
 
 model propApartmentSettings {

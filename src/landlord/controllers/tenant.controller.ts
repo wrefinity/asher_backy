@@ -10,8 +10,10 @@ import { userRoles } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantSchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
+import { ViolationSchema } from '../../validations/schemas/violations';
 import LogsServices from '../../services/logs.services';
 import ComplaintServices from '../../services/complaintServices';
+import ViolationService from '../../services/violations';
 
 
 // Helper function to parse the date field into DD/MM/YYYY format
@@ -271,6 +273,51 @@ class TenantControls {
                 landlordId
             );
             return res.status(200).json({ complaints });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+
+    createTenantViolation = async (req, res) => {
+        try {
+            const { error, value } = ViolationSchema.validate(req.body);
+            
+            if (error) {
+                return res.status(400).json({
+                    message: error.details[0].message,
+                });
+            }
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const violation = await ViolationService.create(
+                {
+                    ...value,
+                    createdById: req.user?.id
+                }
+            );
+            return res.status(201).json({
+                message: 'Violation created successfully',
+                violation // Here you can send back the created violation
+            });
+    
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getTenantViolations = async (req, res) => {
+        try {
+            const tenantId = req.params.tenantId;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const violation = await ViolationService.getViolationTenantId(tenantId)
+            return res.status(201).json({
+                violation 
+            });
+    
         } catch (error) {
             errorService.handleError(error, res)
         }

@@ -33,8 +33,10 @@ const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../services/landlord.service");
 const tenancy_schema_1 = require("../validations/schema/tenancy.schema");
 const logs_schema_1 = require("../../validations/schemas/logs.schema");
+const violations_1 = require("../../validations/schemas/violations");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const complaintServices_1 = __importDefault(require("../../services/complaintServices"));
+const violations_2 = __importDefault(require("../../services/violations"));
 // Helper function to parse the date field into DD/MM/YYYY format
 const parseDateFieldNew = (date) => {
     const formattedDate = (0, moment_1.default)(date, 'DD/MM/YYYY', true);
@@ -254,6 +256,46 @@ class TenantControls {
                     return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
                 const complaints = yield logs_services_1.default.getCommunicationLog(tenant === null || tenant === void 0 ? void 0 : tenant.propertyId, tenantUserId, landlordId);
                 return res.status(200).json({ complaints });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.createTenantViolation = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c;
+            try {
+                const { error, value } = violations_1.ViolationSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({
+                        message: error.details[0].message,
+                    });
+                }
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const violation = yield violations_2.default.create(Object.assign(Object.assign({}, value), { createdById: (_c = req.user) === null || _c === void 0 ? void 0 : _c.id }));
+                return res.status(201).json({
+                    message: 'Violation created successfully',
+                    violation // Here you can send back the created violation
+                });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getTenantViolations = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const tenantId = req.params.tenantId;
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const violation = yield violations_2.default.getViolationTenantId(tenantId);
+                return res.status(201).json({
+                    violation
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

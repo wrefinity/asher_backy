@@ -173,6 +173,7 @@ model tenants {
 
   @@unique([userId, propertyId])
   @@unique([userId])
+  violation violation[] @relation("tenant")
 }
 
 // user information definition 
@@ -258,6 +259,8 @@ model users {
   Complaint Complaint[]
 
   Log Log[] @relation("users")
+
+  violation violation[] @relation("users")
 }
 
 model creditScore {

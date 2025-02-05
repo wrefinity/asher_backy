@@ -1,0 +1,23 @@
+enum SeverityLevel {
+    LOW // Low severity
+    MODERATE // Moderate severity
+    SEVERE // Severe severity
+    CRITICAL // Critical severity
+    EXTREME // Extreme severity
+}
+
+model violation {
+    id            String         @id @default(cuid()) // Unique ID for the violation entry
+    actionTaken   String?
+    description   String // Description of the violation
+    severityLevel SeverityLevel? @default(LOW) // Default value should be just the enum value (MODERATE)
+    createdAt     DateTime       @default(now()) // Timestamp when violation was created
+    updatedAt     DateTime       @updatedAt // Timestamp when violation was last updated
+    propertyId    String? // Foreign key for the property (optional)
+    property      properties?    @relation("violations", fields: [propertyId], references: [id]) // Property relation
+    tenantId      String? // Foreign key for the tenant
+    tenant        tenants?       @relation("tenant", fields: [tenantId], references: [id]) // Tenant relation
+    createdById   String? // Foreign key for the user (optional)
+    user          users?         @relation("users", fields: [createdById], references: [id]) // User relation
+    isDeleted     Boolean        @default(false)
+}

@@ -23,6 +23,8 @@ class TenantsLandlordRouter {
          this.router.get('/communication-logs/:tenantUserId', TenantLandlordController.getTenantCommunicationLogs)
          //  tenant complaints 
          this.router.get('/complaints/:tenantUserId', TenantLandlordController.getTenantComplaints) 
+         this.router.post('/violations', TenantLandlordController.createTenantViolation) 
+         this.router.get('/violations/:tenantId', TenantLandlordController.getTenantViolations) 
     }
 }
 
