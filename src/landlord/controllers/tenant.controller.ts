@@ -11,6 +11,7 @@ import { LandlordService } from '../services/landlord.service';
 import { tenantSchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
 import LogsServices from '../../services/logs.services';
+import ComplaintServices from '../../services/complaintServices';
 
 
 // Helper function to parse the date field into DD/MM/YYYY format
@@ -210,12 +211,41 @@ class TenantControls {
                 return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
             // get the property attached to current tenant
             const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+
+            if(!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
+            
             const milestones = await LogsServices.getLandlordTenantsLogsByProperty(
                 tenant.propertyId,
                 tenantUserId,
                 landlordId
             );
             return res.status(200).json({ milestones });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getTenantComplaints = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const tenantUserId = req.params.tenantUserId
+            const userExist = UserServices.getUserById(String(tenantUserId));
+            if (!userExist)
+                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+            // get the property attached to current tenant
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            if(!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
+            
+            const complaints = await ComplaintServices.getLandlordPropsTenantComplaints(
+                tenantUserId,
+                tenant?.propertyId,
+                landlordId
+            );
+            return res.status(200).json({ complaints });
         } catch (error) {
             errorService.handleError(error, res)
         }

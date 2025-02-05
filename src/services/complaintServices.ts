@@ -29,6 +29,19 @@ class ComplaintServices implements IComplaintService {
             throw new Error(`Failed to fetch complaints: ${error.message}`);
         }
     };
+    getLandlordPropsTenantComplaints = async (tenantUserId: string, propertyId: string, landlordId: string): Promise<IComplaint[]> => {
+        return await prismaClient.complaint.findMany({
+            where: {
+                isDeleted: false,
+                propertyId,
+                property: {
+                    landlordId
+                },
+                createdById:tenantUserId
+            },
+            include: { createdBy: true, property: true },
+        });
+    };
 
     getAllLandlordComplaints = async (landlordId: string): Promise<IComplaint[]> => {
         try {
