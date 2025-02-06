@@ -18,20 +18,42 @@ class Jtoken {
     constructor(secret) {
         this.secret = secret;
     }
+    /**
+     * Generates a new JWT access token.
+     * @param payload - The payload containing user details.
+     * @returns A promise that resolves to a signed JWT token.
+     */
     createToken(payload) {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
-                jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "2d" }, (err, token) => {
+                // Generate access token (expires in 2 days)
+                jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "1h" }, (err, accessToken) => {
                     if (err) {
                         reject(err);
                     }
                     else {
-                        resolve(token);
+                        // Generate refresh token (expires in 7 days)
+                        jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "7d" }, (err, refreshToken) => {
+                            if (err) {
+                                reject(err);
+                            }
+                            else {
+                                resolve({
+                                    accessToken: accessToken,
+                                    refreshToken: refreshToken,
+                                });
+                            }
+                        });
                     }
                 });
             });
         });
     }
+    /**
+     * Decodes and verifies a given JWT token.
+     * @param token - The JWT token to be decoded.
+     * @returns A promise resolving to the decoded payload or null if verification fails.
+     */
     decodeToken(token) {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
@@ -44,6 +66,27 @@ class Jtoken {
                     }
                 });
             });
+        });
+    }
+    /**
+     * Verifies and refreshes a given refresh token.
+     * @param refreshToken - The refresh token to verify.
+     * @returns A new access and refresh token pair, or null if verification fails.
+     */
+    verifyAndRefreshToken(refreshToken) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const decoded = jsonwebtoken_1.default.verify(refreshToken, this.secret);
+                // Generate a new access token (valid for 2 days)
+                const newAccessToken = jsonwebtoken_1.default.sign({ id: decoded.id, role: decoded.role }, this.secret, { expiresIn: "2d" });
+                // Generate a new refresh token (valid for 7 days)
+                const newRefreshToken = jsonwebtoken_1.default.sign({ id: decoded.id, role: decoded.role }, this.secret, { expiresIn: "7d" });
+                return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+            }
+            catch (error) {
+                console.error("Error verifying refresh token:", error);
+                return null;
+            }
         });
     }
 }

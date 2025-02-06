@@ -183,7 +183,8 @@ class AuthControls {
                 const { password: _, id: __ } = user, userDetails = __rest(user, ["password", "id"]);
                 return res.status(200).json({
                     message: "User logged in successfully.",
-                    token,
+                    token: token.accessToken,
+                    refreshToken: token.refreshToken,
                     userDetails,
                 });
             }
