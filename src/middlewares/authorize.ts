@@ -72,13 +72,7 @@ export class Authorize {
         }
 
         // Attach new user data to request
-        const decoded = await this.tokenService.decodeToken(newTokens.accessToken);
-
-        const user = await UserService.findAUserById(String(decoded.id));
-        if (!user) {
-            return res.status(401).json({ message: "User not found" });
-        }
-        req.user = user;
+        req.user = newTokens?.user;
         // Send new tokens in response headers
         res.setHeader("x-access-token", newTokens.accessToken);
         res.setHeader("x-refresh-token", newTokens.refreshToken);
@@ -107,3 +101,6 @@ export class Authorize {
         return res.status(200).json({ message: "Logged out successfully" });
     }
 }
+
+
+

@@ -14,6 +14,7 @@ class AuthRoutes {
         this.router.post("/login", AuthController.login.bind(AuthController));
         this.router.post("/verify", AuthController.confirmation.bind(AuthController));
         this.router.post("/reset-code", AuthController.sendPasswordResetCode.bind(AuthController));
+        this.router.post("/refresh-token", AuthController.refreshToken.bind(AuthController));
         this.router.post("/register", AuthController.register.bind(AuthController));
         this.router.post("/reset-password", AuthController.passwordReset.bind(AuthController));
         this.router.post('/tenants/register', AuthController.registerTenant.bind(AuthController))

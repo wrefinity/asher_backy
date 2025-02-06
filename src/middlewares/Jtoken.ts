@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { JWTPayload } from "../utils/types";
-
+import UserServices from "../services/user.services";
 export class Jtoken {
     private secret: string;
 
@@ -62,21 +62,30 @@ export class Jtoken {
         try {
             const decoded = jwt.verify(refreshToken, this.secret) as JWTPayload;
 
-            // Generate a new access token (valid for 2 days)
+            // Fetch user from database using decoded ID
+            const userDetails = await UserServices.findAUserById(decoded.id);
+
+            if (!userDetails) {
+                return null;
+            }
+            // Exclude sensitive fields and return user details
+            const { password: _, ...user } = userDetails;
+
+            // Generate a new access token (valid for 1 hour)
             const newAccessToken = jwt.sign(
-                { id: decoded.id, role: decoded.role },
+                { id: user.id, role: user.role },
                 this.secret,
-                { expiresIn: "2d" }
+                { expiresIn: "1h" }
             );
 
             // Generate a new refresh token (valid for 7 days)
             const newRefreshToken = jwt.sign(
-                { id: decoded.id, role: decoded.role },
+                { id: user.id, role: user.role,},
                 this.secret,
                 { expiresIn: "7d" }
             );
 
-            return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+            return { accessToken: newAccessToken, refreshToken: newRefreshToken, user };
         } catch (error) {
             console.error("Error verifying refresh token:", error);
             return null;

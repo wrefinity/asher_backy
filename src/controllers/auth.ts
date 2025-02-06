@@ -138,6 +138,31 @@ class AuthControls {
         }
     }
 
+    refreshToken = async (req: CustomRequest, res: Response) => {
+        try {
+            const { refreshToken } = req.body;
+    
+            if (!refreshToken) {
+                return res.status(400).json({ message: "Refresh token is required as refreshToken" });
+            }
+    
+            // Verify token and get new tokens + user details
+            const tokens = await this.tokenService.verifyAndRefreshToken(refreshToken);
+    
+            if (!tokens) {
+                return res.status(401).json({ message: "Invalid or expired refresh token" });
+            }
+    
+            res.json({
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                user: tokens.user, // Return user details
+            });
+        } catch (error) {
+            console.error("Error refreshing token:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
 
     login = async (req: Request, res: Response) => {
 
