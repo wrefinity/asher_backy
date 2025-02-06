@@ -72,8 +72,13 @@ export class Authorize {
         }
 
         // Attach new user data to request
-        req.user = await this.tokenService.decodeToken(newTokens.accessToken);
+        const decoded = await this.tokenService.decodeToken(newTokens.accessToken);
 
+        const user = await UserService.findAUserById(String(decoded.id));
+        if (!user) {
+            return res.status(401).json({ message: "User not found" });
+        }
+        req.user = user;
         // Send new tokens in response headers
         res.setHeader("x-access-token", newTokens.accessToken);
         res.setHeader("x-refresh-token", newTokens.refreshToken);
