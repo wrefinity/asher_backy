@@ -1,4 +1,4 @@
-import {PropertyType, PropertySpecificationType} from "@prisma/client"
+import { PropertyType, PropertySpecificationType } from "@prisma/client"
 
 export interface IPropertyDocument {
     id?: string;
@@ -34,4 +34,15 @@ export interface ICreateProperty {
     longitude?: number;
     type?: PropertyType;
     specificationType?: PropertySpecificationType;
+}
+
+export interface PropertyViewingIF {
+    id?: string;
+    userId: string;
+    propertyId: string;
+    isLiked?: boolean;
+    review?: string;
+    rating?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
 }

@@ -12,7 +12,7 @@ model category {
   labels               String[]
   isDeleted            Boolean                @default(false)
   // Setting categorization
-  categoryType         CategoryType           @default(MAINTENANCE)
+  categoryType         CategoryType?
   subCategory          subCategory[]
   maintenance          maintenance[]
   services             services[]

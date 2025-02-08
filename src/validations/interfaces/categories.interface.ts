@@ -14,6 +14,7 @@ export interface SubCategoryIF {
     name: string;
     image: string;
     description?: string;
+    type?: CategoryType;
     label: string[];
     isDeleted: boolean;
     categoryId: string;

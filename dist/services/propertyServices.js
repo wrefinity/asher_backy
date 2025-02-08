@@ -267,6 +267,15 @@ class PropertyService {
             });
             return properties;
         });
+        this.getPropertiesAttachedToTenants = (tenantId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.properties.findFirst({
+                where: {
+                    tenants: {
+                        some: { id: tenantId },
+                    },
+                }
+            });
+        });
     }
 }
 exports.default = new PropertyService();

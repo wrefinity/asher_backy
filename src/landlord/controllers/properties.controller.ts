@@ -421,5 +421,8 @@ class PropertyController {
         }
     };
 
+
+    
+
 }
 export default new PropertyController() 

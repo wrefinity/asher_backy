@@ -309,6 +309,15 @@ class PropertyService {
 
         return properties;
     }
+    getPropertiesAttachedToTenants = async (tenantId: string) => {
+        return await prismaClient.properties.findFirst({
+          where: {
+            tenants: {
+              some: { id: tenantId },
+            },
+          }
+        });
+      }
 
 }
 

@@ -272,12 +272,12 @@ class MaintenanceService {
           isDeleted: false, // Ensure you are not fetching deleted records
         },
         include: {
-          vendor: { 
-            include: { 
-              user: { 
-                select: { id: true, email: true, role: true, profileId: true, profile: true } 
-              } 
-            } 
+          vendor: {
+            include: {
+              user: {
+                select: { id: true, email: true, role: true, profileId: true, profile: true }
+              }
+            }
           }, // Fetch vendors directly assigned
           services: {
             include: {
@@ -292,22 +292,22 @@ class MaintenanceService {
           },
         },
       });
-  
+
       const today = new Date();
-  
+
       const categorizedVendors = {
         current: new Set(),
         previous: new Set(),
         future: new Set(),
       };
-  
+
       maintenanceRecords.forEach((record) => {
         const scheduleDate = record.scheduleDate;
         if (!scheduleDate) return; // Skip if no scheduleDate
-  
+
         let vendor = record.vendor || (record.services?.vendor ?? null);
         if (!vendor) return; // Skip if no vendor
-  
+
         if (isToday(scheduleDate)) {
           categorizedVendors.current.add(vendor);
         } else if (isBefore(scheduleDate, today)) {
@@ -316,7 +316,7 @@ class MaintenanceService {
           categorizedVendors.future.add(vendor);
         }
       });
-  
+
       // Convert sets to arrays before returning
       return {
         current: Array.from(categorizedVendors.current),
@@ -369,14 +369,13 @@ class MaintenanceService {
       throw new Error('Error fetching vendors for property maintenance');
     }
   }
-
-
-
-
-
-
-
-
+  
+  getPropertyTenantMaintenance = async (propertyId: string, tenantId: string) => {
+    return await prismaClient.maintenance.findMany({
+      where: { propertyId, tenantId },
+      include: this.inclusion,
+    });
+  }
 }
 
 

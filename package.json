@@ -54,6 +54,7 @@
     "@types/passport-local": "^1.0.38",
     "@types/stripe": "^8.0.416",
     "@types/winston": "^2.4.4",
+    "@types/ws": "^8.5.14",
     "arctic": "^1.9.1",
     "axios": "^1.7.2",
     "bcrypt": "^5.1.1",

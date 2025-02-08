@@ -140,8 +140,10 @@ model properties {
 
   Complaint Complaint[]
 
-  Log Log[] @relation("props")
+  Log       Log[]       @relation("props")
   violation violation[] @relation("violations")
+
+  PropertyViewing PropertyViewing[]
 }
 
 model propApartmentSettings {
@@ -234,4 +236,19 @@ model apartments {
   settings               propApartmentSettings[]
   applicationInvites     applicationInvites[]
   propertyListingHistory propertyListingHistory?
+}
+
+model PropertyViewing {
+  id         String   @id @default(cuid())
+  userId     String // Foreign key reference to the user viewing the property
+  propertyId String // Foreign key reference to the property being viewed
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isLiked    Boolean  @default(false) // Indicates if the user liked the property
+  review     String? // Optional review text left by the user
+  rating     Int? // Optional rating (e.g., 1-5 stars)
+
+  // Relationships
+  user     users      @relation(fields: [userId], references: [id])
+  property properties @relation(fields: [propertyId], references: [id])
 }

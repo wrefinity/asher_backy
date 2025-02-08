@@ -261,6 +261,8 @@ model users {
   Log Log[] @relation("users")
 
   violation violation[] @relation("users")
+
+  PropertyViewing PropertyViewing[]
 }
 
 model creditScore {

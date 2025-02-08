@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateListingStatusSchema = exports.updatePropertyListingSchema = exports.createPropertyListingSchema = exports.updatePropertyDocumentSchema = exports.createPropertyDocumentSchema = exports.updatePropertySchema = exports.createPropertySchema = void 0;
+exports.updatePropertyViewingSchema = exports.createPropertyViewingSchema = exports.updateListingStatusSchema = exports.updatePropertyListingSchema = exports.createPropertyListingSchema = exports.updatePropertyDocumentSchema = exports.createPropertyDocumentSchema = exports.updatePropertySchema = exports.createPropertySchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const propertyType = Object.values(client_1.PropertyType);
@@ -103,4 +103,14 @@ exports.updatePropertyListingSchema = joi_1.default.object({
 });
 exports.updateListingStatusSchema = joi_1.default.object({
     isLeased: joi_1.default.boolean().required(),
+});
+exports.createPropertyViewingSchema = joi_1.default.object({
+    isLiked: joi_1.default.boolean().optional(),
+    review: joi_1.default.string().optional(),
+    rating: joi_1.default.number().integer().min(1).max(5).optional(),
+});
+exports.updatePropertyViewingSchema = joi_1.default.object({
+    isLiked: joi_1.default.boolean().optional(),
+    review: joi_1.default.string().optional(),
+    rating: joi_1.default.number().integer().min(1).max(5).optional(),
 });

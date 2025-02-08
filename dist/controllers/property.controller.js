@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_service_1 = __importDefault(require("../services/error.service"));
 const propertyServices_1 = __importDefault(require("../services/propertyServices"));
 const maintenance_service_1 = __importDefault(require("../services/maintenance.service"));
+const propertyviewing_service_1 = __importDefault(require("../services/propertyviewing.service"));
+const properties_schema_1 = require("../validations/schemas/properties.schema");
 class PropertyController {
     constructor() {
         this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -82,6 +84,62 @@ class PropertyController {
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
+            }
+        });
+        this.createViewing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { error } = properties_schema_1.createPropertyViewingSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const viewing = yield propertyviewing_service_1.default.createViewing(req.body);
+                res.status(201).json(viewing);
+            }
+            catch (error) {
+                res.status(500).json({ error: "Internal server error" });
+            }
+        });
+        this.getAllViewings = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const viewings = yield propertyviewing_service_1.default.getAllViewings();
+                res.json(viewings);
+            }
+            catch (error) {
+                res.status(500).json({ error: "Internal server error" });
+            }
+        });
+        this.getViewingById = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { id } = req.params;
+                const viewing = yield propertyviewing_service_1.default.getViewingById(id);
+                if (!viewing)
+                    return res.status(404).json({ error: "Property viewing not found" });
+                res.json(viewing);
+            }
+            catch (error) {
+                res.status(500).json({ error: "Internal server error" });
+            }
+        });
+        this.updateViewing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { id } = req.params;
+                const { error } = properties_schema_1.updatePropertyViewingSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const updatedViewing = yield propertyviewing_service_1.default.updateViewing(id, req.body);
+                res.json(updatedViewing);
+            }
+            catch (error) {
+                res.status(500).json({ error: "Internal server error" });
+            }
+        });
+        this.deleteViewing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { id } = req.params;
+                yield propertyviewing_service_1.default.deleteViewing(id);
+                res.json({ message: "Property viewing deleted successfully" });
+            }
+            catch (error) {
+                res.status(500).json({ error: "Internal server error" });
             }
         });
     }

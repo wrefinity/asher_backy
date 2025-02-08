@@ -340,6 +340,12 @@ class MaintenanceService {
                 throw new Error('Error fetching vendors for property maintenance');
             }
         });
+        this.getPropertyTenantMaintenance = (propertyId, tenantId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.maintenance.findMany({
+                where: { propertyId, tenantId },
+                include: this.inclusion,
+            });
+        });
         this.inclusion = {
             tenant: true,
             landlord: true,

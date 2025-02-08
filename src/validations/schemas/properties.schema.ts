@@ -107,3 +107,17 @@ export const updatePropertyListingSchema = Joi.object({
 export const updateListingStatusSchema = Joi.object({
   isLeased: Joi.boolean().required(),
 });
+
+
+
+export const createPropertyViewingSchema = Joi.object({
+  isLiked: Joi.boolean().optional(),
+  review: Joi.string().optional(),
+  rating: Joi.number().integer().min(1).max(5).optional(),
+});
+
+export const updatePropertyViewingSchema = Joi.object({
+  isLiked: Joi.boolean().optional(),
+  review: Joi.string().optional(),
+  rating: Joi.number().integer().min(1).max(5).optional(),
+});
