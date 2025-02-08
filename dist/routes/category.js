@@ -21,10 +21,12 @@ class CategoryRoutes {
         this.router.get('/sub', subcategory_1.default.getAllSubCategories);
         this.router.post('/sub/:categoryId', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, subcategory_1.default.createSubCategory);
         this.router.get('/sub/:id', subcategory_1.default.getSubCategoryById);
+        this.router.get('/sub/type/:categoryId', subcategory_1.default.getAllSubCategoriesForCategoryIdType);
         this.router.patch('/sub/:id', subcategory_1.default.updateSubCategory);
         this.router.delete('/sub/:id', this.authenticateService.authorize, subcategory_1.default.deleteSubCategory);
         //categories
         this.router.post('/', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, category_1.default.createCategory);
+        this.router.get('/type', category_1.default.getAllCategoriesType);
         this.router.get('/', category_1.default.getAllCategories);
         this.router.get('/:id', category_1.default.getCategoryById);
         this.router.patch('/:id', category_1.default.updateCategory);

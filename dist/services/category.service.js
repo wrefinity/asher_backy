@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const client_1 = require("@prisma/client");
 class categoryService {
     constructor() {
         this.createCategory = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -35,6 +36,33 @@ class categoryService {
             return yield __1.prismaClient.category.findUnique({
                 where: { id, isDeleted: false },
                 include: this.inclusion
+            });
+        });
+        // Get all categories based on their subcategory type
+        this.getAllCategoriesTypes = (type) => __awaiter(this, void 0, void 0, function* () {
+            // Validate if the provided type is a valid CategoryType
+            if (!Object.values(client_1.CategoryType).includes(type)) {
+                throw new Error("Invalid subcategory type.");
+            }
+            // Fetch categories where the subcategory has the specific type and is not deleted
+            return yield __1.prismaClient.category.findMany({
+                where: {
+                    isDeleted: false, // Only fetch non-deleted categories
+                    subCategory: {
+                        some: {
+                            type, // Filter by subcategory type
+                            isDeleted: false, // Only include non-deleted subcategories
+                        },
+                    },
+                },
+                include: {
+                    subCategory: {
+                        where: {
+                            type, // Filter subcategories by type
+                            isDeleted: false, // Only include non-deleted subcategories
+                        },
+                    },
+                },
             });
         });
         this.updateCategory = (id, data) => __awaiter(this, void 0, void 0, function* () {

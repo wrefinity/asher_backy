@@ -1,5 +1,8 @@
 import { categorySchema } from "../validations/schemas/category";
 import categoryService from "../services/category.service";
+import ErrorService from "../services/error.service";
+import { CategoryType } from "@prisma/client";
+
 class CategoryControls {
 
     createCategory = async (req, res) => {
@@ -10,13 +13,12 @@ class CategoryControls {
         delete data.cloudinaryUrls;
         delete data.cloudinaryVideoUrls;
         delete data.cloudinaryDocumentUrls;
-        
+
         try {
-            const category = await categoryService.createCategory({...data, image});
+            const category = await categoryService.createCategory({ ...data, image });
             res.status(201).json(category);
         } catch (err) {
-            console.log(err.message)
-            res.status(500).json({ error: err.message });
+            ErrorService.handleError(err, res);
         }
     };
 
@@ -24,11 +26,25 @@ class CategoryControls {
         try {
             const categories = await categoryService.getAllCategories();
             console.log(categories)
-            res.status(200).json({categories});
+            res.status(200).json({ categories });
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            ErrorService.handleError(err, res);
         }
     };
+    getAllCategoriesType = async (req, res) => {
+        try {
+            const type = req.query.type;
+            // Check if the type is valid (i.e., matches the CategoryType enum)
+            if (!type || !Object.values(CategoryType).includes(type)) {
+                return res.status(400).json({ message: "Invalid type. Please provide a valid type from the CategoryType enum (SERVICES, MAINTENANCE, BILL, etc..)." });
+            }
+            // Fetch the subcategories based on the type and categoryId
+            const subCategories = await categoryService.getAllCategoriesTypes(type);
+            res.status(200).json({ subCategories });
+        } catch (err) {
+            ErrorService.handleError(err, res);
+        }
+    }
 
     getCategoryById = async (req, res) => {
         try {
@@ -36,7 +52,7 @@ class CategoryControls {
             if (!category) return res.status(404).json({ error: 'Category not found' });
             res.status(200).json(category);
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            ErrorService.handleError(err, res);
         }
     };
 
@@ -49,7 +65,7 @@ class CategoryControls {
             if (!category) return res.status(404).json({ error: 'Category not found' });
             res.status(200).json(category);
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            ErrorService.handleError(err, res);
         }
     };
 
@@ -59,7 +75,7 @@ class CategoryControls {
             if (!category) return res.status(404).json({ error: 'Category not found' });
             res.status(200).json({ message: 'Category deleted successfully' });
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            ErrorService.handleError(err, res);
         }
     };
 }

@@ -14,6 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const category_1 = require("../validations/schemas/category");
 const category_service_1 = __importDefault(require("../services/category.service"));
+const error_service_1 = __importDefault(require("../services/error.service"));
+const client_1 = require("@prisma/client");
 class CategoryControls {
     constructor() {
         this.createCategory = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -30,8 +32,7 @@ class CategoryControls {
                 res.status(201).json(category);
             }
             catch (err) {
-                console.log(err.message);
-                res.status(500).json({ error: err.message });
+                error_service_1.default.handleError(err, res);
             }
         });
         this.getAllCategories = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -41,7 +42,22 @@ class CategoryControls {
                 res.status(200).json({ categories });
             }
             catch (err) {
-                res.status(500).json({ error: err.message });
+                error_service_1.default.handleError(err, res);
+            }
+        });
+        this.getAllCategoriesType = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const type = req.query.type;
+                // Check if the type is valid (i.e., matches the CategoryType enum)
+                if (!type || !Object.values(client_1.CategoryType).includes(type)) {
+                    return res.status(400).json({ message: "Invalid type. Please provide a valid type from the CategoryType enum (SERVICES, MAINTENANCE, BILL, etc..)." });
+                }
+                // Fetch the subcategories based on the type and categoryId
+                const subCategories = yield category_service_1.default.getAllCategoriesTypes(type);
+                res.status(200).json({ subCategories });
+            }
+            catch (err) {
+                error_service_1.default.handleError(err, res);
             }
         });
         this.getCategoryById = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -52,7 +68,7 @@ class CategoryControls {
                 res.status(200).json(category);
             }
             catch (err) {
-                res.status(500).json({ error: err.message });
+                error_service_1.default.handleError(err, res);
             }
         });
         this.updateCategory = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -66,7 +82,7 @@ class CategoryControls {
                 res.status(200).json(category);
             }
             catch (err) {
-                res.status(500).json({ error: err.message });
+                error_service_1.default.handleError(err, res);
             }
         });
         this.deleteCategory = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -77,7 +93,7 @@ class CategoryControls {
                 res.status(200).json({ message: 'Category deleted successfully' });
             }
             catch (err) {
-                res.status(500).json({ error: err.message });
+                error_service_1.default.handleError(err, res);
             }
         });
     }

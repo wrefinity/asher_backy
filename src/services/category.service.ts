@@ -1,6 +1,6 @@
 import { prismaClient } from "..";
 import { CategoryIF } from "../validations/interfaces/categories.interface";
-
+import { CategoryType } from "@prisma/client";
 class categoryService {
     protected inclusion;
 
@@ -36,6 +36,36 @@ class categoryService {
             include: this.inclusion
         });
     };
+
+    // Get all categories based on their subcategory type
+    getAllCategoriesTypes = async (type: CategoryType): Promise<CategoryIF[]> => {
+        // Validate if the provided type is a valid CategoryType
+        if (!Object.values(CategoryType).includes(type)) {
+            throw new Error("Invalid subcategory type.");
+        }
+
+        // Fetch categories where the subcategory has the specific type and is not deleted
+        return await prismaClient.category.findMany({
+            where: {
+                isDeleted: false, // Only fetch non-deleted categories
+                subCategory: {
+                    some: {
+                        type, // Filter by subcategory type
+                        isDeleted: false, // Only include non-deleted subcategories
+                    },
+                },
+            },
+            include: {
+                subCategory: {
+                    where: {
+                        type, // Filter subcategories by type
+                        isDeleted: false, // Only include non-deleted subcategories
+                    },
+                },
+            },
+        });
+    }
+
 
     updateCategory = async (id, data) => {
         return await prismaClient.category.update({

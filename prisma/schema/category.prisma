@@ -25,6 +25,7 @@ model subCategory {
   description          String?
   image                String[]
   labels               String[]
+  type                 CategoryType           @default(MAINTENANCE)
   isDeleted            Boolean                @default(false)
   category             category               @relation(fields: [categoryId], references: [id])
   categoryId           String

@@ -11,7 +11,7 @@ class UserRoutes {
         this.initializeRoutes();
     }
     initializeRoutes() {
-        this.router.post("/:userId", users_controller_1.default.getUserById.bind(users_controller_1.default));
+        this.router.get("/:userId", users_controller_1.default.getUserById.bind(users_controller_1.default));
     }
 }
 exports.default = new UserRoutes().router;

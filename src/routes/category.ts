@@ -22,10 +22,12 @@ class CategoryRoutes {
         this.router.get('/sub',  SubCategoryControls.getAllSubCategories);
         this.router.post('/sub/:categoryId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, SubCategoryControls.createSubCategory);
         this.router.get('/sub/:id',  SubCategoryControls.getSubCategoryById);
+        this.router.get('/sub/type/:categoryId',  SubCategoryControls.getAllSubCategoriesForCategoryIdType);
         this.router.patch('/sub/:id',  SubCategoryControls.updateSubCategory);
         this.router.delete('/sub/:id', this.authenticateService.authorize,  SubCategoryControls.deleteSubCategory);
         //categories
         this.router.post('/', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, CategoryControls.createCategory);
+        this.router.get('/type',  CategoryControls.getAllCategoriesType);
         this.router.get('/',  CategoryControls.getAllCategories);
         this.router.get('/:id',  CategoryControls.getCategoryById);
         this.router.patch('/:id',  CategoryControls.updateCategory);

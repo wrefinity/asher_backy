@@ -19,6 +19,7 @@ exports.categorySchema = joi_1.default.object({
 exports.subCategorySchema = joi_1.default.object({
     name: joi_1.default.string().required(),
     description: joi_1.default.string().optional(),
+    type: joi_1.default.string().valid(...catType).default(client_1.CategoryType.MAINTENANCE).required(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
