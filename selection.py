@@ -1,27 +1,79 @@
-class LinearSearch:
+# class LinearSearch:
 
-    def __init__(self, search_arr, target):
-        self.search_arr = search_arr
-        self.target = target
+#     def __init__(self, search_arr, target):
+#         self.search_arr = search_arr
+#         self.target = target
 
-    def sequential(self):
-        arr_len = len(self.search_arr)
+#     def sequential(self):
+#         arr_len = len(self.search_arr)
 
-        for index in range(arr_len):
-            if self.search_arr[index] == self.target:
-                return index
-        return -1
+#         for index in range(arr_len):
+#             if self.search_arr[index] == self.target:
+#                 return index
+#         return -1
 
-if __name__ == "__main__":
-    search_arr = [10, 29, 12, 23, 45, 22, 7]
-    target = 99
-    ls = LinearSearch(search_arr, target)
-    position = ls.sequential()
-    if position == -1:
-        print("not found")
-    else:
-        print(f"the target value {target} is located at index {position}")
+# if __name__ == "__main__":
+#     search_arr = [10, 29, 12, 23, 45, 22, 7]
+#     target = 99
+#     ls = LinearSearch(search_arr, target)
+#     position = ls.sequential()
+#     if position == -1:
+#         print("not found")
+#     else:
+#         print(f"the target value {target} is located at index {position}")
 
+class Node:
+
+    def __init__(self, key):
+        self.root = key
+        self.left = None
+        self.right = None
+
+    """tranversal using pre-order"""
+    def  preOrder(self):
+        """pre order traversal"""
+        print(self.root, end=' ')
+        if self.left:
+            self.left.preOrder()
+        if self.right:
+            self.right.preOrder()
+    
+    """tranversal using in-order"""
+    def inOrder(self):
+        if self.left:
+            self.left.inOrder()
+        print(self.root, end=' ')
+        if self.right:
+            self.right.inOrder() 
+    
+    def postOrder(self):
+        """post order traversal"""  
+        if self.left:
+            self.left.postOrder()
+        if self.right:
+            self.right.postOrder()
+        print(self.root, end=' ')
+
+
+root = Node(1)
+root.left = Node(2)
+root.right = Node(3)
+root.right.left = Node(5)
+root.right.left.left = Node(7)
+root.right.left.right = Node(8)
+root.right.right = Node(6)
+
+root.left.left = Node(4)    
+
+
+print("pre-order traversal")
+root.preOrder()
+
+print("\n In-order traversal")
+root.inOrder()
+
+print("\n Post-Order traversal")
+root.postOrder()
 
 
 

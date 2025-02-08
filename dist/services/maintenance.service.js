@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const __1 = require("..");
 const transfer_services_1 = __importDefault(require("./transfer.services"));
+const date_fns_1 = require("date-fns");
 class MaintenanceService {
     constructor() {
         this.getAllMaintenances = () => __awaiter(this, void 0, void 0, function* () {
@@ -236,6 +237,70 @@ class MaintenanceService {
         });
         // Fetch vendors for a property based on their maintenance services
         this.getVendorsForPropertyMaintenance = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const maintenanceRecords = yield __1.prismaClient.maintenance.findMany({
+                    where: {
+                        propertyId: propertyId,
+                        isDeleted: false, // Ensure you are not fetching deleted records
+                    },
+                    include: {
+                        vendor: {
+                            include: {
+                                user: {
+                                    select: { id: true, email: true, role: true, profileId: true, profile: true }
+                                }
+                            }
+                        }, // Fetch vendors directly assigned
+                        services: {
+                            include: {
+                                vendor: {
+                                    include: {
+                                        user: {
+                                            select: { id: true, email: true, role: true, profileId: true, profile: true }
+                                        }
+                                    }
+                                } // Fetch vendors through services
+                            },
+                        },
+                    },
+                });
+                const today = new Date();
+                const categorizedVendors = {
+                    current: new Set(),
+                    previous: new Set(),
+                    future: new Set(),
+                };
+                maintenanceRecords.forEach((record) => {
+                    var _a, _b;
+                    const scheduleDate = record.scheduleDate;
+                    if (!scheduleDate)
+                        return; // Skip if no scheduleDate
+                    let vendor = record.vendor || ((_b = (_a = record.services) === null || _a === void 0 ? void 0 : _a.vendor) !== null && _b !== void 0 ? _b : null);
+                    if (!vendor)
+                        return; // Skip if no vendor
+                    if ((0, date_fns_1.isToday)(scheduleDate)) {
+                        categorizedVendors.current.add(vendor);
+                    }
+                    else if ((0, date_fns_1.isBefore)(scheduleDate, today)) {
+                        categorizedVendors.previous.add(vendor);
+                    }
+                    else if ((0, date_fns_1.isAfter)(scheduleDate, today)) {
+                        categorizedVendors.future.add(vendor);
+                    }
+                });
+                // Convert sets to arrays before returning
+                return {
+                    current: Array.from(categorizedVendors.current),
+                    previous: Array.from(categorizedVendors.previous),
+                    future: Array.from(categorizedVendors.future),
+                };
+            }
+            catch (error) {
+                throw new Error('Error fetching vendors for property maintenance');
+            }
+        });
+        // backups
+        this.getBackupsVendorsForPropertyMaintenance = (propertyId) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const maintenanceRecords = yield __1.prismaClient.maintenance.findMany({
                     where: {

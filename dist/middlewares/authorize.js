@@ -77,7 +77,7 @@ class Authorize {
                 return res.status(403).json({ message: "Invalid refresh token" });
             }
             // Attach new user data to request
-            req.user = yield this.tokenService.decodeToken(newTokens.accessToken);
+            req.user = newTokens === null || newTokens === void 0 ? void 0 : newTokens.user;
             // Send new tokens in response headers
             res.setHeader("x-access-token", newTokens.accessToken);
             res.setHeader("x-refresh-token", newTokens.refreshToken);

@@ -27,6 +27,7 @@ const status_1 = __importDefault(require("./routes/status"));
 const log_1 = __importDefault(require("./routes/log"));
 const transaction_1 = __importDefault(require("./routes/transaction"));
 const wallet_1 = __importDefault(require("./routes/wallet"));
+const users_1 = __importDefault(require("./routes/users"));
 // import paystackServices from "./services/paystack.services";
 const ads_routes_1 = __importDefault(require("./tenant/routes/ads.routes"));
 const community_post_routes_1 = __importDefault(require("./tenant/routes/community-post.routes"));
@@ -75,6 +76,7 @@ class Server {
         this.app.use("/api/application", applicant_1.default);
         this.app.use("/api/emails", email_1.default);
         this.app.use("/api/chats", chats_1.default);
+        this.app.use("/api/users", users_1.default);
         this.app.use("/api/properties", property_1.default);
         this.app.use("/api/maintenance", maintenance_1.default);
         this.app.use("/api/community-post", community_post_routes_1.default);

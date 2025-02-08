@@ -8,12 +8,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Jtoken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const user_services_1 = __importDefault(require("../services/user.services"));
 class Jtoken {
     constructor(secret) {
         this.secret = secret;
@@ -77,11 +89,18 @@ class Jtoken {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const decoded = jsonwebtoken_1.default.verify(refreshToken, this.secret);
-                // Generate a new access token (valid for 2 days)
-                const newAccessToken = jsonwebtoken_1.default.sign({ id: decoded.id, role: decoded.role }, this.secret, { expiresIn: "2d" });
+                // Fetch user from database using decoded ID
+                const userDetails = yield user_services_1.default.findAUserById(decoded.id);
+                if (!userDetails) {
+                    return null;
+                }
+                // Exclude sensitive fields and return user details
+                const { password: _ } = userDetails, user = __rest(userDetails, ["password"]);
+                // Generate a new access token (valid for 1 hour)
+                const newAccessToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, this.secret, { expiresIn: "1h" });
                 // Generate a new refresh token (valid for 7 days)
-                const newRefreshToken = jsonwebtoken_1.default.sign({ id: decoded.id, role: decoded.role }, this.secret, { expiresIn: "7d" });
-                return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+                const newRefreshToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role, }, this.secret, { expiresIn: "7d" });
+                return { accessToken: newAccessToken, refreshToken: newRefreshToken, user };
             }
             catch (error) {
                 console.error("Error verifying refresh token:", error);

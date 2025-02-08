@@ -22,6 +22,7 @@ import StatusRouter from "./routes/status";
 import LogRouter from "./routes/log";
 import TransactionRouter from "./routes/transaction";
 import WalletRouter from "./routes/wallet";
+import UserRouter from "./routes/users";
 // import paystackServices from "./services/paystack.services";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
@@ -84,6 +85,7 @@ class Server {
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
+        this.app.use("/api/users", UserRouter);
         this.app.use("/api/properties", PropertyRouter);
         this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community-post", CommunityPostRouter)

@@ -135,6 +135,28 @@ class AuthControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.refreshToken = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { refreshToken } = req.body;
+                if (!refreshToken) {
+                    return res.status(400).json({ message: "Refresh token is required as refreshToken" });
+                }
+                // Verify token and get new tokens + user details
+                const tokens = yield this.tokenService.verifyAndRefreshToken(refreshToken);
+                if (!tokens) {
+                    return res.status(401).json({ message: "Invalid or expired refresh token" });
+                }
+                res.json({
+                    accessToken: tokens.accessToken,
+                    refreshToken: tokens.refreshToken,
+                    user: tokens.user, // Return user details
+                });
+            }
+            catch (error) {
+                console.error("Error refreshing token:", error);
+                res.status(500).json({ message: "Internal server error" });
+            }
+        });
         this.login = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { error, value } = auth_1.LoginSchema.validate(req.body);
@@ -151,9 +173,12 @@ class AuthControls {
                     }
                     // Exclude sensitive fields and return user details
                     const { password: _, id: __ } = user, userDetails = __rest(user, ["password", "id"]);
+                    const tokens = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
                     return res.status(200).json({
                         message: "Tenant-specific user retrieved successfully.",
                         userDetails,
+                        accessToken: tokens.accessToken,
+                        refreshToken: tokens.refreshToken,
                     });
                 }
                 // Ensure at least one identifier is provided
