@@ -186,6 +186,8 @@ model propertyDocument {
   id          String   @id @default(cuid())
   name        String
   documentUrl String[]
+  size        String?
+  filetype    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

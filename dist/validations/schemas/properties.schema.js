@@ -73,12 +73,16 @@ exports.createPropertyDocumentSchema = joi_1.default.object({
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
+    size: joi_1.default.string().required(),
+    filetype: joi_1.default.string().required(),
 });
 exports.updatePropertyDocumentSchema = joi_1.default.object({
     name: joi_1.default.string().optional(),
     documentUrl: joi_1.default.string().uri().optional(),
     apartmentsId: joi_1.default.string().optional(),
-    propertyId: joi_1.default.string().optional()
+    propertyId: joi_1.default.string().optional(),
+    size: joi_1.default.string().optional(),
+    filetype: joi_1.default.string().optional(),
 });
 // property listing schema
 const listingTypes = Object.values(client_1.ListingType);

@@ -23,6 +23,11 @@ class PropertyRouter {
         this.router.get('/property/listing', property_controller_1.default.getListedProperties);
         this.router.get('/property/maintenance/:propertyId', property_controller_1.default.getPropsMaintenance);
         this.router.get('/property/vendors/:propertyId', property_controller_1.default.getVendorsServicesOnProps);
+        this.router.post("/viewings", property_controller_1.default.createViewing);
+        this.router.get("/viewings", property_controller_1.default.getAllViewings);
+        this.router.get("/viewings/:id", property_controller_1.default.getViewingById);
+        this.router.put("/viewings/:id", property_controller_1.default.updateViewing);
+        this.router.delete("/viewings/:id", property_controller_1.default.deleteViewing);
     }
 }
 exports.default = new PropertyRouter().router;

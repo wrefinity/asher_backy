@@ -72,6 +72,8 @@ export const createPropertyDocumentSchema = Joi.object({
   cloudinaryVideoUrls: Joi.array().items(Joi.string()).optional(),
   apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
+  size: Joi.string().required(),
+  filetype: Joi.string().required(),
 });
 
 
@@ -79,7 +81,9 @@ export const updatePropertyDocumentSchema = Joi.object({
   name: Joi.string().optional(),
   documentUrl: Joi.string().uri().optional(),
   apartmentsId: Joi.string().optional(),
-  propertyId: Joi.string().optional()
+  propertyId: Joi.string().optional(),
+  size: Joi.string().optional(),
+  filetype: Joi.string().optional(),
 });
 
 // property listing schema

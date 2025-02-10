@@ -23,7 +23,11 @@ class PropertyRouter {
         this.router.get('/property/listing', PropertyController.getListedProperties)
         this.router.get('/property/maintenance/:propertyId', PropertyController.getPropsMaintenance)
         this.router.get('/property/vendors/:propertyId', PropertyController.getVendorsServicesOnProps)
-        
+        this.router.post("/viewings", PropertyController.createViewing);
+        this.router.get("/viewings", PropertyController.getAllViewings);
+        this.router.get("/viewings/:id", PropertyController.getViewingById);
+        this.router.put("/viewings/:id", PropertyController.updateViewing);
+        this.router.delete("/viewings/:id", PropertyController.deleteViewing);
     }
 }
 
