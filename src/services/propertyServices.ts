@@ -30,6 +30,7 @@ class PropertyService {
     getProperties = async () => {
         return await prismaClient.properties.findMany({ where: { isDeleted: false }, })
     }
+    
     getLandlordProperties = async (landlordId: string) => {
         return await prismaClient.properties.findMany({
             where: { isDeleted: false, landlordId },
@@ -84,12 +85,12 @@ class PropertyService {
 
         // Loop through each state group and fetch properties with apartments for that state
         for (const group of groupedProperties) {
-            const state = group.state;
+            const state = group.state.toLowerCase(); // Normalize state to lowercase
 
             // Fetch properties belonging to the current state and landlord, including apartments
             const properties = await prismaClient.properties.findMany({
                 where: {
-                    state,
+                    state: { equals: state, mode: 'insensitive' },
                     landlordId,
                 },
                 include: {
@@ -125,12 +126,12 @@ class PropertyService {
 
         // Loop through each state group and fetch properties with apartments for that state
         for (const group of groupedProperties) {
-            const state = group.state;
+            const state = group.state.toLowerCase();;
 
             // Fetch properties belonging to the current state and landlord, including apartments
             const properties = await prismaClient.properties.findMany({
                 where: {
-                    state,
+                    state: { equals: state, mode: 'insensitive' },
                 },
                 include: {
                     apartments: true,
@@ -140,9 +141,9 @@ class PropertyService {
             // Store the properties in the result object under the respective state
             propertiesByState[state] = properties;
         }
-
         return propertiesByState;
     }
+
     showCaseRentals = async (propertyId: string, landlordId: string) => {
         return await prismaClient.properties.update({
             where: {
@@ -162,7 +163,6 @@ class PropertyService {
             }
         })
     }
-
 
     checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 
@@ -205,6 +205,7 @@ class PropertyService {
             }
         });
     }
+
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const { landlordId, property, minSize, maxSize } = filters;
         const { type, state, country, specificationType, isActive } = property || {};
@@ -236,9 +237,6 @@ class PropertyService {
         });
     };
 
-
-
-
     createPropertyListing = async (data: PropertyListingDTO) => {
         const propListed = await this.getPropsListedById(data.propertyId);
         if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
@@ -246,6 +244,7 @@ class PropertyService {
             data,
         });
     };
+    
     getPropsListedById = async (propertyId: string) => {
         const propsListed = await prismaClient.propertyListingHistory.findFirst({
             where: {
@@ -293,7 +292,6 @@ class PropertyService {
         });
     }
     getPropertiesWithoutTenants = async (landlordId: string) => {
-
         // Fetch all properties where there are no tenants associated
         const properties = await prismaClient.properties.findMany({
             where: {
@@ -317,7 +315,18 @@ class PropertyService {
             },
           }
         });
-      }
+    }
+
+    getUniquePropertiesBaseLandlordNameState = async (landlordId: string, name: string, state: string, city: string) => {
+        return await prismaClient.properties.findMany({
+            where: {
+                landlordId,
+                name: { mode: "insensitive", equals: name }, 
+                state: { mode: "insensitive", equals: state }, 
+                city: { mode: "insensitive", equals: city } 
+            }
+        });
+    };
 
 }
 

@@ -18,6 +18,22 @@ class PropertyViewingService {
         this.getAllViewings = () => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.propertyViewing.findMany();
         });
+        this.getAllPropertyViewing = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.propertyViewing.findMany({
+                where: { propertyId },
+                include: {
+                    property: true,
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profileId: true,
+                            profile: true,
+                        }
+                    }
+                }
+            });
+        });
         this.getViewingById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.propertyViewing.findUnique({ where: { id } });
         });

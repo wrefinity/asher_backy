@@ -20,10 +20,10 @@ class TenantsLandlordRouter {
         this.router.get('/previous', tenant_controller_1.default.getPreviousTenant);
         this.router.post('/upload', multer_1.uploadcsv.single("files"), tenant_controller_1.default.bulkTenantUpload);
         this.router.post('/milestones/', tenant_controller_1.default.createTenantMileStones);
-        this.router.get('/milestones/:tenantUserId', tenant_controller_1.default.getTenantMileStones);
-        this.router.get('/communication-logs/:tenantUserId', tenant_controller_1.default.getTenantCommunicationLogs);
+        this.router.get('/milestones/:tenantId', tenant_controller_1.default.getTenantMileStones);
+        this.router.get('/communication-logs/:tenantId', tenant_controller_1.default.getTenantCommunicationLogs);
         //  tenant complaints 
-        this.router.get('/complaints/:tenantUserId', tenant_controller_1.default.getTenantComplaints);
+        this.router.get('/complaints/:tenantId', tenant_controller_1.default.getTenantComplaints);
         this.router.post('/violations', tenant_controller_1.default.createTenantViolation);
         this.router.get('/violations/:tenantId', tenant_controller_1.default.getTenantViolations);
     }

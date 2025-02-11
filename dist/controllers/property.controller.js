@@ -87,24 +87,34 @@ class PropertyController {
             }
         });
         this.createViewing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
-                const { error } = properties_schema_1.createPropertyViewingSchema.validate(req.body);
+                const { error, value } = properties_schema_1.createPropertyViewingSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
-                const viewing = yield propertyviewing_service_1.default.createViewing(req.body);
-                res.status(201).json(viewing);
+                const property = yield propertyServices_1.default.getPropertyById(value.propertyId);
+                if (!property) {
+                    return res.status(404).json({ message: 'Property not found' });
+                }
+                const viewing = yield propertyviewing_service_1.default.createViewing(Object.assign(Object.assign({}, value), { userId: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id }));
+                res.status(201).json({ viewing });
             }
             catch (error) {
-                res.status(500).json({ error: "Internal server error" });
+                error_service_1.default.handleError(error, res);
             }
         });
-        this.getAllViewings = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.getAllPropsViewings = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const viewings = yield propertyviewing_service_1.default.getAllViewings();
+                const { propertyId } = req.params;
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!property) {
+                    return res.status(404).json({ message: 'Property not found' });
+                }
+                const viewings = yield propertyviewing_service_1.default.getAllPropertyViewing(propertyId);
                 res.json(viewings);
             }
             catch (error) {
-                res.status(500).json({ error: "Internal server error" });
+                error_service_1.default.handleError(error, res);
             }
         });
         this.getViewingById = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -116,7 +126,7 @@ class PropertyController {
                 res.json(viewing);
             }
             catch (error) {
-                res.status(500).json({ error: "Internal server error" });
+                error_service_1.default.handleError(error, res);
             }
         });
         this.updateViewing = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -126,10 +136,10 @@ class PropertyController {
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const updatedViewing = yield propertyviewing_service_1.default.updateViewing(id, req.body);
-                res.json(updatedViewing);
+                res.json({ updatedViewing });
             }
             catch (error) {
-                res.status(500).json({ error: "Internal server error" });
+                error_service_1.default.handleError(error, res);
             }
         });
         this.deleteViewing = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -139,7 +149,7 @@ class PropertyController {
                 res.json({ message: "Property viewing deleted successfully" });
             }
             catch (error) {
-                res.status(500).json({ error: "Internal server error" });
+                error_service_1.default.handleError(error, res);
             }
         });
     }

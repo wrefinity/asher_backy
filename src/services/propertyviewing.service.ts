@@ -10,6 +10,23 @@ class PropertyViewingService {
     getAllViewings = async () =>{
         return await prismaClient.propertyViewing.findMany();
     }
+    getAllPropertyViewing = async (propertyId: string) => {
+        return await prismaClient.propertyViewing.findMany({
+            where: { propertyId },
+            include: {
+                property: true,
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        profileId: true,
+                        profile: true,
+                    }
+                }
+            }
+        });
+    };
+    
 
     getViewingById = async (id: string)=> {
         return await prismaClient.propertyViewing.findUnique({ where: { id } });

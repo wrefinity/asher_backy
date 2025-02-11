@@ -45,7 +45,6 @@ class PropertyController {
                 return res.status(201).json({ property });
             }
             catch (error) {
-                console.log(error);
                 error_service_1.default.handleError(error, res);
             }
         });
@@ -267,7 +266,6 @@ class PropertyController {
                         throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(client_1.PropertyType).join(', ')}`);
                     }
                 }
-                console.log(filters);
                 // Fetch the filtered properties
                 const properties = yield propertyServices_1.default.getAllListedProperties(filters);
                 console.log(landlordId);
@@ -350,37 +348,59 @@ class PropertyController {
                         // Validate the row using Joi validations
                         const { error, value } = properties_schema_1.createPropertySchema.validate(row, { abortEarly: false });
                         if (error) {
-                            uploadErrors.push({
-                                name: row.name,
-                                errors: error.details.map(detail => detail.message),
-                            });
+                            const existingError = uploadErrors.find(err => err.name === row.name);
+                            if (existingError) {
+                                existingError.errors.push(...error.details.map(detail => detail.message));
+                            }
+                            else {
+                                uploadErrors.push({
+                                    name: Array.isArray(row.name) ? row.name[0] : row.name,
+                                    errors: [...error.details.map(detail => detail.message)],
+                                });
+                            }
+                            continue;
+                        }
+                        const existance = yield propertyServices_1.default.getUniquePropertiesBaseLandlordNameState(landlordId, Array.isArray(row.name) ? row.name[0] : row.name, Array.isArray(row.state) ? row.state[0] : row.state, Array.isArray(row.city) ? row.city[0] : row.city);
+                        if (existance) {
+                            const existingError = uploadErrors.find(err => err.name === row.name);
+                            if (existingError) {
+                                existingError.errors.push('Property already exists');
+                            }
+                            else {
+                                uploadErrors.push({
+                                    name: Array.isArray(row.name) ? row.name[0] : row.name,
+                                    errors: ['Property already exists'],
+                                });
+                            }
                             continue;
                         }
                         const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { landlordId }));
                         uploaded.push(property);
                     }
                     catch (err) {
-                        // Log unexpected errors
-                        uploadErrors.push({
-                            name: row.name,
-                            errors: `Unexpected error: ${err.message}`,
-                        });
+                        const existingError = uploadErrors.find(error => error.name === row.name);
+                        if (existingError) {
+                            existingError.errors.push(`Unexpected error: ${err.message}`);
+                        }
+                        else {
+                            uploadErrors.push({
+                                name: Array.isArray(row.name) ? row.name[0] : row.name,
+                                errors: [`Unexpected error: ${err.message}`],
+                            });
+                        }
                     }
                 }
                 // Delete the file after processing if needed
                 fs_1.default.unlinkSync(filePath);
                 // Determine response based on upload results
                 if (uploaded.length > 0) {
-                    // Properties were successfully uploaded
                     return res.status(200).json({ uploaded, uploadErrors });
                 }
                 else {
-                    // No property uploaded
                     return res.status(400).json({ error: 'No property was uploaded.', uploadErrors });
                 }
             }
             catch (error) {
-                // Handle any errors
                 error_service_1.default.handleError(error, res);
             }
         });

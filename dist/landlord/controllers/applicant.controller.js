@@ -20,6 +20,7 @@ const tenant_service_1 = __importDefault(require("../../services/tenant.service"
 const client_1 = require("@prisma/client");
 const applicationInvitesSchema_1 = require("../validations/schema/applicationInvitesSchema");
 const emailer_1 = __importDefault(require("../../utils/emailer"));
+const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -115,6 +116,11 @@ class ApplicationControls {
                     return res.status(400).json({ error: error.details[0].message });
                 const invitedByLandordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId }));
+                const propertyId = value.propertyId;
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!property) {
+                    return res.status(404).json({ message: 'Property not found' });
+                }
                 // TODO:
                 // send message to the tenants
                 const tenantInfor = yield tenant_service_1.default.getUserInfoByTenantId(value.tenantId);

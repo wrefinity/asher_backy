@@ -70,11 +70,11 @@ class PropertyService {
             const propertiesByState = {};
             // Loop through each state group and fetch properties with apartments for that state
             for (const group of groupedProperties) {
-                const state = group.state;
+                const state = group.state.toLowerCase(); // Normalize state to lowercase
                 // Fetch properties belonging to the current state and landlord, including apartments
                 const properties = yield __1.prismaClient.properties.findMany({
                     where: {
-                        state,
+                        state: { equals: state, mode: 'insensitive' },
                         landlordId,
                     },
                     include: {
@@ -106,11 +106,12 @@ class PropertyService {
             const propertiesByState = {};
             // Loop through each state group and fetch properties with apartments for that state
             for (const group of groupedProperties) {
-                const state = group.state;
+                const state = group.state.toLowerCase();
+                ;
                 // Fetch properties belonging to the current state and landlord, including apartments
                 const properties = yield __1.prismaClient.properties.findMany({
                     where: {
-                        state,
+                        state: { equals: state, mode: 'insensitive' },
                     },
                     include: {
                         apartments: true,
@@ -273,6 +274,16 @@ class PropertyService {
                     tenants: {
                         some: { id: tenantId },
                     },
+                }
+            });
+        });
+        this.getUniquePropertiesBaseLandlordNameState = (landlordId, name, state, city) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.properties.findMany({
+                where: {
+                    landlordId,
+                    name: { mode: "insensitive", equals: name },
+                    state: { mode: "insensitive", equals: state },
+                    city: { mode: "insensitive", equals: city }
                 }
             });
         });

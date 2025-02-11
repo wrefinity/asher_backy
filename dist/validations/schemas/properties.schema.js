@@ -110,10 +110,12 @@ exports.updateListingStatusSchema = joi_1.default.object({
 });
 exports.createPropertyViewingSchema = joi_1.default.object({
     isLiked: joi_1.default.boolean().optional(),
+    propertyId: joi_1.default.string().required(),
     review: joi_1.default.string().optional(),
     rating: joi_1.default.number().integer().min(1).max(5).optional(),
 });
 exports.updatePropertyViewingSchema = joi_1.default.object({
+    propertyId: joi_1.default.string().optional(),
     isLiked: joi_1.default.boolean().optional(),
     review: joi_1.default.string().optional(),
     rating: joi_1.default.number().integer().min(1).max(5).optional(),

@@ -13,7 +13,7 @@ const __1 = require("../..");
 class TenantService {
     constructor() {
         this.getTenantWithUserAndProfile = (id) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.tenants.findUnique({
+            return yield __1.prismaClient.tenants.findFirst({
                 where: { id },
                 include: {
                     user: {

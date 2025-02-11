@@ -8,6 +8,7 @@ import TenantService from '../../services/tenant.service';
 import { ApplicationStatus } from "@prisma/client"
 import { createApplicationInviteSchema, updateApplicationInviteSchema } from '../validations/schema/applicationInvitesSchema';
 import Emailer from "../../utils/emailer";
+import propertyServices from "../../services/propertyServices";
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -103,7 +104,11 @@ class ApplicationControls {
             if (error) return res.status(400).json({ error: error.details[0].message });
             const invitedByLandordId = req.user?.landlords?.id;
             const invite = await ApplicationInvitesService.createInvite({ ...value, invitedByLandordId });
-
+            const propertyId = value.propertyId;
+            const property = await propertyServices.getPropertyById(propertyId);
+            if (!property) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
             // TODO:
             // send message to the tenants
             const tenantInfor = await TenantService.getUserInfoByTenantId(value.tenantId);

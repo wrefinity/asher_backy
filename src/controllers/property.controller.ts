@@ -72,23 +72,31 @@ class PropertyController {
     }
     createViewing = async (req: CustomRequest, res: Response) => {
         try {
-
-            const { error } = createPropertyViewingSchema.validate(req.body);
+            const { error, value } = createPropertyViewingSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
-            const viewing = await PropertyViewingService.createViewing(req.body);
-            res.status(201).json(viewing);
+            const property = await PropertyServices.getPropertyById(value.propertyId);
+            if (!property) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
+            const viewing = await PropertyViewingService.createViewing({...value, userId: req.user?.id});
+            res.status(201).json({viewing});
         } catch (error) {
-            res.status(500).json({ error: "Internal server error" });
+            ErrorService.handleError(error, res)
         }
     }
 
-    getAllViewings = async (req: CustomRequest, res: Response) => {
+    getAllPropsViewings = async (req: CustomRequest, res: Response) => {
         try {
-            const viewings = await PropertyViewingService.getAllViewings();
+            const {propertyId} = req.params;
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
+            const viewings = await PropertyViewingService.getAllPropertyViewing(propertyId);
             res.json(viewings);
         } catch (error) {
-            res.status(500).json({ error: "Internal server error" });
+            ErrorService.handleError(error, res)
         }
     }
 
@@ -100,7 +108,7 @@ class PropertyController {
 
             res.json(viewing);
         } catch (error) {
-            res.status(500).json({ error: "Internal server error" });
+            ErrorService.handleError(error, res)
         }
     }
 
@@ -111,9 +119,9 @@ class PropertyController {
             if (error) return res.status(400).json({ error: error.details[0].message });
 
             const updatedViewing = await PropertyViewingService.updateViewing(id, req.body);
-            res.json(updatedViewing);
+            res.json({updatedViewing});
         } catch (error) {
-            res.status(500).json({ error: "Internal server error" });
+            ErrorService.handleError(error, res)
         }
     }
 
@@ -123,7 +131,7 @@ class PropertyController {
             await PropertyViewingService.deleteViewing(id);
             res.json({ message: "Property viewing deleted successfully" });
         } catch (error) {
-            res.status(500).json({ error: "Internal server error" });
+            ErrorService.handleError(error, res)
         }
     }
 

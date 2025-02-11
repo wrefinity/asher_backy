@@ -17,13 +17,27 @@ import ViolationService from '../../services/violations';
 
 
 // Helper function to parse the date field into DD/MM/YYYY format
-const parseDateFieldNew = (date: string): string => {
+const parseDateFieldNew = (date: string, fieldName: string): string | null => {
+    if (!date) return null;
     const formattedDate = moment(date, 'DD/MM/YYYY', true);
     if (!formattedDate.isValid()) {
-        return null;
+        throw new Error(`Invalid date format for ${fieldName}: "${date}"`);
     }
-    return formattedDate.toISOString(); // Use Moment.js to get ISO 8601 format
+    return formattedDate.toISOString();
 };
+
+const normalizePhoneNumber = (phone: any): string => {
+    if (!phone) return '';
+
+    // Convert from exponential notation if necessary
+    let phoneStr = typeof phone === "number" ? phone.toFixed(0) : phone.toString();
+
+    // Remove non-digit characters
+    phoneStr = phoneStr.replace(/\D/g, '');
+
+    return phoneStr;
+};
+
 
 class TenantControls {
     private landlordService: LandlordService;
@@ -71,72 +85,99 @@ class TenantControls {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) {
-                return res.status(404).json({ error: 'kindly login as landlord' });
+                return res.status(403).json({ error: 'Access denied. Please log in as a landlord.' });
             }
-            if (!req.file) return res.status(400).json({ error: 'No csv file uploaded.' });
 
-            // const filePath = path.join(__dirname, '../..', req.file.path);
-            // const fileContent = fs.readFileSync(filePath, 'utf-8');
+            if (!req.file) {
+                return res.status(400).json({ error: 'No CSV file uploaded. Please upload a valid file.' });
+            }
+
             const filePath = req.file.path;
-            // Read and process the CSV file
-            const dataFetched = await parseCSV(filePath);
-            let uploaded = []
+
+            let uploaded: any[] = [];
             interface UploadError {
                 email: string;
-                errors: string | string[];
-
+                errors: string[];
+                row?: any;
             }
-
             let uploadErrors: UploadError[] = [];
 
-            // get the current landlord email domain
+            // Fetch landlord details
             const landlord = await this.landlordService.getLandlordById(landlordId);
-            if (!landlord) return res.status(403).json({ message: "login as a landlord" })
+            if (!landlord) {
+                return res.status(403).json({ error: "Invalid landlord. Please re-login." });
+            }
 
-            // console.log(dataFetched)
+            // Read CSV file safely
+            let dataFetched;
+            try {
+                dataFetched = await parseCSV(filePath);
+            } catch (err) {
+                return res.status(500).json({ error: 'Error parsing CSV file.', details: err.message });
+            }
+
+            // Process each row
             for (const row of dataFetched) {
+                let rowErrors: string[] = [];
                 try {
-
-                    // Parse and convert date fields to the required format
-                    row.dateOfFirstRent = parseDateFieldNew(row.dateOfFirstRent.toString());
-                    row.leaseStartDate = parseDateFieldNew(row.leaseStartDate.toString());
-                    row.leaseEndDate = parseDateFieldNew(row.leaseEndDate.toString());
-                    row.dateOfBirth = parseDateFieldNew(row.dateOfBirth.toString());
-                    row.expiryDate = parseDateFieldNew(row.expiryDate.toString());
-                    row.employmentStartDate = parseDateFieldNew(row.employmentStartDate.toString());
-                    console.log(row)
-
-                    // Ensure `email` is a string
-                    if (Array.isArray(row.email)) {
-                        row.email = row.email[0]; // Use the first email in the array
+                    if (!row.email) {
+                        rowErrors.push("Missing email field.");
                     }
 
-                    // Validate the row using joi validations
+                    // Format and validate phone number
+                    row.phoneNumber = normalizePhoneNumber(row.phoneNumber);
+
+                    if (!row.phoneNumber || row.phoneNumber.length < 10) {
+                        rowErrors.push(`Invalid phone number format: "${row.phoneNumber}"`);
+                    }
+
+                    // Convert date fields safely
+                    const dateFields = [
+                        { key: "dateOfFirstRent", label: "Date of First Rent" },
+                        { key: "leaseStartDate", label: "Lease Start Date" },
+                        { key: "leaseEndDate", label: "Lease End Date" },
+                        { key: "dateOfBirth", label: "Date of Birth" },
+                        { key: "expiryDate", label: "Expiry Date" },
+                        { key: "employmentStartDate", label: "Employment Start Date" }
+                    ];
+
+                    for (const field of dateFields) {
+                        try {
+                            if (row[field.key]) {
+                                row[field.key] = parseDateFieldNew(row[field.key]?.toString(), field.label);
+                            }
+                        } catch (dateError) {
+                            rowErrors.push(dateError.message);
+                        }
+                    }
+
+                    // Validate row data
                     const { error } = tenantSchema.validate(row, { abortEarly: false });
                     if (error) {
-
-                        uploadErrors.push({
-                            email: row.email + "testing",
-                            errors: error.details.map(detail => detail.message),
-                        });
-                        continue;
+                        rowErrors.push(...error.details.map(detail => detail.message));
                     }
 
-                    // Check if the user already exists
+                    // Check for existing user
                     const existingUser = await UserServices.findUserByEmail(row.email.toString());
                     if (existingUser) {
-                        uploadErrors.push({
-                            email: row.email,
-                            errors: 'User already exists',
-                        });
-                        continue;
+                        rowErrors.push("User already exists.");
                     }
 
-                    // Process email
+                    if (rowErrors.length > 0) {
+                        let existingError = uploadErrors.find(err => err.email === row.email);
+                        if (existingError) {
+                            existingError.errors.push(...rowErrors);
+                        } else {
+                            uploadErrors.push({ email: row.email, errors: rowErrors });
+                        }
+                        continue; // Skip processing for this row
+                    }
+
+                    // Generate tenant email
                     const userEmail = row.email.toString().split('@')[0];
                     const tenantEmail = `${userEmail}${landlord.emailDomains}`;
 
-                    // Create the new user
+                    // Create new user
                     const newUser = await UserServices.createUser({
                         ...row,
                         landlordId,
@@ -146,32 +187,31 @@ class TenantControls {
 
                     uploaded.push(newUser);
                 } catch (err) {
-                    // Log unexpected errors
-                    console.log(err)
-                    uploadErrors.push({
-                        email: row.email.toString() + "test",
-                        errors: `Unexpected error: ${err.message}`,
-                    });
+                    let existingError = uploadErrors.find(err => err.email === row.email);
+                    if (existingError) {
+                        existingError.errors.push(`Unexpected error: ${err.message}`);
+                    } else {
+                        uploadErrors.push({ email: row.email, errors: [`Unexpected error: ${err.message}`] });
+                    }
                 }
             }
-            // Delete the file after processing if needed
-            fs.unlinkSync(filePath);
-            // After processing the dataFetched array and populating the uploaded array
 
+            // Delete the CSV file
+            fs.unlinkSync(filePath);
+
+            // Return response
             if (uploaded.length > 0) {
-                // Users were successfully uploaded
                 return res.status(200).json({ uploaded, uploadErrors });
             } else {
-                // No users were uploaded
                 return res.status(400).json({ error: 'No users were uploaded.', uploadErrors });
             }
-
         } catch (error) {
-            errorService.handleError(error, res)
+            return res.status(500).json({ error: 'Server error occurred.', details: error.message });
         }
-    }
-    // tenants milestone section
+    };
 
+
+    // tenants milestone section
     createTenantMileStones = async (req: CustomRequest, res: Response) => {
 
         try {
@@ -207,19 +247,21 @@ class TenantControls {
             if (!landlordId) {
                 return res.status(404).json({ error: 'kindly login as landlord' });
             }
-            const tenantUserId = req.params.tenantUserId
-            const userExist = UserServices.getUserById(String(tenantUserId));
-            if (!userExist)
-                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+            const tenantId = req.params.tenantId
+            // const tenantUserId = req.params.tenantUserId
+            // const userExist = UserServices.getUserById(String(tenantUserId));
+            // if (!userExist)
+            //     return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
             // get the property attached to current tenant
-            const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            // const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
 
-            if(!tenant?.propertyId)
-                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
-            
+            if (!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the id :  ${tenantId} is not connected to a property` });
+
             const milestones = await LogsServices.getLandlordTenantsLogsByProperty(
                 tenant.propertyId,
-                tenantUserId,
+                tenant.userId,
                 landlordId
             );
             return res.status(200).json({ milestones });
@@ -233,17 +275,18 @@ class TenantControls {
             if (!landlordId) {
                 return res.status(404).json({ error: 'kindly login as landlord' });
             }
-            const tenantUserId = req.params.tenantUserId
-            const userExist = UserServices.getUserById(String(tenantUserId));
-            if (!userExist)
-                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
-            // get the property attached to current tenant
-            const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
-            if(!tenant?.propertyId)
-                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
-            
+            const tenantId = req.params.tenantId
+            // const userExist = UserServices.getUserById(String(tenantUserId));
+            // if (!userExist)
+            //     return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+            // // get the property attached to current tenant
+            // const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
+            if (!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the id :  ${tenantId} is not connected to a property` });
+
             const complaints = await ComplaintServices.getLandlordPropsTenantComplaints(
-                tenantUserId,
+                tenant.userId,
                 tenant?.propertyId,
                 landlordId
             );
@@ -252,24 +295,25 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
-    getTenantCommunicationLogs= async (req: CustomRequest, res: Response) => {
+    getTenantCommunicationLogs = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) {
                 return res.status(404).json({ error: 'kindly login as landlord' });
             }
-            const tenantUserId = req.params.tenantUserId
-            const userExist = UserServices.getUserById(String(tenantUserId));
-            if (!userExist)
-                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
-            // get the property attached to current tenant
-            const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
-            if(!tenant?.propertyId)
-                return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} is not connected to a property` });
-            
+            const tenantId = req.params.tenantId
+            // const userExist = UserServices.getUserById(String(tenantUserId));
+            // if (!userExist)
+            //     return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
+            // // get the property attached to current tenant
+            // const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
+            const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
+            if (!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the id :  ${tenantId} is not connected to a property` });
+
             const complaints = await LogsServices.getCommunicationLog(
                 tenant?.propertyId,
-                tenantUserId,
+                tenant.userId,
                 landlordId
             );
             return res.status(200).json({ complaints });
@@ -281,7 +325,7 @@ class TenantControls {
     createTenantViolation = async (req, res) => {
         try {
             const { error, value } = ViolationSchema.validate(req.body);
-            
+
             if (error) {
                 return res.status(400).json({
                     message: error.details[0].message,
@@ -301,7 +345,7 @@ class TenantControls {
                 message: 'Violation created successfully',
                 violation // Here you can send back the created violation
             });
-    
+
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -315,9 +359,9 @@ class TenantControls {
             }
             const violation = await ViolationService.getViolationTenantId(tenantId)
             return res.status(201).json({
-                violation 
+                violation
             });
-    
+
         } catch (error) {
             errorService.handleError(error, res)
         }

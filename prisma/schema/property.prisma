@@ -144,6 +144,7 @@ model properties {
   violation violation[] @relation("violations")
 
   PropertyViewing PropertyViewing[]
+  @@unique([landlordId, name, state, city])
 }
 
 model propApartmentSettings {

@@ -30,7 +30,7 @@ class TenantService {
 
     getTenantWithUserAndProfile = async (id: string) => {
 
-        return await prismaClient.tenants.findUnique({
+        return await prismaClient.tenants.findFirst({
             where: { id },
             include: {
                 user: {

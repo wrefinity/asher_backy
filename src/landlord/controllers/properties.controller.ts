@@ -10,7 +10,6 @@ import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV, parseDateField } from "../../utils/filereader";
 import { PropertySpecificationType, PropertyType } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
-import { prismaClient } from '../..';
 
 
 class PropertyController {
@@ -35,14 +34,11 @@ class PropertyController {
 
             const rentalFee = value.rentalFee || 0;
             // const lateFee = rentalFee * 0.01;
-
             const property = await PropertyServices.createProperty({ ...value, images, videourl, landlordId })
             return res.status(201).json({ property })
         } catch (error) {
-            console.log(error)
             ErrorService.handleError(error, res)
         }
-
     }
 
     showCaseRentals = async (req: CustomRequest, res: Response) => {
@@ -243,10 +239,6 @@ class PropertyController {
                 }
             }
 
-
-            console.log(filters)
-
-
             // Fetch the filtered properties
             const properties = await PropertyServices.getAllListedProperties(filters);
 
@@ -320,64 +312,89 @@ class PropertyController {
                 return res.status(404).json({ error: 'Kindly login as landlord' });
             }
             if (!req.file) return res.status(400).json({ error: 'No CSV file uploaded.' });
-
+    
             const filePath = req.file.path;
             // Read and process the CSV file
             const dataFetched = await parseCSV(filePath);
             let uploaded = [];
+    
             interface UploadError {
-                name: string | string[];
-                errors: string | string[];
+                name: string;
+                errors: string[];
             }
-
-
+    
             let uploadErrors: UploadError[] = [];
-
+    
             for (const row of dataFetched) {
                 try {
                     // Convert semicolon-separated amenities string to an array
                     if (row.amenities && typeof row.amenities === 'string') {
                         row.amenities = row.amenities.split(';').map(item => item.trim());
                     }
-
                     // Parse date fields
                     row.yearBuilt = parseDateField(row.yearBuilt);
                     row.dueDate = parseDateField(row.dueDate);
-
+    
                     // Validate the row using Joi validations
                     const { error, value } = createPropertySchema.validate(row, { abortEarly: false });
                     if (error) {
-                        uploadErrors.push({
-                            name: row.name,
-                            errors: error.details.map(detail => detail.message),
-                        });
+                        const existingError = uploadErrors.find(err => err.name === row.name);
+                        if (existingError) {
+                            existingError.errors.push(...error.details.map(detail => detail.message));
+                        } else {
+                            uploadErrors.push({
+                                name: Array.isArray(row.name) ? row.name[0] : row.name,
+                                errors: [...error.details.map(detail => detail.message)],
+                            });
+                        }
                         continue;
                     }
-
+    
+                    const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
+                        landlordId,
+                        Array.isArray(row.name) ? row.name[0] : row.name,
+                        Array.isArray(row.state) ? row.state[0] : row.state,
+                        Array.isArray(row.city) ? row.city[0] : row.city
+                    );
+    
+                    if (existance) {
+                        const existingError = uploadErrors.find(err => err.name === row.name);
+                        if (existingError) {
+                            existingError.errors.push('Property already exists');
+                        } else {
+                            uploadErrors.push({
+                                name: Array.isArray(row.name) ? row.name[0] : row.name,
+                                errors: ['Property already exists'],
+                            });
+                        }
+                        continue;
+                    }
+    
                     const property = await PropertyServices.createProperty({ ...value, landlordId });
                     uploaded.push(property);
                 } catch (err) {
-                    // Log unexpected errors
-                    uploadErrors.push({
-                        name: row.name,
-                        errors: `Unexpected error: ${err.message}`,
-                    });
+                    const existingError = uploadErrors.find(error => error.name === row.name);
+                    if (existingError) {
+                        existingError.errors.push(`Unexpected error: ${err.message}`);
+                    } else {
+                        uploadErrors.push({
+                            name: Array.isArray(row.name) ? row.name[0] : row.name,
+                            errors: [`Unexpected error: ${err.message}`],
+                        });
+                    }
                 }
             }
-
+    
             // Delete the file after processing if needed
             fs.unlinkSync(filePath);
-
+    
             // Determine response based on upload results
             if (uploaded.length > 0) {
-                // Properties were successfully uploaded
                 return res.status(200).json({ uploaded, uploadErrors });
             } else {
-                // No property uploaded
                 return res.status(400).json({ error: 'No property was uploaded.', uploadErrors });
             }
         } catch (error) {
-            // Handle any errors
             ErrorService.handleError(error, res);
         }
     };
@@ -422,7 +439,7 @@ class PropertyController {
     };
 
 
-    
+
 
 }
 export default new PropertyController() 

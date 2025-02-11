@@ -116,11 +116,13 @@ export const updateListingStatusSchema = Joi.object({
 
 export const createPropertyViewingSchema = Joi.object({
   isLiked: Joi.boolean().optional(),
+  propertyId: Joi.string().required(),
   review: Joi.string().optional(),
   rating: Joi.number().integer().min(1).max(5).optional(),
 });
 
 export const updatePropertyViewingSchema = Joi.object({
+  propertyId: Joi.string().optional(),
   isLiked: Joi.boolean().optional(),
   review: Joi.string().optional(),
   rating: Joi.number().integer().min(1).max(5).optional(),
