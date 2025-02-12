@@ -386,8 +386,10 @@ class PropertyController {
                         }
                         continue;
                     }
+
+                    delete value["state"]
     
-                    const property = await PropertyServices.createProperty({ ...value, landlordId });
+                    const property = await PropertyServices.createProperty({ ...value, stateId:state?.id, landlordId });
                     uploaded.push(property);
                 } catch (err) {
                     const existingError = uploadErrors.find(error => error.name === row.name);
