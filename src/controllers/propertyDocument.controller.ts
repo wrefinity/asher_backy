@@ -6,9 +6,6 @@ import { CustomRequest } from '../utils/types';
 
 class PropertyDocumentController {
 
-    // constructor(){
-
-    // }
     private propertyDocumentService = new PropertyDocumentService();
 
     create = async (req: CustomRequest, res: Response) =>{
