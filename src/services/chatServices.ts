@@ -47,16 +47,30 @@ class ChatServices {
     }
 
 
-    createRoomMessages = async (content: string, senderId: string, receiverId: string, chatRoomId: string) => {
+    createRoomMessages = async (
+        content: string,
+        senderId: string,
+        receiverId: string,
+        chatRoomId: string,
+        images: string[],  // Image URLs
+        videos: string[],  // Video URLs
+        files: string[],   // Document URLs
+        audios: string[]   // Audio URLs
+    ) => {
         return await prismaClient.message.create({
             data: {
                 content,
                 senderId,
                 receiverId,
                 chatRoomId,
+                images,
+                videos,
+                files,
+                audios
             },
         });
-    }
+    };
+    
 
     getChatRoomMessages = async (chatRoomId: string) => {
         return await prismaClient.message.findMany({

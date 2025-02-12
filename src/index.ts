@@ -19,6 +19,7 @@ import PropertyRouter from "./routes/property";
 import ReviewsRouter from "./routes/reviews";
 import VendorServiceRouter from "./routes/services";
 import StatusRouter from "./routes/status";
+import StateRouter from "./routes/state";
 import LogRouter from "./routes/log";
 import TransactionRouter from "./routes/transaction";
 import WalletRouter from "./routes/wallet";
@@ -77,6 +78,7 @@ class Server {
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/file-uploads", FileUploads);
         this.app.use("/api/status", StatusRouter);
+        this.app.use("/api/state", StateRouter);
         this.app.use("/api/logs/", LogRouter);
         this.app.use("/api/notification", NotificationRouter)
         this.app.use("/api/categories", CategoryRouter)

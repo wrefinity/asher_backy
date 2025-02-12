@@ -30,6 +30,7 @@ export const createPropertySchema = Joi.object({
   amenities: Joi.array().items(Joi.string()).optional(),
   totalApartments: Joi.number().integer().optional(),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
 });

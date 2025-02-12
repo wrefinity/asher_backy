@@ -4,6 +4,8 @@ import ChatServices from '../services/chatServices';
 import { String } from "../utils/helpers";
 import UserServices from '../services/user.services';
 import ErrorService from '../services/error.service';
+import { chatSchema } from '../validations/schemas/chats.schema';
+
 
 class ChatMessageAuth {
     // Get all chat rooms for the current logged-in user
@@ -29,39 +31,55 @@ class ChatMessageAuth {
     };
     createChatRoomAndMessage = async (req: CustomRequest, res: Response) => {
         try {
-            // cm6021qtd00006emjscwd5w5f
-            const senderId = String(req.user.id); // Sender is the current logged-in user
-            const { receiverId, content } = req.body; // Receiver ID and message content from the request body
-
-            // check for user existance
-            await UserServices.findAUserById(receiverId)
-
-
-            // Step 1: Check if a chat room already exists between the two users
+            // Get the sender's ID from the logged-in user
+            const senderId = String(req.user.id);
+    
+            // Validate the request body
+            const { error, value } = chatSchema.validate(req.body);
+            if (error) return res.status(400).json({ message: error.details[0].message });
+    
+            const {
+                receiverId,
+                content,
+                cloudinaryUrls = [],      // Images
+                cloudinaryVideoUrls = [],  // Videos
+                cloudinaryDocumentUrls = [], // Documents
+                cloudinaryAudioUrls = []   // Audios
+            } = value;
+    
+            // Check if the receiver exists
+            await UserServices.findAUserById(receiverId);
+    
+            // Step 1: Retrieve or create a chat room between sender and receiver
             let chatRoom = await ChatServices.getChatRooms(senderId, receiverId);
-
-            // Step 2: If no chat room exists, create a new one
             if (!chatRoom) {
                 chatRoom = await ChatServices.createChatRoom(senderId, receiverId);
             }
-
-            // Step 3: Create the message in the chat room
+    
+            // Step 2: Create a new message in the chat room
             const chat = await ChatServices.createRoomMessages(
                 content,
                 senderId,
                 receiverId,
-                chatRoom.id
+                chatRoom.id,
+                cloudinaryUrls, 
+                cloudinaryVideoUrls, 
+                cloudinaryDocumentUrls, 
+                cloudinaryAudioUrls
             );
-
-            // Step 4: Return the chat room ID and the created message
+    
+            // Step 3: Return the chat room ID and the created message
             return res.status(201).json({
                 chatRoomId: chatRoom.id,
                 message: chat,
             });
+    
         } catch (error) {
             ErrorService.handleError(error, res);
         }
-    }
+    };
+    
+    
 
     // getChatRoomMessage = async (req: CustomRequest, res: Response) => {
     // const { chatRoomId } = req.params;
@@ -100,7 +118,6 @@ class ChatMessageAuth {
             ErrorService.handleError(error, res);
         }
     };
-
 }
 
 

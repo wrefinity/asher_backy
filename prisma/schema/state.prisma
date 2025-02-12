@@ -1,0 +1,6 @@
+model state {
+    id         String       @id @default(cuid())
+    name       String?
+    isDeleted  Boolean      @default(false)
+    properties properties[]
+}

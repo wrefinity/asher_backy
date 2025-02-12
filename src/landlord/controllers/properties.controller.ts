@@ -10,6 +10,7 @@ import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV, parseDateField } from "../../utils/filereader";
 import { PropertySpecificationType, PropertyType } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
+import stateServices from '../../services/state.services';
 
 
 class PropertyController {
@@ -19,22 +20,37 @@ class PropertyController {
         const landlordId = req.user?.landlords?.id;
         try {
             if (!landlordId) {
-                return res.status(404).json({ error: 'kindly login' });
+                return res.status(403).json({ error: 'kindly login' });
             }
             const { error, value } = createPropertySchema.validate(req.body);
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
+            const state = await stateServices.getStateByName(value?.state)
+   
+       
+            const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
+                landlordId,
+                value?.name,
+                state?.id,
+                value.city
+            );
+
+            if (existance) {
+                return res.status(400).json({ error: 'property exist for the state and city'});
+            }
             const images = value.cloudinaryUrls;
             const videourl = value.cloudinaryVideoUrls;
 
+            delete value['state']
             delete value['cloudinaryUrls']
             delete value['cloudinaryVideoUrls']
+            delete value['cloudinaryAudioUrls']
             delete value['cloudinaryDocumentUrls']
 
             const rentalFee = value.rentalFee || 0;
             // const lateFee = rentalFee * 0.01;
-            const property = await PropertyServices.createProperty({ ...value, images, videourl, landlordId })
+            const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, images, videourl, landlordId })
             return res.status(201).json({ property })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -349,15 +365,12 @@ class PropertyController {
                         }
                         continue;
                     }
-                    console.log("====================================")
-                    console.log(Array.isArray(row.name) ? row.name[0] : row.name,
-                    Array.isArray(row.state) ? row.state[0] : row.state,
-                    Array.isArray(row.city) ? row.city[0] : row.city)
+                    const state = await stateServices.getStateByName(Array.isArray(row.state) ? row.state[0] : row.state)
     
                     const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
                         landlordId,
                         Array.isArray(row.name) ? row.name[0] : row.name,
-                        Array.isArray(row.state) ? row.state[0] : row.state,
+                        state?.id,
                         Array.isArray(row.city) ? row.city[0] : row.city
                     );
     

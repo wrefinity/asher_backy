@@ -19,7 +19,7 @@ export interface ICreateProperty {
     agencyId?: string;
     yearBuilt?: Date;
     city: string;
-    state: string;
+    stateId: string;
     country: string;
     currency: string;
     zipcode: string;

@@ -14,6 +14,10 @@ model Message {
   receiverId String
   createdAt  DateTime  @default(now())
   chatRoomId String
+  images     String[] // Store image URLs
+  audios     String[] // Store audio URLs separately
+  files      String[] // Store document URLs
+  videos     String[] // Store video URLs
   chatType   chatType?
 
   sender   users    @relation("messagesSent", fields: [senderId], references: [id])
@@ -34,8 +38,8 @@ model ChatRoom {
   messages Message[]
 
   // Relation to the maintenance model
-  maintenanceId String?  @unique
-  maintenance maintenance?
+  maintenanceId String?      @unique
+  maintenance   maintenance?
 
   @@unique([user1Id, user2Id])
 }

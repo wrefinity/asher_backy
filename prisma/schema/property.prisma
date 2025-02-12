@@ -87,8 +87,10 @@ model properties {
   createdAt DateTime? @default(now())
 
   // address
-  city     String
-  state    String
+  city    String
+  stateId String?
+  state   state? @relation(fields: [stateId], references: [id])
+
   country  String
   zipcode  String
   location String?
@@ -144,7 +146,8 @@ model properties {
   violation violation[] @relation("violations")
 
   PropertyViewing PropertyViewing[]
-  @@unique([landlordId, name, state, city])
+
+  @@unique([landlordId, name, stateId, city])
 }
 
 model propApartmentSettings {

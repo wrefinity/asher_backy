@@ -37,6 +37,7 @@ class PropertyService {
             include: {
                 propertyListingHistory: true,
                 apartments: true,
+                state: true,
             }
         })
     }
@@ -71,39 +72,56 @@ class PropertyService {
     }
 
     // Function to aggregate properties by state for the current landlord
-    aggregatePropertiesByState = async (landlordId: string) => {
-        // Group properties by state for the current landlord
-        const groupedProperties = await prismaClient.properties.groupBy({
-            by: ['state'],
+    aggregatePropertiesByState = async (landlordId: string) =>{
+        try {
+          // Group properties by stateId for the current landlord
+          const groupedProperties = await prismaClient.properties.groupBy({
+            by: ['stateId'], // Group by stateId instead of state name
             where: {
-                landlordId, // Filter by the current landlordId
+              landlordId, // Filter by the current landlordId
+              isDeleted: false, // Exclude deleted properties
             },
-        });
-
-        // Object to store the grouped properties by state
-        const propertiesByState = {};
-
-        // Loop through each state group and fetch properties with apartments for that state
-        for (const group of groupedProperties) {
-            const state = group.state.toLowerCase(); // Normalize state to lowercase
-
+          });
+      
+          // Object to store the grouped properties by state
+          const propertiesByState: { [key: string]: any[] } = {};
+      
+          // Loop through each state group and fetch properties with apartments for that state
+          for (const group of groupedProperties) {
+            const stateId = group.stateId;
+      
+            if (!stateId) continue; // Skip if stateId is null or undefined
+      
+            // Fetch the state details
+            const state = await prismaClient.state.findUnique({
+              where: { id: stateId },
+            });
+      
+            if (!state) continue; // Skip if state is not found
+      
             // Fetch properties belonging to the current state and landlord, including apartments
             const properties = await prismaClient.properties.findMany({
-                where: {
-                    state: { equals: state, mode: 'insensitive' },
-                    landlordId,
-                },
-                include: {
-                    apartments: true,
-                },
+              where: {
+                stateId: stateId,
+                landlordId: landlordId,
+                isDeleted: false, // Exclude deleted properties
+              },
+              include: {
+                apartments: true, // Include related apartments
+                state: true
+              },
             });
-
-            // Store the properties in the result object under the respective state
-            propertiesByState[state] = properties;
+      
+            // Store the properties in the result object under the respective state name
+            propertiesByState[state.name.toLowerCase()] = properties;
+          }
+      
+          return propertiesByState;
+        } catch (error) {
+          console.error('Error in aggregatePropertiesByState:', error);
+          throw error; // or handle it as per your application's needs
         }
-
-        return propertiesByState;
-    }
+      }
     // Function to aggregate properties by state for the current landlord
     getPropertiesByLandlord = async (landlordId: string) => {
         // Group properties by state for the current landlord
@@ -114,34 +132,56 @@ class PropertyService {
         });
         return unGroundProps
     }
+
     // Function to aggregate properties by state for the current landlord
-    getPropertiesByState = async () => {
-        // Group properties by state for the current landlord
-        const groupedProperties = await prismaClient.properties.groupBy({
-            by: ['state'],
-        });
-
-        // Object to store the grouped properties by state
-        const propertiesByState = {};
-
-        // Loop through each state group and fetch properties with apartments for that state
-        for (const group of groupedProperties) {
-            const state = group.state.toLowerCase();;
-
-            // Fetch properties belonging to the current state and landlord, including apartments
-            const properties = await prismaClient.properties.findMany({
+    getPropertiesByState = async () =>{
+        try {
+            // Group properties by state for the current landlord
+            const groupedProperties = await prismaClient.properties.groupBy({
+                by: ['stateId'], // Group by stateId instead of state name
                 where: {
-                    state: { equals: state, mode: 'insensitive' },
-                },
-                include: {
-                    apartments: true,
+                    // landlordId: landlordId, 
+                    isDeleted: false, // Exclude deleted properties
                 },
             });
 
-            // Store the properties in the result object under the respective state
-            propertiesByState[state] = properties;
+            // Object to store the grouped properties by state
+            const propertiesByState: { [key: string]: any[] } = {};
+
+            // Loop through each state group and fetch properties with apartments for that state
+            for (const group of groupedProperties) {
+                const stateId = group.stateId;
+
+                if (!stateId) continue; // Skip if stateId is null or undefined
+
+                // Fetch the state details
+                const state = await prismaClient.state.findUnique({
+                    where: { id: stateId },
+                });
+
+                if (!state) continue; // Skip if state is not found
+
+                // Fetch properties belonging to the current state and landlord, including apartments
+                const properties = await prismaClient.properties.findMany({
+                    where: {
+                        stateId: stateId,
+                        // landlordId: landlordId,
+                        isDeleted: false, // Exclude deleted properties
+                    },
+                    include: {
+                        apartments: true, // Include related apartments
+                    },
+                });
+
+                // Store the properties in the result object under the respective state name
+                propertiesByState[state.name.toLowerCase()] = properties;
+            }
+
+            return propertiesByState;
+        } catch (error) {
+            console.error('Error in getPropertiesByState:', error);
+            throw error; // or handle it as per your application's needs
         }
-        return propertiesByState;
     }
 
     showCaseRentals = async (propertyId: string, landlordId: string) => {
@@ -170,6 +210,9 @@ class PropertyService {
             where: {
                 landlordId,
                 id: propertyId
+            },
+            include:{
+                state: true
             }
         })
     }
@@ -218,7 +261,7 @@ class PropertyService {
                     ...(landlordId && { landlordId }),
                     ...(type && { type }),
                     ...(specificationType && { specificationType }),
-                    ...(state && { state }),
+                    ...(state && { state: { name: state } }),
                     ...(country && { country }),
                     ...(minSize || maxSize
                         ? {
@@ -231,7 +274,9 @@ class PropertyService {
                 } as any,
             },
             include: {
-                property: true,
+                property: {
+                    include: {state:true}
+                },
                 apartment: true,
             },
         });
@@ -317,12 +362,12 @@ class PropertyService {
         });
     }
 
-    getUniquePropertiesBaseLandlordNameState = async (landlordId: string, name: string, state: string, city: string) => {
+    getUniquePropertiesBaseLandlordNameState = async (landlordId: string, name: string, stateId: string, city: string) => {
         const properties = await prismaClient.properties.findMany({
             where: {
                 landlordId,
                 name: { mode: "insensitive", equals: name },
-                state: { mode: "insensitive", equals: state },
+                stateId,
                 city: { mode: "insensitive", equals: city }
             }
         });
