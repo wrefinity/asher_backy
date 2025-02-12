@@ -119,36 +119,51 @@ class UserService {
     }
 
     createUser = async (userData: any, landlordUploads: boolean = false, createdBy: string = null) => {
-        const newUser = await prismaClient.users.create({
-            data: {
-                email: userData?.email,
-                role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
-                isVerified: landlordUploads ? true : false,
-                password: this.hashPassword(userData?.password),
-                profile: {
-                    create: {
-                        gender: userData?.gender,
-                        phoneNumber: userData?.phoneNumber,
-                        address: userData?.address,
-                        dateOfBirth: userData?.dateOfBirth,
-                        fullname: userData?.lastName + " " + userData?.firstName + " " + (userData?.middleName ? " " + userData.middleName : ""),
-                        profileUrl: userData?.profileUrl,
-                        zip: userData?.zip,
-                        unit: userData?.unit,
-                        state: userData?.state,
-                        timeZone: userData?.timeZone,
-                        taxPayerId: userData?.taxPayerId,
-                        taxType: userData?.taxType,
-                    }
-                }
-            },
+        let user = null
+        
+        user = await prismaClient.users.findUnique({
+            where: { email: userData?.email },
+            include: { profile: true } // Include profile if needed
         });
+        
+        if (!user) {
+            
+            // Create a new user if not found
+            user = await prismaClient.users.create({
+                data: {
+                    email: userData?.email,
+                    role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
+                    isVerified: landlordUploads ? true : false,
+                    password: this.hashPassword(userData?.password),
+                    profile: {
+                        create: {
+                            gender: userData?.gender,
+                            phoneNumber: userData?.phoneNumber,
+                            address: userData?.address,
+                            dateOfBirth: userData?.dateOfBirth,
+                            fullname: `${userData?.lastName} ${userData?.firstName} ${userData?.middleName ? userData.middleName : ""}`.trim(),
+                            profileUrl: userData?.profileUrl,
+                            zip: userData?.zip,
+                            unit: userData?.unit,
+                            state: userData?.state,
+                            timeZone: userData?.timeZone,
+                            taxPayerId: userData?.taxPayerId,
+                            taxType: userData?.taxType,
+                        }
+                    }
+                },
+            });
+        }
+        
+        
+      
+        
 
         const countryData = await getCurrentCountryCurrency()
         console.log("====================")
         console.log(countryData)
-        if (newUser && countryData.locationCurrency) {
-            await WalletService.getOrCreateWallet(newUser.id, countryData?.locationCurrency)
+        if (user && countryData.locationCurrency) {
+            await WalletService.getOrCreateWallet(user.id, countryData?.locationCurrency)
         }
         // Based on the role, create the corresponding entry in the related schema
         switch (userData?.role) {
@@ -157,7 +172,7 @@ class UserService {
                 await prismaClient.landlords.create({
                     data: {
                         landlordCode,
-                        userId: newUser.id,
+                        userId: user.id,
                     },
                 });
                 break;
@@ -165,7 +180,7 @@ class UserService {
             case userRoles.VENDOR:
                 await prismaClient.vendors.create({
                     data: {
-                        userId: newUser.id
+                        userId: user.id
                     },
                 });
                 break;
@@ -185,7 +200,7 @@ class UserService {
                 const tenant = await prismaClient.tenants.create({
                     data: {
                         tenantCode,
-                        userId: newUser.id,
+                        userId: user.id,
                         tenantWebUserEmail: userData.tenantWebUserEmail,
                         propertyId: userData?.propertyId,
                         landlordId: userData?.landlordId,
@@ -199,7 +214,7 @@ class UserService {
                         where: { id: userData.applicationId },
                         data: {
                             status: ApplicationStatus.ACCEPTED,
-                            tenantId: newUser.id,
+                            tenantId: user.id,
                         },
                     });
                 }
@@ -219,7 +234,7 @@ class UserService {
                         identificationType: userData?.identificationType,
                         issuingAuthority: userData?.issuingAuthority,
                         expiryDate: userData?.expiryDate,
-                        userId: newUser.id
+                        userId: user.id
                     });
 
 
@@ -235,7 +250,7 @@ class UserService {
                         identificationNo: userData?.guarantorIdentificationNo || '',
                         monthlyIncome: userData?.guarantorMonthlyIncome || null, // Default to null for nullable fields
                         employerName: userData?.guarantorEmployerName || null,
-                        userId: newUser.id, // Ensure this is valid
+                        userId: user.id, // Ensure this is valid
                     });
 
 
@@ -248,7 +263,7 @@ class UserService {
                         email: userData?.nextOfKinEmail,
                         middleName: userData?.nextOfKinMiddleName,
                         applicantPersonalDetailsId: personalDetails.id,
-                        userId: newUser.id
+                        userId: user.id
                     });
 
                     // employement information 
@@ -273,7 +288,7 @@ class UserService {
                         employerEmail: userData?.employerEmail,
                         employerPhone: userData?.employerPhone,
                         positionTitle: userData?.positionTitle,
-                        userId: newUser.id
+                        userId: user.id
                     });
 
                     // Create emergencyContact
@@ -283,7 +298,7 @@ class UserService {
                         phoneNumber: userData?.emergencyPhoneNumber,
                         email: userData?.emergencyEmail,
                         address: userData?.emergencyAddress,
-                        userId: newUser.id
+                        userId: user.id
                     });
                     // refrees information
                     const refreeInfo = await RefereeService.upsertRefereeInfo({
@@ -296,15 +311,15 @@ class UserService {
                         professionalPhoneNumber: userData?.refereeProfessionalPhoneNumber,
                         personalRelationship: userData?.refereePersonalRelationship,
                         professionalRelationship: userData?.refereeProfessionalRelationship,
-                        userId: newUser.id
+                        userId: user.id
                     });
 
                     // Update application with tenant info
                     const application = await prismaClient.application.create({
                         data: {
                             status: ApplicationStatus.COMPLETED,
-                            userId: newUser.id,
-                            tenantId: newUser.id,
+                            userId: user.id,
+                            tenantId: user.id,
                             residentialId: null, // null because the current user is a tenant and reside in the linked property
                             emergencyContactId: emergencyInfo.id,
                             employmentInformationId: employmentInfo.id,
@@ -331,7 +346,7 @@ class UserService {
             default:
                 break;
         }
-        return newUser;
+        return user;
     }
 
     updateUserInfo = async (id: string, userData: any) => {
