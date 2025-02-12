@@ -441,9 +441,5 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     };
-
-
-
-
 }
 export default new PropertyController() 
