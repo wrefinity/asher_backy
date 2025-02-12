@@ -143,6 +143,7 @@ model tenants {
   leaseStartDate               DateTime?
   leaseEndDate                 DateTime?
   isCurrentLease               Boolean                        @default(true)
+  initialDeposit               Decimal?                       @default(0.00) @db.Decimal(18, 2)
   // isexisted                    Int?
   dateOfFirstRent              DateTime?                      @default(now()) @db.Timestamptz(6)
   apartmentOrFlatNumber        Int?
@@ -170,10 +171,10 @@ model tenants {
   maintenances       maintenance[]        @relation("tenantUser")
   bills              bills[]
   applicationInvites applicationInvites[]
+  violation          violation[]          @relation("tenant")
 
   @@unique([userId, propertyId])
   @@unique([userId])
-  violation violation[] @relation("tenant")
 }
 
 // user information definition 

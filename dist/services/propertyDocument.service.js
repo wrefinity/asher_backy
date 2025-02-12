@@ -20,11 +20,23 @@ class PropertyDocumentService {
             return __1.prismaClient.propertyDocument.findMany({
                 where: {
                     propertyId
+                },
+                include: {
+                    users: true,
+                    apartments: true,
+                    properties: true,
                 }
             });
         });
         this.findById = (id) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propertyDocument.findUnique({ where: { id } });
+            return __1.prismaClient.propertyDocument.findUnique({
+                where: { id },
+                include: {
+                    users: true,
+                    apartments: true,
+                    properties: true,
+                }
+            });
         });
         this.update = (id, data) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.propertyDocument.update({
@@ -33,7 +45,14 @@ class PropertyDocumentService {
             });
         });
         this.delete = (id) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propertyDocument.delete({ where: { id } });
+            return __1.prismaClient.propertyDocument.delete({
+                where: { id },
+                include: {
+                    users: true,
+                    apartments: true,
+                    properties: true,
+                }
+            });
         });
     }
 }

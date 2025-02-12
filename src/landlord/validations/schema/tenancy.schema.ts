@@ -8,7 +8,7 @@ export const tenantSchema = Joi.object({
   propertyId: Joi.string().required(),
   phoneNumber: Joi.string().required(),
   apartmentOrFlatNumber: Joi.string().optional(),
-  
+  initialDeposit: Joi.number().optional(), 
   // Using Joi.date().required() for date fields
   dateOfFirstRent: Joi.date().required().messages({
     'date.base': 'Date of first rent must be a valid date in ISO 8601 format (YYYY-MM-DD).',

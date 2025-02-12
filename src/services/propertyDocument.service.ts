@@ -3,24 +3,36 @@ import { prismaClient } from "..";
 import { Prisma } from '@prisma/client';
 
 export class PropertyDocumentService {
-  
-  create = async (data: Prisma.propertyDocumentCreateInput) =>{
+
+  create = async (data: Prisma.propertyDocumentCreateInput) => {
     return prismaClient.propertyDocument.create({ data });
   }
 
   findAll = async (propertyId) => {
     return prismaClient.propertyDocument.findMany({
-      where:{
+      where: {
         propertyId
+      },
+      include: {
+        users: true,
+        apartments: true,
+        properties: true,
       }
     });
   }
 
   findById = async (id: string) => {
-    return prismaClient.propertyDocument.findUnique({ where: { id } });
+    return prismaClient.propertyDocument.findUnique({
+      where: { id },
+      include: {
+        users: true,
+        apartments: true,
+        properties: true,
+      }
+    });
   }
 
-  update = async (id: string, data: Partial<Prisma.propertyDocumentUpdateInput>) =>{
+  update = async (id: string, data: Partial<Prisma.propertyDocumentUpdateInput>) => {
     return prismaClient.propertyDocument.update({
       where: { id },
       data: data as any,
@@ -28,6 +40,13 @@ export class PropertyDocumentService {
   }
 
   delete = async (id: string) => {
-    return prismaClient.propertyDocument.delete({ where: { id } });
+    return prismaClient.propertyDocument.delete({
+      where: { id },
+      include: {
+        users: true,
+        apartments: true,
+        properties: true,
+      }
+    });
   }
 }

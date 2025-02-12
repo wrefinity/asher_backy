@@ -22,6 +22,7 @@ class TenantService {
                             nextOfKin: true,
                             applicantion: {
                                 include: {
+                                    applicationQuestions: true,
                                     employmentInfo: true,
                                     emergencyInfo: true,
                                     guarantorInformation: true,

@@ -23,6 +23,7 @@ class PropertyDocumentController {
             delete value['cloudinaryUrls']
             delete value['cloudinaryVideoUrls']
             delete value['cloudinaryDocumentUrls']
+            delete value['cloudinaryAudioUrls']
 
             const data: IPropertyDocument = {...value, uploadedBy, documentUrl};
             const propertyDocument = await this.propertyDocumentService.create(data);
@@ -35,7 +36,7 @@ class PropertyDocumentController {
 
     findAll = async (req: CustomRequest, res: Response) =>{
         try {
-            console.log("========called======")
+          
             const propertyId = req.params.propertyId;
             const propertyDocuments = await this.propertyDocumentService.findAll(propertyId);
             res.status(200).json(propertyDocuments);

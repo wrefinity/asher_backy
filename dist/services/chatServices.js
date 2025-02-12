@@ -31,13 +31,21 @@ class ChatServices {
                 },
             });
         });
-        this.createRoomMessages = (content, senderId, receiverId, chatRoomId) => __awaiter(this, void 0, void 0, function* () {
+        this.createRoomMessages = (content, senderId, receiverId, chatRoomId, images, // Image URLs
+        videos, // Video URLs
+        files, // Document URLs
+        audios // Audio URLs
+        ) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.message.create({
                 data: {
                     content,
                     senderId,
                     receiverId,
                     chatRoomId,
+                    images,
+                    videos,
+                    files,
+                    audios
                 },
             });
         });

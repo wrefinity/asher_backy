@@ -201,6 +201,7 @@ class UserService {
                     data: {
                         tenantCode,
                         userId: user.id,
+                        initialDeposit: userData.initialDeposit,
                         tenantWebUserEmail: userData.tenantWebUserEmail,
                         propertyId: userData?.propertyId,
                         landlordId: userData?.landlordId,

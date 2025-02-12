@@ -29,6 +29,7 @@ class PropertyDocumentController {
                 delete value['cloudinaryUrls'];
                 delete value['cloudinaryVideoUrls'];
                 delete value['cloudinaryDocumentUrls'];
+                delete value['cloudinaryAudioUrls'];
                 const data = Object.assign(Object.assign({}, value), { uploadedBy, documentUrl });
                 const propertyDocument = yield this.propertyDocumentService.create(data);
                 res.status(201).json({ propertyDocument });
@@ -40,7 +41,6 @@ class PropertyDocumentController {
         });
         this.findAll = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                console.log("========called======");
                 const propertyId = req.params.propertyId;
                 const propertyDocuments = yield this.propertyDocumentService.findAll(propertyId);
                 res.status(200).json(propertyDocuments);

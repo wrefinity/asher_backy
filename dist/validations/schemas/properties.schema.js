@@ -16,6 +16,7 @@ exports.createPropertySchema = joi_1.default.object({
     // isWholeRent: Joi.boolean().required(),
     marketValue: joi_1.default.number().optional(),
     rentalFee: joi_1.default.number().optional(),
+    initialDeposit: joi_1.default.number().optional(),
     longitude: joi_1.default.number().optional(),
     latitude: joi_1.default.number().optional(),
     // latePaymentFeeType: Joi.string().valid('ONE_TIME', 'DAILY').optional(),
@@ -34,6 +35,7 @@ exports.createPropertySchema = joi_1.default.object({
     amenities: joi_1.default.array().items(joi_1.default.string()).optional(),
     totalApartments: joi_1.default.number().integer().optional(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
+    cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
 });
@@ -41,6 +43,9 @@ exports.createPropertySchema = joi_1.default.object({
 exports.updatePropertySchema = joi_1.default.object({
     name: joi_1.default.string().optional(),
     description: joi_1.default.string().optional(),
+    marketValue: joi_1.default.number().optional(),
+    rentalFee: joi_1.default.number().optional(),
+    initialDeposit: joi_1.default.number().optional(),
     propertysize: joi_1.default.number().integer().optional(),
     isDeleted: joi_1.default.boolean().optional(),
     landlordId: joi_1.default.string().optional(),
@@ -71,6 +76,7 @@ exports.createPropertyDocumentSchema = joi_1.default.object({
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
+    cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().required(),

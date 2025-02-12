@@ -23,40 +23,43 @@ const uploadToCloudinary = (req, res, next) => __awaiter(void 0, void 0, void 0,
             req.body.cloudinaryUrls = [];
             req.body.cloudinaryVideoUrls = [];
             req.body.cloudinaryDocumentUrls = [];
+            req.body.cloudinaryAudioUrls = [];
             return next();
         }
         const allFiles = Object.values(files).flat();
         if (!allFiles || allFiles.length === 0) {
-            return next(new Error('No files provided'));
+            return next(new Error("No files provided"));
         }
         // Initialize arrays for storing URLs
         const imageUrls = [];
         const videoUrls = [];
         const documentUrls = [];
+        const audioUrls = [];
         const uploadPromises = allFiles.map((file) => __awaiter(void 0, void 0, void 0, function* () {
             let fileBuffer = file.buffer;
-            const isImage = file.mimetype.startsWith('image/');
-            const isVideo = file.mimetype.startsWith('video/');
-            const isDocument = file.mimetype.startsWith('application/'); // Handles PDFs, DOCs, etc.
+            const isImage = file.mimetype.startsWith("image/");
+            const isVideo = file.mimetype.startsWith("video/");
+            const isDocument = file.mimetype.startsWith("application/"); // PDFs, DOCs, etc.
+            const isAudio = file.mimetype.startsWith("audio/"); // Audio files (MP3, WAV, etc.)
             if (isImage) {
-                // Resize the image
+                // Resize the image before upload
                 fileBuffer = yield (0, sharp_1.default)(file.buffer)
-                    .resize({ width: 800, height: 600, fit: 'inside' })
+                    .resize({ width: 800, height: 600, fit: "inside" })
                     .toBuffer();
             }
             return new Promise((resolve, reject) => {
                 const uploadStream = cloudinary_1.default.uploader.upload_stream({
-                    resource_type: isImage ? 'image' : isVideo ? 'video' : isDocument ? 'raw' : 'auto',
+                    resource_type: isImage ? "image" : isVideo ? "video" : isDocument ? "raw" : isAudio ? "video" : "auto",
                     folder: secrets_1.CLOUDINARY_FOLDER,
-                    format: isImage ? 'webp' : undefined
+                    format: isImage ? "webp" : undefined,
                 }, (err, result) => {
                     if (err) {
-                        console.error('Cloudinary upload error:', err);
+                        console.error("Cloudinary upload error:", err);
                         return reject(err);
                     }
                     if (!result) {
-                        console.error('Cloudinary upload error: Result is undefined');
-                        return reject(new Error('Cloudinary upload result is undefined'));
+                        console.error("Cloudinary upload error: Result is undefined");
+                        return reject(new Error("Cloudinary upload result is undefined"));
                     }
                     resolve(result.secure_url);
                 });
@@ -71,6 +74,9 @@ const uploadToCloudinary = (req, res, next) => __awaiter(void 0, void 0, void 0,
                 else if (isDocument) {
                     documentUrls.push(url);
                 }
+                else if (isAudio) {
+                    audioUrls.push(url);
+                }
             });
         }));
         yield Promise.all(uploadPromises);
@@ -78,10 +84,11 @@ const uploadToCloudinary = (req, res, next) => __awaiter(void 0, void 0, void 0,
         req.body.cloudinaryUrls = imageUrls;
         req.body.cloudinaryVideoUrls = videoUrls;
         req.body.cloudinaryDocumentUrls = documentUrls;
+        req.body.cloudinaryAudioUrls = audioUrls;
         next();
     }
     catch (error) {
-        console.error('Error in uploadToCloudinary middleware:', error);
+        console.error("Error in uploadToCloudinary middleware:", error);
         next(error);
     }
 });

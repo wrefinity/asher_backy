@@ -18,7 +18,14 @@ class PropertyService {
             });
         });
         this.getProperties = () => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.findMany({ where: { isDeleted: false }, });
+            return yield __1.prismaClient.properties.findMany({
+                where: { isDeleted: false },
+                include: {
+                    propertyListingHistory: true,
+                    apartments: true,
+                    state: true,
+                }
+            });
         });
         this.getLandlordProperties = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findMany({
@@ -26,6 +33,7 @@ class PropertyService {
                 include: {
                     propertyListingHistory: true,
                     apartments: true,
+                    state: true,
                 }
             });
         });
@@ -36,6 +44,7 @@ class PropertyService {
                     landlord: true,
                     propertyListingHistory: true,
                     apartments: true,
+                    state: true
                 }
             });
         });
@@ -48,7 +57,12 @@ class PropertyService {
         this.deleteProperty = (landlordId, id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.update({
                 where: { id, landlordId },
-                data: { isDeleted: true }
+                data: { isDeleted: true },
+                include: {
+                    propertyListingHistory: true,
+                    apartments: true,
+                    state: true,
+                }
             });
         });
         this.updateAvailabiltyStatus = (landlordId, id, availability) => __awaiter(this, void 0, void 0, function* () {
@@ -59,32 +73,49 @@ class PropertyService {
         });
         // Function to aggregate properties by state for the current landlord
         this.aggregatePropertiesByState = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            // Group properties by state for the current landlord
-            const groupedProperties = yield __1.prismaClient.properties.groupBy({
-                by: ['state'],
-                where: {
-                    landlordId, // Filter by the current landlordId
-                },
-            });
-            // Object to store the grouped properties by state
-            const propertiesByState = {};
-            // Loop through each state group and fetch properties with apartments for that state
-            for (const group of groupedProperties) {
-                const state = group.state.toLowerCase(); // Normalize state to lowercase
-                // Fetch properties belonging to the current state and landlord, including apartments
-                const properties = yield __1.prismaClient.properties.findMany({
+            try {
+                // Group properties by stateId for the current landlord
+                const groupedProperties = yield __1.prismaClient.properties.groupBy({
+                    by: ['stateId'], // Group by stateId instead of state name
                     where: {
-                        state: { equals: state, mode: 'insensitive' },
-                        landlordId,
-                    },
-                    include: {
-                        apartments: true,
+                        landlordId, // Filter by the current landlordId
+                        isDeleted: false, // Exclude deleted properties
                     },
                 });
-                // Store the properties in the result object under the respective state
-                propertiesByState[state] = properties;
+                // Object to store the grouped properties by state
+                const propertiesByState = {};
+                // Loop through each state group and fetch properties with apartments for that state
+                for (const group of groupedProperties) {
+                    const stateId = group.stateId;
+                    if (!stateId)
+                        continue; // Skip if stateId is null or undefined
+                    // Fetch the state details
+                    const state = yield __1.prismaClient.state.findUnique({
+                        where: { id: stateId },
+                    });
+                    if (!state)
+                        continue; // Skip if state is not found
+                    // Fetch properties belonging to the current state and landlord, including apartments
+                    const properties = yield __1.prismaClient.properties.findMany({
+                        where: {
+                            stateId: stateId,
+                            landlordId: landlordId,
+                            isDeleted: false, // Exclude deleted properties
+                        },
+                        include: {
+                            apartments: true, // Include related apartments
+                            state: true
+                        },
+                    });
+                    // Store the properties in the result object under the respective state name
+                    propertiesByState[state.name.toLowerCase()] = properties;
+                }
+                return propertiesByState;
             }
-            return propertiesByState;
+            catch (error) {
+                console.error('Error in aggregatePropertiesByState:', error);
+                throw error; // or handle it as per your application's needs
+            }
         });
         // Function to aggregate properties by state for the current landlord
         this.getPropertiesByLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
@@ -93,34 +124,58 @@ class PropertyService {
                 where: {
                     landlordId,
                 },
+                include: {
+                    propertyListingHistory: true,
+                    apartments: true,
+                    state: true,
+                }
             });
             return unGroundProps;
         });
         // Function to aggregate properties by state for the current landlord
         this.getPropertiesByState = () => __awaiter(this, void 0, void 0, function* () {
-            // Group properties by state for the current landlord
-            const groupedProperties = yield __1.prismaClient.properties.groupBy({
-                by: ['state'],
-            });
-            // Object to store the grouped properties by state
-            const propertiesByState = {};
-            // Loop through each state group and fetch properties with apartments for that state
-            for (const group of groupedProperties) {
-                const state = group.state.toLowerCase();
-                ;
-                // Fetch properties belonging to the current state and landlord, including apartments
-                const properties = yield __1.prismaClient.properties.findMany({
+            try {
+                // Group properties by state for the current landlord
+                const groupedProperties = yield __1.prismaClient.properties.groupBy({
+                    by: ['stateId'], // Group by stateId instead of state name
                     where: {
-                        state: { equals: state, mode: 'insensitive' },
-                    },
-                    include: {
-                        apartments: true,
+                        // landlordId: landlordId, 
+                        isDeleted: false, // Exclude deleted properties
                     },
                 });
-                // Store the properties in the result object under the respective state
-                propertiesByState[state] = properties;
+                // Object to store the grouped properties by state
+                const propertiesByState = {};
+                // Loop through each state group and fetch properties with apartments for that state
+                for (const group of groupedProperties) {
+                    const stateId = group.stateId;
+                    if (!stateId)
+                        continue; // Skip if stateId is null or undefined
+                    // Fetch the state details
+                    const state = yield __1.prismaClient.state.findUnique({
+                        where: { id: stateId },
+                    });
+                    if (!state)
+                        continue; // Skip if state is not found
+                    // Fetch properties belonging to the current state and landlord, including apartments
+                    const properties = yield __1.prismaClient.properties.findMany({
+                        where: {
+                            stateId: stateId,
+                            // landlordId: landlordId,
+                            isDeleted: false, // Exclude deleted properties
+                        },
+                        include: {
+                            apartments: true, // Include related apartments
+                        },
+                    });
+                    // Store the properties in the result object under the respective state name
+                    propertiesByState[state.name.toLowerCase()] = properties;
+                }
+                return propertiesByState;
             }
-            return propertiesByState;
+            catch (error) {
+                console.error('Error in getPropertiesByState:', error);
+                throw error; // or handle it as per your application's needs
+            }
         });
         this.showCaseRentals = (propertyId, landlordId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.update({
@@ -146,6 +201,9 @@ class PropertyService {
                 where: {
                     landlordId,
                     id: propertyId
+                },
+                include: {
+                    state: true
                 }
             });
         });
@@ -184,7 +242,7 @@ class PropertyService {
             const { landlordId, property, minSize, maxSize } = filters;
             const { type, state, country, specificationType, isActive } = property || {};
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && { state })), (country && { country })), (minSize || maxSize
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && { state: { name: state } })), (country && { country })), (minSize || maxSize
                         ? {
                             propertysize: {
                                 gte: minSize !== null && minSize !== void 0 ? minSize : undefined,
@@ -193,7 +251,9 @@ class PropertyService {
                         }
                         : {})) }),
                 include: {
-                    property: true,
+                    property: {
+                        include: { state: true }
+                    },
                     apartment: true,
                 },
             });
@@ -277,15 +337,17 @@ class PropertyService {
                 }
             });
         });
-        this.getUniquePropertiesBaseLandlordNameState = (landlordId, name, state, city) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.findMany({
+        this.getUniquePropertiesBaseLandlordNameState = (landlordId, name, stateId, city) => __awaiter(this, void 0, void 0, function* () {
+            const properties = yield __1.prismaClient.properties.findMany({
                 where: {
                     landlordId,
                     name: { mode: "insensitive", equals: name },
-                    state: { mode: "insensitive", equals: state },
+                    stateId,
                     city: { mode: "insensitive", equals: city }
                 }
             });
+            // Return true if at least one record exists, otherwise false
+            return properties.length > 0;
         });
     }
 }

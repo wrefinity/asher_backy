@@ -120,33 +120,43 @@ class UserService {
             return code;
         });
         this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false, createdBy = null) {
-            const newUser = yield __1.prismaClient.users.create({
-                data: {
-                    email: userData === null || userData === void 0 ? void 0 : userData.email,
-                    role: (userData === null || userData === void 0 ? void 0 : userData.role) ? [userData.role] : [client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.WEBUSER],
-                    isVerified: landlordUploads ? true : false,
-                    password: this.hashPassword(userData === null || userData === void 0 ? void 0 : userData.password),
-                    profile: {
-                        create: {
-                            gender: userData === null || userData === void 0 ? void 0 : userData.gender,
-                            phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
-                            address: userData === null || userData === void 0 ? void 0 : userData.address,
-                            dateOfBirth: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
-                            fullname: (userData === null || userData === void 0 ? void 0 : userData.lastName) + " " + (userData === null || userData === void 0 ? void 0 : userData.firstName) + " " + ((userData === null || userData === void 0 ? void 0 : userData.middleName) ? " " + userData.middleName : ""),
-                            profileUrl: userData === null || userData === void 0 ? void 0 : userData.profileUrl,
-                            zip: userData === null || userData === void 0 ? void 0 : userData.zip,
-                            unit: userData === null || userData === void 0 ? void 0 : userData.unit,
-                            state: userData === null || userData === void 0 ? void 0 : userData.state,
-                            timeZone: userData === null || userData === void 0 ? void 0 : userData.timeZone,
-                            taxPayerId: userData === null || userData === void 0 ? void 0 : userData.taxPayerId,
-                            taxType: userData === null || userData === void 0 ? void 0 : userData.taxType,
-                        }
-                    }
-                },
+            let user = null;
+            user = yield __1.prismaClient.users.findUnique({
+                where: { email: userData === null || userData === void 0 ? void 0 : userData.email },
+                include: { profile: true } // Include profile if needed
             });
+            if (!user) {
+                // Create a new user if not found
+                user = yield __1.prismaClient.users.create({
+                    data: {
+                        email: userData === null || userData === void 0 ? void 0 : userData.email,
+                        role: (userData === null || userData === void 0 ? void 0 : userData.role) ? [userData.role] : [client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.WEBUSER],
+                        isVerified: landlordUploads ? true : false,
+                        password: this.hashPassword(userData === null || userData === void 0 ? void 0 : userData.password),
+                        profile: {
+                            create: {
+                                gender: userData === null || userData === void 0 ? void 0 : userData.gender,
+                                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
+                                address: userData === null || userData === void 0 ? void 0 : userData.address,
+                                dateOfBirth: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
+                                fullname: `${userData === null || userData === void 0 ? void 0 : userData.lastName} ${userData === null || userData === void 0 ? void 0 : userData.firstName} ${(userData === null || userData === void 0 ? void 0 : userData.middleName) ? userData.middleName : ""}`.trim(),
+                                profileUrl: userData === null || userData === void 0 ? void 0 : userData.profileUrl,
+                                zip: userData === null || userData === void 0 ? void 0 : userData.zip,
+                                unit: userData === null || userData === void 0 ? void 0 : userData.unit,
+                                state: userData === null || userData === void 0 ? void 0 : userData.state,
+                                timeZone: userData === null || userData === void 0 ? void 0 : userData.timeZone,
+                                taxPayerId: userData === null || userData === void 0 ? void 0 : userData.taxPayerId,
+                                taxType: userData === null || userData === void 0 ? void 0 : userData.taxType,
+                            }
+                        }
+                    },
+                });
+            }
             const countryData = yield (0, helpers_1.getCurrentCountryCurrency)();
-            if (newUser) {
-                yield wallet_service_1.default.getOrCreateWallet(newUser.id, countryData.locationCurrency);
+            console.log("====================");
+            console.log(countryData);
+            if (user && countryData.locationCurrency) {
+                yield wallet_service_1.default.getOrCreateWallet(user.id, countryData === null || countryData === void 0 ? void 0 : countryData.locationCurrency);
             }
             // Based on the role, create the corresponding entry in the related schema
             switch (userData === null || userData === void 0 ? void 0 : userData.role) {
@@ -155,14 +165,14 @@ class UserService {
                     yield __1.prismaClient.landlords.create({
                         data: {
                             landlordCode,
-                            userId: newUser.id,
+                            userId: user.id,
                         },
                     });
                     break;
                 case client_1.userRoles.VENDOR:
                     yield __1.prismaClient.vendors.create({
                         data: {
-                            userId: newUser.id
+                            userId: user.id
                         },
                     });
                     break;
@@ -180,7 +190,8 @@ class UserService {
                     const tenant = yield __1.prismaClient.tenants.create({
                         data: {
                             tenantCode,
-                            userId: newUser.id,
+                            userId: user.id,
+                            initialDeposit: userData.initialDeposit,
                             tenantWebUserEmail: userData.tenantWebUserEmail,
                             propertyId: userData === null || userData === void 0 ? void 0 : userData.propertyId,
                             landlordId: userData === null || userData === void 0 ? void 0 : userData.landlordId,
@@ -194,7 +205,7 @@ class UserService {
                             where: { id: userData.applicationId },
                             data: {
                                 status: client_1.ApplicationStatus.ACCEPTED,
-                                tenantId: newUser.id,
+                                tenantId: user.id,
                             },
                         });
                     }
@@ -214,7 +225,7 @@ class UserService {
                             identificationType: userData === null || userData === void 0 ? void 0 : userData.identificationType,
                             issuingAuthority: userData === null || userData === void 0 ? void 0 : userData.issuingAuthority,
                             expiryDate: userData === null || userData === void 0 ? void 0 : userData.expiryDate,
-                            userId: newUser.id
+                            userId: user.id
                         });
                         // Create guarantorInformation if provided
                         const guarantorInfo = yield guarantor_services_1.default.upsertGuarantorInfo({
@@ -228,7 +239,7 @@ class UserService {
                             identificationNo: (userData === null || userData === void 0 ? void 0 : userData.guarantorIdentificationNo) || '',
                             monthlyIncome: (userData === null || userData === void 0 ? void 0 : userData.guarantorMonthlyIncome) || null, // Default to null for nullable fields
                             employerName: (userData === null || userData === void 0 ? void 0 : userData.guarantorEmployerName) || null,
-                            userId: newUser.id, // Ensure this is valid
+                            userId: user.id, // Ensure this is valid
                         });
                         // Create nextOfKin if provided
                         yield nextkin_services_1.default.upsertNextOfKinInfo({
@@ -239,7 +250,7 @@ class UserService {
                             email: userData === null || userData === void 0 ? void 0 : userData.nextOfKinEmail,
                             middleName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinMiddleName,
                             applicantPersonalDetailsId: personalDetails.id,
-                            userId: newUser.id
+                            userId: user.id
                         });
                         // employement information 
                         const employmentInfo = yield employmentinfo_services_1.default.upsertEmploymentInfo({
@@ -263,7 +274,7 @@ class UserService {
                             employerEmail: userData === null || userData === void 0 ? void 0 : userData.employerEmail,
                             employerPhone: userData === null || userData === void 0 ? void 0 : userData.employerPhone,
                             positionTitle: userData === null || userData === void 0 ? void 0 : userData.positionTitle,
-                            userId: newUser.id
+                            userId: user.id
                         });
                         // Create emergencyContact
                         const emergencyInfo = yield emergencyinfo_services_1.default.upsertEmergencyContact({
@@ -272,7 +283,7 @@ class UserService {
                             phoneNumber: userData === null || userData === void 0 ? void 0 : userData.emergencyPhoneNumber,
                             email: userData === null || userData === void 0 ? void 0 : userData.emergencyEmail,
                             address: userData === null || userData === void 0 ? void 0 : userData.emergencyAddress,
-                            userId: newUser.id
+                            userId: user.id
                         });
                         // refrees information
                         const refreeInfo = yield referees_services_1.default.upsertRefereeInfo({
@@ -285,14 +296,14 @@ class UserService {
                             professionalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalPhoneNumber,
                             personalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereePersonalRelationship,
                             professionalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalRelationship,
-                            userId: newUser.id
+                            userId: user.id
                         });
                         // Update application with tenant info
                         const application = yield __1.prismaClient.application.create({
                             data: {
                                 status: client_1.ApplicationStatus.COMPLETED,
-                                userId: newUser.id,
-                                tenantId: newUser.id,
+                                userId: user.id,
+                                tenantId: user.id,
                                 residentialId: null, // null because the current user is a tenant and reside in the linked property
                                 emergencyContactId: emergencyInfo.id,
                                 employmentInformationId: employmentInfo.id,
@@ -317,7 +328,7 @@ class UserService {
                 default:
                     break;
             }
-            return newUser;
+            return user;
         });
         this.updateUserInfo = (id, userData) => __awaiter(this, void 0, void 0, function* () {
             const updateData = Object.assign({}, userData);

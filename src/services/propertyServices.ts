@@ -28,7 +28,14 @@ class PropertyService {
     }
 
     getProperties = async () => {
-        return await prismaClient.properties.findMany({ where: { isDeleted: false }, })
+        return await prismaClient.properties.findMany({ 
+            where: { isDeleted: false },
+            include: {
+                propertyListingHistory: true,
+                apartments: true,
+                state: true,
+            }
+         })
     }
 
     getLandlordProperties = async (landlordId: string) => {
@@ -48,6 +55,7 @@ class PropertyService {
                 landlord: true,
                 propertyListingHistory: true,
                 apartments: true,
+                state: true
             }
         });
     }
@@ -61,7 +69,12 @@ class PropertyService {
     deleteProperty = async (landlordId: string, id: string) => {
         return await prismaClient.properties.update({
             where: { id, landlordId },
-            data: { isDeleted: true }
+            data: { isDeleted: true },
+            include: {
+                propertyListingHistory: true,
+                apartments: true,
+                state: true,
+            }
         });
     }
     updateAvailabiltyStatus = async (landlordId: string, id: string, availability: PropsApartmentStatus) => {
@@ -129,6 +142,11 @@ class PropertyService {
             where: {
                 landlordId,
             },
+            include: {
+                propertyListingHistory: true,
+                apartments: true,
+                state: true,
+            }
         });
         return unGroundProps
     }

@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const chats_1 = __importDefault(require("../controllers/chats"));
 const authorize_1 = require("../middlewares/authorize");
+const multerCloudinary_1 = require("../middlewares/multerCloudinary");
+const multer_1 = __importDefault(require("../configs/multer"));
 class ChatRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
@@ -14,7 +16,7 @@ class ChatRoutes {
         this.initializeRoutes();
     }
     initializeRoutes() {
-        this.router.post('/room/message', this.authenticateService.authorize, chats_1.default.createChatRoomAndMessage.bind(chats_1.default));
+        this.router.post('/room/message', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, this.authenticateService.authorize, chats_1.default.createChatRoomAndMessage.bind(chats_1.default));
         this.router.get('/room/:receiverId', this.authenticateService.authorize, chats_1.default.getChatsBetweenUsers.bind(chats_1.default));
         this.router.get('/rooms/', this.authenticateService.authorize, chats_1.default.getAllChatRoomsForUser.bind(chats_1.default));
     }

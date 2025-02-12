@@ -64,32 +64,39 @@ enum PropertySpecificationType {
 }
 
 model properties {
-  id           String    @id @default(cuid())
-  name         String
-  description  String
-  propertysize Int?
-  isDeleted    Boolean   @default(false)
-  showCase     Boolean   @default(false) //showcase as rentals
+  id             String    @id @default(cuid())
+  name           String
+  description    String
+  propertysize   Int?
+  isDeleted      Boolean   @default(false)
+  showCase       Boolean   @default(false) //showcase as rentals
   // owners
-  landlordId   String
-  landlord     landlords @relation(fields: [landlordId], references: [id])
-  agencyId     String?
-  agency       agency?   @relation(fields: [agencyId], references: [id])
-  agents       agents[]
-  currency     String? // Example: USD, EUR, NGN
+  landlordId     String
+  landlord       landlords @relation(fields: [landlordId], references: [id])
+  agencyId       String?
+  agency         agency?   @relation(fields: [agencyId], references: [id])
+  agents         agents[]
+  currency       String? // Example: USD, EUR, NGN
   // marketValue
-  marketValue  Decimal?  @default(0.00) @db.Decimal(18, 2)
-  rentalFee    Decimal?  @default(0.00) @db.Decimal(18, 2)
-  dueDate      DateTime?
+  marketValue    Decimal?  @default(0.00) @db.Decimal(18, 2)
+  rentalFee      Decimal?  @default(0.00) @db.Decimal(18, 2)
+  initialDeposit Decimal?  @default(0.00) @db.Decimal(18, 2)
+  dueDate        DateTime?
 
   // time attributes
   yearBuilt DateTime?
   createdAt DateTime? @default(now())
 
+  //
+  noBedRoom  Int? @default(1)
+  noKitchen  Int? @default(1)
+  noGarage   Int? @default(0)
+  noBathRoom Int? @default(1)
+
   // address
   city    String
   stateId String?
-  state   state? @relation(fields: [stateId], references: [id])
+  state   state?  @relation(fields: [stateId], references: [id])
 
   country  String
   zipcode  String

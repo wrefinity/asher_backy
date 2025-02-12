@@ -13,6 +13,7 @@ exports.tenantSchema = joi_1.default.object({
     propertyId: joi_1.default.string().required(),
     phoneNumber: joi_1.default.string().required(),
     apartmentOrFlatNumber: joi_1.default.string().optional(),
+    initialDeposit: joi_1.default.number().optional(),
     // Using Joi.date().required() for date fields
     dateOfFirstRent: joi_1.default.date().required().messages({
         'date.base': 'Date of first rent must be a valid date in ISO 8601 format (YYYY-MM-DD).',

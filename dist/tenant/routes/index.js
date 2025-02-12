@@ -17,8 +17,8 @@ class TenantRouter {
         this.initializeRoutes();
     }
     initializeRoutes() {
+        this.router.get('/:tenantId', this.authenticateService.authorize, tenant_controller_1.default.getTenantById);
         this.router.use(this.authenticateService.authorize, this.authenticateService.authorizeRole(client_1.userRoles.TENANT));
-        this.router.get('/:tenantId', tenant_controller_1.default.getTenantById);
         this.router.use('/dashboard', dashboard_routes_1.default);
         this.router.use('/bills', tenant_bills_routes_1.default);
         this.router.use('/maintenances', maintenance_routes_1.default);
