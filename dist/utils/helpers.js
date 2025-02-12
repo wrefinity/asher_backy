@@ -35,13 +35,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.convertCurrency = exports.getCurrentCountryCurrency = exports.generateIDs = exports.generateOtp = exports.String = void 0;
+exports.parseDateFieldNew = exports.convertCurrency = exports.getCurrentCountryCurrency = exports.generateIDs = exports.generateOtp = exports.String = void 0;
 exports.setupArctic = setupArctic;
 exports.generateUniqueToken = generateUniqueToken;
 exports.getCommunityurl = getCommunityurl;
 exports.getCountryCodeFromIp = getCountryCodeFromIp;
 // arcticSetup.ts
 const axios_1 = __importDefault(require("axios"));
+const moment_1 = __importDefault(require("moment"));
 let generateCodeVerifier;
 let generateState;
 let Google;
@@ -122,3 +123,14 @@ const convertCurrency = (amount, from, to) => __awaiter(void 0, void 0, void 0, 
     return amount * rate;
 });
 exports.convertCurrency = convertCurrency;
+// Helper function to parse the date field into DD/MM/YYYY format
+const parseDateFieldNew = (date, fieldName) => {
+    if (!date)
+        return null;
+    const formattedDate = (0, moment_1.default)(date, 'DD/MM/YYYY', true);
+    if (!formattedDate.isValid()) {
+        throw new Error(`Invalid date format for ${fieldName}: "${date}"`);
+    }
+    return formattedDate.toISOString();
+};
+exports.parseDateFieldNew = parseDateFieldNew;

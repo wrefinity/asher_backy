@@ -19,6 +19,7 @@ const properties_schema_1 = require("../../validations/schemas/properties.schema
 const settings_1 = require("../validations/schema/settings");
 const property_performance_1 = __importDefault(require("../services/property-performance"));
 const filereader_1 = require("../../utils/filereader");
+const helpers_1 = require("../../utils/helpers");
 const client_1 = require("@prisma/client");
 const tenant_service_1 = __importDefault(require("../../services/tenant.service"));
 const state_services_1 = __importDefault(require("../../services/state.services"));
@@ -331,7 +332,7 @@ class PropertyController {
             }
         });
         this.bulkPropsUpload = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 if (!landlordId) {
@@ -346,13 +347,29 @@ class PropertyController {
                 let uploadErrors = [];
                 for (const row of dataFetched) {
                     try {
+                        let rowErrors = [];
                         // Convert semicolon-separated amenities string to an array
                         if (row.amenities && typeof row.amenities === 'string') {
                             row.amenities = row.amenities.split(';').map(item => item.trim());
                         }
                         // Parse date fields
-                        row.yearBuilt = (0, filereader_1.parseDateField)(row.yearBuilt);
-                        row.dueDate = (0, filereader_1.parseDateField)(row.dueDate);
+                        // row.yearBuilt = parseDateField(row.yearBuilt);
+                        // row.dueDate = parseDateField(row.dueDate);
+                        // Convert date fields safely
+                        const dateFields = [
+                            { key: "dueDate", label: "Due Date" },
+                            { key: "yearBuilt", label: "Year Built" },
+                        ];
+                        for (const field of dateFields) {
+                            try {
+                                if (row[field.key]) {
+                                    row[field.key] = (0, helpers_1.parseDateFieldNew)((_c = row[field.key]) === null || _c === void 0 ? void 0 : _c.toString(), field.label);
+                                }
+                            }
+                            catch (dateError) {
+                                rowErrors.push(dateError.message);
+                            }
+                        }
                         // Validate the row using Joi validations
                         const { error, value } = properties_schema_1.createPropertySchema.validate(row, { abortEarly: false });
                         if (error) {
@@ -365,6 +382,16 @@ class PropertyController {
                                     name: Array.isArray(row.name) ? row.name[0] : row.name,
                                     errors: [...error.details.map(detail => detail.message)],
                                 });
+                            }
+                            continue;
+                        }
+                        if (rowErrors.length > 0) {
+                            let existingError = uploadErrors.find(err => err.name === row.name);
+                            if (existingError) {
+                                existingError.errors.push(...rowErrors);
+                            }
+                            else {
+                                uploadErrors.push({ name: Array.isArray(row.name) ? row.name[0] : row.name, errors: rowErrors });
                             }
                             continue;
                         }
@@ -383,7 +410,8 @@ class PropertyController {
                             }
                             continue;
                         }
-                        const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { landlordId }));
+                        delete value["state"];
+                        const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, landlordId }));
                         uploaded.push(property);
                     }
                     catch (err) {

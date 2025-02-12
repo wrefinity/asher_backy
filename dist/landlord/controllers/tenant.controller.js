@@ -24,10 +24,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
-const moment_1 = __importDefault(require("moment"));
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const tenants_services_1 = __importDefault(require("../../tenant/services/tenants.services"));
 const filereader_1 = require("../../utils/filereader");
+const helpers_1 = require("../../utils/helpers");
 const user_services_1 = __importDefault(require("../../services/user.services"));
 const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../services/landlord.service");
@@ -37,16 +37,6 @@ const violations_1 = require("../../validations/schemas/violations");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const complaintServices_1 = __importDefault(require("../../services/complaintServices"));
 const violations_2 = __importDefault(require("../../services/violations"));
-// Helper function to parse the date field into DD/MM/YYYY format
-const parseDateFieldNew = (date, fieldName) => {
-    if (!date)
-        return null;
-    const formattedDate = (0, moment_1.default)(date, 'DD/MM/YYYY', true);
-    if (!formattedDate.isValid()) {
-        throw new Error(`Invalid date format for ${fieldName}: "${date}"`);
-    }
-    return formattedDate.toISOString();
-};
 const normalizePhoneNumber = (phone) => {
     if (!phone)
         return '';
@@ -146,7 +136,7 @@ class TenantControls {
                         for (const field of dateFields) {
                             try {
                                 if (row[field.key]) {
-                                    row[field.key] = parseDateFieldNew((_c = row[field.key]) === null || _c === void 0 ? void 0 : _c.toString(), field.label);
+                                    row[field.key] = (0, helpers_1.parseDateFieldNew)((_c = row[field.key]) === null || _c === void 0 ? void 0 : _c.toString(), field.label);
                                 }
                             }
                             catch (dateError) {

@@ -34,6 +34,7 @@ class SubCategoryControls {
                 delete data.cloudinaryUrls;
                 delete data.cloudinaryVideoUrls;
                 delete data.cloudinaryDocumentUrls;
+                delete data.cloudinaryAudioUrls;
                 const subCategory = yield subcategory_service_1.default.createSubCategory(Object.assign(Object.assign({}, data), { categoryId, image }));
                 res.status(201).json(subCategory);
             }

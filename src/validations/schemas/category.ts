@@ -10,6 +10,7 @@ export const categorySchema = Joi.object({
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
   labels: Joi.array().items(Joi.string()).required()
 });
 
@@ -20,6 +21,7 @@ export const subCategorySchema = Joi.object({
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
   // categoryId: Joi.string().required(),
   labels: Joi.array().items(Joi.string()).required()
 });

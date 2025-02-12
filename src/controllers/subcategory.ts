@@ -22,6 +22,7 @@ class SubCategoryControls {
             delete data.cloudinaryUrls;
             delete data.cloudinaryVideoUrls;
             delete data.cloudinaryDocumentUrls;
+            delete data.cloudinaryAudioUrls;
 
             const subCategory = await SubCategoryService.createSubCategory({ ...data, categoryId, image });
             res.status(201).json(subCategory);

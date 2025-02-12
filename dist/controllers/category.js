@@ -27,6 +27,7 @@ class CategoryControls {
             delete data.cloudinaryUrls;
             delete data.cloudinaryVideoUrls;
             delete data.cloudinaryDocumentUrls;
+            delete data.cloudinaryAudioUrls;
             try {
                 const category = yield category_service_1.default.createCategory(Object.assign(Object.assign({}, data), { image }));
                 res.status(201).json(category);

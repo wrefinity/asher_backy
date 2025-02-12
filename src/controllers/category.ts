@@ -13,6 +13,7 @@ class CategoryControls {
         delete data.cloudinaryUrls;
         delete data.cloudinaryVideoUrls;
         delete data.cloudinaryDocumentUrls;
+        delete data.cloudinaryAudioUrls;
 
         try {
             const category = await categoryService.createCategory({ ...data, image });

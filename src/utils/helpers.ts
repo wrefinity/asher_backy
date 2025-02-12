@@ -1,5 +1,7 @@
 // arcticSetup.ts
 import axios from 'axios';
+import moment from 'moment';
+
 
 let generateCodeVerifier: () => string;
 let generateState: () => string;
@@ -78,3 +80,14 @@ export const convertCurrency = async  (amount: number, from: string, to: string)
   if (!rate) throw new Error('Currency conversion rate not found');
   return amount * rate;
 }
+
+
+// Helper function to parse the date field into DD/MM/YYYY format
+export const parseDateFieldNew = (date: string, fieldName: string): string | null => {
+  if (!date) return null;
+  const formattedDate = moment(date, 'DD/MM/YYYY', true);
+  if (!formattedDate.isValid()) {
+      throw new Error(`Invalid date format for ${fieldName}: "${date}"`);
+  }
+  return formattedDate.toISOString();
+};

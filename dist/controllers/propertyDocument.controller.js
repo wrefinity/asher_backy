@@ -13,8 +13,6 @@ const propertyDocument_service_1 = require("../services/propertyDocument.service
 const properties_schema_1 = require("../validations/schemas/properties.schema");
 class PropertyDocumentController {
     constructor() {
-        // constructor(){
-        // }
         this.propertyDocumentService = new propertyDocument_service_1.PropertyDocumentService();
         this.create = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;

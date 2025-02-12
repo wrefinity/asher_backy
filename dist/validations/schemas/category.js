@@ -14,6 +14,7 @@ exports.categorySchema = joi_1.default.object({
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
+    cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     labels: joi_1.default.array().items(joi_1.default.string()).required()
 });
 exports.subCategorySchema = joi_1.default.object({
@@ -23,6 +24,7 @@ exports.subCategorySchema = joi_1.default.object({
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
+    cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     // categoryId: Joi.string().required(),
     labels: joi_1.default.array().items(joi_1.default.string()).required()
 });

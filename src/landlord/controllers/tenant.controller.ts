@@ -5,6 +5,7 @@ import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import TenantService from "../../tenant/services/tenants.services"
 import { parseCSV, parseDateField } from '../../utils/filereader';
+import { parseDateFieldNew } from '../../utils/helpers';
 import UserServices from '../../services/user.services';
 import { userRoles } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
@@ -16,15 +17,6 @@ import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
 
 
-// Helper function to parse the date field into DD/MM/YYYY format
-const parseDateFieldNew = (date: string, fieldName: string): string | null => {
-    if (!date) return null;
-    const formattedDate = moment(date, 'DD/MM/YYYY', true);
-    if (!formattedDate.isValid()) {
-        throw new Error(`Invalid date format for ${fieldName}: "${date}"`);
-    }
-    return formattedDate.toISOString();
-};
 
 const normalizePhoneNumber = (phone: any): string => {
     if (!phone) return '';
