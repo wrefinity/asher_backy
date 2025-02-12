@@ -145,8 +145,10 @@ class UserService {
         });
 
         const countryData = await getCurrentCountryCurrency()
-        if (newUser) {
-            await WalletService.getOrCreateWallet(newUser.id, countryData.locationCurrency)
+        console.log("====================")
+        console.log(countryData)
+        if (newUser && countryData.locationCurrency) {
+            await WalletService.getOrCreateWallet(newUser.id, countryData?.locationCurrency)
         }
         // Based on the role, create the corresponding entry in the related schema
         switch (userData?.role) {
