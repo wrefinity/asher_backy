@@ -349,6 +349,10 @@ class PropertyController {
                         }
                         continue;
                     }
+                    console.log("====================================")
+                    console.log(Array.isArray(row.name) ? row.name[0] : row.name,
+                    Array.isArray(row.state) ? row.state[0] : row.state,
+                    Array.isArray(row.city) ? row.city[0] : row.city)
     
                     const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
                         landlordId,

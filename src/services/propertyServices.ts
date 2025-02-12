@@ -30,7 +30,7 @@ class PropertyService {
     getProperties = async () => {
         return await prismaClient.properties.findMany({ where: { isDeleted: false }, })
     }
-    
+
     getLandlordProperties = async (landlordId: string) => {
         return await prismaClient.properties.findMany({
             where: { isDeleted: false, landlordId },
@@ -244,7 +244,7 @@ class PropertyService {
             data,
         });
     };
-    
+
     getPropsListedById = async (propertyId: string) => {
         const propsListed = await prismaClient.propertyListingHistory.findFirst({
             where: {
@@ -297,8 +297,8 @@ class PropertyService {
             where: {
                 landlordId,
                 tenants: {
-                    none: {} 
-                  },
+                    none: {}
+                },
             },
             include: {
                 tenants: true,
@@ -309,23 +309,25 @@ class PropertyService {
     }
     getPropertiesAttachedToTenants = async (tenantId: string) => {
         return await prismaClient.properties.findFirst({
-          where: {
-            tenants: {
-              some: { id: tenantId },
-            },
-          }
+            where: {
+                tenants: {
+                    some: { id: tenantId },
+                },
+            }
         });
     }
 
     getUniquePropertiesBaseLandlordNameState = async (landlordId: string, name: string, state: string, city: string) => {
-        return await prismaClient.properties.findMany({
+        const properties = await prismaClient.properties.findMany({
             where: {
                 landlordId,
-                name: { mode: "insensitive", equals: name }, 
-                state: { mode: "insensitive", equals: state }, 
-                city: { mode: "insensitive", equals: city } 
+                name: { mode: "insensitive", equals: name },
+                state: { mode: "insensitive", equals: state },
+                city: { mode: "insensitive", equals: city }
             }
         });
+        // Return true if at least one record exists, otherwise false
+        return properties.length > 0;
     };
 
 }
