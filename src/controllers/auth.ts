@@ -111,48 +111,64 @@ class AuthControls {
     }
 
     passwordReset = async (req: Request, res: Response) => {
-        const { email, newPassword, token } = req.body;
+        const { email, tenantCode, newPassword, token } = req.body;
+    
         try {
-            let user = await UserServices.findUserByEmail(email);
-            if (!user) return res.status(400).json({ message: "user doesnt exists" });
-
-            // Validate verification token
-            let isValidToken = null;
-            if (user) {
-                isValidToken = await validateVerificationToken(token, user.id);
+            // Ensure at least one identifier is provided
+            if (!email && !tenantCode) {
+                return res.status(400).json({ message: "Email or tenant code is required." });
             }
-
-            if (!isValidToken) {
-                res.status(400).json({ message: 'Invalid or expired token' });
-                return;
+    
+            let user = null;
+    
+            // Find user by email if provided
+            if (email) {
+                user = await UserServices.findUserByEmail(email);
             }
-            // Ensure user is not null
-            if (user && typeof user !== 'boolean' && 'id' in user)
-                // Update user's password
-                await UserServices.updateUserPassword(user.id, newPassword);
-
-            return res.status(200).json({ message: 'Password Updated successfully' });
-
-        } catch (error: unknown) {
-            ErrorService.handleError(error, res)
+    
+            // If user is not found via email and tenantCode is provided, find user by tenantCode
+            if (!user && tenantCode) {
+                user = await UserServices.findUserByTenantCode(tenantCode);
+            }
+    
+            if (!user) {
+                return res.status(404).json({ message: "User does not exist." });
+            }
+    
+            // **Only validate the token if resetting via email**
+            if (email) {
+                const isValidToken = await validateVerificationToken(token, user.id);
+                if (!isValidToken) {
+                    return res.status(400).json({ message: "Invalid or expired token." });
+                }
+            }
+    
+            // Update user's password
+            await UserServices.updateUserPassword(user.id, newPassword);
+    
+            return res.status(200).json({ message: "Password updated successfully." });
+    
+        } catch (error) {
+            ErrorService.handleError(error, res);
         }
-    }
+    };
+    
 
     refreshToken = async (req: Request, res: Response) => {
         try {
             const { refreshToken } = req.body;
-    
+
             if (!refreshToken) {
                 return res.status(400).json({ message: "Refresh token is required as refreshToken" });
             }
-    
+
             // Verify token and get new tokens + user details
             const tokens = await this.tokenService.verifyAndRefreshToken(refreshToken);
-    
+
             if (!tokens) {
                 return res.status(401).json({ message: "Invalid or expired refresh token" });
             }
-    
+
             res.json({
                 accessToken: tokens.accessToken,
                 refreshToken: tokens.refreshToken,
