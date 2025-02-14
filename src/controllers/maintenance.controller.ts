@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { LogType } from '@prisma/client';
 import maintenanceService from '../services/maintenance.service';
 import propertyService from '../services/propertyServices';
 import { maintenanceSchema, rescheduleMaintenanceSchema, checkWhitelistedSchema, maintenanceChatSchema, maintenanceCancelSchema } from '../validations/schemas/maintenance.schema';
@@ -6,6 +7,7 @@ import ServiceServices from "../vendor/services/vendor.services"
 import ErrorService from "../services/error.service";
 import { CustomRequest } from '../utils/types';
 import { maintenanceStatus, maintenanceDecisionStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
+import logsServices from '../services/logs.services';
 
 class MaintenanceController {
 
@@ -45,13 +47,13 @@ class MaintenanceController {
 
       const maintenanceId = req.params.maintenanceId;
       const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
-      if (!maintenance){
+      if (!maintenance) {
         res.status(404).json({ message: 'Maintenance not found' });
       }
       const { error, value } = rescheduleMaintenanceSchema.validate(req.body);
       if (error) return res.status(400).json({ error: error.details[0].message });
 
-      const updatedMaintenance = await maintenanceService.updateMaintenance(maintenanceId,  value)
+      const updatedMaintenance = await maintenanceService.updateMaintenance(maintenanceId, value)
       return res.status(200).json({ message: 'Maintenance scheduled successfully', updatedMaintenance });
     } catch (error) {
       ErrorService.handleError(error, res)
@@ -159,7 +161,7 @@ class MaintenanceController {
       // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const property = await propertyService.getPropertyById(value?.propertyId);
       if (!property) {
-          return res.status(404).json({ message: 'Property not found' });
+        return res.status(404).json({ message: 'Property not found' });
       }
       const maintenance = await maintenanceService.createMaintenance({
         ...value,
@@ -168,6 +170,13 @@ class MaintenanceController {
         // attachments: cloudinaryUrls,
         tenantId: tenantId || undefined,
         landlordId: landlordId || undefined
+      });
+
+      await logsServices.createLog({
+        events: `${req.user.email} initiated a maintenance request for the property named ${property?.name}`,
+        type: LogType.MAINTENANCE,
+        propertyId: property?.id,
+        createdById: req?.user?.id,
       });
 
       if (isWhitelisted && !landlordId) return res.status(200).json({
@@ -222,7 +231,6 @@ class MaintenanceController {
       if (!maintenanceExits) {
         return res.status(404).json({ message: `maintenance with id: ${id} doesnt exist` });
       }
-
       const maintenance = await maintenanceService.updateMaintenance(id, req.body);
       return res.status(200).json({ maintenance });
     } catch (error) {

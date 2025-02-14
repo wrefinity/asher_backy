@@ -15,12 +15,13 @@ import {
 // import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
-import logger from '../utils/loggers';
+import {LogType} from "@prisma/client"
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
 import { LoginSchema, userLandlordSchema } from "../validations/schemas/auth";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import { CustomRequest } from "../utils/types";
+import logsServices from "../services/logs.services";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -144,8 +145,13 @@ class AuthControls {
             }
     
             // Update user's password
+
             await UserServices.updateUserPassword(user.id, newPassword);
-    
+            await logsServices.createLog({
+                events: "Password Reset",
+                type: LogType.ACTIVITY,
+                createdById: user.id,
+            }); 
             return res.status(200).json({ message: "Password updated successfully." });
     
         } catch (error) {
@@ -236,7 +242,11 @@ class AuthControls {
             }
 
             const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
-
+            await logsServices.createLog({
+                events: `user ${user.email} logged in`,
+                type: LogType.ACTIVITY,
+                createdById: user.id,
+            }); 
             // Exclude sensitive fields and return user details
             const { password: _, id: __, ...userDetails } = user;
             return res.status(200).json({

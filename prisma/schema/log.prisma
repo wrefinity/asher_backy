@@ -2,6 +2,7 @@ enum LogType {
     MAINTENANCE
     APPLICATION
     TRANSACTION
+    ACTIVITY
     // communication logs
     CALL
     MESSAGE

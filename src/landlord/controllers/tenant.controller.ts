@@ -15,7 +15,8 @@ import { ViolationSchema } from '../../validations/schemas/violations';
 import LogsServices from '../../services/logs.services';
 import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
-
+import logsServices from '../../services/logs.services';
+import { LogType } from '@prisma/client';
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -176,6 +177,8 @@ class TenantControls {
                         role: userRoles.TENANT,
                         tenantWebUserEmail: tenantEmail,
                     }, true);
+                   
+                  
 
                     uploaded.push(newUser);
                 } catch (err) {
