@@ -103,7 +103,8 @@ class ChatMessageAuth {
             const chatRoom = await ChatServices.getChatRooms(senderId, receiverId);
 
             if (!chatRoom) {
-                return res.status(404).json({ message: 'Chat room not found' });
+                // return res.status(200).json({ message: 'Chat room not found' });
+                return res.status(200);
             }
 
             // Step 2: Retrieve all messages in the chat room, sorted by createdAt

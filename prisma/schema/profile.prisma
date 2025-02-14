@@ -8,6 +8,9 @@ model profile {
     maritalStatus String?
     dateOfBirth   DateTime?
     fullname      String?
+    firstName     String?
+    lastName      String?
+    middleName    String?
     profileUrl    String?
     zip           String?
     unit          String?
