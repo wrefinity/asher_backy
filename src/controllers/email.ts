@@ -1,42 +1,69 @@
 import { Request, Response } from "express";
 import EmailService from "../services/emailService";
 import { CustomRequest, EmailDataType } from "../utils/types";
-import { uploadToCloudinary } from "../middlewares/multerCloudinary";
-
+import { EmailSchema } from "../validations/schemas/chats.schema";
+import tenantService from "../services/tenant.service";
+import { sServer } from '../index'; // Import WebSocket-enabled server
+import ErrorService from "../services/error.service";
 
 class EmailController {
 
     constructor() {
     }
 
-    async createEmail(req: CustomRequest, res: Response) {
+    createEmail = async (req: CustomRequest, res: Response) => {
         try {
-            const emailData: EmailDataType = req.body
-            emailData.senderEmail = String(req.user.email)
+            // Validate request body
+            const { error, value } = EmailSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+            // Handle optional attachment
+            const attachment = value.cloudinaryUrls ?? null;
 
-            if (req.body.cloudinaryUrls) {
-                emailData.attachment = req.body.cloudinaryUrls
-            } else {
-                emailData.attachment = null
+            // Determine sender email
+            let senderEmail: string | null = req.user?.email ?? null;
+            if (req.user?.tenant?.id) {
+                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
+                senderEmail = tenant?.tenantWebUserEmail ?? senderEmail;
             }
 
-            if (!emailData.recieverEmail || !emailData.subject || !emailData.body) {
-                return res.status(400).json({ message: 'Missing required fields' })
+            // Fetch sender details
+            const receiver = await EmailService.checkUserEmailExists(value.receiverEmail);
+            if (!receiver) {
+                throw new Error('Reciever email not found');
             }
-            const email = await EmailService.createEmail(emailData);
-            return res.status(201).json(email)
+
+            // unnecessary fields from the value object (without mutating it)
+            const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls, ...emailData } = value;
+
+            // Create email
+            const email = await EmailService.createEmail({ ...emailData, senderId: req.user?.id, receiverId: receiver.userId, attachment, senderEmail });
+
+            // ** Send WebSocket notification only to the recipient**
+            sServer.sendToUser(value?.receiverEmail, "new_email", email);
+
+            return res.status(201).json({ email });
+
         } catch (error) {
-            console.log(error)
-            return res.status(500).json({ message: 'Failed to create email' })
+            ErrorService.handleError(error, res);
         }
     }
 
-    async getUserInbox(req: CustomRequest, res: Response) {
+
+    getUserInbox = async (req: CustomRequest, res: Response) => {
         try {
-            const email = String(req.user.email);
+            let email = null;
+
+            if (req.user?.tenant?.id) {
+                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
+                email = tenant?.tenantWebUserEmail;
+            } else {
+                email = String(req.user.email);
+            }
             const emails = await EmailService.getUserEmails(email, { recieved: true })
             if (emails.length < 1) return res.status(200).json({ message: 'No emails found ' })
-            return res.status(200).json(emails)
+            return res.status(200).json({ emails })
 
         } catch (error) {
             console.log(error)
@@ -119,7 +146,13 @@ class EmailController {
 
     async getUserUnreadEmails(req: CustomRequest, res: Response) {
         try {
-            const email = String(req.user.email)
+            let email = null;
+            if (req.user?.tenant?.id) {
+                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
+                email = tenant?.tenantWebUserEmail;
+            } else {
+                email = String(req.user.email);
+            }
             const emails = await EmailService.getUserEmails(email, { recieved: true, unread: true })
             if (emails.length < 1) return res.status(200).json({ message: "No Unread Emails" })
             return res.status(200).json(emails)
@@ -135,15 +168,22 @@ class EmailController {
             const email = await EmailService.getEmailById(emailId)
             if (!email) return res.status(404).json({ message: 'Email not found' })
 
-            const isReciever = email.recieverEmail === String(req.user.email);
+            let receiverEmail = null;
 
-            if (email.senderEmail !== String(req.user.email) && !isReciever) {
+            if (req.user?.tenant?.id) {
+                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
+                receiverEmail = tenant?.tenantWebUserEmail;
+            } else {
+                receiverEmail = String(req.user.email);
+            }
+            const isReciever = email.receiverEmail === receiverEmail;
+
+            if (email.senderEmail !== receiverEmail && !isReciever) {
                 return res.status(403).json({ message: 'Forbbiden' })
             }
             const updatedEmail = await EmailService.markEmailAsRead(emailId, isReciever)
             return res.status(200).json(updatedEmail)
         } catch (error) {
-            console.log(error)
             return res.status(500).json({ message: "Couldnt read email" })
         }
     }

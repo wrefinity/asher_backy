@@ -3,12 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prismaClient = void 0;
+exports.sServer = exports.userSockets = exports.prismaClient = void 0;
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const express_1 = __importDefault(require("express"));
 const express_session_1 = __importDefault(require("express-session"));
 const secrets_1 = require("./secrets");
 const cors_1 = __importDefault(require("cors"));
+const http_1 = __importDefault(require("http"));
+const ws_1 = require("ws");
 const client_1 = require("@prisma/client");
 const applicant_1 = __importDefault(require("./routes/applicant"));
 const complaint_1 = __importDefault(require("./routes/complaint"));
@@ -40,14 +42,19 @@ const flutterWave_service_1 = __importDefault(require("./services/flutterWave.se
 exports.prismaClient = new client_1.PrismaClient({
     log: ['query']
 });
+exports.userSockets = new Map();
 class Server {
     constructor(port, secret) {
         this.app = (0, express_1.default)();
         this.port = port;
         this.appSecret = secret;
+        // Create HTTP server and WebSocket server
+        this.server = http_1.default.createServer(this.app);
+        this.wss = new ws_1.WebSocketServer({ server: this.server });
         // connectDB();
         this.configureMiddlewares();
         this.configureRoutes();
+        this.configureWebSocket();
     }
     configureMiddlewares() {
         // middlewares here
@@ -60,6 +67,38 @@ class Server {
         }));
         this.app.use((0, cookie_parser_1.default)());
         this.app.use((0, cors_1.default)());
+    }
+    configureWebSocket() {
+        this.wss.on("connection", (ws, req) => {
+            console.log("New WebSocket connection established");
+            ws.on("message", (message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    if (typeof data === "object" && (data === null || data === void 0 ? void 0 : data.event) === "register" && (data === null || data === void 0 ? void 0 : data.recieverEmail)) {
+                        exports.userSockets.set(data === null || data === void 0 ? void 0 : data.recieverEmail, ws);
+                        console.log(`User ${data.recieverEmail} connected`);
+                    }
+                }
+                catch (error) {
+                    console.error("Invalid WebSocket message received:", message);
+                }
+            });
+            ws.on("close", () => {
+                for (const [recieverEmail, socket] of exports.userSockets.entries()) {
+                    if (socket === ws) {
+                        exports.userSockets.delete(recieverEmail);
+                        console.log(`User ${recieverEmail} disconnected`);
+                        break;
+                    }
+                }
+            });
+        });
+    }
+    sendToUser(email, event, data) {
+        const socket = exports.userSockets.get(email);
+        if (socket && socket.readyState === ws_1.WebSocket.OPEN) {
+            socket.send(JSON.stringify({ event, data }));
+        }
     }
     configureRoutes() {
         // Add routes here
@@ -94,11 +133,18 @@ class Server {
         this.app.use("/api/complaints", complaint_1.default);
     }
     start() {
-        this.app.listen(this.port, () => {
+        this.server.listen(this.port, () => {
             console.log(`Server running on port ${this.port}`);
         });
-        // JobManager.startJobs()
+    }
+    broadcast(event, data) {
+        this.wss.clients.forEach(client => {
+            if (client.readyState === 1) {
+                client.send(JSON.stringify({ event, data }));
+            }
+        });
     }
 }
-const server = new Server(Number(secrets_1.PORT), secrets_1.APP_SECRET);
-server.start();
+const sServer = new Server(Number(secrets_1.PORT), secrets_1.APP_SECRET);
+exports.sServer = sServer;
+sServer.start();

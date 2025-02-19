@@ -87,7 +87,8 @@ class ChatMessageAuth {
                 // Step 1: Find the chat room between the two users
                 const chatRoom = yield chatServices_1.default.getChatRooms(senderId, receiverId);
                 if (!chatRoom) {
-                    return res.status(404).json({ message: 'Chat room not found' });
+                    // return res.status(200).json({ message: 'Chat room not found' });
+                    return res.status(200);
                 }
                 // Step 2: Retrieve all messages in the chat room, sorted by createdAt
                 const messages = yield chatServices_1.default.getChatRoomMessages(chatRoom.id);

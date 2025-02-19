@@ -8,45 +8,76 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const emailService_1 = __importDefault(require("../services/emailService"));
+const chats_schema_1 = require("../validations/schemas/chats.schema");
+const tenant_service_1 = __importDefault(require("../services/tenant.service"));
+const index_1 = require("../index"); // Import WebSocket-enabled server
+const error_service_1 = __importDefault(require("../services/error.service"));
 class EmailController {
     constructor() {
-    }
-    createEmail(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.createEmail = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
             try {
-                const emailData = req.body;
-                emailData.senderEmail = String(req.user.email);
-                if (req.body.cloudinaryUrls) {
-                    emailData.attachment = req.body.cloudinaryUrls;
+                // Validate request body
+                const { error, value } = chats_schema_1.EmailSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ message: error.details[0].message });
                 }
-                else {
-                    emailData.attachment = null;
+                // Handle optional attachment
+                const attachment = (_a = value.cloudinaryUrls) !== null && _a !== void 0 ? _a : null;
+                // Determine sender email
+                let senderEmail = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.email) !== null && _c !== void 0 ? _c : null;
+                if ((_e = (_d = req.user) === null || _d === void 0 ? void 0 : _d.tenant) === null || _e === void 0 ? void 0 : _e.id) {
+                    const tenant = yield tenant_service_1.default.getTenantById((_g = (_f = req.user) === null || _f === void 0 ? void 0 : _f.tenant) === null || _g === void 0 ? void 0 : _g.id);
+                    senderEmail = (_h = tenant === null || tenant === void 0 ? void 0 : tenant.tenantWebUserEmail) !== null && _h !== void 0 ? _h : senderEmail;
                 }
-                if (!emailData.recieverEmail || !emailData.subject || !emailData.body) {
-                    return res.status(400).json({ message: 'Missing required fields' });
+                // Fetch sender details
+                const receiver = yield emailService_1.default.checkUserEmailExists(value.receiverEmail);
+                if (!receiver) {
+                    throw new Error('Reciever email not found');
                 }
-                const email = yield emailService_1.default.createEmail(emailData);
-                return res.status(201).json(email);
+                // unnecessary fields from the value object (without mutating it)
+                const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls } = value, emailData = __rest(value, ["cloudinaryUrls", "cloudinaryVideoUrls", "cloudinaryDocumentUrls", "cloudinaryAudioUrls"]);
+                // Create email
+                const email = yield emailService_1.default.createEmail(Object.assign(Object.assign({}, emailData), { senderId: (_j = req.user) === null || _j === void 0 ? void 0 : _j.id, receiverId: receiver.userId, attachment, senderEmail }));
+                // ** Send WebSocket notification only to the recipient**
+                index_1.sServer.sendToUser(value === null || value === void 0 ? void 0 : value.receiverEmail, "new_email", email);
+                return res.status(201).json({ email });
             }
             catch (error) {
-                console.log(error);
-                return res.status(500).json({ message: 'Failed to create email' });
+                error_service_1.default.handleError(error, res);
             }
         });
-    }
-    getUserInbox(req, res) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getUserInbox = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d;
             try {
-                const email = String(req.user.email);
+                let email = null;
+                if ((_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant) === null || _b === void 0 ? void 0 : _b.id) {
+                    const tenant = yield tenant_service_1.default.getTenantById((_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.tenant) === null || _d === void 0 ? void 0 : _d.id);
+                    email = tenant === null || tenant === void 0 ? void 0 : tenant.tenantWebUserEmail;
+                }
+                else {
+                    email = String(req.user.email);
+                }
                 const emails = yield emailService_1.default.getUserEmails(email, { recieved: true });
                 if (emails.length < 1)
                     return res.status(200).json({ message: 'No emails found ' });
-                return res.status(200).json(emails);
+                return res.status(200).json({ emails });
             }
             catch (error) {
                 console.log(error);
@@ -139,8 +170,16 @@ class EmailController {
     }
     getUserUnreadEmails(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d;
             try {
-                const email = String(req.user.email);
+                let email = null;
+                if ((_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant) === null || _b === void 0 ? void 0 : _b.id) {
+                    const tenant = yield tenant_service_1.default.getTenantById((_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.tenant) === null || _d === void 0 ? void 0 : _d.id);
+                    email = tenant === null || tenant === void 0 ? void 0 : tenant.tenantWebUserEmail;
+                }
+                else {
+                    email = String(req.user.email);
+                }
                 const emails = yield emailService_1.default.getUserEmails(email, { recieved: true, unread: true });
                 if (emails.length < 1)
                     return res.status(200).json({ message: "No Unread Emails" });
@@ -153,20 +192,28 @@ class EmailController {
     }
     markEmailAsRead(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d;
             try {
                 const emailId = String(req.params.emailId);
                 const email = yield emailService_1.default.getEmailById(emailId);
                 if (!email)
                     return res.status(404).json({ message: 'Email not found' });
-                const isReciever = email.recieverEmail === String(req.user.email);
-                if (email.senderEmail !== String(req.user.email) && !isReciever) {
+                let receiverEmail = null;
+                if ((_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant) === null || _b === void 0 ? void 0 : _b.id) {
+                    const tenant = yield tenant_service_1.default.getTenantById((_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.tenant) === null || _d === void 0 ? void 0 : _d.id);
+                    receiverEmail = tenant === null || tenant === void 0 ? void 0 : tenant.tenantWebUserEmail;
+                }
+                else {
+                    receiverEmail = String(req.user.email);
+                }
+                const isReciever = email.receiverEmail === receiverEmail;
+                if (email.senderEmail !== receiverEmail && !isReciever) {
                     return res.status(403).json({ message: 'Forbbiden' });
                 }
                 const updatedEmail = yield emailService_1.default.markEmailAsRead(emailId, isReciever);
                 return res.status(200).json(updatedEmail);
             }
             catch (error) {
-                console.log(error);
                 return res.status(500).json({ message: "Couldnt read email" });
             }
         });

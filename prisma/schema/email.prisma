@@ -1,0 +1,20 @@
+model Email {
+    id               String   @id @default(cuid())
+    senderEmail      String // Email address of the sender (either user.email or tenant.tenantWebUserEmail)
+    receiverEmail    String // Email address of the receiver (either user.email or tenant.tenantWebUserEmail)
+    subject          String? // Subject of the email
+    body             String // Body/content of the email
+    attachment       String[] // Array of file paths or URLs for attachments
+    isReadBySender   Boolean  @default(true) // Indicates if the sender has read the email
+    isReadByReceiver Boolean  @default(false) // Indicates if the receiver has read the email
+    isDraft          Boolean  @default(true) // Indicates if the email is a draft
+    isSent           Boolean  @default(false) // Indicates if the email has been sent
+    createdAt        DateTime @default(now()) // Timestamp when the email was created
+
+    // Relationships
+    senderId String // ID of the sender (user)
+    sender   users  @relation("SentEmails", fields: [senderId], references: [id])
+
+    receiverId String // ID of the receiver (user)
+    receiver   users  @relation("ReceivedEmails", fields: [receiverId], references: [id])
+}

@@ -3,7 +3,8 @@ import express, { Express } from "express";
 import session from "express-session";
 import { APP_SECRET, PORT } from "./secrets";
 import cors from 'cors';
-
+import http from 'http';
+import { WebSocket, WebSocketServer } from "ws";
 import { PrismaClient } from "@prisma/client";
 import ApplicationRouter from "./routes/applicant";
 import ComplaintRoutes from "./routes/complaint";
@@ -41,18 +42,30 @@ export const prismaClient: PrismaClient = new PrismaClient(
     }
 );
 
+
+export const userSockets = new Map<string, WebSocket>();
+
+
 class Server {
     private app: Express;
     private port: number;
     private appSecret: string;
+    private server: http.Server;
+    private wss: WebSocketServer;
 
     constructor(port: number, secret: string) {
         this.app = express();
         this.port = port;
         this.appSecret = secret;
+
+        // Create HTTP server and WebSocket server
+        this.server = http.createServer(this.app);
+        this.wss = new WebSocketServer({ server: this.server });
+
         // connectDB();
         this.configureMiddlewares();
         this.configureRoutes();
+        this.configureWebSocket();
     }
 
     private configureMiddlewares() {
@@ -69,6 +82,52 @@ class Server {
             cors()
         );
     }
+
+    private configureWebSocket() {
+        this.wss.on("connection", (ws, req) => {
+            console.log("New WebSocket connection established");
+            ws.on("message", (message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    if (typeof data === "object" && data?.event === "register" && data?.receiverEmail) {
+                        userSockets.set(data?.receiverEmail, ws as WebSocket);
+                        console.log(`User ${data.receiverEmail} connected`);
+                    }
+                } catch (error) {
+                    console.error("Invalid WebSocket message received:", message);
+                }
+            });
+    
+            ws.on("close", () => {
+                for (const [recieverEmail, socket] of userSockets.entries()) {
+                    if (socket === (ws as WebSocket)) {
+                        userSockets.delete(recieverEmail);
+                        console.log(`User ${recieverEmail} disconnected`);
+                        break;
+                    }
+                }
+            });
+        });
+    }
+
+
+    public sendToUser(email: string, event: string, data: any) {
+        const socket = userSockets.get(email);
+        
+        if (!socket) {
+            console.error(`No WebSocket connection found for user: ${email}`);
+            return;
+        }
+    
+        if (socket.readyState !== WebSocket.OPEN) {
+            console.error(`WebSocket for user ${email} is not open`);
+            return;
+        }
+    
+        console.log(`Sending WebSocket message to: ${email}, Event: ${event}`);
+        socket.send(JSON.stringify({ event, data }));
+    }
+    
 
     private configureRoutes() {
         // Add routes here
@@ -101,16 +160,24 @@ class Server {
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);
-
     }
 
     public start() {
-        this.app.listen(this.port, () => {
+        this.server.listen(this.port, () => { 
             console.log(`Server running on port ${this.port}`);
         });
-        // JobManager.startJobs()
+    }
+    
+    public broadcast(event: string, data: any) {
+        this.wss.clients.forEach(client => {
+            if (client.readyState === 1) {
+                client.send(JSON.stringify({ event, data }));
+            }
+        });
     }
 }
 
-const server = new Server(Number(PORT), APP_SECRET);
-server.start();
+const sServer = new Server(Number(PORT), APP_SECRET);
+sServer.start();
+
+export { sServer };

@@ -7,7 +7,7 @@ import { CustomRequest } from "../utils/types";
 
 class ComplaintController {
     createComplaint = async (req: CustomRequest, res: Response) => {
-        try {
+        try {      
             const { error, value } = createComplaintSchema.validate(req.body);
             if (error) return res.status(400).json({ message: error.details[0].message });
             const createdById = String(req.user.id);

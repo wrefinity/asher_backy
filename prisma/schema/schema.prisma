@@ -208,8 +208,8 @@ model users {
   communityPost          CommunityPost[]
   communityPostLikes     CommunityPostLikes[]
   communityPostViews     CommunityPostViews[]
-  sentEmails             Email[]                  @relation("SentEmails")
-  RecievedEmails         Email[]                  @relation("RecievedEmails")
+  sentEmails             Email[]                  @relation("SentEmails") // Emails sent by this user
+  receivedEmails         Email[]                  @relation("ReceivedEmails") // Emails received by this user
   applicantion           application[]
   tenantApplications     application[]            @relation("TenantApplications") // Applications where the user is a tenant
   agents                 agents[]
@@ -287,22 +287,6 @@ model VerificationToken {
   user      users     @relation(fields: [userId], references: [id])
   expiresAt DateTime?
   createdAt DateTime  @default(now())
-}
-
-model Email {
-  id               String   @id @default(cuid())
-  senderEmail      String
-  recieverEmail    String
-  subject          String
-  body             String
-  attachment       String[]
-  isReadBySender   Boolean  @default(true)
-  isReadByReciever Boolean  @default(false)
-  isDraft          Boolean  @default(true)
-  isSent           Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  sender           users    @relation("SentEmails", fields: [senderEmail], references: [email])
-  reciver          users    @relation("RecievedEmails", fields: [recieverEmail], references: [email])
 }
 
 //  status will be in-progress, completed, assigned, aborted

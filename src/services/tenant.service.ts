@@ -22,6 +22,18 @@ class TenantService {
     });
     return tenant?.user || null;
   }
+  getTenantById = async (tenantId: string) => {
+    return await prismaClient.tenants.findFirst({
+      where: { id: tenantId },
+      include: { user: true },
+    });
+  }
+  getTenantByTenantEmail = async (tenantEmail: string) => {
+    return await prismaClient.tenants.findFirst({
+      where: { tenantWebUserEmail: tenantEmail },
+      include: { user: true },
+    });
+  }
   // Fetch all tenants for a given property
   getTenantsForProperty = async (propertyId: string) => {
     // Query the tenants table to get all tenants linked to the propertyId

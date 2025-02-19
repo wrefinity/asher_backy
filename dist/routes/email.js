@@ -21,10 +21,10 @@ class EmailRouter {
         this.router.patch('/:emailId', email_1.default.updateEmail);
         this.router.delete('/:emailId', email_1.default.deleteEmail);
         this.router.get('/user/:email/inbox', email_1.default.getUserInbox);
-        this.router.get('/user/:email/sent', email_1.default.getUserSentEmails);
+        this.router.get('/user/sent', email_1.default.getUserSentEmails);
         this.router.get('/user/:email/drafts', email_1.default.getUserDraftEmails);
-        this.router.get('/user/:email/unread', email_1.default.getUserUnreadEmails);
-        this.router.patch('/:emailId/read', email_1.default.markEmailAsRead);
+        this.router.get('/user/unread', email_1.default.getUserUnreadEmails);
+        this.router.patch('/read/:emailId/', email_1.default.markEmailAsRead);
         this.router.patch('/:emailId/send', email_1.default.sendDraftEmail);
     }
 }

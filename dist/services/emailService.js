@@ -8,13 +8,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
 const loggers_1 = __importDefault(require("../utils/loggers"));
-const user_services_1 = __importDefault(require("./user.services"));
 const profileSelect = {
     select: {
         fullname: true,
@@ -29,53 +39,46 @@ const userSelect = {
     },
 };
 class EmailService {
-    createEmail(emailData) {
-        return __awaiter(this, void 0, void 0, function* () {
-            var _a;
-            try {
-                const recieverEmail = yield user_services_1.default.findUserByEmail(emailData.recieverEmail);
-                if (!recieverEmail) {
-                    throw new Error('Reciever email is invalid');
-                }
-                emailData.isDraft = (_a = emailData.isDraft) !== null && _a !== void 0 ? _a : true;
-                emailData.isSent = (emailData.isDraft === true) ? false : true;
-                emailData.isReadBySender = true;
-                emailData.isReadByReciever = false;
-                delete (emailData.cloudinaryUrls);
-                return yield __1.prismaClient.email.create({
-                    data: emailData,
-                });
+    constructor() {
+        /**
+         * Check if a user exists based on their email or tenantWebUserEmail
+         * @param email - The email to check (can be user.email or tenant.tenantWebUserEmail)
+         * @returns The user object if found, otherwise null
+         */
+        this.checkUserEmailExists = (email) => __awaiter(this, void 0, void 0, function* () {
+            // Step 1: Check if the email exists in the users table
+            const user = yield __1.prismaClient.users.findUnique({
+                where: { email },
+                include: { tenant: true }, // Include tenant details if the user is a tenant
+            });
+            if (user) {
+                return { email: user.email, userId: user.id };
             }
-            catch (error) {
-                loggers_1.default.error(`Error creating email: ${error}`);
-                throw new Error('Failed to create email');
+            // Step 2: If not found in users table, check the tenantWebUserEmail in the tenants table
+            const tenant = yield __1.prismaClient.tenants.findFirst({
+                where: { tenantWebUserEmail: email },
+                include: { user: true },
+            });
+            if (tenant) {
+                return { email: tenant.tenantWebUserEmail, userId: tenant.user.id };
             }
+            return null;
         });
-    }
-    getEmailById(emailId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                return yield __1.prismaClient.email.findUnique({
-                    where: { id: emailId },
-                    include: {
-                        sender: userSelect,
-                        reciver: userSelect
-                    }
-                });
-            }
-            catch (error) {
-                loggers_1.default.error(`Error getting email: ${error}`);
-                throw new Error('Failed to get email');
-            }
+        this.createEmail = (emailData) => __awaiter(this, void 0, void 0, function* () {
+            const { senderId, receiverId } = emailData, rest = __rest(emailData
+            // Create email record in the database
+            , ["senderId", "receiverId"]);
+            // Create email record in the database
+            return yield __1.prismaClient.email.create({
+                data: Object.assign(Object.assign({}, rest), { isDraft: false, isSent: true, sender: { connect: { id: senderId } }, receiver: { connect: { id: receiverId } } }),
+            });
         });
-    }
-    getUserEmails(email, options) {
-        return __awaiter(this, void 0, void 0, function* () {
+        this.getUserEmails = (email, options) => __awaiter(this, void 0, void 0, function* () {
             const where = {};
             if (options.sent)
                 where.senderEmail = email;
             if (options.recieved)
-                where.recieverEmail = email;
+                where.receiverEmail = email;
             if (options.draft)
                 where.isDraft = true;
             if (options.unread) {
@@ -83,12 +86,12 @@ class EmailService {
                     where.isReadBySender = false;
                 }
                 else if (options.recieved) {
-                    where.isReadByReciever = false;
+                    where.isReadByReceiver = false;
                 }
                 else {
                     where.OR = [
                         { senderEmail: email, isReadBySender: false },
-                        { receiverEmail: email, isReadByReciever: false }
+                        { receiverEmail: email, isReadByReceiver: false }
                     ];
                 }
             }
@@ -99,8 +102,25 @@ class EmailService {
                     orderBy: { createdAt: 'desc' },
                     include: {
                         sender: userSelect,
-                        reciver: userSelect
+                        receiver: userSelect
                     }
+                });
+            }
+            catch (error) {
+                loggers_1.default.error(`Error getting email: ${error}`);
+                throw new Error('Failed to get email');
+            }
+        });
+    }
+    getEmailById(emailId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield __1.prismaClient.email.findUnique({
+                    where: { id: emailId },
+                    // include: {
+                    //     sender: userSelect,
+                    //     receiver: userSelect
+                    // }
                 });
             }
             catch (error) {
@@ -126,7 +146,7 @@ class EmailService {
     markEmailAsRead(emailId, isReciever) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const updateData = isReciever ? { isReadByReciever: true } : { isReadBySender: true };
+                const updateData = isReciever ? { isReadByReceiver: true } : { isReadBySender: true };
                 return yield __1.prismaClient.email.update({
                     where: { id: emailId },
                     data: updateData
@@ -146,7 +166,7 @@ class EmailService {
                     data: {
                         isDraft: false,
                         isSent: true,
-                        isReadByReciever: false
+                        isReadByReceiver: false
                     }
                 });
             }

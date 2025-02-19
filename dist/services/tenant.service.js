@@ -30,6 +30,18 @@ class TenantService {
             });
             return (tenant === null || tenant === void 0 ? void 0 : tenant.user) || null;
         });
+        this.getTenantById = (tenantId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.tenants.findFirst({
+                where: { id: tenantId },
+                include: { user: true },
+            });
+        });
+        this.getTenantByTenantEmail = (tenantEmail) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.tenants.findFirst({
+                where: { tenantWebUserEmail: tenantEmail },
+                include: { user: true },
+            });
+        });
         // Fetch all tenants for a given property
         this.getTenantsForProperty = (propertyId) => __awaiter(this, void 0, void 0, function* () {
             // Query the tenants table to get all tenants linked to the propertyId

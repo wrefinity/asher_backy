@@ -57,17 +57,6 @@ class BroadcastController {
                 error_service_1.default.handleError(error, res);
             }
         });
-        this.createBroadcast = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const { landlords } = req.user;
-            const landlordId = landlords === null || landlords === void 0 ? void 0 : landlords.id;
-            try {
-                const broadcast = yield broadcast_service_1.default.sendBroadcast(req.body, landlordId);
-                return res.status(201).json(broadcast);
-            }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
-            }
-        });
     }
 }
 exports.default = new BroadcastController();

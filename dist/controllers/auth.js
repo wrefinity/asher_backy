@@ -33,9 +33,11 @@ const verification_token_service_1 = require("../services/verification_token.ser
 // import { GoogleService } from "../middlewares/google";
 const email_1 = __importDefault(require("../templates/email"));
 const emailer_1 = __importDefault(require("../utils/emailer"));
+const client_1 = require("@prisma/client");
 const helpers_1 = require("../utils/helpers");
 const error_service_1 = __importDefault(require("../services/error.service"));
 const auth_1 = require("../validations/schemas/auth");
+const logs_services_1 = __importDefault(require("../services/logs.services"));
 class AuthControls {
     // protected googleService: GoogleService;
     constructor() {
@@ -111,25 +113,39 @@ class AuthControls {
             }
         });
         this.passwordReset = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const { email, newPassword, token } = req.body;
+            const { email, tenantCode, newPassword, token } = req.body;
             try {
-                let user = yield user_services_1.default.findUserByEmail(email);
-                if (!user)
-                    return res.status(400).json({ message: "user doesnt exists" });
-                // Validate verification token
-                let isValidToken = null;
-                if (user) {
-                    isValidToken = yield (0, verification_token_service_1.validateVerificationToken)(token, user.id);
+                // Ensure at least one identifier is provided
+                if (!email && !tenantCode) {
+                    return res.status(400).json({ message: "Email or tenant code is required." });
                 }
-                if (!isValidToken) {
-                    res.status(400).json({ message: 'Invalid or expired token' });
-                    return;
+                let user = null;
+                // Find user by email if provided
+                if (email) {
+                    user = yield user_services_1.default.findUserByEmail(email);
                 }
-                // Ensure user is not null
-                if (user && typeof user !== 'boolean' && 'id' in user)
-                    // Update user's password
-                    yield user_services_1.default.updateUserPassword(user.id, newPassword);
-                return res.status(200).json({ message: 'Password Updated successfully' });
+                // If user is not found via email and tenantCode is provided, find user by tenantCode
+                if (!user && tenantCode) {
+                    user = yield user_services_1.default.findUserByTenantCode(tenantCode);
+                }
+                if (!user) {
+                    return res.status(404).json({ message: "User does not exist." });
+                }
+                // **Only validate the token if resetting via email**
+                if (email) {
+                    const isValidToken = yield (0, verification_token_service_1.validateVerificationToken)(token, user.id);
+                    if (!isValidToken) {
+                        return res.status(400).json({ message: "Invalid or expired token." });
+                    }
+                }
+                // Update user's password
+                yield user_services_1.default.updateUserPassword(user.id, newPassword);
+                yield logs_services_1.default.createLog({
+                    events: "Password Reset",
+                    type: client_1.LogType.ACTIVITY,
+                    createdById: user.id,
+                });
+                return res.status(200).json({ message: "Password updated successfully." });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -204,6 +220,11 @@ class AuthControls {
                     return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
                 }
                 const token = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
+                yield logs_services_1.default.createLog({
+                    events: `user ${user.email} logged in`,
+                    type: client_1.LogType.ACTIVITY,
+                    createdById: user.id,
+                });
                 // Exclude sensitive fields and return user details
                 const { password: _, id: __ } = user, userDetails = __rest(user, ["password", "id"]);
                 return res.status(200).json({

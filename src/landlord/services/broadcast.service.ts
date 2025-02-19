@@ -26,53 +26,53 @@ class BroadcastService {
         });
     }
 
-    async sendBroadcast(broadcastData, landlordId: string) {
-        const { type, category, subject, recipients, message } = broadcastData;
-        const broadcast = await prismaClient.broadcast.create({
-            data: {
-              landlordId,
-              type,
-              category,
-              subject,
-              message,
-              recipients,
-            },
-          });
-        try {
-            if (type === BroadcastType.EMAIL) {
-                const batchSize = 100; // Number of emails to send in a batch
-                for (let i = 0; i < recipients.length; i += batchSize) {
-                    const batch = recipients.slice(i, i + batchSize);
-                    await this.sendBatchEmails(batch, subject, message, broadcastData.senderEmail);
-                }
-            } else if (type === BroadcastType.CHAT) {
-                // Handle chat messaging
-            }
+    // async sendBroadcast(broadcastData, landlordId: string) {
+    //     const { type, category, subject, recipients, message } = broadcastData;
+    //     const broadcast = await prismaClient.broadcast.create({
+    //         data: {
+    //           landlordId,
+    //           type,
+    //           category,
+    //           subject,
+    //           message,
+    //           recipients,
+    //         },
+    //       });
+    //     try {
+    //         if (type === BroadcastType.EMAIL) {
+    //             const batchSize = 100; // Number of emails to send in a batch
+    //             for (let i = 0; i < recipients.length; i += batchSize) {
+    //                 const batch = recipients.slice(i, i + batchSize);
+    //                 await this.sendBatchEmails(batch, subject, message, broadcastData.senderEmail);
+    //             }
+    //         } else if (type === BroadcastType.CHAT) {
+    //             // Handle chat messaging
+    //         }
 
-            return { message: 'Broadcast initiated successfully!', broadcastId: broadcast.id };
-        } catch (error) {
-            throw new Error(`Failed to send broadcast: ${error.message}`);
-        }
-    }
+    //         return { message: 'Broadcast initiated successfully!', broadcastId: broadcast.id };
+    //     } catch (error) {
+    //         throw new Error(`Failed to send broadcast: ${error.message}`);
+    //     }
+    // }
 
-    async sendBatchEmails(batch, subject, message, senderEmail) {
-        const emailPromises = batch.map(recipientId => {
-            return userServices.findUserByEmail(recipientId).then(recipient => {
-                if (recipient) {
-                    return emailService.createEmail({
-                        senderEmail,
-                        recieverEmail: recipient.email,
-                        subject,
-                        message,
-                        isDraft: false,
-                        isSent: true,
-                    });
-                }
-            });
-        });
+    // async sendBatchEmails(batch, subject, message, senderEmail) {
+    //     const emailPromises = batch.map(recipientId => {
+    //         return userServices.findUserByEmail(recipientId).then(recipient => {
+    //             if (recipient) {
+    //                 return emailService.createEmail({
+    //                     senderEmail,
+    //                     receiverEmail: recipient.email,
+    //                     subject,
+    //                     body: message,
+    //                     isDraft: false,
+    //                     isSent: true,
+    //                 });
+    //             }
+    //         });
+    //     });
 
-        await Promise.all(emailPromises); // Send all emails in parallel
-    }
+    //     await Promise.all(emailPromises); // Send all emails in parallel
+    // }
 }
 
 export default new BroadcastService();

@@ -12,12 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
 const maintenance_service_1 = __importDefault(require("../services/maintenance.service"));
 const propertyServices_1 = __importDefault(require("../services/propertyServices"));
 const maintenance_schema_1 = require("../validations/schemas/maintenance.schema");
 const vendor_services_1 = __importDefault(require("../vendor/services/vendor.services"));
 const error_service_1 = __importDefault(require("../services/error.service"));
-const client_1 = require("@prisma/client");
+const client_2 = require("@prisma/client");
+const logs_services_1 = __importDefault(require("../services/logs.services"));
 class MaintenanceController {
     constructor() {
         this.getAllMaintenances = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -111,7 +113,7 @@ class MaintenanceController {
             yield maintenance_service_1.default.updateMaintenance(maintenanceId, {
                 flagCancellation: true,
                 cancelReason: value.reason,
-                status: client_1.maintenanceStatus.CANCELLATION_REQUEST
+                status: client_2.maintenanceStatus.CANCELLATION_REQUEST
             });
         });
         this.confirmCancellationByVendor = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -127,7 +129,7 @@ class MaintenanceController {
             // Update the maintenance record to reflect vendor consent
             yield maintenance_service_1.default.updateMaintenance(maintenanceId, {
                 vendorConsentCancellation: true,
-                status: client_1.maintenanceStatus.CANCEL,
+                status: client_2.maintenanceStatus.CANCEL,
             });
         });
         this.rescheduleMaintenanceController = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -144,7 +146,7 @@ class MaintenanceController {
             }
         });
         this.createMaintenance = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             try {
                 const { error, value } = maintenance_schema_1.maintenanceSchema.validate(req.body);
                 if (error) {
@@ -164,9 +166,15 @@ class MaintenanceController {
                 if (!property) {
                     return res.status(404).json({ message: 'Property not found' });
                 }
-                const maintenance = yield maintenance_service_1.default.createMaintenance(Object.assign(Object.assign({}, value), { handleByLandlord: handleByLandlord || false, landlordDecision: handleByLandlord ? client_1.maintenanceDecisionStatus.PENDING : '', 
+                const maintenance = yield maintenance_service_1.default.createMaintenance(Object.assign(Object.assign({}, value), { handleByLandlord: handleByLandlord || false, landlordDecision: handleByLandlord ? client_2.maintenanceDecisionStatus.PENDING : '', 
                     // attachments: cloudinaryUrls,
                     tenantId: tenantId || undefined, landlordId: landlordId || undefined }));
+                yield logs_services_1.default.createLog({
+                    events: `${req.user.email} initiated a maintenance request for the property named ${property === null || property === void 0 ? void 0 : property.name}`,
+                    type: client_1.LogType.MAINTENANCE,
+                    propertyId: property === null || property === void 0 ? void 0 : property.id,
+                    createdById: (_c = req === null || req === void 0 ? void 0 : req.user) === null || _c === void 0 ? void 0 : _c.id,
+                });
                 if (isWhitelisted && !landlordId)
                     return res.status(200).json({
                         message: "request created and will be handled by landlord",
@@ -260,9 +268,9 @@ class MaintenanceController {
                 }
                 yield maintenance_service_1.default.updateMaintenance(maintenanceId, {
                     vendorId,
-                    status: client_1.maintenanceStatus.ASSIGNED,
+                    status: client_2.maintenanceStatus.ASSIGNED,
                     serviceId: vendorService.id,
-                    availability: vendorService.currentJobs > 1 ? client_1.vendorAvailability.NO : client_1.vendorAvailability.YES
+                    availability: vendorService.currentJobs > 1 ? client_2.vendorAvailability.NO : client_2.vendorAvailability.YES
                 });
                 // increment job current count for vendor
                 yield vendor_services_1.default.incrementJobCount(vendorService.id, vendorId);
@@ -282,14 +290,14 @@ class MaintenanceController {
                     return res.status(404).json({ message: `maintenance with id: ${maintenanceId} doesnt exist` });
                 }
                 //check if payment has beeen completed
-                if (maintenanceExits.paymentStatus !== client_1.TransactionStatus.COMPLETED) {
+                if (maintenanceExits.paymentStatus !== client_2.TransactionStatus.COMPLETED) {
                     return res.status(400).json({ message: `Payment has not been completed yet` });
                 }
-                const maintenance = yield maintenance_service_1.default.updateMaintenance(maintenanceId, { status: client_1.maintenanceStatus.COMPLETED });
+                const maintenance = yield maintenance_service_1.default.updateMaintenance(maintenanceId, { status: client_2.maintenanceStatus.COMPLETED });
                 // decrement job current count for vendor
                 yield vendor_services_1.default.decrementJobCount(maintenance.serviceId, vendorId);
-                yield vendor_services_1.default.updateService(maintenance.serviceId, { availability: client_1.vendorAvailability.YES });
-                return res.status(201).json({ message: `maintenance status updated: ${client_1.maintenanceStatus.COMPLETED}`, maintenance });
+                yield vendor_services_1.default.updateService(maintenance.serviceId, { availability: client_2.vendorAvailability.YES });
+                return res.status(201).json({ message: `maintenance status updated: ${client_2.maintenanceStatus.COMPLETED}`, maintenance });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -319,7 +327,7 @@ class MaintenanceController {
                 if (!maintenance) {
                     return res.status(404).json({ message: `Maintenance with id: ${maintenanceId} does not exist` });
                 }
-                if (maintenance.paymentStatus !== client_1.TransactionStatus.PENDING) {
+                if (maintenance.paymentStatus !== client_2.TransactionStatus.PENDING) {
                     return res.status(400).json({ message: `Payment has already been processed` });
                 }
                 const updatedMaintenance = yield maintenance_service_1.default.processPayment(maintenanceId, amount, userId, vendorId, currency);
