@@ -3,6 +3,7 @@ enum LogType {
     APPLICATION
     TRANSACTION
     ACTIVITY
+    VIEW
     // communication logs
     CALL
     MESSAGE

@@ -129,7 +129,6 @@ class ApplicantService {
                 dob,
                 phoneNumber,
                 maritalStatus,
-                invited,
                 nationality,
                 identificationType,
                 issuingAuthority,
@@ -168,7 +167,9 @@ class ApplicantService {
                 data: {
                     propertiesId,
                     createdById: userId,
+                    invited,
                     userId,
+                    lastStep: client_1.ApplicationSaveState.PERSONAL_KIN,
                     applicantPersonalDetailsId: (_a = upsertedPersonalDetails === null || upsertedPersonalDetails === void 0 ? void 0 : upsertedPersonalDetails.id) !== null && _a !== void 0 ? _a : existingPersonalDetails === null || existingPersonalDetails === void 0 ? void 0 : existingPersonalDetails.id,
                 },
             });

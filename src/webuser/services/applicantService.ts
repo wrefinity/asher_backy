@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-import { ApplicationStatus, userRoles } from '@prisma/client';
+import { ApplicationStatus, ApplicationSaveState, userRoles } from '@prisma/client';
 import userServices from "../../services/user.services";
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
@@ -104,8 +104,6 @@ class ApplicantService {
       middleName: nextOfKin.middleName || null,
     };
 
-    
-
     let nextOfKinId: string;
 
     // If an existing nextOfKin ID is provided, use it
@@ -136,7 +134,6 @@ class ApplicantService {
       dob,
       phoneNumber,
       maritalStatus,
-      invited,
       nationality,
       identificationType,
       issuingAuthority,
@@ -185,7 +182,9 @@ class ApplicantService {
       data: {
         propertiesId,
         createdById: userId,
+        invited,
         userId,
+        lastStep: ApplicationSaveState.PERSONAL_KIN,
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
       },
     });

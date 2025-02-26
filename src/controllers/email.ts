@@ -125,7 +125,6 @@ class EmailController {
     async getUserSentEmails(req: CustomRequest, res: Response) {
         try {
             let email = null;
-
             if (req.user?.tenant?.id) {
                 const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
                 email = tenant?.tenantWebUserEmail;

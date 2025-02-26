@@ -120,6 +120,7 @@ class UserService {
             return code;
         });
         this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false, createdBy = null) {
+            var _a, _b, _c;
             let user = null;
             user = yield __1.prismaClient.users.findUnique({
                 where: { email: userData === null || userData === void 0 ? void 0 : userData.email },
@@ -140,9 +141,9 @@ class UserService {
                                 address: userData === null || userData === void 0 ? void 0 : userData.address,
                                 dateOfBirth: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
                                 fullname: `${userData === null || userData === void 0 ? void 0 : userData.lastName} ${userData === null || userData === void 0 ? void 0 : userData.firstName} ${(userData === null || userData === void 0 ? void 0 : userData.middleName) ? userData.middleName : ""}`.trim(),
-                                firstName: userData === null || userData === void 0 ? void 0 : userData.firstName.trim(),
-                                lastName: userData === null || userData === void 0 ? void 0 : userData.lastName.trim(),
-                                middleName: userData === null || userData === void 0 ? void 0 : userData.middleName.trim(),
+                                firstName: (_a = userData === null || userData === void 0 ? void 0 : userData.firstName) === null || _a === void 0 ? void 0 : _a.trim(),
+                                lastName: (_b = userData === null || userData === void 0 ? void 0 : userData.lastName) === null || _b === void 0 ? void 0 : _b.trim(),
+                                middleName: (_c = userData === null || userData === void 0 ? void 0 : userData.middleName) === null || _c === void 0 ? void 0 : _c.trim(),
                                 profileUrl: userData === null || userData === void 0 ? void 0 : userData.profileUrl,
                                 zip: userData === null || userData === void 0 ? void 0 : userData.zip,
                                 unit: userData === null || userData === void 0 ? void 0 : userData.unit,

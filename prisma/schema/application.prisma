@@ -283,7 +283,7 @@ model applicationInvites {
 
 model applicationQuestions {
   id                   String       @id @default(cuid())
-  havePet              String?
+  havePet              AnswersEnum?      @default(NO)
   youSmoke             AnswersEnum? @default(NO)
   requireParking       AnswersEnum? @default(NO)
   haveOutstandingDebts AnswersEnum? @default(NO)

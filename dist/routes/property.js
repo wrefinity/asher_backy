@@ -27,6 +27,7 @@ class PropertyRouter {
         this.router.get("/property/viewings/:propertyId", this.authenticateService.authorize, property_controller_1.default.getAllPropsViewings);
         this.router.get("/property/view/:id", this.authenticateService.authorize, property_controller_1.default.getViewingById);
         this.router.patch("/property/viewings/:id", this.authenticateService.authorize, property_controller_1.default.updateViewing);
+        this.router.patch("/property/view/:propertyId", this.authenticateService.authorize, property_controller_1.default.viewProperty);
         this.router.delete("/viewings/:id", this.authenticateService.authorize, property_controller_1.default.deleteViewing);
     }
 }

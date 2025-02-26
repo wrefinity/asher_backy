@@ -17,6 +17,8 @@ const propertyServices_1 = __importDefault(require("../services/propertyServices
 const maintenance_service_1 = __importDefault(require("../services/maintenance.service"));
 const propertyviewing_service_1 = __importDefault(require("../services/propertyviewing.service"));
 const properties_schema_1 = require("../validations/schemas/properties.schema");
+const logs_services_1 = __importDefault(require("../services/logs.services"));
+const client_1 = require(".prisma/client");
 class PropertyController {
     constructor() {
         this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -25,6 +27,31 @@ class PropertyController {
                 if (properties.length < 1)
                     return res.status(200).json({ message: "No Property listed yet" });
                 return res.status(200).json(properties);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.viewProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const createdById = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const propertyId = req.params.propertyId;
+                // check props existence
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!property)
+                    return res.status(400).json({ message: "property with the id given doesnt exist" });
+                // check if propertyId have been viewed before by the user 
+                const logcreated = yield logs_services_1.default.checkViewPropertyLogs(createdById, client_1.LogType.VIEW, propertyId);
+                if (logcreated)
+                    res.status(200).json({ message: "property viewed have been logged already" });
+                const log = yield logs_services_1.default.createLog({
+                    propertyId,
+                    events: "Property Viewing",
+                    createdById,
+                    type: client_1.LogType.VIEW
+                });
+                return res.status(200).json(log);
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

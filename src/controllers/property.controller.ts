@@ -1,10 +1,12 @@
-import { Request, Response } from "express";
+import {Response } from "express";
 import ErrorService from "../services/error.service";
 import PropertyServices from "../services/propertyServices";
 import MaintenanceServices from "../services/maintenance.service";
 import PropertyViewingService from "../services/propertyviewing.service";
 import { createPropertyViewingSchema, updatePropertyViewingSchema } from "../validations/schemas/properties.schema";
 import { CustomRequest } from "../utils/types";
+import LogsServices from "../services/logs.services";
+import { LogType } from ".prisma/client";
 
 
 class PropertyController {
@@ -15,6 +17,33 @@ class PropertyController {
             const properties = await PropertyServices.getProperties()
             if (properties.length < 1) return res.status(200).json({ message: "No Property listed yet" })
             return res.status(200).json(properties)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    viewProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const createdById = req.user?.id;
+            const propertyId = req.params.propertyId;
+            // check props existence
+            const property = await PropertyServices.getPropertyById(propertyId)
+
+            if(!property)  return res.status(400).json({message: "property with the id given doesnt exist"});
+            // check if propertyId have been viewed before by the user 
+            const logcreated = await LogsServices.checkViewPropertyLogs(
+                createdById,
+                LogType.VIEW,
+                propertyId
+            )
+            if (logcreated) res.status(200).json({message: "property viewed have been logged already"});
+
+            const log = await LogsServices.createLog({
+                propertyId,
+                events: "Property Viewing",
+                createdById,
+                type: LogType.VIEW
+            })
+            return res.status(200).json(log)
         } catch (error) {
             ErrorService.handleError(error, res)
         }
