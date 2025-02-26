@@ -290,7 +290,7 @@ class ApplicantService {
   createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {
     const { userId, applicationId, ...rest } = data;
     // Upsert residentialInformation with prevAddresses connected
-    let resInfo = await ResidentialinfoServices.upsertResidentialInformation({...rest, userId});
+    let resInfo = await ResidentialinfoServices.upsertResidentialInformation({...rest, userId}, applicationId);
     
     // Update the application with the new or updated residential info
     const updatedApplication = await prismaClient.application.update({

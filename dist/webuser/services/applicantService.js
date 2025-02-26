@@ -258,7 +258,7 @@ class ApplicantService {
         this.createOrUpdateResidentialInformation = (data) => __awaiter(this, void 0, void 0, function* () {
             const { userId, applicationId } = data, rest = __rest(data, ["userId", "applicationId"]);
             // Upsert residentialInformation with prevAddresses connected
-            let resInfo = yield residentialinfo_services_1.default.upsertResidentialInformation(Object.assign(Object.assign({}, rest), { userId }));
+            let resInfo = yield residentialinfo_services_1.default.upsertResidentialInformation(Object.assign(Object.assign({}, rest), { userId }), applicationId);
             // Update the application with the new or updated residential info
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },

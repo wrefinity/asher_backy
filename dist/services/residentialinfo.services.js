@@ -21,10 +21,11 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const client_1 = require(".prisma/client");
 class ResidentialInformationService {
     constructor() {
         // Upsert Residential Information
-        this.upsertResidentialInformation = (data) => __awaiter(this, void 0, void 0, function* () {
+        this.upsertResidentialInformation = (data_1, ...args_1) => __awaiter(this, [data_1, ...args_1], void 0, function* (data, applicationId = null) {
             const { id, prevAddresses } = data, rest = __rest(data, ["id", "prevAddresses"]);
             if (id) {
                 // Check if the residentialInformation exists
@@ -55,7 +56,7 @@ class ResidentialInformationService {
             }
             else {
                 // Perform create if ID does not exist
-                return yield __1.prismaClient.residentialInformation.create({
+                const residential = yield __1.prismaClient.residentialInformation.create({
                     data: Object.assign(Object.assign({}, rest), { prevAddresses: prevAddresses
                             ? {
                                 create: prevAddresses.map((address) => ({
@@ -65,6 +66,15 @@ class ResidentialInformationService {
                             }
                             : undefined }),
                 });
+                if (residential) {
+                    yield __1.prismaClient.application.update({
+                        where: { id: applicationId },
+                        data: {
+                            lastStep: client_1.ApplicationSaveState.RESIDENTIAL_ADDRESS,
+                        },
+                    });
+                }
+                return residential;
             }
         });
         // Get Residential Information by ID

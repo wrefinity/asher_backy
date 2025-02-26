@@ -1,10 +1,10 @@
 import { prismaClient } from "..";
 import { ResidentialInformationIF } from "../webuser/schemas/types";
-
+import { ApplicationSaveState } from ".prisma/client";
 
 class ResidentialInformationService {
   // Upsert Residential Information
-upsertResidentialInformation = async (data: ResidentialInformationIF) => {
+upsertResidentialInformation = async (data: ResidentialInformationIF, applicationId: string =null) => {
   const { id, prevAddresses, ...rest } = data;
 
   if (id) {
@@ -40,7 +40,7 @@ upsertResidentialInformation = async (data: ResidentialInformationIF) => {
     });
   } else {
     // Perform create if ID does not exist
-    return await prismaClient.residentialInformation.create({
+    const residential = await prismaClient.residentialInformation.create({
       data: {
         ...rest,
         prevAddresses: prevAddresses
@@ -53,6 +53,15 @@ upsertResidentialInformation = async (data: ResidentialInformationIF) => {
           : undefined,
       },
     });
+    if (residential){
+      await prismaClient.application.update({
+        where: { id: applicationId },
+        data: {
+          lastStep: ApplicationSaveState.RESIDENTIAL_ADDRESS,
+        },
+      });
+    }
+    return residential;
   }
 };
 
