@@ -24,14 +24,31 @@ enum InvitedStatus {
   NO
 }
 
+enum ApplicationSaveState {
+  PERSONAL_KIN
+  REFEREE
+  EMPLOYMENT
+  EMERGENCY_CONTACT
+  RESIDENTIAL_ADDRESS
+  DOCUMENT_UPLOAD
+}
+
 model application {
-  id            String            @id @default(cuid())
-  // leaseStartDate  DateTime?
-  // leaseEndDate    DateTime?
-  // moveInDate      DateTime?
-  // rentAmount      Decimal?
-  // securityDeposit Decimal?
-  // leaseTerm       String?
+  id String @id @default(cuid())
+
+  // state of application
+  lastStep ApplicationSaveState? @default(PERSONAL_KIN)
+
+  // start of property related
+  leaseStartDate  DateTime?
+  leaseEndDate    DateTime?
+  propertyType    String?
+  moveInDate      DateTime?
+  rentAmountPaid  Decimal?
+  securityDeposit Decimal?
+  leaseTerm       String?
+  // end of property relates
+
   status        ApplicationStatus @default(PENDING)
   invited       InvitedStatus?    @default(NO)
   stepCompleted Int?              @default(1)
@@ -77,23 +94,26 @@ model application {
 }
 
 model applicantPersonalDetails {
-  id                 String        @id @default(cuid())
+  id                 String   @id @default(cuid())
   title              String
   firstName          String
   middleName         String?
   lastName           String
   dob                DateTime
-  email              String?        @unique
+  email              String?  @unique
   phoneNumber        String
   maritalStatus      String
   nationality        String?
   identificationType String?
-  issuingAuthority   String?
-  expiryDate         DateTime
-  application        application[]
-  nextOfKin          nextOfKin[]
-  user               users?        @relation(fields: [userId], references: [id])
-  userId             String? // Ensure this is nullable
+  // additions
+  identificationNo   String?
+
+  issuingAuthority String?
+  expiryDate       DateTime
+  application      application[]
+  nextOfKin        nextOfKin[]
+  user             users?        @relation(fields: [userId], references: [id])
+  userId           String? // Ensure this is nullable
 }
 
 model nextOfKin {
@@ -199,6 +219,8 @@ model document {
   id           String   @id @default(cuid())
   documentName String
   documentUrl  String
+  type         String?
+  size         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -228,6 +250,7 @@ model EmploymentInformation {
   others               String?
   pension              String?
   moreDetails          String?
+  employerName         String?
   employerCompany      String?
   employerEmail        String?
   employerPhone        String?
@@ -260,7 +283,7 @@ model applicationInvites {
 
 model applicationQuestions {
   id                   String       @id @default(cuid())
-  havePet              AnswersEnum? @default(NO)
+  havePet              String?
   youSmoke             AnswersEnum? @default(NO)
   requireParking       AnswersEnum? @default(NO)
   haveOutstandingDebts AnswersEnum? @default(NO)

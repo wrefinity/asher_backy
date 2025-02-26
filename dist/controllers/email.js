@@ -49,7 +49,7 @@ class EmailController {
                 // Fetch sender details
                 const receiver = yield emailService_1.default.checkUserEmailExists(value.receiverEmail);
                 if (!receiver) {
-                    throw new Error('Reciever email not found');
+                    throw new Error('Receiver email not found');
                 }
                 // unnecessary fields from the value object (without mutating it)
                 const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls } = value, emailData = __rest(value, ["cloudinaryUrls", "cloudinaryVideoUrls", "cloudinaryDocumentUrls", "cloudinaryAudioUrls"]);
@@ -142,8 +142,16 @@ class EmailController {
     }
     getUserSentEmails(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d;
             try {
-                const email = String(req.user.email);
+                let email = null;
+                if ((_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant) === null || _b === void 0 ? void 0 : _b.id) {
+                    const tenant = yield tenant_service_1.default.getTenantById((_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.tenant) === null || _d === void 0 ? void 0 : _d.id);
+                    email = tenant === null || tenant === void 0 ? void 0 : tenant.tenantWebUserEmail;
+                }
+                else {
+                    email = String(req.user.email);
+                }
                 const emails = yield emailService_1.default.getUserEmails(email, { sent: true });
                 if (emails.length < 1)
                     return res.status(200).json({ message: "No sent emails" });

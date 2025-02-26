@@ -196,21 +196,21 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
       const applicationId = req.params.applicationId;
-      const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls } = value;
+      const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls } = value;
       // Check if all three URLs are empty
       if (!cloudinaryUrls && !cloudinaryVideoUrls && !cloudinaryDocumentUrls) {
         // Prompt the user for the document URL if all are empty
         return res.status(400).json({
-          message: "Please provide a document URL. Either cloudinaryUrls, cloudinaryVideoUrls, or cloudinaryDocumentUrls must be supplied."
+          message: "Please provide a document URL. Either cloudinaryUrls, cloudinaryVideoUrls, cloudinaryAudioUrls, or cloudinaryDocumentUrls must be supplied."
         });
       }
       // Proceed with the rest of your logic
       const documentUrl = cloudinaryUrls || cloudinaryVideoUrls || cloudinaryDocumentUrls;
 
-
       delete value['cloudinaryUrls']
       delete value['cloudinaryVideoUrls']
       delete value['cloudinaryDocumentUrls']
+      delete value['cloudinaryAudioUrls']
 
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {

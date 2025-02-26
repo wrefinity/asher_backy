@@ -1,3 +1,6 @@
+import {InvitedStatus } from ".prisma/client";
+
+
 interface BaseIF {
   id?: string | null;
   applicationId?: string;
@@ -19,7 +22,6 @@ export interface NextOfKinIF {
 export interface ApplicantPersonalDetailsIF {
   id?: string | null;
   title: string;
-  invited: string;
   firstName: string;
   middleName?: string | null;
   lastName: string;
@@ -33,7 +35,15 @@ export interface ApplicantPersonalDetailsIF {
   identificationNo?: string,
   issuingAuthority: string,
   expiryDate: Date
-  userId?: string | null;  
+  userId?: string | null; 
+  // props related
+  invited?: InvitedStatus;
+  leaseStartDate?: Date
+  leaseEndDate?: Date
+  moveInDate?: Date
+  rentAmountPaid?: Number
+  securityDeposit?: Number;
+  //end of props related
 }
 
 
@@ -72,6 +82,8 @@ export interface RefreeIF extends BaseIF {
 }
 export interface AppDocumentIF extends BaseIF {
   documentName: string;
+  type?: string;
+  size?: string;
   documentUrl: string;
   updatedAt: Date;
 }
@@ -120,6 +132,7 @@ export interface EmploymentInformationIF extends BaseIF {
   pension?: string | null;
   moreDetails?: string | null;
   employerCompany?: string | null;
+  employerName?: string | null;
   employerEmail?: string | null;
   employerPhone?: string | null;
   positionTitle?: string | null;

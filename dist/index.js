@@ -74,9 +74,9 @@ class Server {
             ws.on("message", (message) => {
                 try {
                     const data = JSON.parse(message.toString());
-                    if (typeof data === "object" && (data === null || data === void 0 ? void 0 : data.event) === "register" && (data === null || data === void 0 ? void 0 : data.recieverEmail)) {
-                        exports.userSockets.set(data === null || data === void 0 ? void 0 : data.recieverEmail, ws);
-                        console.log(`User ${data.recieverEmail} connected`);
+                    if (typeof data === "object" && (data === null || data === void 0 ? void 0 : data.event) === "register" && (data === null || data === void 0 ? void 0 : data.receiverEmail)) {
+                        exports.userSockets.set(data === null || data === void 0 ? void 0 : data.receiverEmail, ws);
+                        console.log(`User ${data.receiverEmail} connected`);
                     }
                 }
                 catch (error) {
@@ -96,9 +96,16 @@ class Server {
     }
     sendToUser(email, event, data) {
         const socket = exports.userSockets.get(email);
-        if (socket && socket.readyState === ws_1.WebSocket.OPEN) {
-            socket.send(JSON.stringify({ event, data }));
+        if (!socket) {
+            console.error(`No WebSocket connection found for user: ${email}`);
+            return;
         }
+        if (socket.readyState !== ws_1.WebSocket.OPEN) {
+            console.error(`WebSocket for user ${email} is not open`);
+            return;
+        }
+        console.log(`Sending WebSocket message to: ${email}, Event: ${event}`);
+        socket.send(JSON.stringify({ event, data }));
     }
     configureRoutes() {
         // Add routes here

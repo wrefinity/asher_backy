@@ -31,7 +31,7 @@ class EmailController {
             // Fetch sender details
             const receiver = await EmailService.checkUserEmailExists(value.receiverEmail);
             if (!receiver) {
-                throw new Error('Reciever email not found');
+                throw new Error('Receiver email not found');
             }
 
             // unnecessary fields from the value object (without mutating it)
@@ -124,7 +124,14 @@ class EmailController {
 
     async getUserSentEmails(req: CustomRequest, res: Response) {
         try {
-            const email = String(req.user.email);
+            let email = null;
+
+            if (req.user?.tenant?.id) {
+                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
+                email = tenant?.tenantWebUserEmail;
+            } else {
+                email = String(req.user.email);
+            }
             const emails = await EmailService.getUserEmails(email, { sent: true })
             if (emails.length < 1) return res.status(200).json({ message: "No sent emails" })
             return res.status(200).json(emails)
