@@ -35,6 +35,14 @@ const personaldetails_services_1 = __importDefault(require("../../services/perso
 const nextkin_services_1 = __importDefault(require("../../services/nextkin.services"));
 class ApplicantService {
     constructor() {
+        this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
+            yield __1.prismaClient.application.update({
+                where: { id: applicationId },
+                data: {
+                    lastStep
+                },
+            });
+        });
         this.incrementStepCompleted = (applicationId, newField) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             // Fetch the current application details with relevant relationships
@@ -43,6 +51,7 @@ class ApplicantService {
                 include: {
                     residentialInfo: true,
                     guarantorInformation: true,
+                    applicationQuestions: true,
                     emergencyInfo: true,
                     employmentInfo: true,
                     documents: true,
@@ -54,31 +63,42 @@ class ApplicantService {
             }
             // Initialize the step increment to the current stepCompleted value
             let stepIncrement = (_a = application.stepCompleted) !== null && _a !== void 0 ? _a : 1;
-            // Check if the new field is not connected and increment accordingly
+            // Check if the new field is connected and increment accordingly
             switch (newField) {
                 case 'residentialInfo':
-                    if (!application.residentialInfo)
+                    if (application.hasOwnProperty('residentialInfo') && application.residentialInfo) {
                         stepIncrement += 1;
+                    }
+                    break;
+                case 'additionalInfo':
+                    if (application.hasOwnProperty('applicationQuestions') && application.applicationQuestions) {
+                        stepIncrement += 1;
+                    }
                     break;
                 case 'guarantorInformation':
-                    if (!application.guarantorInformation)
+                    if (application.hasOwnProperty('guarantorInformation') && application.guarantorInformation) {
                         stepIncrement += 1;
+                    }
                     break;
                 case 'emergencyInfo':
-                    if (!application.emergencyInfo)
+                    if (application.hasOwnProperty('emergencyInfo') && application.emergencyInfo) {
                         stepIncrement += 1;
+                    }
                     break;
                 case 'employmentInfo':
-                    if (!application.employmentInfo)
+                    if (application.hasOwnProperty('employmentInfo') && application.employmentInfo) {
                         stepIncrement += 1;
+                    }
                     break;
                 case 'refereeInfo':
-                    if (!application.referee)
+                    if (application.hasOwnProperty('referee') && application.referee) {
                         stepIncrement += 1;
+                    }
                     break;
                 case 'documents':
-                    if (application.documents.length <= 1)
+                    if (application.hasOwnProperty('documents') && application.documents.length == 0) {
                         stepIncrement += 1;
+                    }
                     break;
                 default:
                     throw new Error(`Invalid field: ${newField}`);
@@ -87,7 +107,7 @@ class ApplicantService {
             if (stepIncrement !== application.stepCompleted) {
                 yield __1.prismaClient.application.update({
                     where: { id: applicationId },
-                    data: { stepCompleted: stepIncrement },
+                    data: { stepCompleted: { increment: 1 } },
                 });
             }
         });
@@ -177,7 +197,7 @@ class ApplicantService {
         });
         this.createOrUpdateGuarantor = (data) => __awaiter(this, void 0, void 0, function* () {
             const { id, applicationId, userId } = data, rest = __rest(data, ["id", "applicationId", "userId"]);
-            const guarantorInfo = yield guarantor_services_1.default.upsertGuarantorInfo(Object.assign(Object.assign({}, rest), { id, userId }));
+            const guarantorInfo = yield guarantor_services_1.default.upsertGuarantorInfo(Object.assign(Object.assign({}, rest), { id, userId }), applicationId);
             // Find the application associated with the guarantor
             yield __1.prismaClient.application.findUnique({
                 where: { id: applicationId },
@@ -192,13 +212,12 @@ class ApplicantService {
                     },
                 },
             });
-            yield this.incrementStepCompleted(applicationId, "guarantorInformation");
             return Object.assign(Object.assign({}, guarantorInfo), updatedApplication);
         });
         this.createOrUpdateEmergencyContact = (data) => __awaiter(this, void 0, void 0, function* () {
             const { applicationId, id, userId } = data, rest = __rest(data, ["applicationId", "id", "userId"]);
             // Upsert the emergency contact information
-            const emergencyInfo = yield emergencyinfo_services_1.default.upsertEmergencyContact(Object.assign(Object.assign({}, rest), { id, userId }));
+            const emergencyInfo = yield emergencyinfo_services_1.default.upsertEmergencyContact(Object.assign(Object.assign({}, rest), { id, userId }), applicationId);
             // Update the application with the new or updated emergency contact information
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
@@ -208,13 +227,13 @@ class ApplicantService {
                     },
                 },
             });
-            yield this.incrementStepCompleted(applicationId, "emergencyInfo");
             return Object.assign(Object.assign({}, emergencyInfo), updatedApplication);
         });
         this.createOrUpdateReferees = (data) => __awaiter(this, void 0, void 0, function* () {
             const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
             // Upsert the emergency contact information
-            const refereesInfo = yield referees_services_1.default.upsertRefereeInfo(Object.assign(Object.assign({}, rest), { id }));
+            const refereesInfo = yield referees_services_1.default.upsertRefereeInfo(Object.assign(Object.assign({}, rest), { id }), applicationId);
+            console.log(refereesInfo);
             // Update the application with the new or updated referee information
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
@@ -224,7 +243,6 @@ class ApplicantService {
                     },
                 },
             });
-            yield this.incrementStepCompleted(applicationId, "refereeInfo");
             return Object.assign(Object.assign({}, refereesInfo), updatedApplication);
         });
         this.createOrUpdateApplicationDoc = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -268,12 +286,11 @@ class ApplicantService {
                     },
                 },
             });
-            yield this.incrementStepCompleted(applicationId, "residentialInfo");
             return Object.assign(Object.assign({}, resInfo), updatedApplication);
         });
         this.createOrUpdateEmploymentInformation = (data) => __awaiter(this, void 0, void 0, function* () {
             const { id, applicationId, userId } = data, rest = __rest(data, ["id", "applicationId", "userId"]);
-            const empInfo = yield employmentinfo_services_1.default.upsertEmploymentInfo(Object.assign(Object.assign({}, rest), { id, userId }));
+            const empInfo = yield employmentinfo_services_1.default.upsertEmploymentInfo(Object.assign(Object.assign({}, rest), { id, userId }), applicationId);
             if (!empInfo) {
                 throw new Error(`Failed to create or update EmploymentInformation`);
             }
@@ -288,6 +305,27 @@ class ApplicantService {
             });
             yield this.incrementStepCompleted(applicationId, "employmentInfo");
             return Object.assign(Object.assign({}, empInfo), updatedApplication);
+        });
+        this.createOrUpdateAdditionalInformation = (data) => __awaiter(this, void 0, void 0, function* () {
+            const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
+            // Check if an ID is provided
+            if (id) {
+                return yield __1.prismaClient.applicationQuestions.update({
+                    where: { id },
+                    data: rest,
+                });
+            }
+            else {
+                // Create a new record since no ID was provided
+                const newRecord = yield __1.prismaClient.applicationQuestions.create({
+                    data: Object.assign({ application: { connect: { id: applicationId } } }, rest),
+                });
+                if (newRecord) {
+                    yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.ADDITIONAL_INFO);
+                    yield this.incrementStepCompleted(applicationId, "additionalInfo");
+                }
+                return newRecord;
+            }
         });
         this.deleteApplicant = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.application.update({
@@ -316,6 +354,7 @@ class ApplicantService {
                     properties: true,
                     personalDetails: true,
                     guarantorInformation: true,
+                    applicationQuestions: true
                 },
             });
         });

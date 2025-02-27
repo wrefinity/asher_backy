@@ -19,12 +19,17 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
+const client_1 = require("@prisma/client");
 class EmploymentService {
     constructor() {
         // Upsert Employment Information
-        this.upsertEmploymentInfo = (data) => __awaiter(this, void 0, void 0, function* () {
+        this.upsertEmploymentInfo = (data_1, ...args_1) => __awaiter(this, [data_1, ...args_1], void 0, function* (data, applicationId = null) {
             const { userId, id } = data, rest = __rest(data, ["userId", "id"]);
             if (id) {
                 // Check if the employment record exists
@@ -40,9 +45,14 @@ class EmploymentService {
             }
             else {
                 // Perform create if ID does not exist
-                return yield __1.prismaClient.employmentInformation.create({
+                const employmentInfo = yield __1.prismaClient.employmentInformation.create({
                     data: Object.assign(Object.assign({}, rest), { user: userId ? { connect: { id: userId } } : undefined }),
                 });
+                if (employmentInfo) {
+                    yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.EMPLOYMENT);
+                    yield applicantService_1.default.incrementStepCompleted(applicationId, "employmentInfo");
+                }
+                return employmentInfo;
             }
         });
         // Get Employment Information by userId

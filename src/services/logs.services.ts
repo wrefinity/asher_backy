@@ -30,11 +30,17 @@ class LogService {
     });
   }
 
-  checkViewPropertyLogs = async (createdById: string, type: LogType, propertyId:string)=>{
+  checkPropertyLogs = async (createdById: string, type: LogType, propertyId:string)=>{
     return await prismaClient.log.findFirst({
       where:{type, propertyId, createdById},
     })
   }
+  getMilestone = async (createdById: string, type: LogType, propertyId:string)=>{
+    return await prismaClient.log.findMany({
+      where:{type, propertyId, createdById},
+    })
+  }
+ 
   getLogsByProperty = async (propertyId: string) => {
     return await prismaClient.log.findMany({
       where: {

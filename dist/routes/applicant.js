@@ -18,12 +18,14 @@ class ApplicantRoutes {
     initializeRoutes() {
         this.router.post('/:propertiesId', this.authenticateService.authorize, applicant_1.default.createOrUpdateApplicantBioData);
         this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, applicant_1.default.getPropertyApplicationFee);
+        this.router.get('/milestones/:propertyId', this.authenticateService.authorize, applicant_1.default.getApplicationPropsMilestone);
         this.router.get('/pending', this.authenticateService.authorize, applicant_1.default.getPendingApplications);
         this.router.post('/complete/:applicationId', this.authenticateService.authorize, applicant_1.default.completeApplication);
         this.router.post('/guarantor/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateGuarantor);
         this.router.post('/emergency-contact/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateEmergencyContact);
         this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateEmploymentInformation);
         this.router.post('/residential-info/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateResidentialInformation);
+        this.router.post('/additional-info/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateAdditionInfo);
         this.router.post('/referees/:applicationId', this.authenticateService.authorize, applicant_1.default.createOrUpdateRefree);
         this.router.post('/document/:applicationId', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, applicant_1.default.createApplicantionDocument);
         this.router.get('/:id', this.authenticateService.authorize, applicant_1.default.getApplication);

@@ -1,4 +1,4 @@
-import {InvitedStatus } from ".prisma/client";
+import {InvitedStatus, AnswersEnum } from ".prisma/client";
 
 
 interface BaseIF {
@@ -114,6 +114,15 @@ export interface ResidentialInformationIF extends BaseIF {
 
 
 
+export interface AdditionalInformationIF extends BaseIF {
+  havePet?: AnswersEnum | null;
+  youSmoke?:AnswersEnum | null, 
+  requireParking?: AnswersEnum | null;
+  haveOutstandingDebts?: AnswersEnum | null;
+  additionalOccupants?: string | null;
+  additionalInformation?: string | null;
+
+}
 export interface EmploymentInformationIF extends BaseIF {
   employmentStatus: string;
   taxCredit?: string | null;
@@ -132,7 +141,6 @@ export interface EmploymentInformationIF extends BaseIF {
   pension?: string | null;
   moreDetails?: string | null;
   employerCompany?: string | null;
-  employerName?: string | null;
   employerEmail?: string | null;
   employerPhone?: string | null;
   positionTitle?: string | null;

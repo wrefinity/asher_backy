@@ -31,6 +31,8 @@ enum ApplicationSaveState {
   EMERGENCY_CONTACT
   RESIDENTIAL_ADDRESS
   DOCUMENT_UPLOAD
+  ADDITIONAL_INFO
+  GUARANTOR_INFO
 }
 
 model application {
@@ -250,7 +252,6 @@ model EmploymentInformation {
   others               String?
   pension              String?
   moreDetails          String?
-  employerName         String?
   employerCompany      String?
   employerEmail        String?
   employerPhone        String?
@@ -288,6 +289,8 @@ model applicationQuestions {
   requireParking       AnswersEnum? @default(NO)
   haveOutstandingDebts AnswersEnum? @default(NO)
 
+  additionalOccupants String?
+  additionalInformation String?
   applicantId String
   application application @relation(fields: [applicantId], references: [id])
 }

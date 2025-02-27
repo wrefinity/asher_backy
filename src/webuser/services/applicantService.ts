@@ -11,6 +11,7 @@ import NextkinServices from "../../services/nextkin.services";
 import {
   RefreeIF,
   NextOfKinIF,
+  AdditionalInformationIF,
   ApplicantPersonalDetailsIF,
   GuarantorInformationIF,
   EmergencyContactIF,
@@ -22,13 +23,23 @@ import {
 
 class ApplicantService {
 
-  incrementStepCompleted = async (applicationId: string, newField: 'residentialInfo' | 'guarantorInformation' | 'emergencyInfo' | 'employmentInfo' | 'refereeInfo' |'documents') => {
+  updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {
+    await prismaClient.application.update({
+      where: { id: applicationId },
+      data: {
+        lastStep
+      },
+    });
+  }
+
+  incrementStepCompleted = async (applicationId: string, newField: 'residentialInfo' | 'guarantorInformation' | 'emergencyInfo' | 'employmentInfo' | 'refereeInfo' | 'additionalInfo' | 'documents') => {
     // Fetch the current application details with relevant relationships
     const application = await prismaClient.application.findUnique({
       where: { id: applicationId },
       include: {
         residentialInfo: true,
         guarantorInformation: true,
+        applicationQuestions: true,
         emergencyInfo: true,
         employmentInfo: true,
         documents: true,
@@ -43,43 +54,61 @@ class ApplicantService {
     // Initialize the step increment to the current stepCompleted value
     let stepIncrement = application.stepCompleted ?? 1;
 
-    // Check if the new field is not connected and increment accordingly
+    // Check if the new field is connected and increment accordingly
     switch (newField) {
       case 'residentialInfo':
-        if (!application.residentialInfo) stepIncrement += 1;
+        if (application.hasOwnProperty('residentialInfo') && application.residentialInfo) {
+          stepIncrement += 1;
+        }
+        break;
+      case 'additionalInfo':
+        if (application.hasOwnProperty('applicationQuestions') && application.applicationQuestions) {
+          stepIncrement += 1;
+        }
         break;
       case 'guarantorInformation':
-        if (!application.guarantorInformation) stepIncrement += 1;
+        if (application.hasOwnProperty('guarantorInformation') && application.guarantorInformation) {
+          stepIncrement += 1;
+        }
         break;
       case 'emergencyInfo':
-        if (!application.emergencyInfo) stepIncrement += 1;
+        if (application.hasOwnProperty('emergencyInfo') && application.emergencyInfo) {
+          stepIncrement += 1;
+        }
         break;
       case 'employmentInfo':
-        if (!application.employmentInfo) stepIncrement += 1;
+        if (application.hasOwnProperty('employmentInfo') && application.employmentInfo) {
+          stepIncrement += 1;
+        }
         break;
       case 'refereeInfo':
-        if (!application.referee) stepIncrement += 1;
+        if (application.hasOwnProperty('referee') && application.referee) {
+          stepIncrement += 1;
+        }
         break;
       case 'documents':
-        if (application.documents.length <= 1) stepIncrement += 1;
+        if (application.hasOwnProperty('documents') && application.documents.length == 0) {
+          stepIncrement += 1;
+        }
         break;
       default:
         throw new Error(`Invalid field: ${newField}`);
     }
 
+
     // Update the application with the incremented stepCompleted value if it changed
     if (stepIncrement !== application.stepCompleted) {
       await prismaClient.application.update({
         where: { id: applicationId },
-        data: { stepCompleted: stepIncrement },
+        data: { stepCompleted: { increment: 1 } },
       });
     }
   };
 
   createApplication = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
-    const { 
-      title, 
-      firstName, 
+    const {
+      title,
+      firstName,
       invited,
       middleName,
       lastName,
@@ -120,7 +149,7 @@ class ApplicantService {
     } else {
       // Otherwise, create nextOfKin
       const upsertedNextOfKin = await NextkinServices.upsertNextOfKinInfo({
-          ...nextOfKinData  
+        ...nextOfKinData
       });
       nextOfKinId = upsertedNextOfKin.id;
     }
@@ -141,7 +170,7 @@ class ApplicantService {
     };
 
     // Check if applicantPersonalDetails already exist by email
-    const existingPersonalDetails = await PersonaldetailsServices.getApplicantPersonalDetailsByEmail(email );
+    const existingPersonalDetails = await PersonaldetailsServices.getApplicantPersonalDetailsByEmail(email);
 
     let upsertedPersonalDetails;
     if (!existingPersonalDetails) {
@@ -193,11 +222,11 @@ class ApplicantService {
 
   createOrUpdateGuarantor = async (data: GuarantorInformationIF) => {
     const { id, applicationId, userId, ...rest } = data;
-    const guarantorInfo = await GuarantorServices.upsertGuarantorInfo({...rest, id, userId});
+    const guarantorInfo = await GuarantorServices.upsertGuarantorInfo({ ...rest, id, userId }, applicationId);
     // Find the application associated with the guarantor
     await prismaClient.application.findUnique({
       where: { id: applicationId },
-      include: { guarantorInformation: true }, 
+      include: { guarantorInformation: true },
     });
 
     // Update the application with the new or updated guarantor information
@@ -209,7 +238,6 @@ class ApplicantService {
         },
       },
     });
-    await this.incrementStepCompleted(applicationId, "guarantorInformation");
     return { ...guarantorInfo, ...updatedApplication };
   }
 
@@ -217,7 +245,7 @@ class ApplicantService {
     const { applicationId, id, userId, ...rest } = data;
 
     // Upsert the emergency contact information
-    const emergencyInfo = await EmergencyinfoServices.upsertEmergencyContact({...rest, id, userId});
+    const emergencyInfo = await EmergencyinfoServices.upsertEmergencyContact({ ...rest, id, userId }, applicationId);
 
     // Update the application with the new or updated emergency contact information
     const updatedApplication = await prismaClient.application.update({
@@ -228,15 +256,14 @@ class ApplicantService {
         },
       },
     });
-    await this.incrementStepCompleted(applicationId, "emergencyInfo");
     return { ...emergencyInfo, ...updatedApplication };
   }
   createOrUpdateReferees = async (data: RefreeIF) => {
     const { id, applicationId, ...rest } = data;
 
     // Upsert the emergency contact information
-    const refereesInfo = await RefereesServices.upsertRefereeInfo({ ...rest, id });
-
+    const refereesInfo = await RefereesServices.upsertRefereeInfo({ ...rest, id }, applicationId);
+    console.log(refereesInfo)
     // Update the application with the new or updated referee information
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
@@ -246,7 +273,6 @@ class ApplicantService {
         },
       },
     });
-    await this.incrementStepCompleted(applicationId, "refereeInfo");
     return { ...refereesInfo, ...updatedApplication };
   }
 
@@ -290,8 +316,8 @@ class ApplicantService {
   createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {
     const { userId, applicationId, ...rest } = data;
     // Upsert residentialInformation with prevAddresses connected
-    let resInfo = await ResidentialinfoServices.upsertResidentialInformation({...rest, userId}, applicationId);
-    
+    let resInfo = await ResidentialinfoServices.upsertResidentialInformation({ ...rest, userId }, applicationId);
+
     // Update the application with the new or updated residential info
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
@@ -301,13 +327,12 @@ class ApplicantService {
         },
       },
     });
-    await this.incrementStepCompleted(applicationId, "residentialInfo");
     return { ...resInfo, ...updatedApplication };
   }
 
   createOrUpdateEmploymentInformation = async (data: EmploymentInformationIF) => {
     const { id, applicationId, userId, ...rest } = data;
-    const empInfo = await EmploymentinfoServices.upsertEmploymentInfo({...rest, id, userId});
+    const empInfo = await EmploymentinfoServices.upsertEmploymentInfo({ ...rest, id, userId }, applicationId);
     if (!empInfo) {
       throw new Error(`Failed to create or update EmploymentInformation`);
     }
@@ -322,8 +347,34 @@ class ApplicantService {
     });
     await this.incrementStepCompleted(applicationId, "employmentInfo");
     return { ...empInfo, ...updatedApplication };
-
   }
+
+
+  createOrUpdateAdditionalInformation = async (data: AdditionalInformationIF) => {
+    const { id, applicationId, ...rest } = data;
+
+    // Check if an ID is provided
+    if (id) {
+      return await prismaClient.applicationQuestions.update({
+        where: { id },
+        data: rest,
+      });
+    } else {
+      // Create a new record since no ID was provided
+      const newRecord = await prismaClient.applicationQuestions.create({
+        data: {
+          application: { connect: { id: applicationId } },
+          ...rest,
+        },
+      });
+      if (newRecord) {
+        await this.updateLastStepStop(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
+        await this.incrementStepCompleted(applicationId, "additionalInfo")
+      }
+      return newRecord;
+    }
+  }
+
 
   deleteApplicant = async (id: string) => {
     return await prismaClient.application.update({
@@ -352,6 +403,7 @@ class ApplicantService {
         properties: true,
         personalDetails: true,
         guarantorInformation: true,
+        applicationQuestions: true
       },
     });
   }

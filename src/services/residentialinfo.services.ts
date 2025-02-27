@@ -1,6 +1,7 @@
 import { prismaClient } from "..";
 import { ResidentialInformationIF } from "../webuser/schemas/types";
 import { ApplicationSaveState } from ".prisma/client";
+import ApplicantService from "../webuser/services/applicantService";
 
 class ResidentialInformationService {
   // Upsert Residential Information
@@ -54,12 +55,8 @@ upsertResidentialInformation = async (data: ResidentialInformationIF, applicatio
       },
     });
     if (residential){
-      await prismaClient.application.update({
-        where: { id: applicationId },
-        data: {
-          lastStep: ApplicationSaveState.RESIDENTIAL_ADDRESS,
-        },
-      });
+      await ApplicantService.incrementStepCompleted(applicationId, "residentialInfo");
+      await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.RESIDENTIAL_ADDRESS);
     }
     return residential;
   }

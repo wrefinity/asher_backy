@@ -87,6 +87,29 @@ const documentSchema = Joi.object({
 });
 
 
+const additionalInfoSchema = Joi.object({
+    id: Joi.string().allow(null).optional(),
+    havePet: Joi.string().valid(
+        'YES',
+        'NO'
+    ).default('NO'),
+    youSmoke: Joi.string().valid(
+        'YES',
+        'NO'
+    ).default('NO'),
+    requireParking: Joi.string().valid(
+        'YES',
+        'NO'
+    ).default('NO'),
+    haveOutstandingDebts: Joi.string().valid(
+        'YES',
+        'NO'
+    ).default('NO'),
+    additionalOccupants: Joi.string().optional(),
+    additionalInformation: Joi.string().optional(),
+});
+
+
 const prevAddressSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     address: Joi.string().required(),
@@ -132,7 +155,6 @@ const employmentInformationSchema = Joi.object({
     pension: Joi.string().optional().allow(null),
     moreDetails: Joi.string().optional().allow(null),
     applicantId: Joi.string().optional(),
-    employerName: Joi.string().optional(),
     employerCompany: Joi.string().optional(),
     employerEmail: Joi.string().optional(),
     employerPhone: Joi.string().optional(),
@@ -148,5 +170,6 @@ export {
     documentSchema,
     prevAddressSchema,
     refreeSchema,
+    additionalInfoSchema,
     residentialInformationSchema
 };

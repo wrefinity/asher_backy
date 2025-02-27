@@ -1,10 +1,12 @@
-import { prismaClient } from "..";
+import { ApplicationSaveState } from ".prisma/client";
+import { prismaClient} from "..";
 import { EmergencyContactIF } from "../webuser/schemas/types";
+import ApplicantService from "../webuser/services/applicantService";
 
 
 class EmergencyContactService {
   // Upsert Emergency Contact Information
-  upsertEmergencyContact = async (data: EmergencyContactIF) => {
+  upsertEmergencyContact = async (data: EmergencyContactIF, applicationId: string = null) => {
     const { userId, id, ...rest } = data;
 
     if (id) {
@@ -25,12 +27,17 @@ class EmergencyContactService {
       });
     } else {
       // Perform create if ID does not exist
-      return await prismaClient.emergencyContact.create({
+      const emergencyContact = await prismaClient.emergencyContact.create({
         data: {
           ...rest,
           user: userId ? { connect: { id: userId } } : undefined,
         },
       });
+      if (emergencyContact) {
+        await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.EMERGENCY_CONTACT )
+        await ApplicantService.incrementStepCompleted(applicationId, "emergencyInfo");
+      }
+      return emergencyContact
     }
   };
 

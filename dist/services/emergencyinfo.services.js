@@ -19,12 +19,17 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require(".prisma/client");
 const __1 = require("..");
+const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
 class EmergencyContactService {
     constructor() {
         // Upsert Emergency Contact Information
-        this.upsertEmergencyContact = (data) => __awaiter(this, void 0, void 0, function* () {
+        this.upsertEmergencyContact = (data_1, ...args_1) => __awaiter(this, [data_1, ...args_1], void 0, function* (data, applicationId = null) {
             const { userId, id } = data, rest = __rest(data, ["userId", "id"]);
             if (id) {
                 // Check if the emergency contact exists
@@ -40,9 +45,14 @@ class EmergencyContactService {
             }
             else {
                 // Perform create if ID does not exist
-                return yield __1.prismaClient.emergencyContact.create({
+                const emergencyContact = yield __1.prismaClient.emergencyContact.create({
                     data: Object.assign(Object.assign({}, rest), { user: userId ? { connect: { id: userId } } : undefined }),
                 });
+                if (emergencyContact) {
+                    yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.EMERGENCY_CONTACT);
+                    yield applicantService_1.default.incrementStepCompleted(applicationId, "emergencyInfo");
+                }
+                return emergencyContact;
             }
         });
         // Get Emergency Contact by userId

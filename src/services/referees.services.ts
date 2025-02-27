@@ -1,10 +1,13 @@
 import { prismaClient } from "..";
 import { RefreeIF } from "../webuser/schemas/types";
+import { ApplicationSaveState } from ".prisma/client";
+import ApplicantService from "../webuser/services/applicantService";
+
 
 
 class RefereeService {
   // Upsert Referee Information
-  upsertRefereeInfo = async (data: RefreeIF) => {
+  upsertRefereeInfo = async (data: RefreeIF, applicationId: string = null) => {
     const { userId, id, ...rest } = data;
 
     if (id) {
@@ -25,12 +28,18 @@ class RefereeService {
       });
     } else {
       // Perform create if ID does not exist
-      return await prismaClient.referees.create({
+      const refree = await prismaClient.referees.create({
         data: {
           ...rest,
           user: userId ? { connect: { id: userId } } : undefined,
         },
       });
+
+      if(refree){
+        await ApplicantService.incrementStepCompleted(applicationId, "refereeInfo");
+        await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.REFEREE);
+      }
+      return refree
     }
   };
 

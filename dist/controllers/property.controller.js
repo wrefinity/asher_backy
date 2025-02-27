@@ -42,7 +42,7 @@ class PropertyController {
                 if (!property)
                     return res.status(400).json({ message: "property with the id given doesnt exist" });
                 // check if propertyId have been viewed before by the user 
-                const logcreated = yield logs_services_1.default.checkViewPropertyLogs(createdById, client_1.LogType.VIEW, propertyId);
+                const logcreated = yield logs_services_1.default.checkPropertyLogs(createdById, client_1.LogType.VIEW, propertyId);
                 if (logcreated)
                     res.status(200).json({ message: "property viewed have been logged already" });
                 const log = yield logs_services_1.default.createLog({

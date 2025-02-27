@@ -1,9 +1,11 @@
 import { prismaClient } from "..";
+import ApplicationServices from "../webuser/services/applicantService";
 import { EmploymentInformationIF } from "../webuser/schemas/types";
+import { ApplicationSaveState } from '@prisma/client';
 
 class EmploymentService {
   // Upsert Employment Information
-  upsertEmploymentInfo = async (data: EmploymentInformationIF) => {
+  upsertEmploymentInfo = async (data: EmploymentInformationIF, applicationId: string = null) => {
     const { userId, id, ...rest } = data;
 
     if (id) {
@@ -24,12 +26,17 @@ class EmploymentService {
       });
     } else {
       // Perform create if ID does not exist
-      return await prismaClient.employmentInformation.create({
+      const employmentInfo =  await prismaClient.employmentInformation.create({
         data: {
           ...rest,
           user: userId ? { connect: { id: userId } } : undefined,
         },
       });
+      if(employmentInfo) {
+        await ApplicationServices.updateLastStepStop(applicationId, ApplicationSaveState.EMPLOYMENT )
+        await ApplicationServices.incrementStepCompleted(applicationId, "employmentInfo");
+      }
+      return employmentInfo
     }
   };
 

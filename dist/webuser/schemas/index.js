@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.residentialInformationSchema = exports.refreeSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
+exports.residentialInformationSchema = exports.additionalInfoSchema = exports.refreeSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const nextOfKinSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
@@ -88,6 +88,16 @@ const documentSchema = joi_1.default.object({
     applicantId: joi_1.default.string().optional(),
 });
 exports.documentSchema = documentSchema;
+const additionalInfoSchema = joi_1.default.object({
+    id: joi_1.default.string().allow(null).optional(),
+    havePet: joi_1.default.string().valid('YES', 'NO').default('NO'),
+    youSmoke: joi_1.default.string().valid('YES', 'NO').default('NO'),
+    requireParking: joi_1.default.string().valid('YES', 'NO').default('NO'),
+    haveOutstandingDebts: joi_1.default.string().valid('YES', 'NO').default('NO'),
+    additionalOccupants: joi_1.default.string().optional(),
+    additionalInformation: joi_1.default.string().optional(),
+});
+exports.additionalInfoSchema = additionalInfoSchema;
 const prevAddressSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
     address: joi_1.default.string().required(),
@@ -131,7 +141,6 @@ const employmentInformationSchema = joi_1.default.object({
     pension: joi_1.default.string().optional().allow(null),
     moreDetails: joi_1.default.string().optional().allow(null),
     applicantId: joi_1.default.string().optional(),
-    employerName: joi_1.default.string().optional(),
     employerCompany: joi_1.default.string().optional(),
     employerEmail: joi_1.default.string().optional(),
     employerPhone: joi_1.default.string().optional(),

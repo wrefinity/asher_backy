@@ -17,6 +17,7 @@ const propertyServices_1 = __importDefault(require("../../services/propertyServi
 const schemas_1 = require("../schemas");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const client_1 = require("@prisma/client");
+const logs_services_1 = __importDefault(require("../../services/logs.services"));
 class ApplicantControls {
     constructor() {
         this.getPendingApplications = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -28,6 +29,21 @@ class ApplicantControls {
                 }
                 const pendingApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.PENDING);
                 res.status(200).json({ pendingApplications });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getApplicationPropsMilestone = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const { propertyId } = req.params;
+                if (!userId) {
+                    return res.status(403).json({ error: 'kindly login as applicant' });
+                }
+                const milestones = yield logs_services_1.default.getMilestone(userId, client_1.LogType.APPLICATION, propertyId);
+                res.status(200).json({ milestones });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -100,6 +116,31 @@ class ApplicantControls {
                     return res.status(400).json({ error: error.details[0].message });
                 }
                 const application = yield applicantService_1.default.createApplication(Object.assign(Object.assign({}, value), { userId }), propertiesId, userId);
+                // check if propertyId have been applied before by the user 
+                const logcreated = yield logs_services_1.default.checkPropertyLogs(userId, client_1.LogType.APPLICATION, propertiesId);
+                if (!logcreated) {
+                    yield logs_services_1.default.createLog({
+                        propertyId: propertiesId,
+                        events: "Property Viewing",
+                        createdById: userId,
+                        type: client_1.LogType.APPLICATION
+                    });
+                }
+                return res.status(201).json({ application });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.createOrUpdateAdditionInfo = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const userId = String(req.user.id);
+                const applicationId = req.params.applicationId;
+                const { error, value } = schemas_1.additionalInfoSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const application = yield applicantService_1.default.createOrUpdateAdditionalInformation(Object.assign(Object.assign({}, value), { applicationId }));
                 return res.status(201).json({ application });
             }
             catch (error) {
@@ -255,8 +296,8 @@ class ApplicantControls {
                 if (!existingApplication) {
                     return res.status(400).json({ error: "wrong application id supplied" });
                 }
-                const isCompletd = yield applicantService_1.default.checkApplicationCompleted(applicationId);
-                if (isCompletd) {
+                const isCompleted = yield applicantService_1.default.checkApplicationCompleted(applicationId);
+                if (isCompleted) {
                     return res.status(400).json({ error: "application completed" });
                 }
                 const employmentInformation = yield applicantService_1.default.createOrUpdateEmploymentInformation(Object.assign(Object.assign({}, data), { applicationId, userId }));

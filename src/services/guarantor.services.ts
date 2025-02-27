@@ -1,10 +1,11 @@
 import { prismaClient } from "..";
 import { GuarantorInformationIF } from "../webuser/schemas/types";
-
+import applicantService from "../webuser/services/applicantService";
+import { ApplicationSaveState } from ".prisma/client";
 
 class GuarantorService {
   // Upsert Guarantor Information
-  upsertGuarantorInfo = async (data: GuarantorInformationIF) => {
+  upsertGuarantorInfo = async (data: GuarantorInformationIF, applicationId: string = null) => {
     const { userId, id, ...rest } = data;
 
     if (id) {
@@ -26,7 +27,7 @@ class GuarantorService {
       });
     } else {
       // Perform create if id is not provided
-      return await prismaClient.guarantorInformation.create({
+      const guarantorInfo = await prismaClient.guarantorInformation.create({
         data: {
           ...rest,
           user: {
@@ -34,6 +35,11 @@ class GuarantorService {
           },
         },
       });
+      if(guarantorInfo){
+        await applicantService.incrementStepCompleted(applicationId, "guarantorInformation");
+        await applicantService.updateLastStepStop(applicationId, ApplicationSaveState.GUARANTOR_INFO);
+      }
+      return guarantorInfo
     }
   };
 

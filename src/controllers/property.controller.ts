@@ -30,7 +30,7 @@ class PropertyController {
 
             if(!property)  return res.status(400).json({message: "property with the id given doesnt exist"});
             // check if propertyId have been viewed before by the user 
-            const logcreated = await LogsServices.checkViewPropertyLogs(
+            const logcreated = await LogsServices.checkPropertyLogs(
                 createdById,
                 LogType.VIEW,
                 propertyId

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import ApplicantService from '../services/applicantService';
 import PropertyServices from '../../services/propertyServices';
-import { CustomRequest } from "../../utils/types";
+import {CustomRequest } from "../../utils/types";
 import {
   documentSchema,
   guarantorInformationSchema,
@@ -9,10 +9,12 @@ import {
   employmentInformationSchema,
   applicantPersonalDetailsSchema,
   emergencyContactSchema,
+  additionalInfoSchema,
   refreeSchema,
 } from '../schemas';
 import ErrorService from "../../services/error.service";
-import { ApplicationStatus, PropsSettingType } from '@prisma/client';
+import { ApplicationStatus, LogType, PropsSettingType } from '@prisma/client';
+import LogsServices from '../../services/logs.services';
 
 class ApplicantControls {
 
@@ -28,16 +30,33 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   };
+  getApplicationPropsMilestone = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { propertyId } = req.params;
+      if (!userId) {
+        return res.status(403).json({ error: 'kindly login as applicant' });
+      }
+      const milestones = await LogsServices.getMilestone(
+        userId,
+        LogType.APPLICATION,
+        propertyId
+      )
+      res.status(200).json({milestones });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
 
   getPropertyApplicationFee = async (req: CustomRequest, res: Response) => {
     try {
       const { propertyId } = req.params;
-      
+
       // Validate propertyId
       if (!propertyId) {
         return res.status(500).json({ error: 'Property ID is required.' });
       }
-      
+
       console.log(req.params)
       // Check if property exists
       const property = await PropertyServices.getPropertiesById(propertyId);
@@ -101,11 +120,41 @@ class ApplicantControls {
       const propertyExist = await PropertyServices.getPropertiesById(propertiesId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
 
-      const { error, value} = applicantPersonalDetailsSchema.validate(req.body);
+      const { error, value } = applicantPersonalDetailsSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
       const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
+
+      // check if propertyId have been applied before by the user 
+      const logcreated = await LogsServices.checkPropertyLogs(
+        userId,
+        LogType.APPLICATION,
+        propertiesId
+      )
+      if (!logcreated) {
+        await LogsServices.createLog({
+          propertyId: propertiesId,
+          events: "Property Viewing",
+          createdById: userId,
+          type: LogType.APPLICATION
+        })
+      }
+      return res.status(201).json({ application });
+    } catch (error: unknown) {
+      ErrorService.handleError(error, res)
+    }
+  }
+  createOrUpdateAdditionInfo = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = String(req.user.id);
+      const applicationId = req.params.applicationId;
+
+      const { error, value } = additionalInfoSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
+      }
+      const application = await ApplicantService.createOrUpdateAdditionalInformation({ ...value, applicationId });
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
@@ -270,12 +319,12 @@ class ApplicantControls {
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" });
       }
-      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
-      if (isCompletd) {
+      const isCompleted = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompleted) {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const employmentInformation = await ApplicantService.createOrUpdateEmploymentInformation({ ...data, applicationId, userId});
+      const employmentInformation = await ApplicantService.createOrUpdateEmploymentInformation({ ...data, applicationId, userId });
       return res.status(200).json(employmentInformation);
     } catch (err) {
       ErrorService.handleError(err, res);

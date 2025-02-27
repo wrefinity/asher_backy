@@ -19,12 +19,17 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
+const client_1 = require(".prisma/client");
 class GuarantorService {
     constructor() {
         // Upsert Guarantor Information
-        this.upsertGuarantorInfo = (data) => __awaiter(this, void 0, void 0, function* () {
+        this.upsertGuarantorInfo = (data_1, ...args_1) => __awaiter(this, [data_1, ...args_1], void 0, function* (data, applicationId = null) {
             const { userId, id } = data, rest = __rest(data, ["userId", "id"]);
             if (id) {
                 // Check if the guarantor exists
@@ -42,11 +47,16 @@ class GuarantorService {
             }
             else {
                 // Perform create if id is not provided
-                return yield __1.prismaClient.guarantorInformation.create({
+                const guarantorInfo = yield __1.prismaClient.guarantorInformation.create({
                     data: Object.assign(Object.assign({}, rest), { user: {
                             connect: { id: userId },
                         } }),
                 });
+                if (guarantorInfo) {
+                    yield applicantService_1.default.incrementStepCompleted(applicationId, "guarantorInformation");
+                    yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.GUARANTOR_INFO);
+                }
+                return guarantorInfo;
             }
         });
         // Get Guarantor by userId

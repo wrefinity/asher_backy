@@ -24,8 +24,13 @@ class LogService {
                 },
             });
         });
-        this.checkViewPropertyLogs = (createdById, type, propertyId) => __awaiter(this, void 0, void 0, function* () {
+        this.checkPropertyLogs = (createdById, type, propertyId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.log.findFirst({
+                where: { type, propertyId, createdById },
+            });
+        });
+        this.getMilestone = (createdById, type, propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.log.findMany({
                 where: { type, propertyId, createdById },
             });
         });

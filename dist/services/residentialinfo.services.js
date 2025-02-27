@@ -19,9 +19,13 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
 const client_1 = require(".prisma/client");
+const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
 class ResidentialInformationService {
     constructor() {
         // Upsert Residential Information
@@ -67,12 +71,8 @@ class ResidentialInformationService {
                             : undefined }),
                 });
                 if (residential) {
-                    yield __1.prismaClient.application.update({
-                        where: { id: applicationId },
-                        data: {
-                            lastStep: client_1.ApplicationSaveState.RESIDENTIAL_ADDRESS,
-                        },
-                    });
+                    yield applicantService_1.default.incrementStepCompleted(applicationId, "residentialInfo");
+                    yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.RESIDENTIAL_ADDRESS);
                 }
                 return residential;
             }
