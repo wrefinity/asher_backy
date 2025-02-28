@@ -45,6 +45,31 @@ class ApplicantService {
                 },
             });
         });
+        this.updateCompletedStep = (applicationId, step) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            // Fetch the current application to get the existing completedSteps
+            const application = yield __1.prismaClient.application.findUnique({
+                where: { id: applicationId },
+                select: { completedSteps: true },
+            });
+            // Check if the step already exists in the completedSteps array
+            if ((_a = application === null || application === void 0 ? void 0 : application.completedSteps) === null || _a === void 0 ? void 0 : _a.includes(step)) {
+                console.log(`Step "${step}" already exists in completedSteps. Skipping update.`);
+                return; // Exit the function if the step already exists
+            }
+            // Create a new array with the step added
+            const updatedSteps = [...((application === null || application === void 0 ? void 0 : application.completedSteps) || []), step];
+            // Update the application with the new array
+            yield __1.prismaClient.application.update({
+                where: { id: applicationId },
+                data: {
+                    completedSteps: {
+                        set: updatedSteps, // Replace the array with the updated array
+                    },
+                },
+            });
+            console.log(`Step "${step}" added to completedSteps.`);
+        });
         this.incrementStepCompleted = (applicationId, newField) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             // Fetch the current application details with relevant relationships
@@ -57,7 +82,8 @@ class ApplicantService {
                     emergencyInfo: true,
                     employmentInfo: true,
                     documents: true,
-                    referee: true
+                    referee: true,
+                    declaration: true
                 },
             });
             if (!application) {
@@ -69,6 +95,11 @@ class ApplicantService {
             switch (newField) {
                 case 'residentialInfo':
                     if (application.hasOwnProperty('residentialInfo') && application.residentialInfo) {
+                        stepIncrement += 1;
+                    }
+                    break;
+                case 'declaration':
+                    if (application.hasOwnProperty('declaration') && application.declaration) {
                         stepIncrement += 1;
                     }
                     break;
@@ -192,6 +223,7 @@ class ApplicantService {
                     invited,
                     userId,
                     lastStep: client_1.ApplicationSaveState.PERSONAL_KIN,
+                    completedSteps: [client_1.ApplicationSaveState.PERSONAL_KIN],
                     applicantPersonalDetailsId: (_a = upsertedPersonalDetails === null || upsertedPersonalDetails === void 0 ? void 0 : upsertedPersonalDetails.id) !== null && _a !== void 0 ? _a : existingPersonalDetails === null || existingPersonalDetails === void 0 ? void 0 : existingPersonalDetails.id,
                 },
             });
@@ -287,6 +319,8 @@ class ApplicantService {
                 }
             });
             yield this.incrementStepCompleted(applicationId, "documents");
+            yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.DOCUMENT_UPLOAD);
+            yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.DOCUMENT_UPLOAD);
             return Object.assign(Object.assign({}, docInfo), updatedApplication);
         });
         this.createOrUpdateResidentialInformation = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -304,6 +338,38 @@ class ApplicantService {
             });
             return Object.assign(Object.assign({}, resInfo), updatedApplication);
         });
+        this.createOrUpdateDeclaration = (data) => __awaiter(this, void 0, void 0, function* () {
+            const { userId, id, applicationId } = data, rest = __rest(data, ["userId", "id", "applicationId"]);
+            if (id) {
+                // Check if the residentialInformation exists
+                const existingRecord = yield __1.prismaClient.declaration.findFirst({
+                    where: { id }
+                });
+                if (!existingRecord) {
+                    throw new Error(`declaration with ID ${id} does not exist.`);
+                }
+                // Perform update if ID exists
+                return yield __1.prismaClient.declaration.update({
+                    where: { id },
+                    data: Object.assign({}, rest),
+                });
+            }
+            else {
+                // Perform create if ID does not exist
+                const declared = yield __1.prismaClient.declaration.create({
+                    data: Object.assign(Object.assign({}, rest), { application: applicationId
+                            ? { connect: { id: applicationId } }
+                            : undefined }),
+                });
+                if (declared) {
+                    yield this.incrementStepCompleted(applicationId, "declaration");
+                    yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.DECLARATION);
+                    yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.DECLARATION);
+                }
+                return declared;
+            }
+            return;
+        });
         this.createOrUpdateEmploymentInformation = (data) => __awaiter(this, void 0, void 0, function* () {
             const { id, applicationId, userId } = data, rest = __rest(data, ["id", "applicationId", "userId"]);
             const empInfo = yield employmentinfo_services_1.default.upsertEmploymentInfo(Object.assign(Object.assign({}, rest), { id, userId }), applicationId);
@@ -319,7 +385,6 @@ class ApplicantService {
                     },
                 },
             });
-            yield this.incrementStepCompleted(applicationId, "employmentInfo");
             return Object.assign(Object.assign({}, empInfo), updatedApplication);
         });
         this.createOrUpdateAdditionalInformation = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -338,6 +403,7 @@ class ApplicantService {
                 });
                 if (newRecord) {
                     yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.ADDITIONAL_INFO);
+                    yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.ADDITIONAL_INFO);
                     yield this.incrementStepCompleted(applicationId, "additionalInfo");
                 }
                 return newRecord;
@@ -370,7 +436,8 @@ class ApplicantService {
                     properties: true,
                     personalDetails: true,
                     guarantorInformation: true,
-                    applicationQuestions: true
+                    applicationQuestions: true,
+                    declaration: true
                 },
             });
         });
@@ -393,6 +460,8 @@ class ApplicantService {
                     properties: true,
                     personalDetails: true,
                     guarantorInformation: true,
+                    applicationQuestions: true,
+                    declaration: true
                 },
             });
         });
@@ -414,6 +483,7 @@ class ApplicantService {
                     properties: true,
                     referee: true,
                     Log: true,
+                    declaration: true,
                     applicationQuestions: true,
                     personalDetails: {
                         include: {
@@ -450,13 +520,26 @@ class ApplicantService {
                 },
                 include: {
                     user: true,
-                    residentialInfo: true,
-                    emergencyInfo: true,
-                    employmentInfo: true,
-                    documents: true,
-                    properties: true,
-                    personalDetails: true,
+                    residentialInfo: {
+                        include: {
+                            prevAddresses: true,
+                            user: true,
+                        },
+                    },
                     guarantorInformation: true,
+                    emergencyInfo: true,
+                    documents: true,
+                    employmentInfo: true,
+                    properties: true,
+                    referee: true,
+                    Log: true,
+                    declaration: true,
+                    applicationQuestions: true,
+                    personalDetails: {
+                        include: {
+                            nextOfKin: true,
+                        },
+                    },
                 },
             });
         });

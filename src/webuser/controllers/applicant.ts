@@ -11,6 +11,7 @@ import {
   emergencyContactSchema,
   additionalInfoSchema,
   refreeSchema,
+  declarationSchema
 } from '../schemas';
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, LogType, PropsSettingType } from '@prisma/client';
@@ -301,6 +302,42 @@ class ApplicantControls {
 
       const application = await ApplicantService.createOrUpdateApplicationDoc({ ...value, documentUrl: documentUrl[0], applicationId });
       return res.status(201).json({ application });
+    } catch (error: unknown) {
+      ErrorService.handleError(error, res)
+    }
+  }
+  // 
+  createOrUpdateDeclaration = async (req: CustomRequest, res: Response) => {
+    try {
+      const { error, value } = declarationSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
+      }
+      const applicationId = req.params.applicationId;
+      const { cloudinaryUrls } = value;
+      // Check if all three URLs are empty
+      if (!cloudinaryUrls) {
+        return res.status(400).json({
+          message: "kindly sign the document"
+        });
+      }
+      const signature = cloudinaryUrls[0];
+
+      delete value['cloudinaryUrls']
+      delete value['cloudinaryVideoUrls']
+      delete value['cloudinaryDocumentUrls']
+      delete value['cloudinaryAudioUrls']
+
+      const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
+      if (!existingApplication) {
+        return res.status(400).json({ error: "wrong application id supplied" });
+      }
+      const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompletd) {
+        return res.status(400).json({ error: "application completed" });
+      }
+      const declaration = await ApplicantService.createOrUpdateDeclaration({ ...value, signature, applicationId });
+      return res.status(201).json({ declaration });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
     }

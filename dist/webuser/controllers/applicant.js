@@ -274,6 +274,41 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // 
+        this.createOrUpdateDeclaration = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { error, value } = schemas_1.declarationSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const applicationId = req.params.applicationId;
+                const { cloudinaryUrls } = value;
+                // Check if all three URLs are empty
+                if (!cloudinaryUrls) {
+                    return res.status(400).json({
+                        message: "kindly sign the document"
+                    });
+                }
+                const signature = cloudinaryUrls[0];
+                delete value['cloudinaryUrls'];
+                delete value['cloudinaryVideoUrls'];
+                delete value['cloudinaryDocumentUrls'];
+                delete value['cloudinaryAudioUrls'];
+                const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
+                if (!existingApplication) {
+                    return res.status(400).json({ error: "wrong application id supplied" });
+                }
+                const isCompletd = yield applicantService_1.default.checkApplicationCompleted(applicationId);
+                if (isCompletd) {
+                    return res.status(400).json({ error: "application completed" });
+                }
+                const declaration = yield applicantService_1.default.createOrUpdateDeclaration(Object.assign(Object.assign({}, value), { signature, applicationId }));
+                return res.status(201).json({ declaration });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         // done
         this.createOrUpdateResidentialInformation = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {

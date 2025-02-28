@@ -19,7 +19,8 @@ import {
   EmergencyContactIF,
   AppDocumentIF,
   ResidentialInformationIF,
-  EmploymentInformationIF
+  EmploymentInformationIF,
+  DeclarationIF
 } from "../schemas/types"
 import { connect } from "http2";
 
@@ -34,8 +35,36 @@ class ApplicantService {
       },
     });
   }
+  updateCompletedStep = async (applicationId: string, step: ApplicationSaveState) => {
+    // Fetch the current application to get the existing completedSteps
+    const application = await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      select: { completedSteps: true },
+    });
+  
+    // Check if the step already exists in the completedSteps array
+    if (application?.completedSteps?.includes(step)) {
+      console.log(`Step "${step}" already exists in completedSteps. Skipping update.`);
+      return; // Exit the function if the step already exists
+    }
+  
+    // Create a new array with the step added
+    const updatedSteps = [...(application?.completedSteps || []), step];
+  
+    // Update the application with the new array
+    await prismaClient.application.update({
+      where: { id: applicationId },
+      data: {
+        completedSteps: {
+          set: updatedSteps, // Replace the array with the updated array
+        },
+      },
+    });
+  
+    console.log(`Step "${step}" added to completedSteps.`);
+  };
 
-  incrementStepCompleted = async (applicationId: string, newField: 'residentialInfo' | 'guarantorInformation' | 'emergencyInfo' | 'employmentInfo' | 'refereeInfo' | 'additionalInfo' | 'documents') => {
+  incrementStepCompleted = async (applicationId: string, newField: 'residentialInfo' | 'guarantorInformation' | 'emergencyInfo' | 'employmentInfo' | 'refereeInfo' | 'additionalInfo' | 'documents' | 'declaration') => {
     // Fetch the current application details with relevant relationships
     const application = await prismaClient.application.findUnique({
       where: { id: applicationId },
@@ -46,7 +75,8 @@ class ApplicantService {
         emergencyInfo: true,
         employmentInfo: true,
         documents: true,
-        referee: true
+        referee: true,
+        declaration: true
       },
     });
 
@@ -61,6 +91,11 @@ class ApplicantService {
     switch (newField) {
       case 'residentialInfo':
         if (application.hasOwnProperty('residentialInfo') && application.residentialInfo) {
+          stepIncrement += 1;
+        }
+        break;
+      case 'declaration':
+        if (application.hasOwnProperty('declaration') && application.declaration) {
           stepIncrement += 1;
         }
         break;
@@ -217,6 +252,7 @@ class ApplicantService {
         invited,
         userId,
         lastStep: ApplicationSaveState.PERSONAL_KIN,
+        completedSteps: [ApplicationSaveState.PERSONAL_KIN],
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
       },
     });
@@ -332,6 +368,8 @@ class ApplicantService {
       }
     });
     await this.incrementStepCompleted(applicationId, "documents");
+    await this.updateLastStepStop(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
+    await this.updateCompletedStep(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
     return { ...docInfo, ...updatedApplication };
   }
 
@@ -352,6 +390,43 @@ class ApplicantService {
     });
     return { ...resInfo, ...updatedApplication };
   }
+  createOrUpdateDeclaration = async (data: DeclarationIF) => {
+    const { userId, id, applicationId, ...rest } = data;
+    if (id) {
+      // Check if the residentialInformation exists
+      const existingRecord = await prismaClient.declaration.findFirst({
+        where: {id}});
+  
+      if (!existingRecord) {
+        throw new Error(`declaration with ID ${id} does not exist.`);
+      }
+  
+      // Perform update if ID exists
+      return await prismaClient.declaration.update({
+        where: { id },
+        data: {
+          ...rest
+        },
+      });
+    } else {
+      // Perform create if ID does not exist
+      const declared = await prismaClient.declaration.create({
+        data: {
+          ...rest,
+          application: applicationId
+          ? { connect: { id: applicationId } }
+          : undefined,
+        },
+      });
+      if (declared){
+        await this.incrementStepCompleted(applicationId, "declaration");
+        await this.updateLastStepStop(applicationId, ApplicationSaveState.DECLARATION);
+        await this.updateCompletedStep(applicationId, ApplicationSaveState.DECLARATION);
+      }
+      return declared;
+    }
+    return;
+  }
 
   createOrUpdateEmploymentInformation = async (data: EmploymentInformationIF) => {
     const { id, applicationId, userId, ...rest } = data;
@@ -368,7 +443,6 @@ class ApplicantService {
         },
       },
     });
-    await this.incrementStepCompleted(applicationId, "employmentInfo");
     return { ...empInfo, ...updatedApplication };
   }
 
@@ -392,6 +466,7 @@ class ApplicantService {
       });
       if (newRecord) {
         await this.updateLastStepStop(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
+        await this.updateCompletedStep(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
         await this.incrementStepCompleted(applicationId, "additionalInfo")
       }
       return newRecord;
@@ -426,7 +501,8 @@ class ApplicantService {
         properties: true,
         personalDetails: true,
         guarantorInformation: true,
-        applicationQuestions: true
+        applicationQuestions: true,
+        declaration: true
       },
     });
   }
@@ -449,6 +525,8 @@ class ApplicantService {
         properties: true,
         personalDetails: true,
         guarantorInformation: true,
+        applicationQuestions: true,
+        declaration: true
       },
     });
   }
@@ -471,6 +549,7 @@ class ApplicantService {
         properties: true,
         referee: true,
         Log: true,
+        declaration: true,
         applicationQuestions: true,
         personalDetails: {
           include: {
@@ -511,13 +590,26 @@ class ApplicantService {
       },
       include: {
         user: true,
-        residentialInfo: true,
-        emergencyInfo: true,
-        employmentInfo: true,
-        documents: true,
-        properties: true,
-        personalDetails: true,
+        residentialInfo: {
+          include: {
+            prevAddresses: true,
+            user: true,
+          },
+        },
         guarantorInformation: true,
+        emergencyInfo: true,
+        documents: true,
+        employmentInfo: true,
+        properties: true,
+        referee: true,
+        Log: true,
+        declaration: true,
+        applicationQuestions: true,
+        personalDetails: {
+          include: {
+            nextOfKin: true,
+          },
+        },
       },
     });
   }

@@ -16,7 +16,7 @@ const applicantPersonalDetailsSchema = Joi.object({
     firstName: Joi.string().required(),
     middleName: Joi.string().allow(null).optional(),
     lastName: Joi.string().required(),
-    dob: Joi.date().required(),
+    dob: Joi.date().iso().required(),
     invited: Joi.string().valid(
         'YES',
         'NO'
@@ -28,7 +28,7 @@ const applicantPersonalDetailsSchema = Joi.object({
     identificationType: Joi.string().required(),
     identificationNo: Joi.string().required(),
     issuingAuthority: Joi.string().required(),
-    expiryDate: Joi.date().required(),
+    expiryDate: Joi.date().iso().required(),
     nextOfKin: nextOfKinSchema.allow(null).optional(), // Validate nextOfKin using the previous schema
 });
 
@@ -71,6 +71,19 @@ const refreeSchema = Joi.object({
 });
 
 
+const declarationSchema = Joi.object({
+    id: Joi.string().allow(null).optional(),
+    declaration: Joi.string().required(),
+    additionalNotes: Joi.string().optional(),
+    date: Joi.date().iso().required(),
+    cloudinaryUrls: Joi.any().optional(),
+    cloudinaryVideoUrls: Joi.any().optional(),
+    cloudinaryAudioUrls: Joi.any().optional(),
+    cloudinaryDocumentUrls: Joi.any().optional(),
+    createdAt: Joi.date().iso().optional(),
+    updatedAt: Joi.date().iso().optional(),
+    applicantId: Joi.string().optional(),
+});
 const documentSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     documentName: Joi.string().required(),
@@ -81,8 +94,8 @@ const documentSchema = Joi.object({
     cloudinaryVideoUrls: Joi.any().optional(),
     cloudinaryAudioUrls: Joi.any().optional(),
     cloudinaryDocumentUrls: Joi.any().optional(),
-    createdAt: Joi.date().optional(),
-    updatedAt: Joi.date().optional(),
+    createdAt: Joi.date().iso().optional(),
+    updatedAt: Joi.date().iso().optional(),
     applicantId: Joi.string().optional(),
 });
 
@@ -140,7 +153,7 @@ const employmentInformationSchema = Joi.object({
     id: Joi.string().optional().allow(null),
     employmentStatus: Joi.string().required(),
     zipCode: Joi.string().required(),
-    startDate: Joi.date().required(),
+    startDate: Joi.date().iso().required(),
     address: Joi.string().required(),
     city: Joi.string().required(),
     state: Joi.string().required(),
@@ -171,5 +184,6 @@ export {
     prevAddressSchema,
     refreeSchema,
     additionalInfoSchema,
+    declarationSchema,
     residentialInformationSchema
 };

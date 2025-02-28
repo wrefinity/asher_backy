@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.residentialInformationSchema = exports.additionalInfoSchema = exports.refreeSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
+exports.residentialInformationSchema = exports.declarationSchema = exports.additionalInfoSchema = exports.refreeSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const nextOfKinSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
@@ -21,7 +21,7 @@ const applicantPersonalDetailsSchema = joi_1.default.object({
     firstName: joi_1.default.string().required(),
     middleName: joi_1.default.string().allow(null).optional(),
     lastName: joi_1.default.string().required(),
-    dob: joi_1.default.date().required(),
+    dob: joi_1.default.date().iso().required(),
     invited: joi_1.default.string().valid('YES', 'NO').default('NO'),
     email: joi_1.default.string().email().optional(), // Optional as per interface definition
     phoneNumber: joi_1.default.string().required(),
@@ -30,7 +30,7 @@ const applicantPersonalDetailsSchema = joi_1.default.object({
     identificationType: joi_1.default.string().required(),
     identificationNo: joi_1.default.string().required(),
     issuingAuthority: joi_1.default.string().required(),
-    expiryDate: joi_1.default.date().required(),
+    expiryDate: joi_1.default.date().iso().required(),
     nextOfKin: nextOfKinSchema.allow(null).optional(), // Validate nextOfKin using the previous schema
 });
 exports.applicantPersonalDetailsSchema = applicantPersonalDetailsSchema;
@@ -73,6 +73,20 @@ const refreeSchema = joi_1.default.object({
     applicationId: joi_1.default.string().optional(),
 });
 exports.refreeSchema = refreeSchema;
+const declarationSchema = joi_1.default.object({
+    id: joi_1.default.string().allow(null).optional(),
+    declaration: joi_1.default.string().required(),
+    additionalNotes: joi_1.default.string().optional(),
+    date: joi_1.default.date().iso().required(),
+    cloudinaryUrls: joi_1.default.any().optional(),
+    cloudinaryVideoUrls: joi_1.default.any().optional(),
+    cloudinaryAudioUrls: joi_1.default.any().optional(),
+    cloudinaryDocumentUrls: joi_1.default.any().optional(),
+    createdAt: joi_1.default.date().iso().optional(),
+    updatedAt: joi_1.default.date().iso().optional(),
+    applicantId: joi_1.default.string().optional(),
+});
+exports.declarationSchema = declarationSchema;
 const documentSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
     documentName: joi_1.default.string().required(),
@@ -83,8 +97,8 @@ const documentSchema = joi_1.default.object({
     cloudinaryVideoUrls: joi_1.default.any().optional(),
     cloudinaryAudioUrls: joi_1.default.any().optional(),
     cloudinaryDocumentUrls: joi_1.default.any().optional(),
-    createdAt: joi_1.default.date().optional(),
-    updatedAt: joi_1.default.date().optional(),
+    createdAt: joi_1.default.date().iso().optional(),
+    updatedAt: joi_1.default.date().iso().optional(),
     applicantId: joi_1.default.string().optional(),
 });
 exports.documentSchema = documentSchema;
@@ -126,7 +140,7 @@ const employmentInformationSchema = joi_1.default.object({
     id: joi_1.default.string().optional().allow(null),
     employmentStatus: joi_1.default.string().required(),
     zipCode: joi_1.default.string().required(),
-    startDate: joi_1.default.date().required(),
+    startDate: joi_1.default.date().iso().required(),
     address: joi_1.default.string().required(),
     city: joi_1.default.string().required(),
     state: joi_1.default.string().required(),

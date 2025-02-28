@@ -38,6 +38,7 @@ class RefereeService {
       if(refree){
         await ApplicantService.incrementStepCompleted(applicationId, "refereeInfo");
         await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.REFEREE);
+        await ApplicantService.updateCompletedStep(applicationId, ApplicationSaveState.REFEREE);
       }
       return refree
     }

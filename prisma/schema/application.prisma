@@ -33,10 +33,13 @@ enum ApplicationSaveState {
   DOCUMENT_UPLOAD
   ADDITIONAL_INFO
   GUARANTOR_INFO
+  DECLARATION
 }
 
 model application {
-  id String @id @default(cuid())
+  id             String                 @id @default(cuid())
+  // Array of completed states
+  completedSteps ApplicationSaveState[] // Array of completed steps
 
   // state of application
   lastStep ApplicationSaveState? @default(PERSONAL_KIN)
@@ -94,7 +97,8 @@ model application {
 
   applicationQuestions applicationQuestions[]
 
-  Log Log[] @relation("apply")
+  Log         Log[]         @relation("apply")
+  declaration declaration[]
 }
 
 model applicantPersonalDetails {
@@ -286,13 +290,23 @@ model applicationInvites {
 
 model applicationQuestions {
   id                   String       @id @default(cuid())
-  havePet              AnswersEnum?      @default(NO)
+  havePet              AnswersEnum? @default(NO)
   youSmoke             AnswersEnum? @default(NO)
   requireParking       AnswersEnum? @default(NO)
   haveOutstandingDebts AnswersEnum? @default(NO)
 
-  additionalOccupants String?
+  additionalOccupants   String?
   additionalInformation String?
-  applicantId String
-  application application @relation(fields: [applicantId], references: [id])
+  applicantId           String
+  application           application @relation(fields: [applicantId], references: [id])
+}
+
+model declaration {
+  id              String       @id @default(cuid())
+  signature       String
+  declaration     String
+  additionalNotes String?
+  date            DateTime
+  applicantId     String?
+  application     application? @relation(fields: [applicantId], references: [id])
 }

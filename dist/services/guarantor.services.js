@@ -55,6 +55,7 @@ class GuarantorService {
                 if (guarantorInfo) {
                     yield applicantService_1.default.incrementStepCompleted(applicationId, "guarantorInformation");
                     yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.GUARANTOR_INFO);
+                    yield applicantService_1.default.updateCompletedStep(applicationId, client_1.ApplicationSaveState.GUARANTOR_INFO);
                 }
                 return guarantorInfo;
             }

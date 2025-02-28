@@ -50,6 +50,7 @@ class EmergencyContactService {
                 });
                 if (emergencyContact) {
                     yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.EMERGENCY_CONTACT);
+                    yield applicantService_1.default.updateCompletedStep(applicationId, client_1.ApplicationSaveState.EMERGENCY_CONTACT);
                     yield applicantService_1.default.incrementStepCompleted(applicationId, "emergencyInfo");
                 }
                 return emergencyContact;

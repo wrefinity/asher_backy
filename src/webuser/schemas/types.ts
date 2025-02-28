@@ -94,6 +94,16 @@ export interface PrevAddressIF {
   lengthOfResidence: string;
 }
 
+export interface DeclarationIF {
+  id?: string | null;
+  date: Date;
+  declaration: string;
+  signature: string;
+  additionalNotes?: string | null;
+  applicationId?: string;
+  userId?: string | null
+}
+
 export interface ResidentialInformationIF extends BaseIF {
   address: string;
   addressStatus: string;

@@ -50,6 +50,7 @@ class EmploymentService {
                 });
                 if (employmentInfo) {
                     yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.EMPLOYMENT);
+                    yield applicantService_1.default.updateCompletedStep(applicationId, client_1.ApplicationSaveState.EMPLOYMENT);
                     yield applicantService_1.default.incrementStepCompleted(applicationId, "employmentInfo");
                 }
                 return employmentInfo;
