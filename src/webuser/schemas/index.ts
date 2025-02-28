@@ -74,6 +74,7 @@ const refreeSchema = Joi.object({
 const declarationSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     declaration: Joi.string().required(),
+    signature: Joi.string().required(),
     additionalNotes: Joi.string().optional(),
     date: Joi.date().iso().required(),
     cloudinaryUrls: Joi.any().optional(),
