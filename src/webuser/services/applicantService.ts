@@ -8,6 +8,8 @@ import ResidentialinfoServices from "../../services/residentialinfo.services";
 import EmploymentinfoServices from "../../services/employmentinfo.services";
 import PersonaldetailsServices from "../../services/personaldetails.services";
 import NextkinServices from "../../services/nextkin.services";
+import LogsServices from '../../services/logs.services';
+import {LogType} from "@prisma/client"
 import {
   RefreeIF,
   NextOfKinIF,
@@ -19,6 +21,7 @@ import {
   ResidentialInformationIF,
   EmploymentInformationIF
 } from "../schemas/types"
+import { connect } from "http2";
 
 
 class ApplicantService {
@@ -217,6 +220,26 @@ class ApplicantService {
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
       },
     });
+
+    if (app){
+          // check if propertyId have been applied before by the user 
+          const logcreated = await LogsServices.checkPropertyLogs(
+            userId,
+            LogType.APPLICATION,
+            propertiesId, 
+            app?.id
+          )
+          if (!logcreated) {
+            await LogsServices.createLog({
+              propertyId: propertiesId,
+              subjects: "Application Started",
+              events: "Application in progress",
+              createdById: userId,
+              type: LogType.APPLICATION,
+              applicationId: app?.id
+            })
+          }
+    }
     return app;
   };
 
@@ -446,6 +469,9 @@ class ApplicantService {
         documents: true,
         employmentInfo: true,
         properties: true,
+        referee: true,
+        Log: true,
+        applicationQuestions: true,
         personalDetails: {
           include: {
             nextOfKin: true,

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import ApplicantService from '../services/applicantService';
 import PropertyServices from '../../services/propertyServices';
-import {CustomRequest } from "../../utils/types";
+import { CustomRequest } from "../../utils/types";
 import {
   documentSchema,
   guarantorInformationSchema,
@@ -30,21 +30,63 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   };
+  /**
+   * Fetches application property milestones and application details.
+   * @param req - Express request object.
+   * @param res - Express response object.
+  */
   getApplicationPropsMilestone = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user?.id;
-      const { propertyId } = req.params;
+      const { propertyId, applicationId } = req.params;
+
+      // Validate user ID
       if (!userId) {
-        return res.status(403).json({ error: 'kindly login as applicant' });
+        return res.status(403).json({ error: 'Kindly login as an applicant.' });
       }
-      const milestones = await LogsServices.getMilestone(
+
+      // Validate propertyId
+      if (!propertyId) {
+        return res.status(400).json({ error: 'Property ID is required.' });
+      }
+
+      // Fetch property milestones
+      const propsMilestone = await LogsServices.getMilestone(
         userId,
         LogType.APPLICATION,
-        propertyId
-      )
-      res.status(200).json({milestones });
+        propertyId,
+      );
+
+      let application = null;
+      let milestones = propsMilestone;
+
+      // Fetch application milestones if applicationId is provided
+      if (applicationId) {
+        // Validate applicationId
+        if (!applicationId) {
+          return res.status(400).json({ error: 'Application ID is required.' });
+        }
+
+        // Fetch application details
+        application = await ApplicantService.getApplicationById(applicationId);
+
+        // Fetch application-specific milestones
+        const applicationMilestone = await LogsServices.getMilestone(
+          userId,
+          LogType.APPLICATION,
+          propertyId,
+          applicationId,
+        );
+
+        // Combine property and application milestones
+        milestones = [...propsMilestone, ...applicationMilestone];
+      }
+
+      // Return the response
+      res.status(200).json({ milestones, application });
     } catch (error) {
-      ErrorService.handleError(error, res)
+      // Handle errors
+      ErrorService.handleError(error, res);
     }
   };
 
@@ -126,20 +168,7 @@ class ApplicantControls {
       }
       const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
 
-      // check if propertyId have been applied before by the user 
-      const logcreated = await LogsServices.checkPropertyLogs(
-        userId,
-        LogType.APPLICATION,
-        propertiesId
-      )
-      if (!logcreated) {
-        await LogsServices.createLog({
-          propertyId: propertiesId,
-          events: "Property Viewing",
-          createdById: userId,
-          type: LogType.APPLICATION
-        })
-      }
+
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)

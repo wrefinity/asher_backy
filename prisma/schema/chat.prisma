@@ -1,6 +1,5 @@
 // chats schema
 // Define the messages model
-
 enum chatType {
   MAINTENANCE
   APPLICATION

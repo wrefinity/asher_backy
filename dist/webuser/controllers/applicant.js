@@ -34,18 +34,46 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        /**
+         * Fetches application property milestones and application details.
+         * @param req - Express request object.
+         * @param res - Express response object.
+        */
         this.getApplicationPropsMilestone = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
                 const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                const { propertyId } = req.params;
+                const { propertyId, applicationId } = req.params;
+                // Validate user ID
                 if (!userId) {
-                    return res.status(403).json({ error: 'kindly login as applicant' });
+                    return res.status(403).json({ error: 'Kindly login as an applicant.' });
                 }
-                const milestones = yield logs_services_1.default.getMilestone(userId, client_1.LogType.APPLICATION, propertyId);
-                res.status(200).json({ milestones });
+                // Validate propertyId
+                if (!propertyId) {
+                    return res.status(400).json({ error: 'Property ID is required.' });
+                }
+                // Fetch property milestones
+                const propsMilestone = yield logs_services_1.default.getMilestone(userId, client_1.LogType.APPLICATION, propertyId);
+                let application = null;
+                let milestones = propsMilestone;
+                // Fetch application milestones if applicationId is provided
+                if (applicationId) {
+                    // Validate applicationId
+                    if (!applicationId) {
+                        return res.status(400).json({ error: 'Application ID is required.' });
+                    }
+                    // Fetch application details
+                    application = yield applicantService_1.default.getApplicationById(applicationId);
+                    // Fetch application-specific milestones
+                    const applicationMilestone = yield logs_services_1.default.getMilestone(userId, client_1.LogType.APPLICATION, propertyId, applicationId);
+                    // Combine property and application milestones
+                    milestones = [...propsMilestone, ...applicationMilestone];
+                }
+                // Return the response
+                res.status(200).json({ milestones, application });
             }
             catch (error) {
+                // Handle errors
                 error_service_1.default.handleError(error, res);
             }
         });
@@ -116,16 +144,6 @@ class ApplicantControls {
                     return res.status(400).json({ error: error.details[0].message });
                 }
                 const application = yield applicantService_1.default.createApplication(Object.assign(Object.assign({}, value), { userId }), propertiesId, userId);
-                // check if propertyId have been applied before by the user 
-                const logcreated = yield logs_services_1.default.checkPropertyLogs(userId, client_1.LogType.APPLICATION, propertiesId);
-                if (!logcreated) {
-                    yield logs_services_1.default.createLog({
-                        propertyId: propertiesId,
-                        events: "Property Viewing",
-                        createdById: userId,
-                        type: client_1.LogType.APPLICATION
-                    });
-                }
                 return res.status(201).json({ application });
             }
             catch (error) {

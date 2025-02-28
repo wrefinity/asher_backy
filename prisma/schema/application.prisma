@@ -93,6 +93,8 @@ model application {
   updatedBy   users?  @relation("updatedBy", fields: [updatedById], references: [id])
 
   applicationQuestions applicationQuestions[]
+
+  Log Log[] @relation("apply")
 }
 
 model applicantPersonalDetails {

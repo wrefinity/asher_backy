@@ -33,6 +33,8 @@ const residentialinfo_services_1 = __importDefault(require("../../services/resid
 const employmentinfo_services_1 = __importDefault(require("../../services/employmentinfo.services"));
 const personaldetails_services_1 = __importDefault(require("../../services/personaldetails.services"));
 const nextkin_services_1 = __importDefault(require("../../services/nextkin.services"));
+const logs_services_1 = __importDefault(require("../../services/logs.services"));
+const client_2 = require("@prisma/client");
 class ApplicantService {
     constructor() {
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
@@ -193,6 +195,20 @@ class ApplicantService {
                     applicantPersonalDetailsId: (_a = upsertedPersonalDetails === null || upsertedPersonalDetails === void 0 ? void 0 : upsertedPersonalDetails.id) !== null && _a !== void 0 ? _a : existingPersonalDetails === null || existingPersonalDetails === void 0 ? void 0 : existingPersonalDetails.id,
                 },
             });
+            if (app) {
+                // check if propertyId have been applied before by the user 
+                const logcreated = yield logs_services_1.default.checkPropertyLogs(userId, client_2.LogType.APPLICATION, propertiesId, app === null || app === void 0 ? void 0 : app.id);
+                if (!logcreated) {
+                    yield logs_services_1.default.createLog({
+                        propertyId: propertiesId,
+                        subjects: "Application Started",
+                        events: "Application in progress",
+                        createdById: userId,
+                        type: client_2.LogType.APPLICATION,
+                        applicationId: app === null || app === void 0 ? void 0 : app.id
+                    });
+                }
+            }
             return app;
         });
         this.createOrUpdateGuarantor = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -396,6 +412,9 @@ class ApplicantService {
                     documents: true,
                     employmentInfo: true,
                     properties: true,
+                    referee: true,
+                    Log: true,
+                    applicationQuestions: true,
                     personalDetails: {
                         include: {
                             nextOfKin: true,

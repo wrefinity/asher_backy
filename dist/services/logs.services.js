@@ -14,24 +14,34 @@ const client_1 = require("@prisma/client");
 class LogService {
     constructor() {
         this.createLog = (data) => __awaiter(this, void 0, void 0, function* () {
+            const logData = {
+                events: data.events,
+                type: data.type,
+                transactionId: (data === null || data === void 0 ? void 0 : data.transactionId) || undefined,
+                // createdById: data?.createdById || undefined,
+                application: data.applicationId
+                    ? { connect: { id: data.applicationId } }
+                    : undefined,
+            };
+            // Only include propertyId if it is defined
+            if (data.propertyId) {
+                logData.property = { connect: { id: data.propertyId } };
+            }
+            if (data.propertyId) {
+                logData.users = { connect: { id: data.createdById } };
+            }
             return yield __1.prismaClient.log.create({
-                data: {
-                    events: data.events,
-                    propertyId: data.propertyId,
-                    type: data.type,
-                    transactionId: data.transactionId,
-                    createdById: data.createdById,
-                },
+                data: logData,
             });
         });
-        this.checkPropertyLogs = (createdById, type, propertyId) => __awaiter(this, void 0, void 0, function* () {
+        this.checkPropertyLogs = (createdById_1, type_1, propertyId_1, ...args_1) => __awaiter(this, [createdById_1, type_1, propertyId_1, ...args_1], void 0, function* (createdById, type, propertyId, applicationId = null) {
             return yield __1.prismaClient.log.findFirst({
-                where: { type, propertyId, createdById },
+                where: { type, propertyId, createdById, applicationId },
             });
         });
-        this.getMilestone = (createdById, type, propertyId) => __awaiter(this, void 0, void 0, function* () {
+        this.getMilestone = (createdById_1, type_1, propertyId_1, ...args_1) => __awaiter(this, [createdById_1, type_1, propertyId_1, ...args_1], void 0, function* (createdById, type, propertyId, applicationId = null) {
             return yield __1.prismaClient.log.findMany({
-                where: { type, propertyId, createdById },
+                where: { type, propertyId, createdById, applicationId },
             });
         });
         this.getLogsByProperty = (propertyId) => __awaiter(this, void 0, void 0, function* () {

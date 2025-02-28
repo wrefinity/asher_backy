@@ -7,6 +7,7 @@ interface LogIF {
   subjects?: string;
   type?: LogType;
   transactionId?: string;
+  applicationId?: string;
   createdById?: string;
 }
 
@@ -18,26 +19,40 @@ class LogService {
       property: true
     }
   }
+ 
   createLog = async (data: LogIF) => {
-    return await prismaClient.log.create({
-      data: {
-        events: data.events,
-        propertyId: data.propertyId,
-        type: data.type,
-        transactionId: data.transactionId,
-        createdById: data.createdById,
-      },
-    });
-  }
+    const logData: any = {
+      events: data.events,
+      type: data.type,
+      transactionId: data?.transactionId || undefined,
+      // createdById: data?.createdById || undefined,
+      application: data.applicationId
+        ? { connect: { id: data.applicationId } }
+        : undefined,
+    };
 
-  checkPropertyLogs = async (createdById: string, type: LogType, propertyId:string)=>{
+    // Only include propertyId if it is defined
+    if (data.propertyId) {
+      logData.property = { connect: { id: data.propertyId } };
+    }
+    if (data.propertyId) {
+      logData.users= { connect: { id: data.createdById } }
+    }
+
+    return await prismaClient.log.create({
+      data: logData,
+    });
+  };
+  
+
+  checkPropertyLogs = async (createdById: string, type: LogType, propertyId:string, applicationId: string = null)=>{
     return await prismaClient.log.findFirst({
-      where:{type, propertyId, createdById},
+      where:{type, propertyId, createdById, applicationId},
     })
   }
-  getMilestone = async (createdById: string, type: LogType, propertyId:string)=>{
+  getMilestone = async (createdById: string, type: LogType, propertyId:string,  applicationId: string = null)=>{
     return await prismaClient.log.findMany({
-      where:{type, propertyId, createdById},
+      where:{type, propertyId, createdById, applicationId},
     })
   }
  

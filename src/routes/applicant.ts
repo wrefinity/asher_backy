@@ -17,7 +17,7 @@ class ApplicantRoutes {
     private initializeRoutes(): void {
         this.router.post('/:propertiesId', this.authenticateService.authorize, ApplicantControls.createOrUpdateApplicantBioData);
         this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, ApplicantControls.getPropertyApplicationFee);
-        this.router.get('/milestones/:propertyId', this.authenticateService.authorize, ApplicantControls.getApplicationPropsMilestone);
+        this.router.get('/milestones/:propertyId/:applicationId', this.authenticateService.authorize, ApplicantControls.getApplicationPropsMilestone);
         this.router.get('/pending', this.authenticateService.authorize, ApplicantControls.getPendingApplications);
         this.router.post('/complete/:applicationId', this.authenticateService.authorize, ApplicantControls.completeApplication);
         this.router.post('/guarantor/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateGuarantor);
