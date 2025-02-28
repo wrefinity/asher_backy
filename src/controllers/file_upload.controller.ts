@@ -13,13 +13,11 @@ class FileUpload{
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
-            console.log("=====================data===================")
-            console.log(req.body)
-            console.log(value)
             res.status(201).json({
                 "imageUrls": value['cloudinaryUrls'],
                 "videoUrls": value['cloudinaryVideoUrls'],
-                "documentsUrls": value['cloudinaryDocumentUrls']
+                "documentsUrls": value['cloudinaryDocumentUrls'],
+                "cloudinaryAudioUrls": value['cloudinaryAudioUrls']
             });
         } catch (error) {
             ErrorService.handleError(error, res);
