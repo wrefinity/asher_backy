@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const applicantService_1 = __importDefault(require("../services/applicantService"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
+const multerCloudinary_1 = require("../../middlewares/multerCloudinary");
 const schemas_1 = require("../schemas");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const client_1 = require("@prisma/client");
@@ -29,6 +30,30 @@ class ApplicantControls {
                 }
                 const pendingApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.PENDING);
                 res.status(200).json({ pendingApplications });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getApplications = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                if (!userId) {
+                    return res.status(403).json({ error: 'kindly login as applicant' });
+                }
+                const pendingApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.PENDING);
+                const completedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.COMPLETED);
+                const declinedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.DECLINED);
+                const makePaymentApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.MAKEPAYMENT);
+                const acceptedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.ACCEPTED);
+                res.status(200).json({ applications: {
+                        pendingApplications,
+                        completedApplications,
+                        declinedApplications,
+                        makePaymentApplications,
+                        acceptedApplications,
+                    } });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -237,7 +262,51 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
-        // done
+        // Upload Documents Handler
+        this.uploadAppDocuments = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const applicationId = req.params.applicationId;
+                const userId = req.user.id;
+                console.log("Received files:", req.files);
+                // Ensure `req.files` exists and is not empty
+                if (!req.files || Object.keys(req.files).length === 0) {
+                    return res.status(400).json({ error: "No files provided" });
+                }
+                // Convert `req.files` to an array
+                const files = Object.values(req.files).flat();
+                // Validate application existence
+                const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
+                if (!existingApplication) {
+                    return res.status(400).json({ error: "Invalid application ID provided" });
+                }
+                // Validate application completion
+                const isCompleted = yield applicantService_1.default.checkApplicationCompleted(applicationId);
+                if (isCompleted) {
+                    return res.status(400).json({ error: "Application is already completed" });
+                }
+                // Upload files and save metadata
+                const uploadedFiles = yield Promise.all(files.map((file) => __awaiter(this, void 0, void 0, function* () {
+                    const uploadResult = yield (0, multerCloudinary_1.uploadDocsCloudinary)(file);
+                    // Ensure `documentUrl` is always available
+                    if (!uploadResult.secure_url) {
+                        throw new Error("Failed to upload document");
+                    }
+                    // Remove file extension (e.g., ".jpg", ".pdf")
+                    const documentName = file.originalname.replace(/\.[^/.]+$/, "");
+                    return yield applicantService_1.default.createOrUpdateApplicationDoc({
+                        documentName, // File name
+                        type: file.mimetype, // MIME type (e.g., image/jpeg, application/pdf)
+                        size: String(file.size), // File size in bytes
+                        applicationId,
+                        documentUrl: uploadResult.secure_url
+                    });
+                })));
+                return res.status(201).json({ success: true, uploadedFiles });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.createApplicantionDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { error, value } = schemas_1.documentSchema.validate(req.body);

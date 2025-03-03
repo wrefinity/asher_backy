@@ -32,6 +32,39 @@ class PropertyController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.createLikeProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const propertyId = req.params.propertyId;
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                // Check if the property exists
+                const propertyExists = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!propertyExists) {
+                    throw new Error(`Property with ID ${propertyId} does not exist.`);
+                }
+                // check if the user already liked the props 
+                const liked = yield propertyServices_1.default.getLikeHistory(userId, propertyId);
+                if (liked) {
+                    return res.status(400).json({ message: "property alread liked by the current user" });
+                }
+                const likedProps = yield propertyServices_1.default.createLikeHistory(userId, propertyId);
+                return res.status(200).json({ likedProps });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getLikePropertyHistories = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const likedProps = yield propertyServices_1.default.getLikeHistories(userId);
+                return res.status(200).json(likedProps);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.viewProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {

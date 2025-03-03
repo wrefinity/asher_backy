@@ -18,6 +18,8 @@ class PropertyRouter {
         this.router.use("/docs", propertydoc_1.default);
         this.router.use("/apartments", appartment_1.default);
         this.router.get('/property', property_controller_1.default.getProperty);
+        this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, property_controller_1.default.createLikeProperty);
+        this.router.get('/property/user/likes', this.authenticateService.authorize, property_controller_1.default.getLikePropertyHistories);
         this.router.get('/property/:id', property_controller_1.default.getPropertyById);
         this.router.get('/property/state', property_controller_1.default.getPropertyByState);
         this.router.get('/property/listing', property_controller_1.default.getListedProperties);

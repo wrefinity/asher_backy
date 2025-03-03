@@ -349,6 +349,35 @@ class PropertyService {
             // Return true if at least one record exists, otherwise false
             return properties.length > 0;
         });
+        // property liking 
+        this.getLikeHistories = (userId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.userLikedProperty.findMany({
+                where: {
+                    userId,
+                },
+                include: {
+                    user: true,
+                },
+            });
+        });
+        this.getLikeHistory = (userId, propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.userLikedProperty.findUnique({
+                where: {
+                    userId_propertyId: {
+                        userId,
+                        propertyId,
+                    },
+                },
+            });
+        });
+        this.createLikeHistory = (userId, propertyId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.userLikedProperty.create({
+                data: {
+                    userId,
+                    propertyId,
+                },
+            });
+        });
     }
 }
 exports.default = new PropertyService();

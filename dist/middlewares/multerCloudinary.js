@@ -12,10 +12,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadToCloudinary = void 0;
+exports.uploadToCloudinary = exports.uploadDocsCloudinary = void 0;
 const sharp_1 = __importDefault(require("sharp"));
 const cloudinary_1 = __importDefault(require("../configs/cloudinary"));
 const secrets_1 = require("../secrets");
+// Function to upload a file to Cloudinary
+const uploadDocsCloudinary = (file) => __awaiter(void 0, void 0, void 0, function* () {
+    return new Promise((resolve, reject) => {
+        cloudinary_1.default.uploader
+            .upload_stream({ resource_type: "auto", folder: "documents" }, (error, result) => {
+            if (error)
+                return reject(error);
+            resolve(result);
+        })
+            .end(file.buffer);
+    });
+});
+exports.uploadDocsCloudinary = uploadDocsCloudinary;
 const uploadToCloudinary = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const files = req.files || undefined;

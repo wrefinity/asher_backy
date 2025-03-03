@@ -4,6 +4,24 @@ import cloudinary from "../configs/cloudinary";
 import { CustomRequest, CloudinaryFile } from "../utils/types";
 import { CLOUDINARY_FOLDER } from "../secrets";
 
+
+
+
+// Function to upload a file to Cloudinary
+export const uploadDocsCloudinary = async (file: Express.Multer.File) => {
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader
+            .upload_stream(
+                { resource_type: "auto", folder: "documents" },
+                (error, result) => {
+                    if (error) return reject(error);
+                    resolve(result);
+                }
+            )
+            .end(file.buffer);
+    });
+};
+
 export const uploadToCloudinary = async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
         const files = (req.files as { [fieldname: string]: Express.Multer.File[] }) || undefined;

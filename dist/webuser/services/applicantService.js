@@ -294,17 +294,31 @@ class ApplicantService {
             return Object.assign(Object.assign({}, refereesInfo), updatedApplication);
         });
         this.createOrUpdateApplicationDoc = (data) => __awaiter(this, void 0, void 0, function* () {
-            const { id, applicationId } = data, rest = __rest(data, ["id", "applicationId"]);
-            const docInfo = yield __1.prismaClient.document.upsert({
-                where: { id: id !== null && id !== void 0 ? id : '' },
-                update: Object.assign(Object.assign({}, rest), { application: {
-                        connect: { id: applicationId },
-                    } }),
-                create: Object.assign(Object.assign({}, rest), { application: {
-                        connect: { id: applicationId },
-                    } }),
-            });
-            // Update the application with the new or updated document info
+            const { id, applicationId, documentUrl } = data, rest = __rest(data, ["id", "applicationId", "documentUrl"]);
+            if (!documentUrl) {
+                throw new Error("documentUrl is required");
+            }
+            let docInfo = null;
+            if (id) {
+                docInfo = yield __1.prismaClient.document.update({
+                    where: { id },
+                    data: Object.assign(Object.assign({}, rest), { documentUrl, application: {
+                            connect: { id: applicationId },
+                        } }),
+                });
+            }
+            else {
+                docInfo = yield __1.prismaClient.document.create({
+                    data: Object.assign(Object.assign({}, rest), { documentUrl, application: {
+                            connect: { id: applicationId },
+                        } }),
+                });
+                // Update progress
+                yield this.incrementStepCompleted(applicationId, "documents");
+                yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.DOCUMENT_UPLOAD);
+                yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.DOCUMENT_UPLOAD);
+            }
+            // Update application with the new document
             const updatedApplication = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
                 data: {
@@ -316,11 +330,8 @@ class ApplicantService {
                     documents: true,
                     guarantorInformation: true,
                     personalDetails: true,
-                }
+                },
             });
-            yield this.incrementStepCompleted(applicationId, "documents");
-            yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.DOCUMENT_UPLOAD);
-            yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.DOCUMENT_UPLOAD);
             return Object.assign(Object.assign({}, docInfo), updatedApplication);
         });
         this.createOrUpdateResidentialInformation = (data) => __awaiter(this, void 0, void 0, function* () {

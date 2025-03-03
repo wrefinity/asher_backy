@@ -155,6 +155,7 @@ model properties {
   PropertyViewing PropertyViewing[]
 
   @@unique([landlordId, name, stateId, city])
+  UserLikedProperty UserLikedProperty[]
 }
 
 model propApartmentSettings {

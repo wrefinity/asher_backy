@@ -1,4 +1,4 @@
-import {Response } from "express";
+import { Response } from "express";
 import ErrorService from "../services/error.service";
 import PropertyServices from "../services/propertyServices";
 import MaintenanceServices from "../services/maintenance.service";
@@ -21,6 +21,41 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+    createLikeProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId
+            const userId = req.user?.id;
+
+            // Check if the property exists
+            const propertyExists = await PropertyServices.getPropertyById(propertyId);
+
+            if (!propertyExists) {
+                throw new Error(`Property with ID ${propertyId} does not exist.`);
+            }
+
+            // check if the user already liked the props 
+            const liked = await PropertyServices.getLikeHistory(userId, propertyId)
+
+            if (liked) {
+                return res.status(400).json({ message: "property alread liked by the current user" })
+            }
+
+            const likedProps = await PropertyServices.createLikeHistory(userId, propertyId)
+            return res.status(200).json({ likedProps })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    getLikePropertyHistories = async (req: CustomRequest, res: Response) => {
+        try {
+
+            const userId = req.user?.id;
+            const likedProps = await PropertyServices.getLikeHistories(userId)
+            return res.status(200).json(likedProps)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
     viewProperty = async (req: CustomRequest, res: Response) => {
         try {
             const createdById = req.user?.id;
@@ -28,14 +63,14 @@ class PropertyController {
             // check props existence
             const property = await PropertyServices.getPropertyById(propertyId)
 
-            if(!property)  return res.status(400).json({message: "property with the id given doesnt exist"});
+            if (!property) return res.status(400).json({ message: "property with the id given doesnt exist" });
             // check if propertyId have been viewed before by the user 
             const logcreated = await LogsServices.checkPropertyLogs(
                 createdById,
                 LogType.VIEW,
                 propertyId
             )
-            if (logcreated) res.status(200).json({message: "property viewed have been logged already"});
+            if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
 
             const log = await LogsServices.createLog({
                 propertyId,
@@ -108,8 +143,8 @@ class PropertyController {
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
             }
-            const viewing = await PropertyViewingService.createViewing({...value, userId: req.user?.id});
-            res.status(201).json({viewing});
+            const viewing = await PropertyViewingService.createViewing({ ...value, userId: req.user?.id });
+            res.status(201).json({ viewing });
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -117,7 +152,7 @@ class PropertyController {
 
     getAllPropsViewings = async (req: CustomRequest, res: Response) => {
         try {
-            const {propertyId} = req.params;
+            const { propertyId } = req.params;
             const property = await PropertyServices.getPropertyById(propertyId);
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
@@ -141,14 +176,14 @@ class PropertyController {
         }
     }
 
-    updateViewing = async (req: CustomRequest, res: Response) =>{
+    updateViewing = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
             const { error } = updatePropertyViewingSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
             const updatedViewing = await PropertyViewingService.updateViewing(id, req.body);
-            res.json({updatedViewing});
+            res.json({ updatedViewing });
         } catch (error) {
             ErrorService.handleError(error, res)
         }

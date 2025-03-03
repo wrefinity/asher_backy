@@ -336,24 +336,42 @@ class ApplicantService {
   }
 
   createOrUpdateApplicationDoc = async (data: AppDocumentIF) => {
-    const { id, applicationId, ...rest } = data;
-    const docInfo = await prismaClient.document.upsert({
-      where: { id: id ?? '' },
-      update: {
-        ...rest,
-        application: {
-          connect: { id: applicationId },
+    const { id, applicationId, documentUrl, ...rest } = data;
+  
+    if (!documentUrl) {
+      throw new Error("documentUrl is required");
+    }
+  
+    let docInfo = null;
+    if (id) {
+      docInfo = await prismaClient.document.update({
+        where: { id },
+        data: {
+          ...rest,
+          documentUrl,
+          application: {
+            connect: { id: applicationId },
+          },
         },
-      },
-      create: {
-        ...rest,
-        application: {
-          connect: { id: applicationId },
+      });
+    } else {
+      docInfo = await prismaClient.document.create({
+        data: {
+          ...rest,
+          documentUrl,
+          application: {
+            connect: { id: applicationId },
+          },
         },
-      },
-    });
-
-    // Update the application with the new or updated document info
+      });
+  
+      // Update progress
+      await this.incrementStepCompleted(applicationId, "documents");
+      await this.updateLastStepStop(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
+      await this.updateCompletedStep(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
+    }
+  
+    // Update application with the new document
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
       data: {
@@ -365,13 +383,11 @@ class ApplicantService {
         documents: true,
         guarantorInformation: true,
         personalDetails: true,
-      }
+      },
     });
-    await this.incrementStepCompleted(applicationId, "documents");
-    await this.updateLastStepStop(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
-    await this.updateCompletedStep(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
+  
     return { ...docInfo, ...updatedApplication };
-  }
+  };
 
 
   createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {

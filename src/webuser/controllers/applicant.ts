@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import ApplicantService from '../services/applicantService';
 import PropertyServices from '../../services/propertyServices';
 import { CustomRequest } from "../../utils/types";
+import { uploadDocsCloudinary } from '../../middlewares/multerCloudinary';
 import {
   documentSchema,
   guarantorInformationSchema,
@@ -17,6 +18,7 @@ import ErrorService from "../../services/error.service";
 import { ApplicationStatus, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
 
+
 class ApplicantControls {
 
   getPendingApplications = async (req: CustomRequest, res: Response) => {
@@ -31,6 +33,29 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   };
+  getApplications = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(403).json({ error: 'kindly login as applicant' });
+      }
+      const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
+      const completedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.COMPLETED);
+      const declinedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.DECLINED);
+      const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
+      const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
+      res.status(200).json({applications:{
+        pendingApplications, 
+        completedApplications, 
+        declinedApplications, 
+        makePaymentApplications, 
+        acceptedApplications, 
+      }});
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
+
   /**
    * Fetches application property milestones and application details.
    * @param req - Express request object.
@@ -267,7 +292,62 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
-  // done
+
+  // Upload Documents Handler
+  uploadAppDocuments = async (req: CustomRequest, res: Response) => {
+    try {
+      const applicationId = req.params.applicationId;
+      const userId = req.user.id;
+
+      console.log("Received files:", req.files);
+
+      // Ensure `req.files` exists and is not empty
+      if (!req.files || Object.keys(req.files).length === 0) {
+        return res.status(400).json({ error: "No files provided" });
+      }
+
+      // Convert `req.files` to an array
+      const files: Express.Multer.File[] = Object.values(req.files).flat();
+
+      // Validate application existence
+      const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
+      if (!existingApplication) {
+        return res.status(400).json({ error: "Invalid application ID provided" });
+      }
+
+      // Validate application completion
+      const isCompleted = await ApplicantService.checkApplicationCompleted(applicationId);
+      if (isCompleted) {
+        return res.status(400).json({ error: "Application is already completed" });
+      }
+
+      // Upload files and save metadata
+      const uploadedFiles = await Promise.all(
+        files.map(async (file) => {
+          const uploadResult: any = await uploadDocsCloudinary(file);
+          // Ensure `documentUrl` is always available
+          if (!uploadResult.secure_url) {
+            throw new Error("Failed to upload document");
+          }
+
+          // Remove file extension (e.g., ".jpg", ".pdf")
+          const documentName = file.originalname.replace(/\.[^/.]+$/, "");
+          return await ApplicantService.createOrUpdateApplicationDoc({
+            documentName, // File name
+            type: file.mimetype, // MIME type (e.g., image/jpeg, application/pdf)
+            size: String(file.size), // File size in bytes
+            applicationId,
+            documentUrl: uploadResult.secure_url
+          });
+        })
+      );
+
+      return res.status(201).json({ success: true, uploadedFiles });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
+
   createApplicantionDocument = async (req: CustomRequest, res: Response) => {
     try {
       const { error, value } = documentSchema.validate(req.body);
