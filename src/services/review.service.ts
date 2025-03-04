@@ -139,6 +139,39 @@ class ReviewService {
         }));
         return aliasedReviews;
     }
+
+    getReviewsByLandlordId = async (landlordId: string): Promise<reviews[]> => {
+        return await prismaClient.reviews.findMany({
+            where: {
+                landlordId, 
+                isDeleted: false
+            }
+        });
+    }
+    getReviewsByVendorId = async (vendorId: string): Promise<reviews[]> => {
+        return await prismaClient.reviews.findMany({
+            where: {
+                vendorId, 
+                isDeleted: false
+            }
+        });
+    }
+    getReviewsByTenantId = async (vendorId: string): Promise<reviews[]> => {
+        return await prismaClient.reviews.findMany({
+            where: {
+                vendorId, 
+                isDeleted: false
+            }
+        });
+    }
+    getReviewsByUserId = async (reviewById: string): Promise<reviews[]> => {
+        return await prismaClient.reviews.findMany({
+            where: {
+                reviewById,
+                isDeleted: false
+            }
+        });
+    }
 }
 
 export default new ReviewService();

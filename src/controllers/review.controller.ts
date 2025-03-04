@@ -2,15 +2,57 @@ import { Request, Response } from "express";
 import ReviewService from "../services/review.service";
 import { CustomRequest } from "../utils/types";
 import { createReviewSchema, updateReviewSchema } from "../validations/schemas/review.schema";
+import propertyServices from "../services/propertyServices";
+import { LandlordService } from "../landlord/services/landlord.service";
+import vendorServices from "../vendor/services/vendor.services";
+import tenantService from "../services/tenant.service";
 
 
 class ReviewController {
+    private landlordService: LandlordService;
+
+    constructor() {
+        this.landlordService = new LandlordService();
+    }
     createReview = async (req: CustomRequest, res: Response) => {
         try {
             const { error, value } = createReviewSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
             const { tenantId, vendorId, landlordId, propertyId, apartmentId } = value;
+
+            // Check if the property exists
+            if (propertyId) {
+                const propertyExists = await propertyServices.getPropertiesById(propertyId);
+
+                if (!propertyExists) {
+                    throw new Error(`Property with ID ${propertyId} does not exist.`);
+                }
+            }
+            // Check if the landlord exists
+            if (landlordId) {
+                const landlordExist = await this.landlordService.getLandlordById(landlordId);
+
+                if (!landlordExist) {
+                    throw new Error(`landlord with ID ${landlordId} does not exist.`);
+                }
+            }
+            // Check if the vendor exists
+            if (vendorId) {
+                const vendorExist = await vendorServices.getVendorById(vendorId);
+
+                if (!vendorExist) {
+                    throw new Error(`Vendor with ID ${vendorId} does not exist.`);
+                }
+            }
+            // Check if the tenant exists
+            if (tenantId) {
+                const tenantExist = await tenantService.getTenantById(tenantId);
+
+                if (!tenantExist) {
+                    throw new Error(`Tenant with ID ${tenantId} does not exist.`);
+                }
+            }
             // Check which entity is being reviewed
             if (!tenantId && !vendorId && !landlordId && !propertyId && !apartmentId) {
                 return res.status(400).json({ error: "Please provide either tenantId, vendorId, landlordId, propertyId, or apartmentId" });
@@ -26,9 +68,51 @@ class ReviewController {
             return res.status(500).json({ error: error.message });
         }
     }
+
+    getUserReviews = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            const landlordId = req.user?.landlords?.id;
+            const vendorId = req.user?.vendors?.id;
+            const tenantId = req.user?.tenant?.id;
+
+            if (!userId) throw new Error("User not found.");
+
+            let reviews;
+            // Determine the user role and fetch reviews accordingly
+            if (landlordId) {
+                reviews = await ReviewService.getReviewsByLandlordId(landlordId);
+            } else if (vendorId) {
+                reviews = await ReviewService.getReviewsByVendorId(vendorId);
+            } else if (tenantId) {
+                reviews = await ReviewService.getReviewsByTenantId(tenantId);
+            } else {
+                reviews = await ReviewService.getReviewsByUserId(userId);
+            }
+
+            // If no reviews found, return an empty array
+            if (!reviews || reviews.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    message: "No reviews found for the user.",
+                    data: [],
+                });
+            }
+            // Return success response with reviews
+            return res.status(200).json({
+                success: true,
+                message: "Reviews fetched successfully.",
+                data: reviews,
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
+    };
+
+
     getCurrentUserReviews = async (req: CustomRequest, res: Response) => {
         try {
-            const { tenant, landlords, vendors } = req.user;;
+            const { tenant, landlords, vendors, id } = req.user;;
 
             // Build a query condition based on the user's role
             let queryCondition: any = {
@@ -46,7 +130,9 @@ class ReviewController {
             if (vendors?.id) {
                 queryCondition.OR.push({ vendorId: vendors.id });
             }
-
+            if (id) {
+                queryCondition.OR.push({ reviewById: id });
+            }
             if (!queryCondition.OR.length) {
                 throw new Error("User does not have an associated tenant, landlord, or vendor role");
             }
@@ -94,24 +180,24 @@ class ReviewController {
     deleteReview = async (req: CustomRequest, res: Response) => {
         try {
             const review = await ReviewService.deleteReview(req.params.id);
-            return res.status(200).json({review});
+            return res.status(200).json({ review });
         } catch (error) {
             return res.status(500).json({ error: error.message });
         }
     }
-  
+
     getReviewsByProperty = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
             const reviews = await ReviewService.aggregateReviews({ propertyId });
-            
+
             const { year } = req.query;
             let propsRating;
-            if(year){
+            if (year) {
                 propsRating = await ReviewService.getPropertyRatings(propertyId, Number(year));
             }
 
-            return res.status(200).json({reviews, propsRating});
+            return res.status(200).json({ reviews, propsRating });
         } catch (error) {
             return res.status(500).json({ message: "Failed to get reviews by property", error });
         }

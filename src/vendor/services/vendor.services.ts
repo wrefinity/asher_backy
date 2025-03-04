@@ -29,6 +29,12 @@ class ServiceService {
             include: this.inclusion,
         });
     }
+    getVendorById = async (id: string) => {
+        return await prismaClient.vendors.findUnique({
+            where: { id },
+            include: this.inclusion,
+        });
+    }
     getVendorService = async (vendorId: string) => {
         return await prismaClient.services.findFirst({
             where: { vendorId },

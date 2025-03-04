@@ -6,21 +6,87 @@ import PropertyViewingService from "../services/propertyviewing.service";
 import { createPropertyViewingSchema, updatePropertyViewingSchema } from "../validations/schemas/properties.schema";
 import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
-import { LogType } from ".prisma/client";
+import { LogType, PropertySpecificationType, PropertyType } from "@prisma/client"
 
 
 class PropertyController {
     constructor() { }
 
+    // getProperty = async (req: CustomRequest, res: Response) => {
+    //     try {
+    //         const properties = await PropertyServices.getProperties()
+    //         if (properties.length < 1) return res.status(200).json({ message: "No Property listed yet" })
+    //         return res.status(200).json(properties)
+    //     } catch (error) {
+    //         ErrorService.handleError(error, res)
+    //     }
+    // }
+        // this code get landlord listing of properties including 
+    // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
-            const properties = await PropertyServices.getProperties()
-            if (properties.length < 1) return res.status(200).json({ message: "No Property listed yet" })
-            return res.status(200).json(properties)
-        } catch (error) {
-            ErrorService.handleError(error, res)
+            
+
+            // Extract filters from the query parameters
+            const { state, country, propertySize, type, isActive, specificationType } = req.query;
+
+            // Prepare the filter object
+            const filters: any = {
+    
+            };
+
+            // Add filters to the query if they are provided
+            if (state) filters.property = { ...filters.property, state: String(state) };
+            if (country) filters.property = { ...filters.property, country: String(country) };
+            if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
+            if (isActive) {
+                // Convert isActive to a number
+                const isActiveNumber = parseInt(isActive.toString(), 10);
+
+                if (!isNaN(isActiveNumber)) {
+                    filters.property = {
+                        ...filters.property,
+                        isActive: isActiveNumber === 1
+                    };
+                } else {
+                    throw new Error(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
+                }
+            }
+
+            // Validate specificationType against the enum
+            if (specificationType) {
+                const isValidSpecificationType = Object.values(PropertySpecificationType).includes(specificationType as PropertySpecificationType);
+                if (isValidSpecificationType) {
+                    filters.property = { ...filters.property, specificationType: String(specificationType) };
+                } else {
+                    throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(PropertySpecificationType).join(', ')}`);
+                }
+            }
+            if (type) {
+                const isValidType = Object.values(PropertyType).includes(type as PropertyType);
+                if (isValidType) {
+                    filters.property = { ...filters.property, type: String(type) };
+                } else {
+                    throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
+                }
+            }
+
+            // Fetch the filtered properties
+            const properties = await PropertyServices.getAllListedProperties(filters);
+
+            // Check if properties are found
+            if (!properties || properties.length === 0) {
+                return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+            }
+
+            // Return the filtered properties
+            return res.status(200).json({ properties });
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
         }
-    }
+    };
+
     createLikeProperty = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId

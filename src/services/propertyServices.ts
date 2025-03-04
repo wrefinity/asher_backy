@@ -34,6 +34,8 @@ class PropertyService {
                 propertyListingHistory: true,
                 apartments: true,
                 state: true,
+                reviews: true,
+                UserLikedProperty: true
             }
         })
     }
@@ -45,6 +47,8 @@ class PropertyService {
                 propertyListingHistory: true,
                 apartments: true,
                 state: true,
+                reviews: true,
+                UserLikedProperty: true
             }
         })
     }
@@ -55,7 +59,9 @@ class PropertyService {
                 landlord: true,
                 propertyListingHistory: true,
                 apartments: true,
-                state: true
+                state: true,
+                reviews: true,
+                UserLikedProperty: true
             }
         });
     }
@@ -74,6 +80,7 @@ class PropertyService {
                 propertyListingHistory: true,
                 apartments: true,
                 state: true,
+                reviews: true,
             }
         });
     }
@@ -146,6 +153,7 @@ class PropertyService {
                 propertyListingHistory: true,
                 apartments: true,
                 state: true,
+                reviews: true,
             }
         });
         return unGroundProps
@@ -161,6 +169,7 @@ class PropertyService {
                     // landlordId: landlordId, 
                     isDeleted: false, // Exclude deleted properties
                 },
+                
             });
 
             // Object to store the grouped properties by state
@@ -293,7 +302,11 @@ class PropertyService {
             },
             include: {
                 property: {
-                    include: { state: true }
+                    include: { 
+                        state: true,
+                        reviews: true,
+                        UserLikedProperty: true
+                    }
                 },
                 apartment: true,
             },
@@ -351,6 +364,7 @@ class PropertyService {
                 landlord: true,
                 reviews: true,
                 applicant: true,
+                UserLikedProperty: true
             }
         });
     }
@@ -423,6 +437,5 @@ class PropertyService {
         });
     }
 }
-
 
 export default new PropertyService()
