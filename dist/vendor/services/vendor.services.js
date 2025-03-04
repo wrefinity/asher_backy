@@ -24,6 +24,12 @@ class ServiceService {
                 include: this.inclusion,
             });
         });
+        this.getVendorById = (id) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.vendors.findUnique({
+                where: { id },
+                include: this.inclusion,
+            });
+        });
         this.getVendorService = (vendorId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.services.findFirst({
                 where: { vendorId },

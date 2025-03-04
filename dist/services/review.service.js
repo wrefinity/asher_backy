@@ -130,6 +130,38 @@ class ReviewService {
             const aliasedReviews = reviews.map(review => (Object.assign(Object.assign({}, review), { reviewedBy: review.user })));
             return aliasedReviews;
         });
+        this.getReviewsByLandlordId = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.reviews.findMany({
+                where: {
+                    landlordId,
+                    isDeleted: false
+                }
+            });
+        });
+        this.getReviewsByVendorId = (vendorId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.reviews.findMany({
+                where: {
+                    vendorId,
+                    isDeleted: false
+                }
+            });
+        });
+        this.getReviewsByTenantId = (vendorId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.reviews.findMany({
+                where: {
+                    vendorId,
+                    isDeleted: false
+                }
+            });
+        });
+        this.getReviewsByUserId = (reviewById) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.reviews.findMany({
+                where: {
+                    reviewById,
+                    isDeleted: false
+                }
+            });
+        });
     }
 }
 exports.default = new ReviewService();

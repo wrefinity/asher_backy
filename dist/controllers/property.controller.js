@@ -18,18 +18,74 @@ const maintenance_service_1 = __importDefault(require("../services/maintenance.s
 const propertyviewing_service_1 = __importDefault(require("../services/propertyviewing.service"));
 const properties_schema_1 = require("../validations/schemas/properties.schema");
 const logs_services_1 = __importDefault(require("../services/logs.services"));
-const client_1 = require(".prisma/client");
+const client_1 = require("@prisma/client");
 class PropertyController {
     constructor() {
+        // getProperty = async (req: CustomRequest, res: Response) => {
+        //     try {
+        //         const properties = await PropertyServices.getProperties()
+        //         if (properties.length < 1) return res.status(200).json({ message: "No Property listed yet" })
+        //         return res.status(200).json(properties)
+        //     } catch (error) {
+        //         ErrorService.handleError(error, res)
+        //     }
+        // }
+        // this code get landlord listing of properties including 
+        // using filters base on property size, type and location
         this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const properties = yield propertyServices_1.default.getProperties();
-                if (properties.length < 1)
-                    return res.status(200).json({ message: "No Property listed yet" });
-                return res.status(200).json(properties);
+                // Extract filters from the query parameters
+                const { state, country, propertySize, type, isActive, specificationType } = req.query;
+                // Prepare the filter object
+                const filters = {};
+                // Add filters to the query if they are provided
+                if (state)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { state: String(state) });
+                if (country)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { country: String(country) });
+                if (propertySize)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { propertysize: Number(propertySize) });
+                if (isActive) {
+                    // Convert isActive to a number
+                    const isActiveNumber = parseInt(isActive.toString(), 10);
+                    if (!isNaN(isActiveNumber)) {
+                        filters.property = Object.assign(Object.assign({}, filters.property), { isActive: isActiveNumber === 1 });
+                    }
+                    else {
+                        throw new Error(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
+                    }
+                }
+                // Validate specificationType against the enum
+                if (specificationType) {
+                    const isValidSpecificationType = Object.values(client_1.PropertySpecificationType).includes(specificationType);
+                    if (isValidSpecificationType) {
+                        filters.property = Object.assign(Object.assign({}, filters.property), { specificationType: String(specificationType) });
+                    }
+                    else {
+                        throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(client_1.PropertySpecificationType).join(', ')}`);
+                    }
+                }
+                if (type) {
+                    const isValidType = Object.values(client_1.PropertyType).includes(type);
+                    if (isValidType) {
+                        filters.property = Object.assign(Object.assign({}, filters.property), { type: String(type) });
+                    }
+                    else {
+                        throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(client_1.PropertyType).join(', ')}`);
+                    }
+                }
+                // Fetch the filtered properties
+                const properties = yield propertyServices_1.default.getAllListedProperties(filters);
+                // Check if properties are found
+                if (!properties || properties.length === 0) {
+                    return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                }
+                // Return the filtered properties
+                return res.status(200).json({ properties });
             }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
+            catch (err) {
+                // Handle any errors
+                error_service_1.default.handleError(err, res);
             }
         });
         this.createLikeProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
