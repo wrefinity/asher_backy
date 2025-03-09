@@ -37,6 +37,7 @@ const community_post_routes_1 = __importDefault(require("./tenant/routes/communi
 const community_routes_1 = __importDefault(require("./tenant/routes/community.routes"));
 const index_1 = __importDefault(require("./tenant/routes/index"));
 const index_routes_1 = __importDefault(require("./landlord/routes/index.routes"));
+// import GeneratorRouter from './controllers/datagen';
 const bank_1 = __importDefault(require("./routes/bank"));
 const flutterWave_service_1 = __importDefault(require("./services/flutterWave.service"));
 exports.prismaClient = new client_1.PrismaClient({
@@ -135,6 +136,7 @@ class Server {
         this.app.use("/api/landlord", index_routes_1.default);
         this.app.use("/api/wallet", wallet_1.default);
         this.app.use("/api/tenants", index_1.default);
+        // this.app.use("/api/generator", GeneratorRouter);
         // bank information routes
         this.app.use("/api/banks/", bank_1.default);
         this.app.use("/api/complaints", complaint_1.default);

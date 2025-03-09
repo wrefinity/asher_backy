@@ -25,6 +25,7 @@ exports.profileSchema = joi_1.default.object({
     timeZone: joi_1.default.string().optional(),
     taxPayerId: joi_1.default.string().optional(),
     taxType: joi_1.default.string().optional(),
+    cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),

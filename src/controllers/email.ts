@@ -33,7 +33,6 @@ class EmailController {
             if (!receiver) {
                 throw new Error('Receiver email not found');
             }
-
             // unnecessary fields from the value object (without mutating it)
             const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls, ...emailData } = value;
 

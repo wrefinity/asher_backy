@@ -62,6 +62,8 @@ model users {
     violation violation[] @relation("users")
     PropertyViewing PropertyViewing[]
     UserLikedProperty UserLikedProperty[]
+
+    LogFeedback LogFeedback[] @relation("feedbackUser")
 }
 
 model UserLikedProperty {

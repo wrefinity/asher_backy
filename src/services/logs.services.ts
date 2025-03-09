@@ -10,6 +10,12 @@ interface LogIF {
   applicationId?: string;
   createdById?: string;
 }
+interface LogFeedbackIF {
+  id?: string;
+  logId?: string;
+  comment?: string;
+  userId?: string;
+}
 
 
 class LogService {
@@ -43,6 +49,21 @@ class LogService {
       data: logData,
     });
   };
+  createLogFeedback = async (data: LogFeedbackIF) => {
+    const logData: any = {
+      comment: data.comment,
+      user: data.userId
+        ? { connect: { id: data.userId } }
+        : undefined,
+    };
+    // Only include propertyId if it is defined
+    if (data.logId) {
+      logData.log = { connect: { id: data.logId } };
+    }
+    return await prismaClient.logFeedback.create({
+      data: logData,
+    });
+  };
   
 
   checkPropertyLogs = async (createdById: string, type: LogType, propertyId:string, applicationId: string = null)=>{
@@ -63,6 +84,17 @@ class LogService {
       },
       include: {
         property: true,
+      }
+    });
+  }
+  getLogsById = async (logId: string) => {
+    return await prismaClient.log.findMany({
+      where: {
+        id: logId,
+      },
+      include: {
+        property: true,
+        feedbacks: true,
       }
     });
   }

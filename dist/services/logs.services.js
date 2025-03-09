@@ -34,6 +34,21 @@ class LogService {
                 data: logData,
             });
         });
+        this.createLogFeedback = (data) => __awaiter(this, void 0, void 0, function* () {
+            const logData = {
+                comment: data.comment,
+                user: data.userId
+                    ? { connect: { id: data.userId } }
+                    : undefined,
+            };
+            // Only include propertyId if it is defined
+            if (data.logId) {
+                logData.log = { connect: { id: data.logId } };
+            }
+            return yield __1.prismaClient.logFeedback.create({
+                data: logData,
+            });
+        });
         this.checkPropertyLogs = (createdById_1, type_1, propertyId_1, ...args_1) => __awaiter(this, [createdById_1, type_1, propertyId_1, ...args_1], void 0, function* (createdById, type, propertyId, applicationId = null) {
             return yield __1.prismaClient.log.findFirst({
                 where: { type, propertyId, createdById, applicationId },
@@ -51,6 +66,17 @@ class LogService {
                 },
                 include: {
                     property: true,
+                }
+            });
+        });
+        this.getLogsById = (logId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.log.findMany({
+                where: {
+                    id: logId,
+                },
+                include: {
+                    property: true,
+                    feedbacks: true,
                 }
             });
         });

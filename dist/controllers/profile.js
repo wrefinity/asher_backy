@@ -40,6 +40,7 @@ class ProfileControls {
                 delete data['cloudinaryUrls'];
                 delete data['cloudinaryVideoUrls'];
                 delete data['cloudinaryDocumentUrls'];
+                delete data['cloudinaryAudioUrls'];
                 // Update the user profile in the database
                 const updatedUser = yield profileServices_1.default.updateUserProfile(profileInfo.id, Object.assign(Object.assign({}, data), { profileUrl }));
                 const { id } = updatedUser, profile = __rest(updatedUser, ["id"]);

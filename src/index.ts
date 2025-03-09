@@ -32,6 +32,7 @@ import communityRoutes from "./tenant/routes/community.routes";
 import TenantRouter from "./tenant/routes/index";
 
 import LandlordRouter from './landlord/routes/index.routes';
+// import GeneratorRouter from './controllers/datagen';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
 
@@ -157,6 +158,7 @@ class Server {
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenants", TenantRouter);
+        // this.app.use("/api/generator", GeneratorRouter);
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);

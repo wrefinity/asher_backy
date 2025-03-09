@@ -24,4 +24,16 @@ model Log {
     transaction   Transaction? @relation("transactions", fields: [transactionId], references: [id])
     createdById   String? // Foreign key for the transaction (optional)
     users         users?       @relation("users", fields: [createdById], references: [id])
+    feedbacks     LogFeedback[]   @relation("logFeedback") 
+}
+
+
+model LogFeedback {
+    id          String   @id @default(cuid()) // Unique ID for the feedback entry
+    comment     String   // The feedback comment
+    createdAt   DateTime @default(now()) // Timestamp when the feedback was created
+    userId      String   // Foreign key for the user who provided the feedback
+    user        users    @relation("feedbackUser", fields: [userId], references: [id])
+    logId       String   // Foreign key for the log entry this feedback belongs to
+    log         Log      @relation("logFeedback", fields: [logId], references: [id])
 }

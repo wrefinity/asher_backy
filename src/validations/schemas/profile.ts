@@ -20,6 +20,7 @@ export const profileSchema = Joi.object({
   timeZone: Joi.string().optional(),
   taxPayerId: Joi.string().optional(),
   taxType: Joi.string().optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),

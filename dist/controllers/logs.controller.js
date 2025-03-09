@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const logs_services_1 = __importDefault(require("../services/logs.services"));
 const propertyServices_1 = __importDefault(require("../services/propertyServices"));
 const error_service_1 = __importDefault(require("../services/error.service"));
-const auth_1 = require("../validations/schemas/auth");
+const log_1 = require("../validations/schemas/log");
 class LogController {
     constructor() {
         this.getProperyLog = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -35,12 +35,31 @@ class LogController {
         this.createLog = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
-                const { error, value } = auth_1.LoginSchema.validate(req.body);
+                const { error, value } = log_1.logSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const createdById = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
                 const log = yield logs_services_1.default.createLog(Object.assign({ createdById }, value));
                 res.status(201).json({ log });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.createLogFeedback = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const { error, value } = log_1.feedbackSchema.validate(req.body);
+                const logId = req.params.logId;
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const logExist = yield logs_services_1.default.getLogsById(logId);
+                if (logExist) {
+                    return res.status(404).json({ message: "log with the queried id not found" });
+                }
+                const logFeedBack = yield logs_services_1.default.createLog(Object.assign({ userId, logId }, value));
+                return res.status(201).json({ feedback: logFeedBack });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
