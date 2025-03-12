@@ -86,6 +86,24 @@ class PropertyController {
             ErrorService.handleError(err, res);
         }
     };
+    getPropertyListedByLandlord = async (req: CustomRequest, res: Response) => {
+        try {
+
+            const landlordId = req.params.landlordId;
+            // Fetch the filtered properties
+            const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId));
+
+            // Check if properties are found
+            if (!properties || properties.length === 0) {
+                return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+            }
+            // Return the filtered properties
+            return res.status(200).json({ properties });
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+    };
 
     createLikeProperty = async (req: CustomRequest, res: Response) => {
         try {

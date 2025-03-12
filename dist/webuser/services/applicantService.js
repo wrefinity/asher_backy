@@ -377,6 +377,7 @@ class ApplicantService {
                     yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.DECLARATION);
                     yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.DECLARATION);
                 }
+                yield this.updateApplicationStatus(applicationId, client_1.ApplicationStatus.SUBMITTED);
                 return declared;
             }
             return;

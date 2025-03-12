@@ -2,6 +2,7 @@
 enum ApplicationStatus {
   PENDING
   DECLINED
+  SUBMITTED
   COMPLETED
   MAKEPAYMENT
   ACCEPTED

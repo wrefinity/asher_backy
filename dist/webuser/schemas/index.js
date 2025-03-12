@@ -76,7 +76,7 @@ exports.refreeSchema = refreeSchema;
 const declarationSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
     declaration: joi_1.default.string().required(),
-    signature: joi_1.default.string().required(),
+    // signature: Joi.string().required(),
     additionalNotes: joi_1.default.string().optional(),
     date: joi_1.default.date().iso().required(),
     cloudinaryUrls: joi_1.default.any().optional(),

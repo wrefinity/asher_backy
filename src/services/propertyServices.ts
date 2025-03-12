@@ -128,7 +128,17 @@ class PropertyService {
                     },
                     include: {
                         apartments: true, // Include related apartments
-                        state: true
+                        state: true,
+                        UserLikedProperty: true,
+                        landlord: {
+                            include: {
+                                user: {
+                                    select: {
+                                        email: true
+                                    }
+                                }
+                            }
+                        }
                     },
                 });
 
@@ -154,10 +164,21 @@ class PropertyService {
                 apartments: true,
                 state: true,
                 reviews: true,
+                UserLikedProperty: true,
+                landlord: {
+                    include: {
+                        user: {
+                            select: {
+                                email: true
+                            }
+                        }
+                    }
+                }
             }
         });
         return unGroundProps
     }
+
 
     // Function to aggregate properties by state for the current landlord
     getPropertiesByState = async () => {
@@ -169,7 +190,7 @@ class PropertyService {
                     // landlordId: landlordId, 
                     isDeleted: false, // Exclude deleted properties
                 },
-                
+
             });
 
             // Object to store the grouped properties by state
@@ -270,7 +291,22 @@ class PropertyService {
                 }
             },
             include: {
-                property: true,
+                property: {
+                    include: {
+                        state: true,
+                        reviews: true,
+                        UserLikedProperty: true,
+                        landlord: {
+                            include: {
+                                user: {
+                                    select: {
+                                        email: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 apartment: true,
             }
         });
@@ -302,10 +338,19 @@ class PropertyService {
             },
             include: {
                 property: {
-                    include: { 
+                    include: {
                         state: true,
                         reviews: true,
-                        UserLikedProperty: true
+                        UserLikedProperty: true,
+                        landlord: {
+                            include: {
+                                user: {
+                                    select: {
+                                        email: true
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 apartment: true,

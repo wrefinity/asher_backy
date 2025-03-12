@@ -439,6 +439,8 @@ class ApplicantService {
         await this.updateLastStepStop(applicationId, ApplicationSaveState.DECLARATION);
         await this.updateCompletedStep(applicationId, ApplicationSaveState.DECLARATION);
       }
+
+      await this.updateApplicationStatus(applicationId, ApplicationStatus.SUBMITTED)
       return declared;
     }
     return;

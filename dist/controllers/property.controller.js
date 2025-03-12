@@ -88,6 +88,23 @@ class PropertyController {
                 error_service_1.default.handleError(err, res);
             }
         });
+        this.getPropertyListedByLandlord = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const landlordId = req.params.landlordId;
+                // Fetch the filtered properties
+                const properties = yield propertyServices_1.default.getActiveOrInactivePropsListing(String(landlordId));
+                // Check if properties are found
+                if (!properties || properties.length === 0) {
+                    return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                }
+                // Return the filtered properties
+                return res.status(200).json({ properties });
+            }
+            catch (err) {
+                // Handle any errors
+                error_service_1.default.handleError(err, res);
+            }
+        });
         this.createLikeProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
