@@ -45,12 +45,28 @@ class PropertyService {
             return yield __1.prismaClient.properties.findUnique({
                 where: { id },
                 include: {
-                    landlord: true,
                     propertyListingHistory: true,
                     apartments: true,
                     state: true,
                     reviews: true,
-                    UserLikedProperty: true
+                    UserLikedProperty: true,
+                    landlord: {
+                        include: {
+                            user: {
+                                include: {
+                                    profile: {
+                                        select: {
+                                            fullname: true,
+                                            firstName: true,
+                                            lastName: true,
+                                            middleName: true,
+                                            profileUrl: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             });
         });
@@ -116,8 +132,16 @@ class PropertyService {
                             landlord: {
                                 include: {
                                     user: {
-                                        select: {
-                                            email: true
+                                        include: {
+                                            profile: {
+                                                select: {
+                                                    fullname: true,
+                                                    firstName: true,
+                                                    lastName: true,
+                                                    middleName: true,
+                                                    profileUrl: true
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -150,8 +174,16 @@ class PropertyService {
                     landlord: {
                         include: {
                             user: {
-                                select: {
-                                    email: true
+                                include: {
+                                    profile: {
+                                        select: {
+                                            fullname: true,
+                                            firstName: true,
+                                            lastName: true,
+                                            middleName: true,
+                                            profileUrl: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -269,8 +301,16 @@ class PropertyService {
                             landlord: {
                                 include: {
                                     user: {
-                                        select: {
-                                            email: true
+                                        include: {
+                                            profile: {
+                                                select: {
+                                                    fullname: true,
+                                                    firstName: true,
+                                                    lastName: true,
+                                                    middleName: true,
+                                                    profileUrl: true
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -302,8 +342,16 @@ class PropertyService {
                             landlord: {
                                 include: {
                                     user: {
-                                        select: {
-                                            email: true
+                                        include: {
+                                            profile: {
+                                                select: {
+                                                    fullname: true,
+                                                    firstName: true,
+                                                    lastName: true,
+                                                    middleName: true,
+                                                    profileUrl: true
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -363,10 +411,26 @@ class PropertyService {
             return yield __1.prismaClient.properties.findFirst({
                 where: { id: propertyId },
                 include: {
-                    landlord: true,
                     reviews: true,
                     applicant: true,
-                    UserLikedProperty: true
+                    UserLikedProperty: true,
+                    landlord: {
+                        include: {
+                            user: {
+                                include: {
+                                    profile: {
+                                        select: {
+                                            fullname: true,
+                                            firstName: true,
+                                            lastName: true,
+                                            middleName: true,
+                                            profileUrl: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             });
         });

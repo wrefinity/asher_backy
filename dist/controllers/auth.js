@@ -188,7 +188,7 @@ class AuthControls {
                         return res.status(404).json({ message: "No user found for the provided tenant code." });
                     }
                     // Exclude sensitive fields and return user details
-                    const { password: _, id: __ } = user, userDetails = __rest(user, ["password", "id"]);
+                    const { password: _ } = user, userDetails = __rest(user, ["password"]);
                     const tokens = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
                     return res.status(200).json({
                         message: "Tenant-specific user retrieved successfully.",
