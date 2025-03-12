@@ -190,9 +190,10 @@ class AuthControls {
                     // Exclude sensitive fields and return user details
                     const { password: _ } = user, userDetails = __rest(user, ["password"]);
                     const tokens = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
+                    console.log(userDetails);
                     return res.status(200).json({
                         message: "Tenant-specific user retrieved successfully.",
-                        userDetails,
+                        userDetails: Object.assign(Object.assign({}, userDetails), { id: user.id }),
                         accessToken: tokens.accessToken,
                         refreshToken: tokens.refreshToken,
                     });
@@ -226,12 +227,12 @@ class AuthControls {
                     createdById: user.id,
                 });
                 // Exclude sensitive fields and return user details
-                const { password: _, id: __ } = user, userDetails = __rest(user, ["password", "id"]);
+                const { password: _ } = user, userDetails = __rest(user, ["password"]);
                 return res.status(200).json({
                     message: "User logged in successfully.",
                     token: token.accessToken,
                     refreshToken: token.refreshToken,
-                    userDetails,
+                    userDetails: Object.assign(Object.assign({}, userDetails), { id: user.id }),
                 });
             }
             catch (error) {

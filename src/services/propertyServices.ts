@@ -20,7 +20,8 @@ interface PropertyFilters {
 
 class PropertyService {
 
-    landlordInclusion: Object
+    landlordInclusion: any
+    propsInclusion: any
 
     constructor(){
         this.landlordInclusion = {
@@ -43,6 +44,15 @@ class PropertyService {
                 },
             },
         }
+        this.propsInclusion = {
+            propertyListingHistory: true,
+            apartments: true,
+            state: true,
+            applicant: true,
+            reviews: true,
+            UserLikedProperty: true,
+            landlord: this.landlordInclusion
+        }
     }
     createProperty = async (propertyData: ICreateProperty) => {
         return await prismaClient.properties.create({
@@ -56,12 +66,7 @@ class PropertyService {
         return await prismaClient.properties.findMany({
             where: { isDeleted: false },
             include: {
-                propertyListingHistory: true,
-                apartments: true,
-                state: true,
-                reviews: true,
-                UserLikedProperty: true,
-                landlord: this.landlordInclusion
+                ...this.propsInclusion
             }
         })
     }
@@ -70,12 +75,7 @@ class PropertyService {
         return await prismaClient.properties.findMany({
             where: { isDeleted: false, landlordId },
             include: {
-                propertyListingHistory: true,
-                apartments: true,
-                state: true,
-                reviews: true,
-                UserLikedProperty: true,
-                landlord: this.landlordInclusion
+                ...this.propsInclusion
             }
         })
     }
@@ -83,12 +83,12 @@ class PropertyService {
         return await prismaClient.properties.findUnique({
             where: { id },
             include: {
-                propertyListingHistory: true,
                 apartments: true,
                 state: true,
+                applicant: true,
                 reviews: true,
                 UserLikedProperty: true,
-                landlord: this.landlordInclusion
+                landlord: this.landlordInclusion,
             }
         });
     }
@@ -104,11 +104,7 @@ class PropertyService {
             where: { id, landlordId },
             data: { isDeleted: true },
             include: {
-                propertyListingHistory: true,
-                apartments: true,
-                state: true,
-                reviews: true,
-                landlord: this.landlordInclusion
+                ...this.propsInclusion
             }
         });
     }
@@ -155,10 +151,7 @@ class PropertyService {
                         isDeleted: false, // Exclude deleted properties
                     },
                     include: {
-                        apartments: true, // Include related apartments
-                        state: true,
-                        UserLikedProperty: true,
-                        landlord: this.landlordInclusion
+                        ...this.propsInclusion
                     },
                 });
 
@@ -180,12 +173,7 @@ class PropertyService {
                 landlordId,
             },
             include: {
-                propertyListingHistory: true,
-                apartments: true,
-                state: true,
-                reviews: true,
-                UserLikedProperty: true,
-                landlord: this.landlordInclusion
+                ...this.propsInclusion
             }
         });
         return unGroundProps
@@ -229,8 +217,7 @@ class PropertyService {
                         isDeleted: false, // Exclude deleted properties
                     },
                     include: {
-                        apartments: true, // Include related apartments
-                        landlord: this.landlordInclusion
+                        ...this.propsInclusion
                     },
                 });
 
@@ -305,12 +292,7 @@ class PropertyService {
             },
             include: {
                 property: {
-                    include: {
-                        state: true,
-                        reviews: true,
-                        UserLikedProperty: true,
-                        landlord: this.landlordInclusion
-                    }
+                    ...this.propsInclusion
                 },
                 apartment: true,
             }
@@ -320,7 +302,7 @@ class PropertyService {
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const { landlordId, property, minSize, maxSize } = filters;
         const { type, state, country, specificationType, isActive } = property || {};
-
+    
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -344,17 +326,18 @@ class PropertyService {
             include: {
                 property: {
                     include: {
+                        apartments: true,
                         state: true,
+                        applicant: true,
                         reviews: true,
                         UserLikedProperty: true,
-                        landlord: this.landlordInclusion
-                    }
+                        landlord: this.landlordInclusion,
+                    },
                 },
                 apartment: true,
             },
         });
     };
-
     createPropertyListing = async (data: PropertyListingDTO) => {
         const propListed = await this.getPropsListedById(data.propertyId);
         if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
@@ -369,7 +352,9 @@ class PropertyService {
                 propertyId
             },
             include: {
-                property: true,
+                property: {
+                    ...this.propsInclusion
+                },
                 apartment: true,
             }
         });
@@ -403,10 +388,7 @@ class PropertyService {
         return await prismaClient.properties.findFirst({
             where: { id: propertyId },
             include: {
-                reviews: true,
-                applicant: true,
-                UserLikedProperty: true,
-                landlord: this.landlordInclusion
+                ...this.propsInclusion
             }
         });
     }

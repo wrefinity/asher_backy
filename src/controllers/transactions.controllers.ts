@@ -5,7 +5,6 @@ import transactionServices from "../services/transaction.services";
 import walletService from "../services/wallet.service";
 import { CustomRequest } from "../utils/types";
 import transactionScheam from "../validations/schemas/transaction.scheam";
-import { PaymentGateway } from "@prisma/client"
 import { getCurrentCountryCurrency } from "../utils/helpers";
 import PropertyServices from "../services/propertyServices";
 
@@ -23,7 +22,7 @@ class TransactionController {
             const props = await PropertyServices.getPropertiesById(value.propertyId);
             if (!props) return res.status(400).json({ message: "property does not exist" })
             // get the landlordId
-            const landlordUserId = props.landlord?.userId;
+            const landlordUserId = props.landlord.userId;
 
             let transaction;
             const locationData = await getCurrentCountryCurrency();

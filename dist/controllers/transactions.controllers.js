@@ -22,7 +22,6 @@ const propertyServices_1 = __importDefault(require("../services/propertyServices
 class TransactionController {
     constructor() {
         this.makeTransaction = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a;
             const userId = String(req.user.id);
             const { value, error } = transaction_scheam_1.default.transactSchema().validate(req.body);
             if (error)
@@ -34,7 +33,7 @@ class TransactionController {
                 if (!props)
                     return res.status(400).json({ message: "property does not exist" });
                 // get the landlordId
-                const landlordUserId = (_a = props.landlord) === null || _a === void 0 ? void 0 : _a.userId;
+                const landlordUserId = props.landlord.userId;
                 let transaction;
                 const locationData = yield (0, helpers_1.getCurrentCountryCurrency)();
                 transaction = yield transaction_services_1.default.createTransact(Object.assign(Object.assign({ userId, currency: locationData === null || locationData === void 0 ? void 0 : locationData.locationCurrency }, value), { amount }), landlordUserId);

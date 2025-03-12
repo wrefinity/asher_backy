@@ -20,53 +20,25 @@ class PropertyService {
         this.getProperties = () => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findMany({
                 where: { isDeleted: false },
-                include: {
-                    propertyListingHistory: true,
-                    apartments: true,
-                    state: true,
-                    reviews: true,
-                    UserLikedProperty: true
-                }
+                include: Object.assign({}, this.propsInclusion)
             });
         });
         this.getLandlordProperties = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findMany({
                 where: { isDeleted: false, landlordId },
-                include: {
-                    propertyListingHistory: true,
-                    apartments: true,
-                    state: true,
-                    reviews: true,
-                    UserLikedProperty: true
-                }
+                include: Object.assign({}, this.propsInclusion)
             });
         });
         this.getPropertiesById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findUnique({
                 where: { id },
                 include: {
-                    propertyListingHistory: true,
                     apartments: true,
                     state: true,
+                    applicant: true,
                     reviews: true,
                     UserLikedProperty: true,
-                    landlord: {
-                        include: {
-                            user: {
-                                include: {
-                                    profile: {
-                                        select: {
-                                            fullname: true,
-                                            firstName: true,
-                                            lastName: true,
-                                            middleName: true,
-                                            profileUrl: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    landlord: this.landlordInclusion,
                 }
             });
         });
@@ -80,12 +52,7 @@ class PropertyService {
             return yield __1.prismaClient.properties.update({
                 where: { id, landlordId },
                 data: { isDeleted: true },
-                include: {
-                    propertyListingHistory: true,
-                    apartments: true,
-                    state: true,
-                    reviews: true,
-                }
+                include: Object.assign({}, this.propsInclusion)
             });
         });
         this.updateAvailabiltyStatus = (landlordId, id, availability) => __awaiter(this, void 0, void 0, function* () {
@@ -125,28 +92,7 @@ class PropertyService {
                             landlordId: landlordId,
                             isDeleted: false, // Exclude deleted properties
                         },
-                        include: {
-                            apartments: true, // Include related apartments
-                            state: true,
-                            UserLikedProperty: true,
-                            landlord: {
-                                include: {
-                                    user: {
-                                        include: {
-                                            profile: {
-                                                select: {
-                                                    fullname: true,
-                                                    firstName: true,
-                                                    lastName: true,
-                                                    middleName: true,
-                                                    profileUrl: true
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
+                        include: Object.assign({}, this.propsInclusion),
                     });
                     // Store the properties in the result object under the respective state name
                     propertiesByState[state.name.toLowerCase()] = properties;
@@ -165,30 +111,7 @@ class PropertyService {
                 where: {
                     landlordId,
                 },
-                include: {
-                    propertyListingHistory: true,
-                    apartments: true,
-                    state: true,
-                    reviews: true,
-                    UserLikedProperty: true,
-                    landlord: {
-                        include: {
-                            user: {
-                                include: {
-                                    profile: {
-                                        select: {
-                                            fullname: true,
-                                            firstName: true,
-                                            lastName: true,
-                                            middleName: true,
-                                            profileUrl: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                include: Object.assign({}, this.propsInclusion)
             });
             return unGroundProps;
         });
@@ -223,9 +146,7 @@ class PropertyService {
                             // landlordId: landlordId,
                             isDeleted: false, // Exclude deleted properties
                         },
-                        include: {
-                            apartments: true, // Include related apartments
-                        },
+                        include: Object.assign({}, this.propsInclusion),
                     });
                     // Store the properties in the result object under the respective state name
                     propertiesByState[state.name.toLowerCase()] = properties;
@@ -293,30 +214,7 @@ class PropertyService {
                     }
                 },
                 include: {
-                    property: {
-                        include: {
-                            state: true,
-                            reviews: true,
-                            UserLikedProperty: true,
-                            landlord: {
-                                include: {
-                                    user: {
-                                        include: {
-                                            profile: {
-                                                select: {
-                                                    fullname: true,
-                                                    firstName: true,
-                                                    lastName: true,
-                                                    middleName: true,
-                                                    profileUrl: true
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    property: Object.assign({}, this.propsInclusion),
                     apartment: true,
                 }
             });
@@ -336,27 +234,13 @@ class PropertyService {
                 include: {
                     property: {
                         include: {
+                            apartments: true,
                             state: true,
+                            applicant: true,
                             reviews: true,
                             UserLikedProperty: true,
-                            landlord: {
-                                include: {
-                                    user: {
-                                        include: {
-                                            profile: {
-                                                select: {
-                                                    fullname: true,
-                                                    firstName: true,
-                                                    lastName: true,
-                                                    middleName: true,
-                                                    profileUrl: true
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                            landlord: this.landlordInclusion,
+                        },
                     },
                     apartment: true,
                 },
@@ -376,7 +260,7 @@ class PropertyService {
                     propertyId
                 },
                 include: {
-                    property: true,
+                    property: Object.assign({}, this.propsInclusion),
                     apartment: true,
                 }
             });
@@ -410,28 +294,7 @@ class PropertyService {
         this.getPropertyById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findFirst({
                 where: { id: propertyId },
-                include: {
-                    reviews: true,
-                    applicant: true,
-                    UserLikedProperty: true,
-                    landlord: {
-                        include: {
-                            user: {
-                                include: {
-                                    profile: {
-                                        select: {
-                                            fullname: true,
-                                            firstName: true,
-                                            lastName: true,
-                                            middleName: true,
-                                            profileUrl: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                include: Object.assign({}, this.propsInclusion)
             });
         });
         this.getPropertiesWithoutTenants = (landlordId) => __awaiter(this, void 0, void 0, function* () {
@@ -499,6 +362,35 @@ class PropertyService {
                 },
             });
         });
+        this.landlordInclusion = {
+            include: {
+                user: {
+                    select: {
+                        email: true,
+                        id: true,
+                        profile: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                firstName: true,
+                                lastName: true,
+                                middleName: true,
+                                profileUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+        };
+        this.propsInclusion = {
+            propertyListingHistory: true,
+            apartments: true,
+            state: true,
+            applicant: true,
+            reviews: true,
+            UserLikedProperty: true,
+            landlord: this.landlordInclusion
+        };
     }
 }
 exports.default = new PropertyService();
