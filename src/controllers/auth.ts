@@ -205,7 +205,7 @@ class AuthControls {
                 }
 
                 // Exclude sensitive fields and return user details
-                const { password: _, id: __, ...userDetails } = user;
+                const { password: _, ...userDetails } = user;
                 const tokens = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
 
                 return res.status(200).json({
