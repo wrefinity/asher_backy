@@ -28,6 +28,9 @@ const loggers_1 = __importDefault(require("../utils/loggers"));
 const profileSelect = {
     select: {
         fullname: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
         profileUrl: true,
     },
 };

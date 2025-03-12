@@ -6,6 +6,9 @@ import { EmailDataType } from "../utils/types";
 const profileSelect = {
     select: {
         fullname: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
         profileUrl: true,
     },
 };
