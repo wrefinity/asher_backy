@@ -23,6 +23,7 @@ import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import { CustomRequest } from "../utils/types";
 import logsServices from "../services/logs.services";
 
+
 class AuthControls {
     protected tokenService: Jtoken;
     // protected googleService: GoogleService;
@@ -204,13 +205,15 @@ class AuthControls {
                     return res.status(404).json({ message: "No user found for the provided tenant code." });
                 }
 
+                
                 // Exclude sensitive fields and return user details
                 const { password: _, ...userDetails } = user;
                 const tokens = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
+                console.log(userDetails)
 
                 return res.status(200).json({
                     message: "Tenant-specific user retrieved successfully.",
-                    userDetails,
+                    userDetails: {...userDetails, id: user.id},
                     accessToken: tokens.accessToken,
                     refreshToken: tokens.refreshToken,
                 });
@@ -248,12 +251,12 @@ class AuthControls {
                 createdById: user.id,
             }); 
             // Exclude sensitive fields and return user details
-            const { password: _, id: __, ...userDetails } = user;
+            const { password: _, ...userDetails } = user;
             return res.status(200).json({
                 message: "User logged in successfully.",
                 token: token.accessToken,
                 refreshToken: token.refreshToken,
-                userDetails,
+                userDetails: {...userDetails, id: user.id},
             });
         } catch (error: unknown) {
             ErrorService.handleError(error, res)
