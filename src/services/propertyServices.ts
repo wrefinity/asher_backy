@@ -19,6 +19,31 @@ interface PropertyFilters {
 }
 
 class PropertyService {
+
+    landlordInclusion: Object
+
+    constructor(){
+        this.landlordInclusion = {
+            include: {
+                user: {
+                    select: {
+                        email: true,
+                        id: true,
+                        profile: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                firstName: true,
+                                lastName: true,
+                                middleName: true,
+                                profileUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+        }
+    }
     createProperty = async (propertyData: ICreateProperty) => {
         return await prismaClient.properties.create({
             data: {
@@ -35,7 +60,8 @@ class PropertyService {
                 apartments: true,
                 state: true,
                 reviews: true,
-                UserLikedProperty: true
+                UserLikedProperty: true,
+                landlord: this.landlordInclusion
             }
         })
     }
@@ -48,7 +74,8 @@ class PropertyService {
                 apartments: true,
                 state: true,
                 reviews: true,
-                UserLikedProperty: true
+                UserLikedProperty: true,
+                landlord: this.landlordInclusion
             }
         })
     }
@@ -61,23 +88,7 @@ class PropertyService {
                 state: true,
                 reviews: true,
                 UserLikedProperty: true,
-                landlord: {
-                    include: {
-                        user: {
-                            include: {
-                                profile: {
-                                    select: {
-                                        fullname: true,
-                                        firstName: true,
-                                        lastName: true,
-                                        middleName: true,
-                                        profileUrl: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                landlord: this.landlordInclusion
             }
         });
     }
@@ -97,6 +108,7 @@ class PropertyService {
                 apartments: true,
                 state: true,
                 reviews: true,
+                landlord: this.landlordInclusion
             }
         });
     }
@@ -146,23 +158,7 @@ class PropertyService {
                         apartments: true, // Include related apartments
                         state: true,
                         UserLikedProperty: true,
-                        landlord: {
-                            include: {
-                                user: {
-                                    include: {
-                                        profile: {
-                                            select: {
-                                                fullname: true,
-                                                firstName: true,
-                                                lastName: true,
-                                                middleName: true,
-                                                profileUrl: true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        landlord: this.landlordInclusion
                     },
                 });
 
@@ -189,23 +185,7 @@ class PropertyService {
                 state: true,
                 reviews: true,
                 UserLikedProperty: true,
-                landlord: {
-                    include: {
-                        user: {
-                            include: {
-                                profile: {
-                                    select: {
-                                        fullname: true,
-                                        firstName: true,
-                                        lastName: true,
-                                        middleName: true,
-                                        profileUrl: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                landlord: this.landlordInclusion
             }
         });
         return unGroundProps
@@ -250,6 +230,7 @@ class PropertyService {
                     },
                     include: {
                         apartments: true, // Include related apartments
+                        landlord: this.landlordInclusion
                     },
                 });
 
@@ -328,23 +309,7 @@ class PropertyService {
                         state: true,
                         reviews: true,
                         UserLikedProperty: true,
-                        landlord: {
-                            include: {
-                                user: {
-                                    include: {
-                                        profile: {
-                                            select: {
-                                                fullname: true,
-                                                firstName: true,
-                                                lastName: true,
-                                                middleName: true,
-                                                profileUrl: true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        landlord: this.landlordInclusion
                     }
                 },
                 apartment: true,
@@ -382,23 +347,7 @@ class PropertyService {
                         state: true,
                         reviews: true,
                         UserLikedProperty: true,
-                        landlord: {
-                            include: {
-                                user: {
-                                    include: {
-                                        profile: {
-                                            select: {
-                                                fullname: true,
-                                                firstName: true,
-                                                lastName: true,
-                                                middleName: true,
-                                                profileUrl: true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        landlord: this.landlordInclusion
                     }
                 },
                 apartment: true,
@@ -457,23 +406,7 @@ class PropertyService {
                 reviews: true,
                 applicant: true,
                 UserLikedProperty: true,
-                landlord: {
-                    include: {
-                        user: {
-                            include: {
-                                profile: {
-                                    select:{
-                                        fullname: true,
-                                        firstName: true,
-                                        lastName: true,
-                                        middleName: true,
-                                        profileUrl: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                landlord: this.landlordInclusion
             }
         });
     }
