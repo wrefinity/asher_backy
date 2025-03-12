@@ -44,12 +44,14 @@ class ApplicantControls {
       const declinedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.DECLINED);
       const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
       const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
+      const submittedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.SUBMITTED);
       res.status(200).json({applications:{
         pendingApplications, 
         completedApplications, 
         declinedApplications, 
         makePaymentApplications, 
-        acceptedApplications, 
+        acceptedApplications,
+        submittedApplications 
       }});
     } catch (error) {
       ErrorService.handleError(error, res)

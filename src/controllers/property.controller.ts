@@ -21,24 +21,53 @@ class PropertyController {
     //         ErrorService.handleError(error, res)
     //     }
     // }
-        // this code get landlord listing of properties including 
+    // this code get landlord listing of properties including 
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
-            
+
 
             // Extract filters from the query parameters
-            const { state, country, propertySize, type, isActive, specificationType } = req.query;
+            // Extract filters from the query parameters
+            const {
+                state,
+                country,
+                propertySize,
+                type,
+                isActive,
+                specificationType,
+                marketValue,
+                rentalFee,
+                noBedRoom,
+                noBathRoom,
+                noKitchen,
+                noGarage,
+                isShortlet,
+                dueDate,
+                yearBuilt,
+                zipcode,
+                amenities
+            } = req.query;
+
 
             // Prepare the filter object
             const filters: any = {
-    
+
             };
 
             // Add filters to the query if they are provided
             if (state) filters.property = { ...filters.property, state: String(state) };
             if (country) filters.property = { ...filters.property, country: String(country) };
             if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
+            if (marketValue) filters.property = { ...filters.property, marketValue: Number(marketValue) };
+            if (rentalFee) filters.property = { ...filters.property, rentalFee: Number(rentalFee) };
+            if (noBedRoom) filters.property = { ...filters.property, noBedRoom: Number(noBedRoom) };
+            if (noBathRoom) filters.property = { ...filters.property, noBathRoom: Number(noBathRoom) };
+            if (noKitchen) filters.property = { ...filters.property, noKitchen: Number(noKitchen) };
+            if (noGarage) filters.property = { ...filters.property, noGarage: Number(noGarage) };
+            if (zipcode) filters.property = { ...filters.property, zipcode: Number(zipcode) };
+
+
             if (isActive) {
                 // Convert isActive to a number
                 const isActiveNumber = parseInt(isActive.toString(), 10);
@@ -69,6 +98,21 @@ class PropertyController {
                 } else {
                     throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
                 }
+            }
+
+            // Convert isShortlet to boolean
+            if (isShortlet) {
+                filters.isShortlet = isShortlet.toString() === "true";
+            }
+        
+            // Convert dueDate and yearBuilt to Date objects
+            if (dueDate) filters.dueDate = new Date(dueDate.toString());
+            if (yearBuilt) filters.yearBuilt = new Date(yearBuilt.toString());
+
+            // Filter by amenities (array search)
+            if (amenities) {
+                const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
+                filters.amenities = { hasSome: amenitiesArray };
             }
 
             // Fetch the filtered properties

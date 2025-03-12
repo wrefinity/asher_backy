@@ -120,10 +120,10 @@ class EmailService {
             try {
                 return yield __1.prismaClient.email.findUnique({
                     where: { id: emailId },
-                    // include: {
-                    //     sender: userSelect,
-                    //     receiver: userSelect
-                    // }
+                    include: {
+                        sender: userSelect,
+                        receiver: userSelect
+                    }
                 });
             }
             catch (error) {

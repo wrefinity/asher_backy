@@ -47,12 +47,14 @@ class ApplicantControls {
                 const declinedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.DECLINED);
                 const makePaymentApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.MAKEPAYMENT);
                 const acceptedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.ACCEPTED);
+                const submittedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.SUBMITTED);
                 res.status(200).json({ applications: {
                         pendingApplications,
                         completedApplications,
                         declinedApplications,
                         makePaymentApplications,
                         acceptedApplications,
+                        submittedApplications
                     } });
             }
             catch (error) {

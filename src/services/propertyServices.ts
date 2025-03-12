@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { PropertyType, PropsSettingType } from "@prisma/client"
+import { PropertyType, ShortletType, PropsSettingType } from "@prisma/client"
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings";
 import { ICreateProperty } from "../validations/interfaces/properties.interface";
 import { PropsApartmentStatus } from "@prisma/client";
@@ -12,8 +12,20 @@ interface PropertyFilters {
         isActive?: boolean;
         specificationType?: string;
         propertysize?: number;
+        marketValue?: number;
+        rentalFee?: number;
+        noBedRoom?: number;
+        noBathRoom?:number;
+        noKitchen?: number;
+        noGarage?: number;
         type?: PropertyType;
     };
+    isShortlet?: boolean,
+    shortletDuration?: ShortletType,
+    dueDate?: Date,
+    yearBuilt?: Date,
+    zipcode?: string,
+    amenities?: [string],
     minSize?: number;
     maxSize?: number;
 }
@@ -300,9 +312,32 @@ class PropertyService {
     }
 
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
-        const { landlordId, property, minSize, maxSize } = filters;
-        const { type, state, country, specificationType, isActive } = property || {};
-
+        const {
+            landlordId,
+            property,
+            minSize,
+            maxSize,
+            isShortlet,
+            shortletDuration,
+            dueDate,
+            yearBuilt,
+            zipcode,
+            amenities,
+        } = filters;
+    
+        const {
+            type,
+            state,
+            country,
+            specificationType,
+            isActive,
+            marketValue,
+            rentalFee,
+            noBedRoom,
+            noBathRoom,
+            noKitchen,
+            noGarage,
+        } = property || {};
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -313,6 +348,17 @@ class PropertyService {
                     ...(specificationType && { specificationType }),
                     ...(state && { state: { name: state } }),
                     ...(country && { country }),
+                    ...(marketValue && { marketValue: Number(marketValue) }),
+                    ...(rentalFee && { rentalFee: Number(rentalFee) }),
+                    ...(noBedRoom && { noBedRoom: Number(noBedRoom) }),
+                    ...(noBathRoom && { noBathRoom: Number(noBathRoom) }),
+                    ...(noKitchen && { noKitchen: Number(noKitchen) }),
+                    ...(noGarage && { noGarage: Number(noGarage) }),
+                    ...(zipcode && { zipcode}),
+                    ...(isShortlet !== undefined && { isShortlet }),
+                    // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
+                    ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
+                    ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
                     ...(minSize || maxSize
                         ? {
                             propertysize: {
@@ -321,6 +367,7 @@ class PropertyService {
                             },
                         }
                         : {}),
+                    ...(amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {}),
                 } as any,
             },
             include: {

@@ -35,7 +35,8 @@ class PropertyController {
         this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 // Extract filters from the query parameters
-                const { state, country, propertySize, type, isActive, specificationType } = req.query;
+                // Extract filters from the query parameters
+                const { state, country, propertySize, type, isActive, specificationType, marketValue, rentalFee, noBedRoom, noBathRoom, noKitchen, noGarage, isShortlet, dueDate, yearBuilt, zipcode, amenities } = req.query;
                 // Prepare the filter object
                 const filters = {};
                 // Add filters to the query if they are provided
@@ -45,6 +46,20 @@ class PropertyController {
                     filters.property = Object.assign(Object.assign({}, filters.property), { country: String(country) });
                 if (propertySize)
                     filters.property = Object.assign(Object.assign({}, filters.property), { propertysize: Number(propertySize) });
+                if (marketValue)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { marketValue: Number(marketValue) });
+                if (rentalFee)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { rentalFee: Number(rentalFee) });
+                if (noBedRoom)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { noBedRoom: Number(noBedRoom) });
+                if (noBathRoom)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { noBathRoom: Number(noBathRoom) });
+                if (noKitchen)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { noKitchen: Number(noKitchen) });
+                if (noGarage)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { noGarage: Number(noGarage) });
+                if (zipcode)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { zipcode: Number(zipcode) });
                 if (isActive) {
                     // Convert isActive to a number
                     const isActiveNumber = parseInt(isActive.toString(), 10);
@@ -73,6 +88,20 @@ class PropertyController {
                     else {
                         throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(client_1.PropertyType).join(', ')}`);
                     }
+                }
+                // Convert isShortlet to boolean
+                if (isShortlet) {
+                    filters.isShortlet = isShortlet.toString() === "true";
+                }
+                // Convert dueDate and yearBuilt to Date objects
+                if (dueDate)
+                    filters.dueDate = new Date(dueDate.toString());
+                if (yearBuilt)
+                    filters.yearBuilt = new Date(yearBuilt.toString());
+                // Filter by amenities (array search)
+                if (amenities) {
+                    const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
+                    filters.amenities = { hasSome: amenitiesArray };
                 }
                 // Fetch the filtered properties
                 const properties = yield propertyServices_1.default.getAllListedProperties(filters);

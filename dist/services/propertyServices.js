@@ -220,17 +220,17 @@ class PropertyService {
             });
         });
         this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}) {
-            const { landlordId, property, minSize, maxSize } = filters;
-            const { type, state, country, specificationType, isActive } = property || {};
+            const { landlordId, property, minSize, maxSize, isShortlet, shortletDuration, dueDate, yearBuilt, zipcode, amenities, } = filters;
+            const { type, state, country, specificationType, isActive, marketValue, rentalFee, noBedRoom, noBathRoom, noKitchen, noGarage, } = property || {};
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && { state: { name: state } })), (country && { country })), (minSize || maxSize
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && { state: { name: state } })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (noBedRoom && { noBedRoom: Number(noBedRoom) })), (noBathRoom && { noBathRoom: Number(noBathRoom) })), (noKitchen && { noKitchen: Number(noKitchen) })), (noGarage && { noGarage: Number(noGarage) })), (zipcode && { zipcode })), (isShortlet !== undefined && { isShortlet })), (dueDate && { dueDate: new Date(dueDate.toString()) })), (yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) })), (minSize || maxSize
                         ? {
                             propertysize: {
                                 gte: minSize !== null && minSize !== void 0 ? minSize : undefined,
                                 lte: maxSize !== null && maxSize !== void 0 ? maxSize : undefined,
                             },
                         }
-                        : {})) }),
+                        : {})), (amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {})) }),
                 include: {
                     property: {
                         include: {
@@ -340,7 +340,23 @@ class PropertyService {
                     userId,
                 },
                 include: {
-                    user: true,
+                    user: {
+                        select: {
+                            email: true,
+                            id: true,
+                            profile: {
+                                select: {
+                                    id: true,
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    middleName: true,
+                                    profileUrl: true,
+                                },
+                            },
+                        },
+                    },
+                    property: true
                 },
             });
         });
