@@ -23,7 +23,7 @@ class PropertyService {
     landlordInclusion: any
     propsInclusion: any
 
-    constructor(){
+    constructor() {
         this.landlordInclusion = {
             include: {
                 user: {
@@ -302,7 +302,7 @@ class PropertyService {
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const { landlordId, property, minSize, maxSize } = filters;
         const { type, state, country, specificationType, isActive } = property || {};
-    
+
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -438,7 +438,23 @@ class PropertyService {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: {
+                        email: true,
+                        id: true,
+                        profile: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                firstName: true,
+                                lastName: true,
+                                middleName: true,
+                                profileUrl: true,
+                            },
+                        },
+                    },
+                },
+                property: true
             },
         });
     }

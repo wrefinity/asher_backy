@@ -91,10 +91,10 @@ class EmailService {
         try {
             return await prismaClient.email.findUnique({
                 where: { id: emailId },
-                // include: {
-                //     sender: userSelect,
-                //     receiver: userSelect
-                // }
+                include: {
+                    sender: userSelect,
+                    receiver: userSelect
+                }
             })
         } catch (error) {
             loggers.error(`Error getting email: ${error}`)
