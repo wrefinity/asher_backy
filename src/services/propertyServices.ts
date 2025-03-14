@@ -319,8 +319,124 @@ class PropertyService {
     }
 
 
+    countListedProperties = async (filters: PropertyFilters = {}) => {
+        const {
+            landlordId,
+            property,
+            minSize,
+            maxSize,
+            isShortlet,
+            dueDate,
+            yearBuilt,
+            zipcode,
+            amenities,
+            mustHaves
+        } = filters;
 
-    getAllListedProperties = async (filters: PropertyFilters = {}) => {
+        const {
+            type,
+            state,
+            country,
+            specificationType,
+            isActive,
+            rentalFee,
+            maxBedRoom,
+            minBedRoom,
+            maxBathRoom,
+            minBathRoom,
+            maxRentalFee,
+            minRentalFee,
+            marketValue,
+            noKitchen,
+            minGarage,
+            maxGarage
+        } = property || {};
+
+        return await prismaClient.propertyListingHistory.count({ 
+            where: {
+                ...(isActive !== undefined && { isActive }),
+                ...(isActive !== undefined && { onListing: isActive }),
+                property: {
+                    ...(landlordId && { landlordId }),
+                    ...(type && { type }),
+                    ...(specificationType && { specificationType }),
+                    ...(state && {
+                        state: {
+                            is: {
+                                name: state
+                            }
+                        }
+                    }),
+                    ...(country && { country }),
+                    ...(marketValue && { marketValue: Number(marketValue) }),
+                    ...(rentalFee && { rentalFee: Number(rentalFee) }),
+                    ...(minRentalFee || maxRentalFee
+                        ? {
+                            rentalFee: {
+                                gte: minRentalFee ?? undefined,
+                                lte: maxRentalFee ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(maxBedRoom || minBedRoom
+                        ? {
+                            noBedRoom: {
+                                gte: minBedRoom ?? undefined,
+                                lte: maxBedRoom ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(maxBathRoom || minBathRoom
+                        ? {
+                            noBathRoom: {
+                                gte: minBathRoom ?? undefined,
+                                lte: maxBathRoom ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(minGarage || maxGarage
+                        ? {
+                            noGarage: {
+                                gte: minGarage ?? undefined,
+                                lte: maxGarage ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(noKitchen && { noKitchen: Number(noKitchen) }),
+                    ...(zipcode && { zipcode }),
+                    ...(isShortlet !== undefined && { isShortlet }),
+                    // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
+                    ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
+                    ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
+                    ...(minSize || maxSize
+                        ? {
+                            propertysize: {
+                                gte: minSize ?? undefined,
+                                lte: maxSize ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {}),
+                    ...(mustHaves && mustHaves.length > 0
+                        ? {
+                            OR: mustHaves.map(mh => ({
+                                amenities: {
+                                    has: mh
+                                }
+                            }))
+                        }
+                        : {}),
+                    
+                    
+
+
+                } as any,
+            },
+         });
+    };
+    
+
+    getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10) => {
         const {
             landlordId,
             property,
@@ -451,6 +567,8 @@ class PropertyService {
                 },
                 apartment: true,
             },
+            skip,
+            take,
         });
     };
     createPropertyListing = async (data: PropertyListingDTO) => {

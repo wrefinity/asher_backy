@@ -51,7 +51,9 @@ class PropertyController {
                 yearBuilt,
                 zipcode,
                 amenities,
-                mustHaves
+                mustHaves,
+                page = 1,
+                limit = 10
             } = req.query;
 
 
@@ -113,7 +115,7 @@ class PropertyController {
             if (isShortlet) {
                 filters.isShortlet = isShortlet.toString() === "true";
             }
-     
+
             // Convert dueDate and yearBuilt to Date objects
             if (dueDate) filters.dueDate = new Date(dueDate.toString());
             if (yearBuilt) filters.yearBuilt = new Date(yearBuilt.toString());
@@ -136,16 +138,29 @@ class PropertyController {
                 filters.mustHaves = mustHavesArray;
             }
 
-            // Fetch the filtered properties
-            const properties = await PropertyServices.getAllListedProperties(filters);
+            const pageNumber = parseInt(page as string, 10) || 1;
+            const pageSize = parseInt(limit as string, 10) || 10;
+            const skip = (pageNumber - 1) * pageSize;
 
-            // Check if properties are found
+            const totalProperties = await PropertyServices.countListedProperties(filters);
+            const properties = await PropertyServices.getAllListedProperties(filters, skip, pageSize);
+
             if (!properties || properties.length === 0) {
-                return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                return res.status(404).json({ message: "No properties found for the given filters" });
             }
 
+            return res.status(200).json({
+                properties,
+                pagination: {
+                    total: totalProperties,
+                    page: pageNumber,
+                    limit: pageSize,
+                    totalPages: Math.ceil(totalProperties / pageSize)
+                }
+            });
+
             // Return the filtered properties
-            return res.status(200).json({ properties });
+            // return res.status(200).json({ properties });
         } catch (err) {
             // Handle any errors
             ErrorService.handleError(err, res);

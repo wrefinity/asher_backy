@@ -36,7 +36,7 @@ class PropertyController {
             try {
                 // Extract filters from the query parameters
                 // Extract filters from the query parameters
-                const { state, country, propertySize, type, isActive, specificationType, marketValue, minBedRoom, maxBedRoom, maxRentalFee, minRentalFee, minBathRoom, maxBathRoom, noKitchen, minGarage, maxGarage, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = req.query;
+                const { state, country, propertySize, type, isActive, specificationType, marketValue, minBedRoom, maxBedRoom, maxRentalFee, minRentalFee, minBathRoom, maxBathRoom, noKitchen, minGarage, maxGarage, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves, page = 1, limit = 10 } = req.query;
                 // Prepare the filter object
                 const filters = {};
                 // Add filters to the query if they are provided
@@ -123,14 +123,25 @@ class PropertyController {
                     }
                     filters.mustHaves = mustHavesArray;
                 }
-                // Fetch the filtered properties
-                const properties = yield propertyServices_1.default.getAllListedProperties(filters);
-                // Check if properties are found
+                const pageNumber = parseInt(page, 10) || 1;
+                const pageSize = parseInt(limit, 10) || 10;
+                const skip = (pageNumber - 1) * pageSize;
+                const totalProperties = yield propertyServices_1.default.countListedProperties(filters);
+                const properties = yield propertyServices_1.default.getAllListedProperties(filters, skip, pageSize);
                 if (!properties || properties.length === 0) {
-                    return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                    return res.status(404).json({ message: "No properties found for the given filters" });
                 }
+                return res.status(200).json({
+                    properties,
+                    pagination: {
+                        total: totalProperties,
+                        page: pageNumber,
+                        limit: pageSize,
+                        totalPages: Math.ceil(totalProperties / pageSize)
+                    }
+                });
                 // Return the filtered properties
-                return res.status(200).json({ properties });
+                // return res.status(200).json({ properties });
             }
             catch (err) {
                 // Handle any errors
