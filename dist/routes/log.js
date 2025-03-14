@@ -16,8 +16,6 @@ class LogRoutes {
     initializeRoutes() {
         this.router.post('/', this.authenticateService.authorize, logs_controller_1.default.createLog);
         this.router.get('/property/:propertyId', logs_controller_1.default.getProperyLog);
-        this.router.post('/feedback/:logId', logs_controller_1.default.getProperyLog);
-        this.router.get('/property/:propertyId', logs_controller_1.default.getProperyLog);
     }
 }
 exports.default = new LogRoutes().router;

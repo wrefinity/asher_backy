@@ -17,6 +17,8 @@ class LogService {
             const logData = {
                 events: data.events,
                 type: data.type,
+                viewAgain: data.viewAgain,
+                considerRenting: data.considerRenting,
                 transactionId: (data === null || data === void 0 ? void 0 : data.transactionId) || undefined,
                 // createdById: data?.createdById || undefined,
                 application: data.applicationId
@@ -27,25 +29,10 @@ class LogService {
             if (data.propertyId) {
                 logData.property = { connect: { id: data.propertyId } };
             }
-            if (data.propertyId) {
+            if (data.createdById) {
                 logData.users = { connect: { id: data.createdById } };
             }
             return yield __1.prismaClient.log.create({
-                data: logData,
-            });
-        });
-        this.createLogFeedback = (data) => __awaiter(this, void 0, void 0, function* () {
-            const logData = {
-                comment: data.comment,
-                user: data.userId
-                    ? { connect: { id: data.userId } }
-                    : undefined,
-            };
-            // Only include propertyId if it is defined
-            if (data.logId) {
-                logData.log = { connect: { id: data.logId } };
-            }
-            return yield __1.prismaClient.logFeedback.create({
                 data: logData,
             });
         });
@@ -76,7 +63,6 @@ class LogService {
                 },
                 include: {
                     property: true,
-                    feedbacks: true,
                 }
             });
         });

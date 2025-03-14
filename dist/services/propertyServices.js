@@ -220,17 +220,63 @@ class PropertyService {
             });
         });
         this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}) {
-            const { landlordId, property, minSize, maxSize, isShortlet, shortletDuration, dueDate, yearBuilt, zipcode, amenities, } = filters;
-            const { type, state, country, specificationType, isActive, marketValue, rentalFee, noBedRoom, noBathRoom, noKitchen, noGarage, } = property || {};
+            const { landlordId, property, minSize, maxSize, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = filters;
+            const { type, state, country, specificationType, isActive, rentalFee, maxBedRoom, minBedRoom, maxBathRoom, minBathRoom, maxRentalFee, minRentalFee, marketValue, noKitchen, minGarage, maxGarage } = property || {};
+            // console.log("=================")
+            // console.log(property)
+            // console.log(filters)
+            // console.log("=================")
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && { state: { name: state } })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (noBedRoom && { noBedRoom: Number(noBedRoom) })), (noBathRoom && { noBathRoom: Number(noBathRoom) })), (noKitchen && { noKitchen: Number(noKitchen) })), (noGarage && { noGarage: Number(noGarage) })), (zipcode && { zipcode })), (isShortlet !== undefined && { isShortlet })), (dueDate && { dueDate: new Date(dueDate.toString()) })), (yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) })), (minSize || maxSize
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && {
+                        state: {
+                            is: {
+                                name: state
+                            }
+                        }
+                    })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (minRentalFee || maxRentalFee
+                        ? {
+                            rentalFee: {
+                                gte: minRentalFee !== null && minRentalFee !== void 0 ? minRentalFee : undefined,
+                                lte: maxRentalFee !== null && maxRentalFee !== void 0 ? maxRentalFee : undefined,
+                            },
+                        }
+                        : {})), (maxBedRoom || minBedRoom
+                        ? {
+                            noBedRoom: {
+                                gte: minBedRoom !== null && minBedRoom !== void 0 ? minBedRoom : undefined,
+                                lte: maxBedRoom !== null && maxBedRoom !== void 0 ? maxBedRoom : undefined,
+                            },
+                        }
+                        : {})), (maxBathRoom || minBathRoom
+                        ? {
+                            noBathRoom: {
+                                gte: minBathRoom !== null && minBathRoom !== void 0 ? minBathRoom : undefined,
+                                lte: maxBathRoom !== null && maxBathRoom !== void 0 ? maxBathRoom : undefined,
+                            },
+                        }
+                        : {})), (minGarage || maxGarage
+                        ? {
+                            noGarage: {
+                                gte: minGarage !== null && minGarage !== void 0 ? minGarage : undefined,
+                                lte: maxGarage !== null && maxGarage !== void 0 ? maxGarage : undefined,
+                            },
+                        }
+                        : {})), (noKitchen && { noKitchen: Number(noKitchen) })), (zipcode && { zipcode })), (isShortlet !== undefined && { isShortlet })), (dueDate && { dueDate: new Date(dueDate.toString()) })), (yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) })), (minSize || maxSize
                         ? {
                             propertysize: {
                                 gte: minSize !== null && minSize !== void 0 ? minSize : undefined,
                                 lte: maxSize !== null && maxSize !== void 0 ? maxSize : undefined,
                             },
                         }
-                        : {})), (amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {})) }),
+                        : {})), (amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {})), (mustHaves && mustHaves.length > 0
+                        ? {
+                            OR: mustHaves.map(mh => ({
+                                amenities: {
+                                    has: mh
+                                }
+                            }))
+                        }
+                        : {})) }),
                 include: {
                     property: {
                         include: {

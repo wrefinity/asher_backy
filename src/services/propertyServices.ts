@@ -13,21 +13,27 @@ interface PropertyFilters {
         specificationType?: string;
         propertysize?: number;
         marketValue?: number;
+        maxRentalFee?: number;
+        minRentalFee?: number;
         rentalFee?: number;
-        noBedRoom?: number;
-        noBathRoom?:number;
+        maxBedRoom?: number;
+        minBedRoom?: number;
+        // noBathRoom?: number;
+        maxBathRoom?: number;
+        minBathRoom?: number;
         noKitchen?: number;
-        noGarage?: number;
+        minGarage?: number;
+        maxGarage?: number;
         type?: PropertyType;
     };
     isShortlet?: boolean,
-    shortletDuration?: ShortletType,
     dueDate?: Date,
     yearBuilt?: Date,
     zipcode?: string,
     amenities?: [string],
     minSize?: number;
     maxSize?: number;
+    mustHaves?: string[];
 }
 
 class PropertyService {
@@ -285,6 +291,7 @@ class PropertyService {
             }
         })
     }
+
     getPropertyGlobalFees = async (landlordId: string, settingType: PropsSettingType) => {
         return await prismaClient.propApartmentSettings.findFirst({
             where: {
@@ -311,6 +318,8 @@ class PropertyService {
         });
     }
 
+
+
     getAllListedProperties = async (filters: PropertyFilters = {}) => {
         const {
             landlordId,
@@ -318,26 +327,37 @@ class PropertyService {
             minSize,
             maxSize,
             isShortlet,
-            shortletDuration,
             dueDate,
             yearBuilt,
             zipcode,
             amenities,
+            mustHaves
         } = filters;
-    
+
         const {
             type,
             state,
             country,
             specificationType,
             isActive,
-            marketValue,
             rentalFee,
-            noBedRoom,
-            noBathRoom,
+            maxBedRoom,
+            minBedRoom,
+            maxBathRoom,
+            minBathRoom,
+            maxRentalFee,
+            minRentalFee,
+            marketValue,
             noKitchen,
-            noGarage,
+            minGarage,
+            maxGarage
         } = property || {};
+
+        // console.log("=================")
+        // console.log(property)
+        // console.log(filters)
+        // console.log("=================")
+
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -346,15 +366,50 @@ class PropertyService {
                     ...(landlordId && { landlordId }),
                     ...(type && { type }),
                     ...(specificationType && { specificationType }),
-                    ...(state && { state: { name: state } }),
+                    ...(state && {
+                        state: {
+                            is: {
+                                name: state
+                            }
+                        }
+                    }),
                     ...(country && { country }),
                     ...(marketValue && { marketValue: Number(marketValue) }),
                     ...(rentalFee && { rentalFee: Number(rentalFee) }),
-                    ...(noBedRoom && { noBedRoom: Number(noBedRoom) }),
-                    ...(noBathRoom && { noBathRoom: Number(noBathRoom) }),
+                    ...(minRentalFee || maxRentalFee
+                        ? {
+                            rentalFee: {
+                                gte: minRentalFee ?? undefined,
+                                lte: maxRentalFee ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(maxBedRoom || minBedRoom
+                        ? {
+                            noBedRoom: {
+                                gte: minBedRoom ?? undefined,
+                                lte: maxBedRoom ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(maxBathRoom || minBathRoom
+                        ? {
+                            noBathRoom: {
+                                gte: minBathRoom ?? undefined,
+                                lte: maxBathRoom ?? undefined,
+                            },
+                        }
+                        : {}),
+                    ...(minGarage || maxGarage
+                        ? {
+                            noGarage: {
+                                gte: minGarage ?? undefined,
+                                lte: maxGarage ?? undefined,
+                            },
+                        }
+                        : {}),
                     ...(noKitchen && { noKitchen: Number(noKitchen) }),
-                    ...(noGarage && { noGarage: Number(noGarage) }),
-                    ...(zipcode && { zipcode}),
+                    ...(zipcode && { zipcode }),
                     ...(isShortlet !== undefined && { isShortlet }),
                     // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
                     ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
@@ -368,6 +423,19 @@ class PropertyService {
                         }
                         : {}),
                     ...(amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {}),
+                    ...(mustHaves && mustHaves.length > 0
+                        ? {
+                            OR: mustHaves.map(mh => ({
+                                amenities: {
+                                    has: mh
+                                }
+                            }))
+                        }
+                        : {}),
+                    
+                    
+
+
                 } as any,
             },
             include: {

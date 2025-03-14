@@ -48,7 +48,7 @@ class ApplicantControls {
       res.status(200).json({applications:{
         pendingApplications, 
         completedApplications, 
-        declinedApplications, 
+        declinedApplications,
         makePaymentApplications, 
         acceptedApplications,
         submittedApplications 

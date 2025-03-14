@@ -14,6 +14,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum YesNo {
+  YES
+  NO
+}
+
 model Ads {
   id               String       @id @default(cuid())
   title            String

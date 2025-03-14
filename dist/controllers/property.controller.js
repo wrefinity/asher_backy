@@ -36,7 +36,7 @@ class PropertyController {
             try {
                 // Extract filters from the query parameters
                 // Extract filters from the query parameters
-                const { state, country, propertySize, type, isActive, specificationType, marketValue, rentalFee, noBedRoom, noBathRoom, noKitchen, noGarage, isShortlet, dueDate, yearBuilt, zipcode, amenities } = req.query;
+                const { state, country, propertySize, type, isActive, specificationType, marketValue, minBedRoom, maxBedRoom, maxRentalFee, minRentalFee, minBathRoom, maxBathRoom, noKitchen, minGarage, maxGarage, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = req.query;
                 // Prepare the filter object
                 const filters = {};
                 // Add filters to the query if they are provided
@@ -48,16 +48,25 @@ class PropertyController {
                     filters.property = Object.assign(Object.assign({}, filters.property), { propertysize: Number(propertySize) });
                 if (marketValue)
                     filters.property = Object.assign(Object.assign({}, filters.property), { marketValue: Number(marketValue) });
-                if (rentalFee)
-                    filters.property = Object.assign(Object.assign({}, filters.property), { rentalFee: Number(rentalFee) });
-                if (noBedRoom)
-                    filters.property = Object.assign(Object.assign({}, filters.property), { noBedRoom: Number(noBedRoom) });
-                if (noBathRoom)
-                    filters.property = Object.assign(Object.assign({}, filters.property), { noBathRoom: Number(noBathRoom) });
+                if (minRentalFee)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { minRentalFee: Number(minRentalFee) });
+                if (maxRentalFee)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { maxRentalFee: Number(maxRentalFee) });
+                if (minBedRoom)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { minBedRoom: Number(minBedRoom) });
+                if (maxBedRoom)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { maxBedRoom: Number(maxBedRoom) });
+                if (minBathRoom)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { minBathRoom: Number(minBathRoom) });
+                if (maxBathRoom)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { maxBathRoom: Number(maxBathRoom) });
+                if (minGarage)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { minGarage: Number(minGarage) });
+                if (maxGarage)
+                    filters.property = Object.assign(Object.assign({}, filters.property), { maxGarage: Number(maxGarage) });
+                // if (noBathRoom) filters.property = { ...filters.property, noBathRoom: Number(noBathRoom) };
                 if (noKitchen)
                     filters.property = Object.assign(Object.assign({}, filters.property), { noKitchen: Number(noKitchen) });
-                if (noGarage)
-                    filters.property = Object.assign(Object.assign({}, filters.property), { noGarage: Number(noGarage) });
                 if (zipcode)
                     filters.property = Object.assign(Object.assign({}, filters.property), { zipcode: Number(zipcode) });
                 if (isActive) {
@@ -102,6 +111,17 @@ class PropertyController {
                 if (amenities) {
                     const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
                     filters.amenities = { hasSome: amenitiesArray };
+                }
+                // Handle mustHaves (Case Insensitive)
+                if (mustHaves) {
+                    let mustHavesArray;
+                    if (Array.isArray(mustHaves)) {
+                        mustHavesArray = mustHaves.map(mh => String(mh));
+                    }
+                    else {
+                        mustHavesArray = [String(mustHaves)];
+                    }
+                    filters.mustHaves = mustHavesArray;
                 }
                 // Fetch the filtered properties
                 const properties = yield propertyServices_1.default.getAllListedProperties(filters);

@@ -1,11 +1,14 @@
 import Joi from 'joi';
-import { LogType } from "@prisma/client"
+import { LogType, YesNo } from "@prisma/client"
 const logsType = Object.values(LogType);
+const yesNoType = Object.values(YesNo);
 
 
 export const logSchema = Joi.object({
   id: Joi.string().optional(), // Automatically generated, so optional
   subjects: Joi.string().optional().allow(''), // Optional field
+  viewAgain: Joi.string().optional().allow('').valid(...yesNoType), // Optional field
+  considerRenting: Joi.string().optional().allow('').valid(...yesNoType), // Optional field
   events: Joi.string().required(), // Required field
   type: Joi.string().valid(...logsType).default(LogType.APPLICATION).optional(),
   propertyId: Joi.string().optional().allow(''), // Optional field
@@ -14,10 +17,4 @@ export const logSchema = Joi.object({
 });
 
 
-// Joi schema for Feedback
-export const feedbackSchema = Joi.object({
-  id: Joi.string().optional(),
-  comment: Joi.string().required(),
-  createdAt: Joi.date().optional(),
-  logId: Joi.string().required(),
-});
+

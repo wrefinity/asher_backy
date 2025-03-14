@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import {LogType} from "@prisma/client"
+import {LogType, YesNo} from "@prisma/client"
 // Interface for Log creation
 interface LogIF {
   events: string;
@@ -7,15 +7,12 @@ interface LogIF {
   subjects?: string;
   type?: LogType;
   transactionId?: string;
+  viewAgain?: YesNo;
+  considerRenting?: YesNo;
   applicationId?: string;
   createdById?: string;
 }
-interface LogFeedbackIF {
-  id?: string;
-  logId?: string;
-  comment?: string;
-  userId?: string;
-}
+
 
 
 class LogService {
@@ -30,6 +27,8 @@ class LogService {
     const logData: any = {
       events: data.events,
       type: data.type,
+      viewAgain: data.viewAgain,
+      considerRenting: data.considerRenting,
       transactionId: data?.transactionId || undefined,
       // createdById: data?.createdById || undefined,
       application: data.applicationId
@@ -41,7 +40,7 @@ class LogService {
     if (data.propertyId) {
       logData.property = { connect: { id: data.propertyId } };
     }
-    if (data.propertyId) {
+    if (data.createdById) {
       logData.users= { connect: { id: data.createdById } }
     }
 
@@ -49,21 +48,7 @@ class LogService {
       data: logData,
     });
   };
-  createLogFeedback = async (data: LogFeedbackIF) => {
-    const logData: any = {
-      comment: data.comment,
-      user: data.userId
-        ? { connect: { id: data.userId } }
-        : undefined,
-    };
-    // Only include propertyId if it is defined
-    if (data.logId) {
-      logData.log = { connect: { id: data.logId } };
-    }
-    return await prismaClient.logFeedback.create({
-      data: logData,
-    });
-  };
+
   
 
   checkPropertyLogs = async (createdById: string, type: LogType, propertyId:string, applicationId: string = null)=>{
@@ -94,7 +79,6 @@ class LogService {
       },
       include: {
         property: true,
-        feedbacks: true,
       }
     });
   }

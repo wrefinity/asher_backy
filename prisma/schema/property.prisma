@@ -54,7 +54,7 @@ model propertyListingHistory {
 
 enum PropertyType {
   SINGLE_UNIT
-  MULTI_UNIT
+  MULTI_UNIT  
 }
 
 enum PropertySpecificationType {

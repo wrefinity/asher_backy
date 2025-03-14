@@ -1,3 +1,52 @@
+
+# def fibonacci(n):
+#     if n == 0:
+#         return 0
+#     if n == 1:
+#         return 1
+    
+#     # intialize an array to store the fibonacci values
+#     fib = [0] * (n + 1) 
+#     fib[0] = 0
+#     fib[1] = 1 
+
+#     for i in range(2, n + 1): 
+#         fib[i] = fib[i - 1] + fib[i - 2]
+
+#     return fib[n]
+
+
+
+
+# def fibonacci_optimized(n):
+
+#     if n == 0:
+#         return 0
+#     if n == 1:
+#         return 1
+#     prev2 = 0
+#     prev1 = 1
+
+#     for _ in range(2, n + 1):
+#         curr = prev1 + prev2
+#         prev2 = prev1
+#         prev1 = curr
+
+#     return prev1    
+
+# print(fibonacci(300))
+
+
+
+
+
+
+
+
+
+
+
+
 def cut_rod(prices, n):
     if n == 0:
         return 0  # Base case: no revenue for length 0
@@ -8,7 +57,7 @@ def cut_rod(prices, n):
 
 prices = [1, 5, 8, 9, 10, 17, 17, 20, 24, 30]  # 1-based index adjusted
 print(cut_rod(prices, 4))  
-# Output: 10 (2 + 2)
+Output: 10 (2 + 2)
 
 
 

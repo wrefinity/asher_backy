@@ -37,16 +37,21 @@ class PropertyController {
                 isActive,
                 specificationType,
                 marketValue,
-                rentalFee,
-                noBedRoom,
-                noBathRoom,
+                minBedRoom,
+                maxBedRoom,
+                maxRentalFee,
+                minRentalFee,
+                minBathRoom,
+                maxBathRoom,
                 noKitchen,
-                noGarage,
+                minGarage,
+                maxGarage,
                 isShortlet,
                 dueDate,
                 yearBuilt,
                 zipcode,
-                amenities
+                amenities,
+                mustHaves
             } = req.query;
 
 
@@ -60,13 +65,17 @@ class PropertyController {
             if (country) filters.property = { ...filters.property, country: String(country) };
             if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
             if (marketValue) filters.property = { ...filters.property, marketValue: Number(marketValue) };
-            if (rentalFee) filters.property = { ...filters.property, rentalFee: Number(rentalFee) };
-            if (noBedRoom) filters.property = { ...filters.property, noBedRoom: Number(noBedRoom) };
-            if (noBathRoom) filters.property = { ...filters.property, noBathRoom: Number(noBathRoom) };
+            if (minRentalFee) filters.property = { ...filters.property, minRentalFee: Number(minRentalFee) };
+            if (maxRentalFee) filters.property = { ...filters.property, maxRentalFee: Number(maxRentalFee) };
+            if (minBedRoom) filters.property = { ...filters.property, minBedRoom: Number(minBedRoom) };
+            if (maxBedRoom) filters.property = { ...filters.property, maxBedRoom: Number(maxBedRoom) };
+            if (minBathRoom) filters.property = { ...filters.property, minBathRoom: Number(minBathRoom) };
+            if (maxBathRoom) filters.property = { ...filters.property, maxBathRoom: Number(maxBathRoom) };
+            if (minGarage) filters.property = { ...filters.property, minGarage: Number(minGarage) };
+            if (maxGarage) filters.property = { ...filters.property, maxGarage: Number(maxGarage) };
+            // if (noBathRoom) filters.property = { ...filters.property, noBathRoom: Number(noBathRoom) };
             if (noKitchen) filters.property = { ...filters.property, noKitchen: Number(noKitchen) };
-            if (noGarage) filters.property = { ...filters.property, noGarage: Number(noGarage) };
             if (zipcode) filters.property = { ...filters.property, zipcode: Number(zipcode) };
-
 
             if (isActive) {
                 // Convert isActive to a number
@@ -104,7 +113,7 @@ class PropertyController {
             if (isShortlet) {
                 filters.isShortlet = isShortlet.toString() === "true";
             }
-        
+     
             // Convert dueDate and yearBuilt to Date objects
             if (dueDate) filters.dueDate = new Date(dueDate.toString());
             if (yearBuilt) filters.yearBuilt = new Date(yearBuilt.toString());
@@ -113,6 +122,18 @@ class PropertyController {
             if (amenities) {
                 const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
                 filters.amenities = { hasSome: amenitiesArray };
+            }
+            // Handle mustHaves (Case Insensitive)
+            if (mustHaves) {
+                let mustHavesArray: string[];
+
+                if (Array.isArray(mustHaves)) {
+                    mustHavesArray = mustHaves.map(mh => String(mh));
+                } else {
+                    mustHavesArray = [String(mustHaves)];
+                }
+
+                filters.mustHaves = mustHavesArray;
             }
 
             // Fetch the filtered properties
@@ -130,6 +151,7 @@ class PropertyController {
             ErrorService.handleError(err, res);
         }
     };
+
     getPropertyListedByLandlord = async (req: CustomRequest, res: Response) => {
         try {
 
