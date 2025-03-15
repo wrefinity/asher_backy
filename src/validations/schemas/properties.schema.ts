@@ -99,6 +99,7 @@ export const updatePropertyDocumentSchema = Joi.object({
 // property listing schema
 const listingTypes = Object.values(ListingType);
 const shortletType = Object.values(ShortletType);
+
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
   isShortlet: Joi.boolean().required(),

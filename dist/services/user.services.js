@@ -77,7 +77,17 @@ class UserService {
                     },
                 },
                 include: {
-                    tenant: true,
+                    tenant: {
+                        include: {
+                            property: true,
+                            landlord: {
+                                select: {
+                                    landlordCode: true,
+                                    userId: true
+                                }
+                            },
+                        }
+                    },
                     profile: true,
                 },
             });

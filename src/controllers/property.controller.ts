@@ -12,22 +12,9 @@ import { LogType, PropertySpecificationType, PropertyType } from "@prisma/client
 class PropertyController {
     constructor() { }
 
-    // getProperty = async (req: CustomRequest, res: Response) => {
-    //     try {
-    //         const properties = await PropertyServices.getProperties()
-    //         if (properties.length < 1) return res.status(200).json({ message: "No Property listed yet" })
-    //         return res.status(200).json(properties)
-    //     } catch (error) {
-    //         ErrorService.handleError(error, res)
-    //     }
-    // }
-    // this code get landlord listing of properties including 
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
-
-
-            // Extract filters from the query parameters
             // Extract filters from the query parameters
             const {
                 state,
@@ -159,8 +146,6 @@ class PropertyController {
                 }
             });
 
-            // Return the filtered properties
-            // return res.status(200).json({ properties });
         } catch (err) {
             // Handle any errors
             ErrorService.handleError(err, res);

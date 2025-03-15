@@ -7,7 +7,7 @@ import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
-import { parseCSV, parseDateField } from "../../utils/filereader";
+import { parseCSV } from "../../utils/filereader";
 import { parseDateFieldNew} from "../../utils/helpers";
 import { PropertySpecificationType, PropertyType } from "@prisma/client"
 import TenantService from '../../services/tenant.service';

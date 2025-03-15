@@ -6,8 +6,6 @@ import { getCurrentCountryCurrency } from "../../utils/helpers";
 
 
 
-
-
 class TransactionController {
 
     getTransaction = async (req: CustomRequest, res: Response) => {

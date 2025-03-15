@@ -79,8 +79,6 @@ class ChatMessageAuth {
         }
     };
     
-    
-
     // getChatRoomMessage = async (req: CustomRequest, res: Response) => {
     // const { chatRoomId } = req.params;
     // try {

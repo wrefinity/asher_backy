@@ -21,20 +21,9 @@ const logs_services_1 = __importDefault(require("../services/logs.services"));
 const client_1 = require("@prisma/client");
 class PropertyController {
     constructor() {
-        // getProperty = async (req: CustomRequest, res: Response) => {
-        //     try {
-        //         const properties = await PropertyServices.getProperties()
-        //         if (properties.length < 1) return res.status(200).json({ message: "No Property listed yet" })
-        //         return res.status(200).json(properties)
-        //     } catch (error) {
-        //         ErrorService.handleError(error, res)
-        //     }
-        // }
-        // this code get landlord listing of properties including 
         // using filters base on property size, type and location
         this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                // Extract filters from the query parameters
                 // Extract filters from the query parameters
                 const { state, country, propertySize, type, isActive, specificationType, marketValue, minBedRoom, maxBedRoom, maxRentalFee, minRentalFee, minBathRoom, maxBathRoom, noKitchen, minGarage, maxGarage, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves, page = 1, limit = 10 } = req.query;
                 // Prepare the filter object
@@ -140,8 +129,6 @@ class PropertyController {
                         totalPages: Math.ceil(totalProperties / pageSize)
                     }
                 });
-                // Return the filtered properties
-                // return res.status(200).json({ properties });
             }
             catch (err) {
                 // Handle any errors
