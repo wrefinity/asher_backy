@@ -168,7 +168,6 @@ class ApplicationControls {
         this.getInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             try {
-                const { id } = req.params;
                 const invitedByLandordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const invite = yield application_services_1.default.getInvite({ invitedByLandordId });
                 if (!invite)

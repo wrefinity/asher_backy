@@ -150,8 +150,7 @@ class ApplicationControls {
         }
     }
     getInvites = async (req: CustomRequest, res: Response) => {
-        try {
-            const { id } = req.params;
+        try { 
             const invitedByLandordId = req.user?.landlords?.id;
             const invite = await ApplicationInvitesService.getInvite({invitedByLandordId});
             if (!invite) return res.status(404).json({ message: 'Invite not found' });

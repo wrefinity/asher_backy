@@ -571,6 +571,8 @@ class ApplicantService {
     });
   }
 
+ 
+
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
       where: { id: applicationId },

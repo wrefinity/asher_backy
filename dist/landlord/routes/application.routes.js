@@ -22,6 +22,7 @@ class ApplicationLandlordRouter {
         this.router.get('/statistics', applicant_controller_1.default.getApplicationStatistics);
         this.router.get('/leasing', applicant_controller_1.default.getEnquiredProps);
         this.router.post('/invites', applicant_controller_1.default.createInvite);
+        this.router.get('/invites', applicant_controller_1.default.getInvites);
         this.router.get('/invites/:id', applicant_controller_1.default.getInvite);
         this.router.put('/invites/:id', applicant_controller_1.default.updateInvite);
         this.router.delete('/invites/:id', applicant_controller_1.default.deleteInvite);

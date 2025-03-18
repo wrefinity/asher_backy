@@ -7,7 +7,7 @@ import { ApplicationInvite } from '../validations/interfaces/applications';
 class ApplicationInvitesService {
     userInclusion: object;
     constructor() {
-        this.userInclusion = { select: { id: true, email: true, profile: true } }
+        this.userInclusion = { email: true, profile: true, id:true } 
     }
     createInvite = async (data: Omit<ApplicationInvite, 'id'>) => {
         return await prismaClient.applicationInvites.create({
@@ -16,13 +16,13 @@ class ApplicationInvitesService {
                 properties: true,
                 apartments: true,
                 tenants: {
-                    include: { user: this.userInclusion },
+                    include: { user: { select: this.userInclusion }},
                 },
                 userInvited: {
                     select: this.userInclusion
                 },
                 landlords: {
-                    include: { user: this.userInclusion },
+                    include: { user: { select: this.userInclusion }},
                 },
             },
         });
@@ -47,17 +47,13 @@ class ApplicationInvitesService {
                 properties: true,
                 apartments: true,
                 tenants: {
-                    include: {
-                        user: this.userInclusion
-                    },
+                    include: { user: { select: this.userInclusion }},
                 },
                 userInvited: {
                     select: this.userInclusion
                 },
                 landlords: {
-                    include: {
-                        user: this.userInclusion
-                    },
+                    include: { user: { select: this.userInclusion }},
                 },
             },
         });
@@ -71,13 +67,13 @@ class ApplicationInvitesService {
                 properties: true,
                 apartments: true,
                 tenants: {
-                    include: { user: this.userInclusion },
+                    include: { user: { select: this.userInclusion }},
                 },
                 userInvited: {
                     select: this.userInclusion
                 },
                 landlords: {
-                    include: { user: this.userInclusion },
+                    include: { user: { select: this.userInclusion }},
                 },
             },
         });
@@ -96,13 +92,13 @@ class ApplicationInvitesService {
                 properties: true,
                 apartments: true,
                 tenants: {
-                    include: { user: this.userInclusion },
+                    include: { user: { select: this.userInclusion }},
                 },
                 userInvited: {
                     select: this.userInclusion
                 },
                 landlords: {
-                    include: { user: this.userInclusion },
+                    include: { user: { select: this.userInclusion }},
                 },
             },
         });
