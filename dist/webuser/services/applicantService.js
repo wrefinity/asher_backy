@@ -477,6 +477,28 @@ class ApplicantService {
                 },
             });
         });
+        this.getTotalApplications = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.application.findMany({
+                where: {
+                    isDeleted: false,
+                    properties: {
+                        landlordId: landlordId,
+                    },
+                },
+                include: {
+                    user: true,
+                    residentialInfo: true,
+                    emergencyInfo: true,
+                    employmentInfo: true,
+                    documents: true,
+                    properties: true,
+                    personalDetails: true,
+                    guarantorInformation: true,
+                    applicationQuestions: true,
+                    declaration: true
+                },
+            });
+        });
         this.getApplicationById = (applicationId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.application.findUnique({
                 where: { id: applicationId },
@@ -527,7 +549,7 @@ class ApplicantService {
             return yield __1.prismaClient.application.findMany({
                 where: {
                     userId: userId,
-                    status,
+                    status: Array.isArray(status) ? { in: status } : status,
                     isDeleted: false,
                 },
                 include: {

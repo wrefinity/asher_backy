@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailSchema = exports.chatSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 exports.chatSchema = joi_1.default.object({
-    content: joi_1.default.string().required(),
+    content: joi_1.default.string().optional(),
     receiverId: joi_1.default.string().required(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(), // Images
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(), // Videos

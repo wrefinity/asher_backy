@@ -15,7 +15,7 @@ import {
 // import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
-import {LogType} from "@prisma/client"
+import { LogType, Prisma } from "@prisma/client"
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
 import { LoginSchema, userLandlordSchema } from "../validations/schemas/auth";
@@ -23,6 +23,7 @@ import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import { CustomRequest } from "../utils/types";
 import logsServices from "../services/logs.services";
 
+import {onlineStatus} from '@prisma/client'
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -114,29 +115,29 @@ class AuthControls {
 
     passwordReset = async (req: Request, res: Response) => {
         const { email, tenantCode, newPassword, token } = req.body;
-    
+
         try {
             // Ensure at least one identifier is provided
             if (!email && !tenantCode) {
                 return res.status(400).json({ message: "Email or tenant code is required." });
             }
-    
+
             let user = null;
-    
+
             // Find user by email if provided
             if (email) {
                 user = await UserServices.findUserByEmail(email);
             }
-    
+
             // If user is not found via email and tenantCode is provided, find user by tenantCode
             if (!user && tenantCode) {
                 user = await UserServices.findUserByTenantCode(tenantCode);
             }
-    
+
             if (!user) {
                 return res.status(404).json({ message: "User does not exist." });
             }
-    
+
             // **Only validate the token if resetting via email**
             if (email) {
                 const isValidToken = await validateVerificationToken(token, user.id);
@@ -144,7 +145,7 @@ class AuthControls {
                     return res.status(400).json({ message: "Invalid or expired token." });
                 }
             }
-    
+
             // Update user's password
 
             await UserServices.updateUserPassword(user.id, newPassword);
@@ -152,14 +153,14 @@ class AuthControls {
                 events: "Password Reset",
                 type: LogType.ACTIVITY,
                 createdById: user.id,
-            }); 
+            });
             return res.status(200).json({ message: "Password updated successfully." });
-    
+
         } catch (error) {
             ErrorService.handleError(error, res);
         }
     };
-    
+
 
     refreshToken = async (req: Request, res: Response) => {
         try {
@@ -188,7 +189,7 @@ class AuthControls {
     }
 
     login = async (req: Request, res: Response) => {
-
+        
         try {
             const { error, value } = LoginSchema.validate(req.body);
             if (error) {
@@ -205,15 +206,15 @@ class AuthControls {
                     return res.status(404).json({ message: "No user found for the provided tenant code." });
                 }
 
-                
                 // Exclude sensitive fields and return user details
                 const { password: _, ...userDetails } = user;
+                // Update online status before creating tokens
+                await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
                 const tokens = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
-                console.log(userDetails)
 
                 return res.status(200).json({
                     message: "Tenant-specific user retrieved successfully.",
-                    userDetails: {...userDetails, id: user.id},
+                    userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
                     accessToken: tokens.accessToken,
                     refreshToken: tokens.refreshToken,
                 });
@@ -244,19 +245,22 @@ class AuthControls {
                 return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
             }
 
+            // Update online status before creating tokens
+            await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+
             const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
             await logsServices.createLog({
                 events: `user ${user.email} logged in`,
                 type: LogType.ACTIVITY,
                 createdById: user.id,
-            }); 
+            });
             // Exclude sensitive fields and return user details
             const { password: _, ...userDetails } = user;
             return res.status(200).json({
                 message: "User logged in successfully.",
                 token: token.accessToken,
                 refreshToken: token.refreshToken,
-                userDetails: {...userDetails, id: user.id},
+                userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
             });
         } catch (error: unknown) {
             ErrorService.handleError(error, res)

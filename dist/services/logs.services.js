@@ -17,6 +17,7 @@ class LogService {
             const logData = {
                 events: data.events,
                 type: data.type,
+                status: data.status || undefined,
                 viewAgain: data.viewAgain,
                 considerRenting: data.considerRenting,
                 transactionId: (data === null || data === void 0 ? void 0 : data.transactionId) || undefined,
@@ -34,6 +35,13 @@ class LogService {
             }
             return yield __1.prismaClient.log.create({
                 data: logData,
+            });
+        });
+        // Get all logs by types as view etc.
+        this.getLogs = (landlordId, type) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.log.findMany({
+                where: { type, property: { landlordId } },
+                include: this.inclusion
             });
         });
         this.checkPropertyLogs = (createdById_1, type_1, propertyId_1, ...args_1) => __awaiter(this, [createdById_1, type_1, propertyId_1, ...args_1], void 0, function* (createdById, type, propertyId, applicationId = null) {

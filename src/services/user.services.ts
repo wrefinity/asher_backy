@@ -2,7 +2,7 @@ import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles, ApplicationStatus } from "@prisma/client";
+import { userRoles, ApplicationStatus, onlineStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
@@ -57,6 +57,13 @@ class UserService {
         return user
     }
 
+    updateOnlineStatus = async (userId: string, status: onlineStatus) => {
+        return await prismaClient.users.update({
+            where: { id: userId },
+            data: { onlineStatus: status }
+        });
+    }
+
     getUserById = async (id: string) => {
         return await prismaClient.users.findFirst({
             where: { id },
@@ -73,10 +80,10 @@ class UserService {
             },
             include: {
                 tenant: {
-                    include: {  
+                    include: {
                         property: true,
                         landlord: {
-                            select:{
+                            select: {
                                 landlordCode: true,
                                 userId: true
                             }
@@ -130,14 +137,14 @@ class UserService {
 
     createUser = async (userData: any, landlordUploads: boolean = false, createdBy: string = null) => {
         let user = null
-        
+
         user = await prismaClient.users.findUnique({
             where: { email: userData?.email },
             include: { profile: true } // Include profile if needed
         });
-        
+
         if (!user) {
-            
+
             // Create a new user if not found
             user = await prismaClient.users.create({
                 data: {
@@ -167,14 +174,12 @@ class UserService {
                 },
             });
         }
-        
-        
-      
-        
+
+
+
+
 
         const countryData = await getCurrentCountryCurrency()
-        console.log("====================")
-        console.log(countryData)
         if (user && countryData.locationCurrency) {
             await WalletService.getOrCreateWallet(user.id, countryData?.locationCurrency)
         }

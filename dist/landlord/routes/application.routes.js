@@ -15,10 +15,12 @@ class ApplicationLandlordRouter {
     initializeRoutes() {
         this.router.get('/pending', applicant_controller_1.default.getApplicationsPending);
         this.router.get('/completed', applicant_controller_1.default.getApplicationsCompleted);
+        this.router.get('/total', applicant_controller_1.default.getTotalApplication);
         this.router.patch('/proceed-pay/:applicationId', applicant_controller_1.default.makeApplicationPaymentRequest);
         this.router.post('/approve/:applicationId', applicant_controller_1.default.approveApplication);
         this.router.patch('/decline/:applicationId', applicant_controller_1.default.declineApplication);
         this.router.get('/statistics', applicant_controller_1.default.getApplicationStatistics);
+        this.router.get('/leasing', applicant_controller_1.default.getEnquiredProps);
         this.router.post('/invites', applicant_controller_1.default.createInvite);
         this.router.get('/invites/:id', applicant_controller_1.default.getInvite);
         this.router.put('/invites/:id', applicant_controller_1.default.updateInvite);

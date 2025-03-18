@@ -1,3 +1,8 @@
+enum onlineStatus {
+    online
+    offline
+}
+
 model users {
     id         String  @id @default(cuid())
     email      String  @unique
@@ -10,6 +15,7 @@ model users {
     // user role definition default is webuser
     role userRoles[] @default([WEBUSER])
 
+    onlineStatus onlineStatus? @default(offline)
     // foreign key and relational fields 
     VerificationToken      VerificationToken[]
     tenant                 tenants?
@@ -41,27 +47,28 @@ model users {
     // maintenance maintenance[] @relation(name: "vendorUser")
     // tenantMaintenanceUser maintenance[]      @relation("tenantUser")
     // vendorMaintenaceUser  maintenance[]      @relation("vendorUser")
-    creditScore      creditScore?
-    propertyDocument propertyDocument[]
-    reviews          reviews[]
-    Subscription     Subscription[]
-    vendors          vendors?
-    stripeCustomerId String?            @unique
-    wallet           wallet[]
-    nextOfKin nextOfKin[]
-    applicationCreatedBy application[] @relation("createdBy")
-    applicationUpdatedBy application[] @relation("updatedBy")
-    guarantorInformation guarantorInformation[]
-    emergencyContact emergencyContact[]
-    referees referees[]
-    document document[]
-    EmploymentInformation EmploymentInformation[]
+    creditScore              creditScore?
+    propertyDocument         propertyDocument[]
+    reviews                  reviews[]
+    Subscription             Subscription[]
+    vendors                  vendors?
+    stripeCustomerId         String?                    @unique
+    wallet                   wallet[]
+    nextOfKin                nextOfKin[]
+    applicationCreatedBy     application[]              @relation("createdBy")
+    applicationUpdatedBy     application[]              @relation("updatedBy")
+    guarantorInformation     guarantorInformation[]
+    emergencyContact         emergencyContact[]
+    referees                 referees[]
+    document                 document[]
+    EmploymentInformation    EmploymentInformation[]
     applicantPersonalDetails applicantPersonalDetails[]
-    Complaint Complaint[]
-    Log Log[] @relation("users")
-    violation violation[] @relation("users")
-    PropertyViewing PropertyViewing[]
-    UserLikedProperty UserLikedProperty[]
+    Complaint                Complaint[]
+    Log                      Log[]                      @relation("users")
+    violation                violation[]                @relation("users")
+    PropertyViewing          PropertyViewing[]
+    UserLikedProperty        UserLikedProperty[]
+    applicationInvites       applicationInvites[]
 }
 
 model UserLikedProperty {

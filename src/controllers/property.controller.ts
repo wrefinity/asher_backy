@@ -6,7 +6,7 @@ import PropertyViewingService from "../services/propertyviewing.service";
 import { createPropertyViewingSchema, updatePropertyViewingSchema } from "../validations/schemas/properties.schema";
 import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
-import { LogType, PropertySpecificationType, PropertyType } from "@prisma/client"
+import { LogType, logTypeStatus,PropertySpecificationType, PropertyType } from "@prisma/client"
 
 
 class PropertyController {
@@ -89,14 +89,34 @@ class PropertyController {
                     throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(PropertySpecificationType).join(', ')}`);
                 }
             }
+            // if (type) {
+            //     const isValidType = Object.values(PropertyType).includes(type as PropertyType);
+            //     if (isValidType) {
+            //         filters.property = { ...filters.property, type: String(type) };
+            //     } else {
+            //         throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
+            //     }
+            // }
+
+            // In your controller
             if (type) {
-                const isValidType = Object.values(PropertyType).includes(type as PropertyType);
-                if (isValidType) {
-                    filters.property = { ...filters.property, type: String(type) };
-                } else {
-                    throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
+                const typesArray = Array.isArray(type) ? type : [type];
+                const isValidTypes = typesArray.every(t =>
+                    Object.values(PropertyType).includes(t as PropertyType)
+                );
+
+                if (!isValidTypes) {
+                    throw new Error('Invalid property types');
                 }
+
+                filters.property = {
+                    ...filters.property,
+                    type: typesArray
+                };
             }
+
+            console.log("======================")
+            console.log(filters.property.type)
 
             // Convert isShortlet to boolean
             if (isShortlet) {
@@ -227,6 +247,33 @@ class PropertyController {
                 events: "Property Viewing",
                 createdById,
                 type: LogType.VIEW
+            })
+            return res.status(200).json(log)
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    enquireProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const createdById = req.user?.id;
+            const propertyId = req.params.propertyId;
+            // check props existence
+            const property = await PropertyServices.getPropertyById(propertyId)
+
+            if (!property) return res.status(400).json({ message: "property with the id given doesnt exist" });
+            // check if propertyId have been viewed before by the user 
+            // const logcreated = await LogsServices.checkPropertyLogs(
+            //     createdById,
+            //     LogType.VIEW,
+            //     propertyId
+            // )
+            // if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
+            const log = await LogsServices.createLog({
+                propertyId,
+                events: "Property Enquires",
+                createdById,
+                type: LogType.ENQUIRED,
+                status: logTypeStatus.PENDING
             })
             return res.status(200).json(log)
         } catch (error) {

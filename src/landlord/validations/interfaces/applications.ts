@@ -8,6 +8,7 @@ export interface ApplicationInvite {
     propertiesId?: string | null;
     apartmentsId?: string | null;
     invitedByLandordId?: string | null;
+    userInvitedId?: string | null;
     tenantsId?: string | null;
 }
 

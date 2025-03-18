@@ -24,7 +24,7 @@ interface PropertyFilters {
         noKitchen?: number;
         minGarage?: number;
         maxGarage?: number;
-        type?: PropertyType;
+        type?: PropertyType | PropertyType[];
     };
     isShortlet?: boolean,
     dueDate?: Date,
@@ -352,18 +352,26 @@ class PropertyService {
             maxGarage
         } = property || {};
 
-        return await prismaClient.propertyListingHistory.count({ 
+        return await prismaClient.propertyListingHistory.count({
             where: {
                 ...(isActive !== undefined && { isActive }),
                 ...(isActive !== undefined && { onListing: isActive }),
                 property: {
                     ...(landlordId && { landlordId }),
-                    ...(type && { type }),
+                    // Modified type filter
+                    ...(type && {
+                        type: {
+                            in: Array.isArray(type) ? type : [type]
+                        }
+                    }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
                         state: {
                             is: {
-                                name: state
+                                name: {
+                                    equals: state.toLowerCase().trim(),
+                                    mode: 'insensitive'
+                                }
                             }
                         }
                     }),
@@ -426,15 +434,11 @@ class PropertyService {
                             }))
                         }
                         : {}),
-                    
-                    
-
-
                 } as any,
             },
-         });
+        });
     };
-    
+
 
     getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10) => {
         const {
@@ -480,7 +484,12 @@ class PropertyService {
                 ...(isActive !== undefined && { onListing: isActive }),
                 property: {
                     ...(landlordId && { landlordId }),
-                    ...(type && { type }),
+                    // Modified type filter
+                    ...(type && {
+                        type: {
+                            in: Array.isArray(type) ? type : [type]
+                        }
+                    }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
                         state: {
@@ -548,8 +557,8 @@ class PropertyService {
                             }))
                         }
                         : {}),
-                    
-                    
+
+
 
 
                 } as any,

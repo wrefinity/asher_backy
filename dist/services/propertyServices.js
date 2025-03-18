@@ -223,10 +223,17 @@ class PropertyService {
             const { landlordId, property, minSize, maxSize, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = filters;
             const { type, state, country, specificationType, isActive, rentalFee, maxBedRoom, minBedRoom, maxBathRoom, minBathRoom, maxRentalFee, minRentalFee, marketValue, noKitchen, minGarage, maxGarage } = property || {};
             return yield __1.prismaClient.propertyListingHistory.count({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && {
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
+                        type: {
+                            in: Array.isArray(type) ? type : [type]
+                        }
+                    })), (specificationType && { specificationType })), (state && {
                         state: {
                             is: {
-                                name: state
+                                name: {
+                                    equals: state.toLowerCase().trim(),
+                                    mode: 'insensitive'
+                                }
                             }
                         }
                     })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (minRentalFee || maxRentalFee
@@ -283,7 +290,11 @@ class PropertyService {
             // console.log(filters)
             // console.log("=================")
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && { type })), (specificationType && { specificationType })), (state && {
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
+                        type: {
+                            in: Array.isArray(type) ? type : [type]
+                        }
+                    })), (specificationType && { specificationType })), (state && {
                         state: {
                             is: {
                                 name: state

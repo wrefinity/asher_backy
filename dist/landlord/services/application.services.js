@@ -19,26 +19,38 @@ class ApplicationInvitesService {
                     properties: true,
                     apartments: true,
                     tenants: {
-                        include: { user: { select: { id: true, email: true } } },
+                        include: { user: this.userInclusion },
+                    },
+                    userInvited: {
+                        select: this.userInclusion
                     },
                     landlords: {
-                        include: { user: { select: { id: true, email: true } } },
+                        include: { user: this.userInclusion },
                     },
                 },
             });
         });
         // get all invites for applications created by the current landlord
-        this.getInvite = (id, invitedByLandordId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.findUnique({
-                where: { id, invitedByLandordId },
+        this.getInvite = (filters) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.applicationInvites.findMany({
+                where: Object.assign(Object.assign(Object.assign({}, (filters.invitedByLandordId && { invitedByLandordId: filters.invitedByLandordId })), (filters.tenantId && {
+                    tenantsId: filters.tenantId
+                })), (filters.userInvitedId && { userInvitedId: filters.userInvitedId })),
                 include: {
                     properties: true,
                     apartments: true,
                     tenants: {
-                        include: { user: { select: { id: true, email: true, profile: true } } },
+                        include: {
+                            user: this.userInclusion
+                        },
+                    },
+                    userInvited: {
+                        select: this.userInclusion
                     },
                     landlords: {
-                        include: { user: { select: { id: true, email: true, profile: true } } },
+                        include: {
+                            user: this.userInclusion
+                        },
                     },
                 },
             });
@@ -51,10 +63,13 @@ class ApplicationInvitesService {
                     properties: true,
                     apartments: true,
                     tenants: {
-                        include: { user: { select: { id: true, email: true, profile: true } } },
+                        include: { user: this.userInclusion },
+                    },
+                    userInvited: {
+                        select: this.userInclusion
                     },
                     landlords: {
-                        include: { user: { select: { id: true, email: true, profile: true } } },
+                        include: { user: this.userInclusion },
                     },
                 },
             });
@@ -67,9 +82,23 @@ class ApplicationInvitesService {
         });
         this.getInviteById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.applicationInvites.findFirst({
-                where: { id }
+                where: { id },
+                include: {
+                    properties: true,
+                    apartments: true,
+                    tenants: {
+                        include: { user: this.userInclusion },
+                    },
+                    userInvited: {
+                        select: this.userInclusion
+                    },
+                    landlords: {
+                        include: { user: this.userInclusion },
+                    },
+                },
             });
         });
+        this.userInclusion = { select: { id: true, email: true, profile: true } };
     }
 }
 exports.default = new ApplicationInvitesService();

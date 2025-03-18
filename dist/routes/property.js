@@ -15,6 +15,7 @@ class PropertyRouter {
         this.initializeRoutes();
     }
     initializeRoutes() {
+        this.router.post("/property/enquire", this.authenticateService.authorize, property_controller_1.default.enquireProperty);
         this.router.use("/docs", propertydoc_1.default);
         this.router.use("/apartments", appartment_1.default);
         this.router.get('/property', property_controller_1.default.getProperty);

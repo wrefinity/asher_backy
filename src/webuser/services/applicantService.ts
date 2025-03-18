@@ -548,6 +548,28 @@ class ApplicantService {
       },
     });
   }
+  getTotalApplications = async (landlordId: string) => {
+    return await prismaClient.application.findMany({
+      where: {
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+        },
+      },
+      include: {
+        user: true,
+        residentialInfo: true,
+        emergencyInfo: true,
+        employmentInfo: true,
+        documents: true,
+        properties: true,
+        personalDetails: true,
+        guarantorInformation: true,
+        applicationQuestions: true,
+        declaration: true
+      },
+    });
+  }
 
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
@@ -598,12 +620,12 @@ class ApplicantService {
     });
   }
 
-  getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus) => {
+  getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus | ApplicationStatus[] ) => {
 
     return await prismaClient.application.findMany({
       where: {
         userId: userId,
-        status,
+        status: Array.isArray(status) ? { in: status } : status,
         isDeleted: false,
       },
       include: {

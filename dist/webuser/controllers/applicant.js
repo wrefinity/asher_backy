@@ -48,13 +48,31 @@ class ApplicantControls {
                 const makePaymentApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.MAKEPAYMENT);
                 const acceptedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.ACCEPTED);
                 const submittedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.SUBMITTED);
+                // Define status groups
+                const activeStatuses = [
+                    client_1.ApplicationStatus.PENDING,
+                    client_1.ApplicationStatus.SUBMITTED,
+                    client_1.ApplicationStatus.MAKEPAYMENT,
+                    client_1.ApplicationStatus.ACCEPTED
+                ];
+                const completedStatuses = [
+                    client_1.ApplicationStatus.COMPLETED,
+                    client_1.ApplicationStatus.DECLINED
+                ];
+                // Get grouped applications
+                const [activeApps, completedApps] = yield Promise.all([
+                    applicantService_1.default.getApplicationBasedOnStatus(userId, activeStatuses),
+                    applicantService_1.default.getApplicationBasedOnStatus(userId, completedStatuses)
+                ]);
                 res.status(200).json({ applications: {
                         pendingApplications,
                         completedApplications,
                         declinedApplications,
                         makePaymentApplications,
                         acceptedApplications,
-                        submittedApplications
+                        submittedApplications,
+                        activeApps,
+                        completedApps
                     } });
             }
             catch (error) {

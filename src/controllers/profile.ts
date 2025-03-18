@@ -6,7 +6,6 @@ import { CustomRequest } from "../utils/types";
 
 class ProfileControls {
 
-
     profileUpdate = async (req: CustomRequest, res: Response) => {
         const { error, value } = profileSchema.validate(req.body);
         if (error) {

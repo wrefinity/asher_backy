@@ -21,6 +21,7 @@ const client_1 = require("@prisma/client");
 const applicationInvitesSchema_1 = require("../validations/schema/applicationInvitesSchema");
 const emailer_1 = __importDefault(require("../../utils/emailer"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
+const logs_services_1 = __importDefault(require("../../services/logs.services"));
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -50,6 +51,17 @@ class ApplicationControls {
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const application = yield applicantService_1.default.getCompletedApplications(landlordId);
+                return res.status(200).json({ application });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getTotalApplication = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const application = yield applicantService_1.default.getTotalApplications(landlordId);
                 return res.status(200).json({ application });
             }
             catch (error) {
@@ -142,11 +154,23 @@ class ApplicationControls {
             }
         });
         this.getInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { id } = req.params;
+                const invite = yield application_services_1.default.getInviteById(id);
+                if (!invite)
+                    return res.status(404).json({ message: 'Invite not found' });
+                return res.status(200).json({ invite });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             try {
                 const { id } = req.params;
                 const invitedByLandordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                const invite = yield application_services_1.default.getInvite(id, invitedByLandordId);
+                const invite = yield application_services_1.default.getInvite({ invitedByLandordId });
                 if (!invite)
                     return res.status(404).json({ message: 'Invite not found' });
                 return res.status(200).json({ invite });
@@ -163,6 +187,16 @@ class ApplicationControls {
                     return res.status(400).json({ error: error.details[0].message });
                 const updatedInvite = yield application_services_1.default.updateInvite(id, value);
                 return res.status(200).json({ updatedInvite });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getEnquiredProps = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const landlordId = req.user.landlords.id;
+                const leasing = yield logs_services_1.default.getLogs(landlordId, client_1.LogType.ENQUIRED);
+                return res.status(200).json({ leasing });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

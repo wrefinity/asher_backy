@@ -38,6 +38,7 @@ const helpers_1 = require("../utils/helpers");
 const error_service_1 = __importDefault(require("../services/error.service"));
 const auth_1 = require("../validations/schemas/auth");
 const logs_services_1 = __importDefault(require("../services/logs.services"));
+const client_2 = require("@prisma/client");
 class AuthControls {
     // protected googleService: GoogleService;
     constructor() {
@@ -189,11 +190,12 @@ class AuthControls {
                     }
                     // Exclude sensitive fields and return user details
                     const { password: _ } = user, userDetails = __rest(user, ["password"]);
+                    // Update online status before creating tokens
+                    yield user_services_1.default.updateOnlineStatus(user.id, client_2.onlineStatus.online);
                     const tokens = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
-                    console.log(userDetails);
                     return res.status(200).json({
                         message: "Tenant-specific user retrieved successfully.",
-                        userDetails: Object.assign(Object.assign({}, userDetails), { id: user.id }),
+                        userDetails: Object.assign(Object.assign({}, userDetails), { id: user.id, onlineStatus: client_2.onlineStatus.online }),
                         accessToken: tokens.accessToken,
                         refreshToken: tokens.refreshToken,
                     });
@@ -220,6 +222,8 @@ class AuthControls {
                     yield this.verificationTokenCreator(user.id, email);
                     return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
                 }
+                // Update online status before creating tokens
+                yield user_services_1.default.updateOnlineStatus(user.id, client_2.onlineStatus.online);
                 const token = yield this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
                 yield logs_services_1.default.createLog({
                     events: `user ${user.email} logged in`,
@@ -232,7 +236,7 @@ class AuthControls {
                     message: "User logged in successfully.",
                     token: token.accessToken,
                     refreshToken: token.refreshToken,
-                    userDetails: Object.assign(Object.assign({}, userDetails), { id: user.id }),
+                    userDetails: Object.assign(Object.assign({}, userDetails), { id: user.id, onlineStatus: client_2.onlineStatus.online }),
                 });
             }
             catch (error) {

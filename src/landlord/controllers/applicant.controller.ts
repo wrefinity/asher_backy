@@ -5,10 +5,11 @@ import ApplicationService from "../../webuser/services/applicantService"
 import ApplicationInvitesService from '../services/application.services';
 import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
-import { ApplicationStatus } from "@prisma/client"
+import { ApplicationStatus, LogType } from "@prisma/client"
 import { createApplicationInviteSchema, updateApplicationInviteSchema } from '../validations/schema/applicationInvitesSchema';
 import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
+import logsServices from "../../services/logs.services";
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -40,6 +41,15 @@ class ApplicationControls {
         try {
             const landlordId = req.user?.landlords?.id;
             const application = await ApplicationService.getCompletedApplications(landlordId);
+            return res.status(200).json({ application });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getTotalApplication = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            const application = await ApplicationService.getTotalApplications(landlordId);
             return res.status(200).json({ application });
         } catch (error) {
             errorService.handleError(error, res)
@@ -132,8 +142,18 @@ class ApplicationControls {
     getInvite = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
+            const invite = await ApplicationInvitesService.getInviteById(id);
+            if (!invite) return res.status(404).json({ message: 'Invite not found' });
+            return res.status(200).json({ invite });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getInvites = async (req: CustomRequest, res: Response) => {
+        try {
+            const { id } = req.params;
             const invitedByLandordId = req.user?.landlords?.id;
-            const invite = await ApplicationInvitesService.getInvite(id, invitedByLandordId);
+            const invite = await ApplicationInvitesService.getInvite({invitedByLandordId});
             if (!invite) return res.status(404).json({ message: 'Invite not found' });
             return res.status(200).json({ invite });
         } catch (error) {
@@ -148,6 +168,15 @@ class ApplicationControls {
             if (error) return res.status(400).json({ error: error.details[0].message });
             const updatedInvite = await ApplicationInvitesService.updateInvite(id, value);
             return res.status(200).json({ updatedInvite });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getEnquiredProps = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user.landlords.id;
+            const leasing = await logsServices.getLogs(landlordId, LogType.ENQUIRED);
+            return res.status(200).json({ leasing });
         } catch (error) {
             errorService.handleError(error, res)
         }

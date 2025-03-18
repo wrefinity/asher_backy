@@ -63,6 +63,12 @@ class UserService {
             });
             return user;
         });
+        this.updateOnlineStatus = (userId, status) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.users.update({
+                where: { id: userId },
+                data: { onlineStatus: status }
+            });
+        });
         this.getUserById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.users.findFirst({
                 where: { id },
@@ -167,8 +173,6 @@ class UserService {
                 });
             }
             const countryData = yield (0, helpers_1.getCurrentCountryCurrency)();
-            console.log("====================");
-            console.log(countryData);
             if (user && countryData.locationCurrency) {
                 yield wallet_service_1.default.getOrCreateWallet(user.id, countryData === null || countryData === void 0 ? void 0 : countryData.locationCurrency);
             }

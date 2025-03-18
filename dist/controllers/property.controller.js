@@ -78,15 +78,25 @@ class PropertyController {
                         throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(client_1.PropertySpecificationType).join(', ')}`);
                     }
                 }
+                // if (type) {
+                //     const isValidType = Object.values(PropertyType).includes(type as PropertyType);
+                //     if (isValidType) {
+                //         filters.property = { ...filters.property, type: String(type) };
+                //     } else {
+                //         throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
+                //     }
+                // }
+                // In your controller
                 if (type) {
-                    const isValidType = Object.values(client_1.PropertyType).includes(type);
-                    if (isValidType) {
-                        filters.property = Object.assign(Object.assign({}, filters.property), { type: String(type) });
+                    const typesArray = Array.isArray(type) ? type : [type];
+                    const isValidTypes = typesArray.every(t => Object.values(client_1.PropertyType).includes(t));
+                    if (!isValidTypes) {
+                        throw new Error('Invalid property types');
                     }
-                    else {
-                        throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(client_1.PropertyType).join(', ')}`);
-                    }
+                    filters.property = Object.assign(Object.assign({}, filters.property), { type: typesArray });
                 }
+                console.log("======================");
+                console.log(filters.property.type);
                 // Convert isShortlet to boolean
                 if (isShortlet) {
                     filters.isShortlet = isShortlet.toString() === "true";
@@ -203,6 +213,35 @@ class PropertyController {
                     events: "Property Viewing",
                     createdById,
                     type: client_1.LogType.VIEW
+                });
+                return res.status(200).json(log);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.enquireProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const createdById = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const propertyId = req.params.propertyId;
+                // check props existence
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!property)
+                    return res.status(400).json({ message: "property with the id given doesnt exist" });
+                // check if propertyId have been viewed before by the user 
+                // const logcreated = await LogsServices.checkPropertyLogs(
+                //     createdById,
+                //     LogType.VIEW,
+                //     propertyId
+                // )
+                // if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
+                const log = yield logs_services_1.default.createLog({
+                    propertyId,
+                    events: "Property Enquires",
+                    createdById,
+                    type: client_1.LogType.ENQUIRED,
+                    status: client_1.logTypeStatus.PENDING
                 });
                 return res.status(200).json(log);
             }
