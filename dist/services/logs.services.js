@@ -131,7 +131,10 @@ class LogService {
             });
         });
         this.inclusion = {
-            property: true
+            property: true,
+            users: {
+                select: { email: true, id: true, profile: true }
+            }
         };
     }
 }

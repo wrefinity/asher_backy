@@ -20,7 +20,10 @@ class LogService {
   protected inclusion;
   constructor() {
     this.inclusion = {
-      property: true
+      property: true,
+      users: {
+        select:{email:true, id:true, profile: true }
+      }
     }
   }
 
