@@ -3,7 +3,7 @@ import { InvitedResponse} from "@prisma/client"
 const invitedResponseType = Object.values(InvitedResponse);
 
 export const createApplicationInviteSchema = Joi.object({
-  scheduleDate: Joi.date().optional(),
+  scheduleDate: Joi.date().iso().optional(),
   response: Joi.string().valid(...invitedResponseType).default(InvitedResponse.PENDING).optional(),
   propertiesId: Joi.string().optional(),
   userInvitedId: Joi.string().required(),
@@ -12,7 +12,7 @@ export const createApplicationInviteSchema = Joi.object({
 });
 
 export const updateApplicationInviteSchema = Joi.object({
-  reScheduleDate: Joi.date().optional(),
+  reScheduleDate: Joi.date().iso().optional(),
   scheduleDate: Joi.date().iso().optional(),
   response: Joi.string().valid(...invitedResponseType).optional(),
 });

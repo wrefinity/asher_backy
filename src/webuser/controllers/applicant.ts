@@ -537,7 +537,7 @@ class ApplicantControls {
       const rejectedInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.REJECTED });
       // const invite = await ApplicantService.getInvite({ userInvitedId });
       // if (!invite) return res.status(404).json({ message: 'Invite not found' });
-      return res.status(200).json({ invite:{
+      return res.status(200).json({ invites:{
         pendingInvites,
         acceptInvites,
         rescheduledInvites,
