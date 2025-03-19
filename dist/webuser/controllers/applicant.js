@@ -48,6 +48,7 @@ class ApplicantControls {
                 const makePaymentApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.MAKEPAYMENT);
                 const acceptedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.ACCEPTED);
                 const submittedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.SUBMITTED);
+                const invites = yield applicantService_1.default.getInvite({ userInvitedId: userId });
                 // Define status groups
                 const activeStatuses = [
                     client_1.ApplicationStatus.PENDING,
@@ -72,7 +73,8 @@ class ApplicantControls {
                         acceptedApplications,
                         submittedApplications,
                         activeApps,
-                        completedApps
+                        completedApps,
+                        invites
                     } });
             }
             catch (error) {

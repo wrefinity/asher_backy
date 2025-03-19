@@ -46,7 +46,7 @@ class ApplicantControls {
       const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
       const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
       const submittedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.SUBMITTED);
-      
+      const invites = await ApplicantService.getInvite({userInvitedId: userId}); 
          // Define status groups
     const activeStatuses = [
       ApplicationStatus.PENDING,
@@ -74,7 +74,8 @@ class ApplicantControls {
         acceptedApplications,
         submittedApplications, 
         activeApps,
-        completedApps
+        completedApps,
+        invites
       }});
     } catch (error) {
       ErrorService.handleError(error, res)
