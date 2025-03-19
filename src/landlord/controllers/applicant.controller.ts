@@ -31,7 +31,7 @@ class ApplicationControls {
 
         try {
             const landlordId = req.user?.landlords?.id;
-            const application = await ApplicationService.getPendingApplicationsForLandlord(landlordId);
+            const application = await ApplicationService.getApplicationsForLandlordWithStatus(landlordId, ApplicationStatus.PENDING);
             return res.status(200).json({ application });
         } catch (error) {
             errorService.handleError(error, res)
@@ -40,7 +40,7 @@ class ApplicationControls {
     getApplicationsCompleted = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
-            const application = await ApplicationService.getCompletedApplications(landlordId);
+            const application = await ApplicationService.getApplicationsForLandlordWithStatus(landlordId, ApplicationStatus.COMPLETED);
             return res.status(200).json({ application });
         } catch (error) {
             errorService.handleError(error, res)
@@ -49,7 +49,7 @@ class ApplicationControls {
     getTotalApplication = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
-            const application = await ApplicationService.getTotalApplications(landlordId);
+            const application = await ApplicationService.getApplicationsForLandlordWithStatus(landlordId);
             return res.status(200).json({ application });
         } catch (error) {
             errorService.handleError(error, res)

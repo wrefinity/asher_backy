@@ -9,7 +9,7 @@ import EmploymentinfoServices from "../../services/employmentinfo.services";
 import PersonaldetailsServices from "../../services/personaldetails.services";
 import NextkinServices from "../../services/nextkin.services";
 import LogsServices from '../../services/logs.services';
-import {LogType} from "@prisma/client"
+import { LogType } from "@prisma/client"
 import {
   RefreeIF,
   NextOfKinIF,
@@ -41,16 +41,16 @@ class ApplicantService {
       where: { id: applicationId },
       select: { completedSteps: true },
     });
-  
+
     // Check if the step already exists in the completedSteps array
     if (application?.completedSteps?.includes(step)) {
       console.log(`Step "${step}" already exists in completedSteps. Skipping update.`);
       return; // Exit the function if the step already exists
     }
-  
+
     // Create a new array with the step added
     const updatedSteps = [...(application?.completedSteps || []), step];
-  
+
     // Update the application with the new array
     await prismaClient.application.update({
       where: { id: applicationId },
@@ -60,7 +60,7 @@ class ApplicantService {
         },
       },
     });
-  
+
     console.log(`Step "${step}" added to completedSteps.`);
   };
 
@@ -257,24 +257,24 @@ class ApplicantService {
       },
     });
 
-    if (app){
-          // check if propertyId have been applied before by the user 
-          const logcreated = await LogsServices.checkPropertyLogs(
-            userId,
-            LogType.APPLICATION,
-            propertiesId, 
-            app?.id
-          )
-          if (!logcreated) {
-            await LogsServices.createLog({
-              propertyId: propertiesId,
-              subjects: "Application Started",
-              events: "Application in progress",
-              createdById: userId,
-              type: LogType.APPLICATION,
-              applicationId: app?.id
-            })
-          }
+    if (app) {
+      // check if propertyId have been applied before by the user 
+      const logcreated = await LogsServices.checkPropertyLogs(
+        userId,
+        LogType.APPLICATION,
+        propertiesId,
+        app?.id
+      )
+      if (!logcreated) {
+        await LogsServices.createLog({
+          propertyId: propertiesId,
+          subjects: "Application Started",
+          events: "Application in progress",
+          createdById: userId,
+          type: LogType.APPLICATION,
+          applicationId: app?.id
+        })
+      }
     }
     return app;
   };
@@ -337,11 +337,11 @@ class ApplicantService {
 
   createOrUpdateApplicationDoc = async (data: AppDocumentIF) => {
     const { id, applicationId, documentUrl, ...rest } = data;
-  
+
     if (!documentUrl) {
       throw new Error("documentUrl is required");
     }
-  
+
     let docInfo = null;
     if (id) {
       docInfo = await prismaClient.document.update({
@@ -364,13 +364,13 @@ class ApplicantService {
           },
         },
       });
-  
+
       // Update progress
       await this.incrementStepCompleted(applicationId, "documents");
       await this.updateLastStepStop(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
       await this.updateCompletedStep(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
     }
-  
+
     // Update application with the new document
     const updatedApplication = await prismaClient.application.update({
       where: { id: applicationId },
@@ -385,7 +385,7 @@ class ApplicantService {
         personalDetails: true,
       },
     });
-  
+
     return { ...docInfo, ...updatedApplication };
   };
 
@@ -411,12 +411,13 @@ class ApplicantService {
     if (id) {
       // Check if the residentialInformation exists
       const existingRecord = await prismaClient.declaration.findFirst({
-        where: {id}});
-  
+        where: { id }
+      });
+
       if (!existingRecord) {
         throw new Error(`declaration with ID ${id} does not exist.`);
       }
-  
+
       // Perform update if ID exists
       return await prismaClient.declaration.update({
         where: { id },
@@ -430,11 +431,11 @@ class ApplicantService {
         data: {
           ...rest,
           application: applicationId
-          ? { connect: { id: applicationId } }
-          : undefined,
+            ? { connect: { id: applicationId } }
+            : undefined,
         },
       });
-      if (declared){
+      if (declared) {
         await this.incrementStepCompleted(applicationId, "declaration");
         await this.updateLastStepStop(applicationId, ApplicationSaveState.DECLARATION);
         await this.updateCompletedStep(applicationId, ApplicationSaveState.DECLARATION);
@@ -500,10 +501,13 @@ class ApplicantService {
       }
     });
   }
-  getPendingApplicationsForLandlord = async (landlordId: string) => {
+  getApplicationsForLandlordWithStatus = async (
+    landlordId: string,
+    status?: ApplicationStatus // Make status optional
+  ) => {
     return await prismaClient.application.findMany({
       where: {
-        status: ApplicationStatus.PENDING,
+        ...(status && { status }),
         isDeleted: false,
         properties: {
           landlordId: landlordId,
@@ -523,55 +527,26 @@ class ApplicantService {
         declaration: true
       },
     });
-  }
-  getCompletedApplications = async (landlordId: string) => {
-    return await prismaClient.application.findMany({
-      where: {
-        status: ApplicationStatus.COMPLETED,
-        isDeleted: false,
-        properties: {
-          landlordId: landlordId,
-          isDeleted: false,
-        },
-      },
-      include: {
-        user: true,
-        residentialInfo: true,
-        emergencyInfo: true,
-        employmentInfo: true,
-        documents: true,
-        properties: true,
-        personalDetails: true,
-        guarantorInformation: true,
-        applicationQuestions: true,
-        declaration: true
-      },
-    });
-  }
-  getTotalApplications = async (landlordId: string) => {
-    return await prismaClient.application.findMany({
-      where: {
-        isDeleted: false,
-        properties: {
-          landlordId: landlordId,
-        },
-      },
-      include: {
-        user: true,
-        residentialInfo: true,
-        emergencyInfo: true,
-        employmentInfo: true,
-        documents: true,
-        properties: true,
-        personalDetails: true,
-        guarantorInformation: true,
-        applicationQuestions: true,
-        declaration: true
-      },
-    });
-  }
+  };
 
+  getApplicationCountForLandlordWithStatus = async (
+    landlordId: string,
+    status?: ApplicationStatus // Make status optional
+  ) => {
+    return await prismaClient.application.count({
+      where: {
+        ...(status && { status }),
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+    });
+  };
+  
  
+  
 
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
@@ -617,12 +592,12 @@ class ApplicantService {
 
   checkApplicationCompleted = async (applicationId: string) => {
     // Check if the application completed
-    return await prismaClient.application.findUnique({
+    return await prismaClient.application.findFirst({
       where: { id: applicationId, status: ApplicationStatus.COMPLETED },
     });
   }
 
-  getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus | ApplicationStatus[] ) => {
+  getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus | ApplicationStatus[]) => {
 
     return await prismaClient.application.findMany({
       where: {
@@ -658,45 +633,13 @@ class ApplicantService {
 
   // statistics
   countApplicationStatsForLandlord = async (landlordId: string) => {
-    const pendingCount = await prismaClient.application.count({
-      where: {
-        status: ApplicationStatus.PENDING,
-        isDeleted: false,
-        properties: {
-          landlordId: landlordId,
-          isDeleted: false,
-        },
-      },
-    });
-
-    const approvedCount = await prismaClient.application.count({
-      where: {
-        status: ApplicationStatus.ACCEPTED,
-        isDeleted: false,
-        properties: {
-          landlordId: landlordId,
-          isDeleted: false,
-        },
-      },
-    });
-
-    const completedCount = await prismaClient.application.count({
-      where: {
-        status: ApplicationStatus.COMPLETED,
-        isDeleted: false,
-        properties: {
-          landlordId: landlordId,
-          isDeleted: false,
-        },
-      },
-    });
-
     return {
-      pending: pendingCount,
-      approved: approvedCount,
-      completed: completedCount,
+      pending: await this.getApplicationCountForLandlordWithStatus(landlordId, ApplicationStatus.PENDING),
+      approved: await this.getApplicationCountForLandlordWithStatus(landlordId, ApplicationStatus.ACCEPTED),
+      completed: await this.getApplicationCountForLandlordWithStatus(landlordId, ApplicationStatus.COMPLETED),
+      total: await this.getApplicationCountForLandlordWithStatus(landlordId),
     };
-  }
+  };
 
   approveApplication = async (tenantData: any) => {
     return await userServices.createUser({ ...tenantData, role: userRoles.TENANT });

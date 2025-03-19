@@ -429,16 +429,13 @@ class ApplicantService {
                 }
             });
         });
-        this.getPendingApplicationsForLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
+        this.getApplicationsForLandlordWithStatus = (landlordId, status // Make status optional
+        ) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.application.findMany({
-                where: {
-                    status: client_1.ApplicationStatus.PENDING,
-                    isDeleted: false,
-                    properties: {
+                where: Object.assign(Object.assign({}, (status && { status })), { isDeleted: false, properties: {
                         landlordId: landlordId,
                         isDeleted: false,
-                    },
-                },
+                    } }),
                 include: {
                     user: true,
                     residentialInfo: true,
@@ -453,50 +450,13 @@ class ApplicantService {
                 },
             });
         });
-        this.getCompletedApplications = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.application.findMany({
-                where: {
-                    status: client_1.ApplicationStatus.COMPLETED,
-                    isDeleted: false,
-                    properties: {
+        this.getApplicationCountForLandlordWithStatus = (landlordId, status // Make status optional
+        ) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.application.count({
+                where: Object.assign(Object.assign({}, (status && { status })), { isDeleted: false, properties: {
                         landlordId: landlordId,
                         isDeleted: false,
-                    },
-                },
-                include: {
-                    user: true,
-                    residentialInfo: true,
-                    emergencyInfo: true,
-                    employmentInfo: true,
-                    documents: true,
-                    properties: true,
-                    personalDetails: true,
-                    guarantorInformation: true,
-                    applicationQuestions: true,
-                    declaration: true
-                },
-            });
-        });
-        this.getTotalApplications = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.application.findMany({
-                where: {
-                    isDeleted: false,
-                    properties: {
-                        landlordId: landlordId,
-                    },
-                },
-                include: {
-                    user: true,
-                    residentialInfo: true,
-                    emergencyInfo: true,
-                    employmentInfo: true,
-                    documents: true,
-                    properties: true,
-                    personalDetails: true,
-                    guarantorInformation: true,
-                    applicationQuestions: true,
-                    declaration: true
-                },
+                    } }),
             });
         });
         this.getApplicationById = (applicationId) => __awaiter(this, void 0, void 0, function* () {
@@ -541,7 +501,7 @@ class ApplicantService {
         });
         this.checkApplicationCompleted = (applicationId) => __awaiter(this, void 0, void 0, function* () {
             // Check if the application completed
-            return yield __1.prismaClient.application.findUnique({
+            return yield __1.prismaClient.application.findFirst({
                 where: { id: applicationId, status: client_1.ApplicationStatus.COMPLETED },
             });
         });
@@ -579,40 +539,11 @@ class ApplicantService {
         });
         // statistics
         this.countApplicationStatsForLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            const pendingCount = yield __1.prismaClient.application.count({
-                where: {
-                    status: client_1.ApplicationStatus.PENDING,
-                    isDeleted: false,
-                    properties: {
-                        landlordId: landlordId,
-                        isDeleted: false,
-                    },
-                },
-            });
-            const approvedCount = yield __1.prismaClient.application.count({
-                where: {
-                    status: client_1.ApplicationStatus.ACCEPTED,
-                    isDeleted: false,
-                    properties: {
-                        landlordId: landlordId,
-                        isDeleted: false,
-                    },
-                },
-            });
-            const completedCount = yield __1.prismaClient.application.count({
-                where: {
-                    status: client_1.ApplicationStatus.COMPLETED,
-                    isDeleted: false,
-                    properties: {
-                        landlordId: landlordId,
-                        isDeleted: false,
-                    },
-                },
-            });
             return {
-                pending: pendingCount,
-                approved: approvedCount,
-                completed: completedCount,
+                pending: yield this.getApplicationCountForLandlordWithStatus(landlordId, client_1.ApplicationStatus.PENDING),
+                approved: yield this.getApplicationCountForLandlordWithStatus(landlordId, client_1.ApplicationStatus.ACCEPTED),
+                completed: yield this.getApplicationCountForLandlordWithStatus(landlordId, client_1.ApplicationStatus.COMPLETED),
+                total: yield this.getApplicationCountForLandlordWithStatus(landlordId),
             };
         });
         this.approveApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {

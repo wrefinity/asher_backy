@@ -39,7 +39,7 @@ class ApplicationControls {
             var _a, _b;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                const application = yield applicantService_1.default.getPendingApplicationsForLandlord(landlordId);
+                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId, client_1.ApplicationStatus.PENDING);
                 return res.status(200).json({ application });
             }
             catch (error) {
@@ -50,7 +50,7 @@ class ApplicationControls {
             var _a, _b;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                const application = yield applicantService_1.default.getCompletedApplications(landlordId);
+                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId, client_1.ApplicationStatus.COMPLETED);
                 return res.status(200).json({ application });
             }
             catch (error) {
@@ -61,7 +61,7 @@ class ApplicationControls {
             var _a, _b;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                const application = yield applicantService_1.default.getTotalApplications(landlordId);
+                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId);
                 return res.status(200).json({ application });
             }
             catch (error) {

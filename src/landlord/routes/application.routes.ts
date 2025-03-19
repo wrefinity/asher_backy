@@ -25,7 +25,7 @@ class ApplicationLandlordRouter {
         this.router.post('/invites', ApplicationController.createInvite);
         this.router.get('/invites', ApplicationController.getInvites);
         this.router.get('/invites/:id', ApplicationController.getInvite);
-        this.router.put('/invites/:id', ApplicationController.updateInvite);
+        this.router.patch('/invites/:id/update', ApplicationController.updateInvite);
         this.router.delete('/invites/:id', ApplicationController.deleteInvite);
     }
 }

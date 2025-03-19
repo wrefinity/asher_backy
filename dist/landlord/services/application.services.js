@@ -12,89 +12,62 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("../..");
 class ApplicationInvitesService {
     constructor() {
-        this.createInvite = (data) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.create({
+        this.userInclusion = { email: true, profile: true, id: true };
+        this.inviteInclude = {
+            properties: true,
+            apartments: true,
+            tenants: {
+                include: { user: { select: this.userInclusion } },
+            },
+            userInvited: {
+                select: this.userInclusion,
+            },
+            landlords: {
+                include: { user: { select: this.userInclusion } },
+            },
+        };
+    }
+    createInvite(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.applicationInvites.create({
                 data: data,
-                include: {
-                    properties: true,
-                    apartments: true,
-                    tenants: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                    userInvited: {
-                        select: this.userInclusion
-                    },
-                    landlords: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                },
+                include: this.inviteInclude,
             });
         });
-        // get all invites for applications created by the current landlord
-        this.getInvite = (filters) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (filters.invitedByLandordId && { invitedByLandordId: filters.invitedByLandordId })), (filters.tenantId && {
-                    tenantsId: filters.tenantId
-                })), (filters.userInvitedId && { userInvitedId: filters.userInvitedId })),
-                include: {
-                    properties: true,
-                    apartments: true,
-                    tenants: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                    userInvited: {
-                        select: this.userInclusion
-                    },
-                    landlords: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                },
+    }
+    getInvite(filters) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const whereClause = Object.entries(filters).reduce((acc, [key, value]) => (value ? Object.assign(Object.assign({}, acc), { [key]: value }) : acc), {});
+            return __1.prismaClient.applicationInvites.findMany({
+                where: whereClause,
+                include: this.inviteInclude,
             });
         });
-        this.updateInvite = (id, data) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.update({
+    }
+    updateInvite(id, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.applicationInvites.update({
                 where: { id },
                 data: data,
-                include: {
-                    properties: true,
-                    apartments: true,
-                    tenants: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                    userInvited: {
-                        select: this.userInclusion
-                    },
-                    landlords: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                },
+                include: this.inviteInclude,
             });
         });
-        this.deleteInvite = (id, invitedByLandordId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.update({
+    }
+    deleteInvite(id, invitedByLandordId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.applicationInvites.update({
                 where: { id, invitedByLandordId },
                 data: { isDeleted: true },
             });
         });
-        this.getInviteById = (id) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.findFirst({
+    }
+    getInviteById(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.applicationInvites.findFirst({
                 where: { id },
-                include: {
-                    properties: true,
-                    apartments: true,
-                    tenants: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                    userInvited: {
-                        select: this.userInclusion
-                    },
-                    landlords: {
-                        include: { user: { select: this.userInclusion } },
-                    },
-                },
+                include: this.inviteInclude,
             });
         });
-        this.userInclusion = { email: true, profile: true, id: true };
     }
 }
 exports.default = new ApplicationInvitesService();

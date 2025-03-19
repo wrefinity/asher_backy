@@ -1,106 +1,66 @@
 import { prismaClient } from "../..";
-import { Prisma } from '@prisma/client';
-import { ApplicationInvite } from '../validations/interfaces/applications';
-
-
+import { Prisma } from "@prisma/client";
+import { ApplicationInvite } from "../validations/interfaces/applications";
 
 class ApplicationInvitesService {
-    userInclusion: object;
-    constructor() {
-        this.userInclusion = { email: true, profile: true, id:true } 
-    }
-    createInvite = async (data: Omit<ApplicationInvite, 'id'>) => {
-        return await prismaClient.applicationInvites.create({
-            data: data as Prisma.applicationInvitesUncheckedCreateInput,
-            include: {
-                properties: true,
-                apartments: true,
-                tenants: {
-                    include: { user: { select: this.userInclusion }},
-                },
-                userInvited: {
-                    select: this.userInclusion
-                },
-                landlords: {
-                    include: { user: { select: this.userInclusion }},
-                },
-            },
-        });
-    };
-    // get all invites for applications created by the current landlord
-    getInvite = async (
-        filters: {
-            invitedByLandordId?: string;
-            tenantId?: string;
-            userInvitedId?: string;
-        }
-    ) => {
-        return await prismaClient.applicationInvites.findMany({
-            where: {
-                ...(filters.invitedByLandordId && { invitedByLandordId: filters.invitedByLandordId }),
-                ...(filters.tenantId && {
-                    tenantsId: filters.tenantId
-                }),
-                ...(filters.userInvitedId && { userInvitedId: filters.userInvitedId })
-            },
-            include: {
-                properties: true,
-                apartments: true,
-                tenants: {
-                    include: { user: { select: this.userInclusion }},
-                },
-                userInvited: {
-                    select: this.userInclusion
-                },
-                landlords: {
-                    include: { user: { select: this.userInclusion }},
-                },
-            },
-        });
+    private userInclusion = { email: true, profile: true, id: true };
+
+    private inviteInclude = {
+        properties: true,
+        apartments: true,
+        tenants: {
+            include: { user: { select: this.userInclusion } },
+        },
+        userInvited: {
+            select: this.userInclusion,
+        },
+        landlords: {
+            include: { user: { select: this.userInclusion } },
+        },
     };
 
-    updateInvite = async (id: string, data: Partial<ApplicationInvite>) => {
-        return await prismaClient.applicationInvites.update({
+    async createInvite(data: Omit<ApplicationInvite, "id">) {
+        return prismaClient.applicationInvites.create({
+            data: data as Prisma.applicationInvitesUncheckedCreateInput,
+            include: this.inviteInclude,
+        });
+    }
+
+    async getInvite(filters: {
+        invitedByLandordId?: string;
+        tenantId?: string;
+        userInvitedId?: string;
+    }) {
+        const whereClause = Object.entries(filters).reduce(
+            (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),
+            {} as Prisma.applicationInvitesWhereInput
+        );
+
+        return prismaClient.applicationInvites.findMany({
+            where: whereClause,
+            include: this.inviteInclude,
+        });
+    }
+
+    async updateInvite(id: string, data: Partial<ApplicationInvite>) {
+        return prismaClient.applicationInvites.update({
             where: { id },
-            data: data as Prisma.applicationInvitesUncheckedCreateInput,
-            include: {
-                properties: true,
-                apartments: true,
-                tenants: {
-                    include: { user: { select: this.userInclusion }},
-                },
-                userInvited: {
-                    select: this.userInclusion
-                },
-                landlords: {
-                    include: { user: { select: this.userInclusion }},
-                },
-            },
+            data: data as Prisma.applicationInvitesUncheckedUpdateInput,
+            include: this.inviteInclude,
         });
     }
 
-    deleteInvite = async (id: string, invitedByLandordId: string) => {
-        return await prismaClient.applicationInvites.update({
+    async deleteInvite(id: string, invitedByLandordId: string) {
+        return prismaClient.applicationInvites.update({
             where: { id, invitedByLandordId },
             data: { isDeleted: true },
         });
     }
-    getInviteById = async (id: string) => {
-        return await prismaClient.applicationInvites.findFirst({
+
+    async getInviteById(id: string) {
+        return prismaClient.applicationInvites.findFirst({
             where: { id },
-            include: {
-                properties: true,
-                apartments: true,
-                tenants: {
-                    include: { user: { select: this.userInclusion }},
-                },
-                userInvited: {
-                    select: this.userInclusion
-                },
-                landlords: {
-                    include: { user: { select: this.userInclusion }},
-                },
-            },
+            include: this.inviteInclude,
         });
     }
 }
