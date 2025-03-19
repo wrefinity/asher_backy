@@ -19,6 +19,7 @@ const propertyviewing_service_1 = __importDefault(require("../services/propertyv
 const properties_schema_1 = require("../validations/schemas/properties.schema");
 const logs_services_1 = __importDefault(require("../services/logs.services"));
 const client_1 = require("@prisma/client");
+const landlord_service_1 = require("../landlord/services/landlord.service");
 class PropertyController {
     constructor() {
         // using filters base on property size, type and location
@@ -95,8 +96,6 @@ class PropertyController {
                     }
                     filters.property = Object.assign(Object.assign({}, filters.property), { type: typesArray });
                 }
-                console.log("======================");
-                console.log(filters.property.type);
                 // Convert isShortlet to boolean
                 if (isShortlet) {
                     filters.isShortlet = isShortlet.toString() === "true";
@@ -148,11 +147,16 @@ class PropertyController {
         this.getPropertyListedByLandlord = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.params.landlordId;
-                // Fetch the filtered properties
+                // check landlord existence
+                const landlord = yield new landlord_service_1.LandlordService().getLandlordById(landlordId);
+                if (!landlord) {
+                    return res.status(404).json({ message: "Landlord not found" });
+                }
+                // Fetch the filtered prop  erties
                 const properties = yield propertyServices_1.default.getActiveOrInactivePropsListing(String(landlordId));
                 // Check if properties are found
                 if (!properties || properties.length === 0) {
-                    return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                    return res.status(404).json({ message: "No properties listed by this landlord" });
                 }
                 // Return the filtered properties
                 return res.status(200).json({ properties });

@@ -7,6 +7,7 @@ import { createPropertyViewingSchema, updatePropertyViewingSchema } from "../val
 import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
 import { LogType, logTypeStatus,PropertySpecificationType, PropertyType } from "@prisma/client"
+import { LandlordService } from "../landlord/services/landlord.service";
 
 
 class PropertyController {
@@ -115,9 +116,6 @@ class PropertyController {
                 };
             }
 
-            console.log("======================")
-            console.log(filters.property.type)
-
             // Convert isShortlet to boolean
             if (isShortlet) {
                 filters.isShortlet = isShortlet.toString() === "true";
@@ -176,12 +174,18 @@ class PropertyController {
         try {
 
             const landlordId = req.params.landlordId;
-            // Fetch the filtered properties
+            // check landlord existence
+            const landlord = await new LandlordService().getLandlordById(landlordId);
+            if (!landlord) {
+                return res.status(404).json({ message: "Landlord not found" });
+            }
+
+            // Fetch the filtered prop  erties
             const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId));
 
             // Check if properties are found
             if (!properties || properties.length === 0) {
-                return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                return res.status(404).json({ message: "No properties listed by this landlord" });
             }
             // Return the filtered properties
             return res.status(200).json({ properties });

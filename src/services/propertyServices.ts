@@ -43,24 +43,24 @@ class PropertyService {
 
     constructor() {
         this.landlordInclusion = {
-            include: {
-                user: {
-                    select: {
-                        email: true,
-                        id: true,
-                        profile: {
-                            select: {
-                                id: true,
-                                fullname: true,
-                                firstName: true,
-                                lastName: true,
-                                middleName: true,
-                                profileUrl: true,
+                include: {
+                    user: {
+                        select: {
+                            email: true,
+                            id: true,
+                            profile: {
+                                select: {
+                                    id: true,
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    middleName: true,
+                                    profileUrl: true,
+                                },
                             },
                         },
                     },
                 },
-            },
         }
         this.propsInclusion = {
             propertyListingHistory: true,
@@ -311,7 +311,9 @@ class PropertyService {
             },
             include: {
                 property: {
-                    ...this.propsInclusion
+                    include:{
+                        ...this.propsInclusion
+                    }
                 },
                 apartment: true,
             }
@@ -595,7 +597,9 @@ class PropertyService {
             },
             include: {
                 property: {
-                    ...this.propsInclusion
+                    include:{
+                        ...this.propsInclusion
+                    }
                 },
                 apartment: true,
             }

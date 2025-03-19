@@ -214,7 +214,9 @@ class PropertyService {
                     }
                 },
                 include: {
-                    property: Object.assign({}, this.propsInclusion),
+                    property: {
+                        include: Object.assign({}, this.propsInclusion)
+                    },
                     apartment: true,
                 }
             });
@@ -375,7 +377,9 @@ class PropertyService {
                     propertyId
                 },
                 include: {
-                    property: Object.assign({}, this.propsInclusion),
+                    property: {
+                        include: Object.assign({}, this.propsInclusion)
+                    },
                     apartment: true,
                 }
             });
