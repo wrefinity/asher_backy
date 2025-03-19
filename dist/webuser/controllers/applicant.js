@@ -472,6 +472,19 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const userInvitedId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const invite = yield applicantService_1.default.getInvite({ userInvitedId });
+                if (!invite)
+                    return res.status(404).json({ message: 'Invite not found' });
+                return res.status(200).json({ invite });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
     }
 }
 exports.default = new ApplicantControls();

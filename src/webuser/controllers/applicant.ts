@@ -17,6 +17,7 @@ import {
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
+import applicationServices from '../../landlord/services/application.services';
 
 
 class ApplicantControls {
@@ -523,6 +524,17 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
+
+  getInvites = async (req: CustomRequest, res: Response) => {
+    try { 
+        const userInvitedId = req.user?.id;
+        const invite = await ApplicantService.getInvite({userInvitedId});
+        if (!invite) return res.status(404).json({ message: 'Invite not found' });
+        return res.status(200).json({ invite });
+    } catch (error) {
+        ErrorService.handleError(error, res)
+    }
+}
 
 
 }

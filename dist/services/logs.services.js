@@ -108,6 +108,17 @@ class LogService {
                 }
             });
         });
+        this.getLandlordLogs = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, type = null) {
+            return yield __1.prismaClient.log.findMany({
+                where: Object.assign(Object.assign({}, (type && { type })), { property: {
+                        landlordId
+                    } }),
+                include: {
+                    property: true,
+                    users: true
+                }
+            });
+        });
         this.inclusion = {
             property: true
         };

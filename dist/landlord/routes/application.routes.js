@@ -26,6 +26,8 @@ class ApplicationLandlordRouter {
         this.router.get('/invites/:id', applicant_controller_1.default.getInvite);
         this.router.patch('/invites/:id/update', applicant_controller_1.default.updateInvite);
         this.router.delete('/invites/:id', applicant_controller_1.default.deleteInvite);
+        this.router.get('/invites/feedbacks', applicant_controller_1.default.getFeedbacks);
+        /// feedbacks
     }
 }
 exports.default = new ApplicationLandlordRouter().router;

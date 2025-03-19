@@ -39,6 +39,7 @@ class ApplicantRoutes {
         this.initializeRoutes();
     }
     initializeRoutes() {
+        this.router.get('/invities/all', this.authenticateService.authorize, applicant_1.default.getInvites);
         this.router.post('/:propertiesId', this.authenticateService.authorize, applicant_1.default.createOrUpdateApplicantBioData);
         this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, applicant_1.default.getPropertyApplicationFee);
         this.router.get('/milestones/:propertyId/:applicationId', this.authenticateService.authorize, applicant_1.default.getApplicationPropsMilestone);

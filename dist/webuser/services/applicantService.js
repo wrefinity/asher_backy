@@ -550,5 +550,31 @@ class ApplicantService {
             return yield user_services_1.default.createUser(Object.assign(Object.assign({}, tenantData), { role: client_1.userRoles.TENANT }));
         });
     }
+    getInvite(filters) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Construct dynamic where clause
+            const whereClause = Object.entries(filters).reduce((acc, [key, value]) => (value ? Object.assign(Object.assign({}, acc), { [key]: value }) : acc), {});
+            return yield __1.prismaClient.applicationInvites.findMany({
+                where: whereClause,
+                include: {
+                    properties: {
+                        include: {
+                            landlord: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            id: true,
+                                            email: true,
+                                            profile: true
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+        });
+    }
 }
 exports.default = new ApplicantService();

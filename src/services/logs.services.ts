@@ -126,6 +126,21 @@ class LogService {
       }
     });
   }
+
+  getLandlordLogs = async (landlordId: string, type: LogType = null) => {
+    return await prismaClient.log.findMany({
+      where: {
+        ...(type && { type }), 
+        property: {
+          landlordId
+        }
+      },
+      include: {
+        property: true,
+        users: true
+      }
+    });
+  } 
 }
 
 export default new LogService();

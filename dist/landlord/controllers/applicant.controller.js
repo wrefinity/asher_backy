@@ -217,6 +217,17 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getFeedbacks = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const landlordId = req.user.landlords.id;
+                console.log("was called.......");
+                const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_1.LogType.FEEDBACK);
+                return res.status(200).json({ feedbacks });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.landlordService = new landlord_service_1.LandlordService();
     }
 }

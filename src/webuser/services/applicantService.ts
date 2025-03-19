@@ -1,4 +1,5 @@
 import { prismaClient } from "../..";
+import { Prisma } from "@prisma/client";
 import { ApplicationStatus, ApplicationSaveState, userRoles } from '@prisma/client';
 import userServices from "../../services/user.services";
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
@@ -544,9 +545,9 @@ class ApplicantService {
       },
     });
   };
-  
- 
-  
+
+
+
 
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
@@ -644,6 +645,37 @@ class ApplicantService {
   approveApplication = async (tenantData: any) => {
     return await userServices.createUser({ ...tenantData, role: userRoles.TENANT });
   }
+
+
+  async getInvite(filters: { userInvitedId?: string }) {
+    // Construct dynamic where clause
+    const whereClause = Object.entries(filters).reduce(
+      (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),
+      {} as Prisma.applicationInvitesWhereInput
+    );
+  
+    return await prismaClient.applicationInvites.findMany({
+      where: whereClause,
+      include: {
+        properties: {
+          include: {
+            landlord: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    profile: true
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+  
 }
 
 export default new ApplicantService();
