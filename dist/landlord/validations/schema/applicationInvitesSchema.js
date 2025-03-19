@@ -9,7 +9,7 @@ const client_1 = require("@prisma/client");
 const invitedResponseType = Object.values(client_1.InvitedResponse);
 exports.createApplicationInviteSchema = joi_1.default.object({
     scheduleDate: joi_1.default.date().optional(),
-    response: joi_1.default.string().valid(...invitedResponseType).default(client_1.InvitedResponse.PENDING).required(),
+    response: joi_1.default.string().valid(...invitedResponseType).default(client_1.InvitedResponse.PENDING).optional(),
     propertiesId: joi_1.default.string().optional(),
     userInvitedId: joi_1.default.string().required(),
     apartmentsId: joi_1.default.string().uuid().optional(),

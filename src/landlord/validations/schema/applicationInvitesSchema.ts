@@ -4,7 +4,7 @@ const invitedResponseType = Object.values(InvitedResponse);
 
 export const createApplicationInviteSchema = Joi.object({
   scheduleDate: Joi.date().optional(),
-  response: Joi.string().valid(...invitedResponseType).default(InvitedResponse.PENDING).required(),
+  response: Joi.string().valid(...invitedResponseType).default(InvitedResponse.PENDING).optional(),
   propertiesId: Joi.string().optional(),
   userInvitedId: Joi.string().required(),
   apartmentsId: Joi.string().uuid().optional(),

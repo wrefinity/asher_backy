@@ -2,11 +2,11 @@ import { InvitedResponse } from ".prisma/client";
 
 export interface ApplicationInvite {
     id: string;
-    isDeleted: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    isDeleted?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
     scheduleDate?: Date;
-    response: InvitedResponse;
+    response?: InvitedResponse;
     propertiesId?: string | null;
     apartmentsId?: string | null;
     invitedByLandordId?: string | null;
