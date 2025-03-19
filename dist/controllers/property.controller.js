@@ -228,7 +228,11 @@ class PropertyController {
             var _a;
             try {
                 const createdById = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                const propertyId = req.params.propertyId;
+                const { propertyId, message } = req.body;
+                // Validate required fields
+                if (!propertyId || !message) {
+                    return res.status(400).json({ message: "Both propertyId and message are required" });
+                }
                 // check props existence
                 const property = yield propertyServices_1.default.getPropertyById(propertyId);
                 if (!property)
@@ -242,7 +246,7 @@ class PropertyController {
                 // if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
                 const log = yield logs_services_1.default.createLog({
                     propertyId,
-                    events: "Property Enquires",
+                    events: message,
                     createdById,
                     type: client_1.LogType.ENQUIRED,
                     status: client_1.logTypeStatus.PENDING

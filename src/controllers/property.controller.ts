@@ -260,7 +260,12 @@ class PropertyController {
     enquireProperty = async (req: CustomRequest, res: Response) => {
         try {
             const createdById = req.user?.id;
-            const propertyId = req.params.propertyId;
+            const { propertyId, message } = req.body;
+
+            // Validate required fields
+            if (!propertyId || !message) {
+                return res.status(400).json({ message: "Both propertyId and message are required" });
+            }
             // check props existence
             const property = await PropertyServices.getPropertyById(propertyId)
 
@@ -274,7 +279,7 @@ class PropertyController {
             // if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
             const log = await LogsServices.createLog({
                 propertyId,
-                events: "Property Enquires",
+                events: message,
                 createdById,
                 type: LogType.ENQUIRED,
                 status: logTypeStatus.PENDING
