@@ -289,8 +289,10 @@ model applicationInvites {
   landlords          landlords?  @relation(fields: [invitedByLandordId], references: [id])
   tenants            tenants?    @relation(fields: [tenantsId], references: [id])
   tenantsId          String?
-  userInvited            users?    @relation(fields: [userInvitedId], references: [id])
-  userInvitedId          String?
+  userInvited        users?      @relation(fields: [userInvitedId], references: [id])
+  userInvitedId      String?
+  invitations        Log?        @relation(fields: [invitationId], references: [id])
+  invitationId          String?
 }
 
 model applicationQuestions {

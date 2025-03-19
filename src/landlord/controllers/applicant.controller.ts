@@ -11,6 +11,7 @@ import { createApplicationInviteSchema, updateApplicationInviteSchema } from '..
 import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
+import userServices from "../../services/user.services"
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -121,11 +122,15 @@ class ApplicationControls {
             const { error, value } = createApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
             const invitedByLandordId = req.user?.landlords?.id;
-            const invite = await ApplicationInvitesService.createInvite({ ...value, invitedByLandordId });
+            const invite = await ApplicationInvitesService.createInvite({ ...value, invitedByLandordId, invitationId:enquiryId });
             const propertyId = value.propertyId;
             const property = await propertyServices.getPropertyById(propertyId);
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
+            }
+            const userExist = await userServices.getUserById(value.userInvitedId);
+            if (!userExist) {
+                return res.status(404).json({ message: 'user not found' });
             }
             // TODO:
             // send message to the tenants

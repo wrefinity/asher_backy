@@ -1,15 +1,18 @@
+import { InvitedResponse } from ".prisma/client";
+
 export interface ApplicationInvite {
     id: string;
     isDeleted: boolean;
     createdAt: Date;
     updatedAt: Date;
     scheduleDate?: Date;
-    response: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+    response: InvitedResponse;
     propertiesId?: string | null;
     apartmentsId?: string | null;
     invitedByLandordId?: string | null;
     userInvitedId?: string | null;
     tenantsId?: string | null;
+    invitationId?: string | null;
 }
 
 export interface Tenant {

@@ -23,6 +23,7 @@ const applicationInvitesSchema_1 = require("../validations/schema/applicationInv
 const emailer_1 = __importDefault(require("../../utils/emailer"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
+const user_services_1 = __importDefault(require("../../services/user.services"));
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -134,11 +135,15 @@ class ApplicationControls {
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const invitedByLandordId = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.landlords) === null || _c === void 0 ? void 0 : _c.id;
-                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId }));
+                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, invitationId: enquiryId }));
                 const propertyId = value.propertyId;
                 const property = yield propertyServices_1.default.getPropertyById(propertyId);
                 if (!property) {
                     return res.status(404).json({ message: 'Property not found' });
+                }
+                const userExist = yield user_services_1.default.getUserById(value.userInvitedId);
+                if (!userExist) {
+                    return res.status(404).json({ message: 'user not found' });
                 }
                 // TODO:
                 // send message to the tenants
