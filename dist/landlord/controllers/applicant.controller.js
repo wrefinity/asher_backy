@@ -12,12 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const applicantService_1 = __importDefault(require("../../webuser/services/applicantService"));
 const application_services_1 = __importDefault(require("../services/application.services"));
 const landlord_service_1 = require("../services/landlord.service");
 const tenant_service_1 = __importDefault(require("../../services/tenant.service"));
-const client_1 = require("@prisma/client");
+const client_2 = require("@prisma/client");
 const applicationInvitesSchema_1 = require("../validations/schema/applicationInvitesSchema");
 const emailer_1 = __importDefault(require("../../utils/emailer"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
@@ -39,7 +40,7 @@ class ApplicationControls {
             var _a, _b;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId, client_1.ApplicationStatus.PENDING);
+                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId, client_2.ApplicationStatus.PENDING);
                 return res.status(200).json({ application });
             }
             catch (error) {
@@ -50,7 +51,7 @@ class ApplicationControls {
             var _a, _b;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId, client_1.ApplicationStatus.COMPLETED);
+                const application = yield applicantService_1.default.getApplicationsForLandlordWithStatus(landlordId, client_2.ApplicationStatus.COMPLETED);
                 return res.status(200).json({ application });
             }
             catch (error) {
@@ -72,7 +73,7 @@ class ApplicationControls {
             var _a;
             try {
                 const applicationId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.applicationId;
-                const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.MAKEPAYMENT);
+                const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_2.ApplicationStatus.MAKEPAYMENT);
                 if (!application)
                     return res.status(400).json({ message: "application doesn't exist" });
                 return res.status(200).json({ application });
@@ -85,7 +86,7 @@ class ApplicationControls {
             var _a;
             try {
                 const applicationId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.applicationId;
-                const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.DECLINED);
+                const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_2.ApplicationStatus.DECLINED);
                 if (!application)
                     return res.status(400).json({ message: "property doesn't exist" });
                 return res.status(200).json({ application });
@@ -121,12 +122,18 @@ class ApplicationControls {
             }
         });
         this.createInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             try {
+                const enquiryId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.enquiryId;
+                // check enquiryId,
+                const enquire = yield logs_services_1.default.getLogsById(enquiryId);
+                if (!enquire) {
+                    return res.status(400).json({ message: "invalid enquire id" });
+                }
                 const { error, value } = applicationInvitesSchema_1.createApplicationInviteSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
-                const invitedByLandordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const invitedByLandordId = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.landlords) === null || _c === void 0 ? void 0 : _c.id;
                 const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId }));
                 const propertyId = value.propertyId;
                 const property = yield propertyServices_1.default.getPropertyById(propertyId);
@@ -147,6 +154,7 @@ class ApplicationControls {
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
                 yield (0, emailer_1.default)(tenantInfor.email, "Asher Rentals Invites", htmlContent);
+                yield logs_services_1.default.updateLog(enquiryId, { status: client_1.logTypeStatus.INVITED });
                 return res.status(201).json({ invite });
             }
             catch (error) {
@@ -194,7 +202,7 @@ class ApplicationControls {
         this.getEnquiredProps = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.user.landlords.id;
-                const leasing = yield logs_services_1.default.getLogs(landlordId, client_1.LogType.ENQUIRED);
+                const leasing = yield logs_services_1.default.getLogs(landlordId, client_2.LogType.ENQUIRED);
                 return res.status(200).json({ leasing });
             }
             catch (error) {
@@ -221,7 +229,7 @@ class ApplicationControls {
             try {
                 const landlordId = req.user.landlords.id;
                 console.log("was called.......");
-                const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_1.LogType.FEEDBACK);
+                const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_2.LogType.FEEDBACK);
                 return res.status(200).json({ feedbacks });
             }
             catch (error) {

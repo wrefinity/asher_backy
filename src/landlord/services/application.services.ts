@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-import { Prisma } from "@prisma/client";
+import { Prisma, logTypeStatus } from "@prisma/client";
 import { ApplicationInvite } from "../validations/interfaces/applications";
 
 class ApplicationInvitesService {
@@ -30,6 +30,7 @@ class ApplicationInvitesService {
         invitedByLandordId?: string;
         tenantId?: string;
         userInvitedId?: string;
+        status?: logTypeStatus
     }) {
         const whereClause = Object.entries(filters).reduce(
             (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),

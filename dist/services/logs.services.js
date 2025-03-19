@@ -37,10 +37,11 @@ class LogService {
                 data: logData,
             });
         });
-        // Get all logs by types as view etc.
-        this.getLogs = (landlordId, type) => __awaiter(this, void 0, void 0, function* () {
+        // Get all logs by types, status, etc.
+        this.getLogs = (landlordId_1, type_1, ...args_1) => __awaiter(this, [landlordId_1, type_1, ...args_1], void 0, function* (landlordId, type, status = null) {
             return yield __1.prismaClient.log.findMany({
-                where: { type, property: { landlordId } },
+                where: Object.assign({ type, property: { landlordId } }, (status ? { status } : {}) // Apply status condition only if it's provided
+                ),
                 include: this.inclusion
             });
         });
@@ -117,6 +118,16 @@ class LogService {
                     property: true,
                     users: true
                 }
+            });
+        });
+        this.updateLog = (id, updateData) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.log.update({
+                where: { id },
+                data: updateData,
+                include: {
+                    property: true,
+                    users: true,
+                },
             });
         });
         this.inclusion = {

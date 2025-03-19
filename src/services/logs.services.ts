@@ -51,13 +51,19 @@ class LogService {
     });
   };
 
-  // Get all logs by types as view etc.
-  getLogs = async (landlordId: string, type: LogType) => {
+
+  // Get all logs by types, status, etc.
+  getLogs = async (landlordId: string, type: LogType, status: logTypeStatus = null) => {
     return await prismaClient.log.findMany({
-      where: { type, property: { landlordId } },
+      where: {
+        type,
+        property: { landlordId },
+        ...(status ? { status } : {}) // Apply status condition only if it's provided
+      },
       include: this.inclusion
-    })
-  }
+    });
+  };
+
 
 
   checkPropertyLogs = async (createdById: string, type: LogType, propertyId: string, applicationId: string = null) => {
@@ -130,7 +136,7 @@ class LogService {
   getLandlordLogs = async (landlordId: string, type: LogType = null) => {
     return await prismaClient.log.findMany({
       where: {
-        ...(type && { type }), 
+        ...(type && { type }),
         property: {
           landlordId
         }
@@ -140,7 +146,18 @@ class LogService {
         users: true
       }
     });
-  } 
+  }
+  updateLog = async (id: string, updateData: Partial<LogIF>) => {
+    return await prismaClient.log.update({
+      where: { id },
+      data: updateData,
+      include: {
+        property: true,
+        users: true,
+      },
+    });
+  };
+
 }
 
 export default new LogService();

@@ -1,4 +1,5 @@
 import { Response } from "express"
+import {logTypeStatus} from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -110,6 +111,13 @@ class ApplicationControls {
     createInvite = async (req: CustomRequest, res: Response) => {
 
         try {
+            const enquiryId = req.params?.enquiryId;
+
+            // check enquiryId,
+            const enquire = await logsServices.getLogsById(enquiryId)
+            if(!enquire) {
+                return  res.status(400).json({ message: "invalid enquire id" }); 
+            }
             const { error, value } = createApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
             const invitedByLandordId = req.user?.landlords?.id;
@@ -133,6 +141,7 @@ class ApplicationControls {
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
             await Emailer(tenantInfor.email, "Asher Rentals Invites", htmlContent)
+            await logsServices.updateLog(enquiryId, {status: logTypeStatus.INVITED})
             return res.status(201).json({ invite });
         } catch (error) {
             errorService.handleError(error, res)
