@@ -12,6 +12,7 @@ export const createApplicationInviteSchema = Joi.object({
 });
 
 export const updateApplicationInviteSchema = Joi.object({
+  reScheduleDate: Joi.date().optional(),
   scheduleDate: Joi.date().iso().optional(),
   response: Joi.string().valid(...invitedResponseType).optional(),
 });

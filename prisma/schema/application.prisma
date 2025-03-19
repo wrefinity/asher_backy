@@ -278,6 +278,7 @@ model applicationInvites {
   createdAt    DateTime        @default(now()) // represents the date invited
   updatedAt    DateTime        @updatedAt
   scheduleDate DateTime?
+  reScheduleDate DateTime?
   response     InvitedResponse @default(PENDING)
 
   // relation ship fields
@@ -292,7 +293,7 @@ model applicationInvites {
   userInvited        users?      @relation(fields: [userInvitedId], references: [id])
   userInvitedId      String?
   invitations        Log?        @relation(fields: [invitationId], references: [id])
-  invitationId          String?
+  invitationId       String?
 }
 
 model applicationQuestions {

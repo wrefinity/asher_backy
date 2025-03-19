@@ -19,6 +19,7 @@ const schemas_1 = require("../schemas");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const client_1 = require("@prisma/client");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
+const applicationInvitesSchema_1 = require("../../landlord/validations/schema/applicationInvitesSchema");
 class ApplicantControls {
     constructor() {
         this.getPendingApplications = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -65,7 +66,8 @@ class ApplicantControls {
                     applicantService_1.default.getApplicationBasedOnStatus(userId, activeStatuses),
                     applicantService_1.default.getApplicationBasedOnStatus(userId, completedStatuses)
                 ]);
-                res.status(200).json({ applications: {
+                res.status(200).json({
+                    applications: {
                         pendingApplications,
                         completedApplications,
                         declinedApplications,
@@ -75,7 +77,8 @@ class ApplicantControls {
                         activeApps,
                         completedApps,
                         invites
-                    } });
+                    }
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -478,9 +481,33 @@ class ApplicantControls {
             var _a;
             try {
                 const userInvitedId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                const invite = yield applicantService_1.default.getInvite({ userInvitedId });
-                if (!invite)
-                    return res.status(404).json({ message: 'Invite not found' });
+                const pendingInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.PENDING });
+                const acceptInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.ACCEPTED });
+                const rescheduledInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.RESCHEDULED });
+                const rejectedInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.REJECTED });
+                // const invite = await ApplicantService.getInvite({ userInvitedId });
+                // if (!invite) return res.status(404).json({ message: 'Invite not found' });
+                return res.status(200).json({ invite: {
+                        pendingInvites,
+                        acceptInvites,
+                        rescheduledInvites,
+                        rejectedInvites
+                    } });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.updateInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { id } = req.params;
+                const inviteExist = yield applicantService_1.default.getInvitedById(id);
+                if (!inviteExist)
+                    return res.status(404).json({ message: "invitation doesn't exist" });
+                const { error, value } = applicationInvitesSchema_1.updateApplicationInviteSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const invite = yield applicantService_1.default.updateInvites(id, value);
                 return res.status(200).json({ invite });
             }
             catch (error) {

@@ -549,6 +549,28 @@ class ApplicantService {
         this.approveApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {
             return yield user_services_1.default.createUser(Object.assign(Object.assign({}, tenantData), { role: client_1.userRoles.TENANT }));
         });
+        this.getInvitedById = (id) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.applicationInvites.findUnique({
+                where: { id },
+                include: {
+                    properties: {
+                        include: {
+                            landlord: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            id: true,
+                                            email: true,
+                                            profile: true
+                                        },
+                                    },
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
     }
     getInvite(filters) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -573,6 +595,14 @@ class ApplicantService {
                         },
                     },
                 },
+            });
+        });
+    }
+    updateInvites(id, updateData) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.applicationInvites.update({
+                where: { id },
+                data: updateData,
             });
         });
     }

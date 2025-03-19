@@ -15,9 +15,9 @@ import {
   declarationSchema
 } from '../schemas';
 import ErrorService from "../../services/error.service";
-import { ApplicationStatus, LogType, PropsSettingType } from '@prisma/client';
+import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
-import applicationServices from '../../landlord/services/application.services';
+import { updateApplicationInviteSchema } from '../../landlord/validations/schema/applicationInvitesSchema';
 
 
 class ApplicantControls {
@@ -46,37 +46,39 @@ class ApplicantControls {
       const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
       const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
       const submittedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.SUBMITTED);
-      const invites = await ApplicantService.getInvite({userInvitedId: userId}); 
-         // Define status groups
-    const activeStatuses = [
-      ApplicationStatus.PENDING,
-      ApplicationStatus.SUBMITTED,
-      ApplicationStatus.MAKEPAYMENT,
-      ApplicationStatus.ACCEPTED
-    ];
+      const invites = await ApplicantService.getInvite({ userInvitedId: userId });
+      // Define status groups
+      const activeStatuses = [
+        ApplicationStatus.PENDING,
+        ApplicationStatus.SUBMITTED,
+        ApplicationStatus.MAKEPAYMENT,
+        ApplicationStatus.ACCEPTED
+      ];
 
-    const completedStatuses = [
-      ApplicationStatus.COMPLETED,
-      ApplicationStatus.DECLINED
-    ];
+      const completedStatuses = [
+        ApplicationStatus.COMPLETED,
+        ApplicationStatus.DECLINED
+      ];
 
-    // Get grouped applications
-    const [activeApps, completedApps] = await Promise.all([
-      ApplicantService.getApplicationBasedOnStatus(userId, activeStatuses),
-      ApplicantService.getApplicationBasedOnStatus(userId, completedStatuses)
-    ]);
-      
-      res.status(200).json({applications:{
-        pendingApplications, 
-        completedApplications, 
-        declinedApplications,
-        makePaymentApplications, 
-        acceptedApplications,
-        submittedApplications, 
-        activeApps,
-        completedApps,
-        invites
-      }});
+      // Get grouped applications
+      const [activeApps, completedApps] = await Promise.all([
+        ApplicantService.getApplicationBasedOnStatus(userId, activeStatuses),
+        ApplicantService.getApplicationBasedOnStatus(userId, completedStatuses)
+      ]);
+
+      res.status(200).json({
+        applications: {
+          pendingApplications,
+          completedApplications,
+          declinedApplications,
+          makePaymentApplications,
+          acceptedApplications,
+          submittedApplications,
+          activeApps,
+          completedApps,
+          invites
+        }
+      });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
@@ -527,17 +529,41 @@ class ApplicantControls {
   }
 
   getInvites = async (req: CustomRequest, res: Response) => {
-    try { 
-        const userInvitedId = req.user?.id;
-        const invite = await ApplicantService.getInvite({userInvitedId});
-        if (!invite) return res.status(404).json({ message: 'Invite not found' });
-        return res.status(200).json({ invite });
+    try {
+      const userInvitedId = req.user?.id;
+      const pendingInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.PENDING });
+      const acceptInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.ACCEPTED });
+      const rescheduledInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.RESCHEDULED });
+      const rejectedInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.REJECTED });
+      // const invite = await ApplicantService.getInvite({ userInvitedId });
+      // if (!invite) return res.status(404).json({ message: 'Invite not found' });
+      return res.status(200).json({ invite:{
+        pendingInvites,
+        acceptInvites,
+        rescheduledInvites,
+        rejectedInvites
+      } });
     } catch (error) {
-        ErrorService.handleError(error, res)
+      ErrorService.handleError(error, res)
     }
-}
+  }
 
+  updateInvite = async (req: CustomRequest, res: Response) => {
+    try {
+      const { id } = req.params;
 
+      const inviteExist = await ApplicantService.getInvitedById(id);
+      if (!inviteExist) return res.status(404).json({ message: "invitation doesn't exist" });
+
+      const { error, value } = updateApplicationInviteSchema.validate(req.body);
+      if (error) return res.status(400).json({ error: error.details[0].message });
+
+      const invite = await ApplicantService.updateInvites(id, value);
+      return res.status(200).json({ invite });
+    } catch (error: unknown) {
+      ErrorService.handleError(error, res);
+    }
+  }
 }
 
 export default new ApplicantControls();

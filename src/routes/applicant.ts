@@ -16,6 +16,8 @@ class ApplicantRoutes {
 
     private initializeRoutes(): void {
         this.router.get('/invities/all', this.authenticateService.authorize,  ApplicantControls.getInvites);
+        this.router.patch('/invites/:id/update', ApplicantControls.updateInvite);
+        
         this.router.post('/:propertiesId', this.authenticateService.authorize, ApplicantControls.createOrUpdateApplicantBioData);
         this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, ApplicantControls.getPropertyApplicationFee);
         this.router.get('/milestones/:propertyId/:applicationId', this.authenticateService.authorize, ApplicantControls.getApplicationPropsMilestone);

@@ -1,6 +1,6 @@
 import { prismaClient } from "../..";
 import { Prisma } from "@prisma/client";
-import { ApplicationStatus, ApplicationSaveState, userRoles } from '@prisma/client';
+import { ApplicationStatus, InvitedResponse, ApplicationSaveState, userRoles } from '@prisma/client';
 import userServices from "../../services/user.services";
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
@@ -647,7 +647,30 @@ class ApplicantService {
   }
 
 
-  async getInvite(filters: { userInvitedId?: string }) {
+  getInvitedById = async (id: string) =>{
+    return await prismaClient.applicationInvites.findUnique({
+      where: { id },
+      include: {
+        properties: {
+          include: {
+            landlord: {
+              include: { 
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    profile: true
+                  },
+                },
+              }  
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async getInvite(filters: { userInvitedId?: string, status?: InvitedResponse }) {
     // Construct dynamic where clause
     const whereClause = Object.entries(filters).reduce(
       (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),
@@ -675,6 +698,14 @@ class ApplicantService {
       },
     });
   }
+  async updateInvites(id, updateData: Partial<Prisma.applicationInvitesUpdateInput>) {
+    return await prismaClient.applicationInvites.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
+
   
 }
 
