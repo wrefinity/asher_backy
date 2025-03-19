@@ -207,7 +207,7 @@ class ApplicationControls {
         this.getEnquiredProps = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.user.landlords.id;
-                const leasing = yield logs_services_1.default.getLogs(landlordId, client_2.LogType.ENQUIRED);
+                const leasing = yield logs_services_1.default.getLogs(landlordId, client_2.LogType.ENQUIRED, client_1.logTypeStatus.PENDING);
                 return res.status(200).json({ leasing });
             }
             catch (error) {

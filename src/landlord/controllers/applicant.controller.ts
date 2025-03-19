@@ -188,7 +188,7 @@ class ApplicationControls {
     getEnquiredProps = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.landlords.id;
-            const leasing = await logsServices.getLogs(landlordId, LogType.ENQUIRED);
+            const leasing = await logsServices.getLogs(landlordId, LogType.ENQUIRED, logTypeStatus.PENDING);
             return res.status(200).json({ leasing });
         } catch (error) {
             errorService.handleError(error, res)
