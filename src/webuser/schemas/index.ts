@@ -12,7 +12,7 @@ const nextOfKinSchema = Joi.object({
 
 const applicantPersonalDetailsSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
-    applicationInviteId: Joi.string().allow(null).optional(),
+    applicationInviteId: Joi.string().required(),
     title: Joi.string().required(),
     firstName: Joi.string().required(),
     middleName: Joi.string().allow(null).optional(),
