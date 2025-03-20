@@ -531,10 +531,10 @@ class ApplicantControls {
   getInvites = async (req: CustomRequest, res: Response) => {
     try {
       const userInvitedId = req.user?.id;
-      const pendingInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.PENDING });
-      const acceptInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.ACCEPTED });
-      const rescheduledInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.RESCHEDULED });
-      const rejectedInvites = await ApplicantService.getInvite({ userInvitedId, status: InvitedResponse.REJECTED });
+      const pendingInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.PENDING });
+      const acceptInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.ACCEPTED });
+      const rescheduledInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.RESCHEDULED });
+      const rejectedInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.REJECTED });
       // const invite = await ApplicantService.getInvite({ userInvitedId });
       // if (!invite) return res.status(404).json({ message: 'Invite not found' });
       return res.status(200).json({ invites:{

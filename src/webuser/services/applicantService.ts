@@ -670,34 +670,34 @@ class ApplicantService {
     });
   }
 
-  async getInvite(filters: { userInvitedId?: string, status?: InvitedResponse }) {
-    // Construct dynamic where clause
+  async getInvite(filters: { userInvitedId?: string; response?: InvitedResponse }) {
     const whereClause = Object.entries(filters).reduce(
-      (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),
-      {} as Prisma.applicationInvitesWhereInput
+        (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),
+        {} as Prisma.applicationInvitesWhereInput
     );
-  
+
     return await prismaClient.applicationInvites.findMany({
-      where: whereClause,
-      include: {
-        properties: {
-          include: {
-            landlord: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    profile: true
-                  },
+        where: whereClause,
+        include: {
+            properties: {
+                include: {
+                    landlord: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    email: true,
+                                    profile: true,
+                                },
+                            },
+                        },
+                    },
                 },
-              },
             },
-          },
         },
-      },
     });
-  }
+}
+
   async updateInvites(id, updateData: Partial<Prisma.applicationInvitesUpdateInput>) {
     return await prismaClient.applicationInvites.update({
       where: { id },
