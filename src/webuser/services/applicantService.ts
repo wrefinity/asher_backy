@@ -23,7 +23,9 @@ import {
   EmploymentInformationIF,
   DeclarationIF
 } from "../schemas/types"
-import { connect } from "http2";
+import { ApplicationInvite } from "../../landlord/validations/interfaces/applications";
+
+import applicationServices from "../../landlord/services/application.services";
 
 
 class ApplicantService {
@@ -153,6 +155,7 @@ class ApplicantService {
       lastName,
       dob,
       email,
+      applicationInviteId,
       phoneNumber,
       maritalStatus,
       nextOfKin,
@@ -203,6 +206,7 @@ class ApplicantService {
       phoneNumber,
       maritalStatus,
       nationality,
+      applicationInviteId,
       identificationType,
       issuingAuthority,
       expiryDate
@@ -698,15 +702,9 @@ class ApplicantService {
     });
 }
 
-  async updateInvites(id, updateData: Partial<Prisma.applicationInvitesUpdateInput>) {
-    return await prismaClient.applicationInvites.update({
-      where: { id },
-      data: updateData,
-    });
-  }
-
-
-  
+  async updateInvites(id, updateData:ApplicationInvite) {
+    return await applicationServices.updateInvite(id, updateData);
+  } 
 }
 
 export default new ApplicantService();

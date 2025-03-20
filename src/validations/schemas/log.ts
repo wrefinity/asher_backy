@@ -6,6 +6,7 @@ const yesNoType = Object.values(YesNo);
 
 export const logSchema = Joi.object({
   id: Joi.string().optional(), // Automatically generated, so optional
+  applicationInvitedId: Joi.string().required(), 
   subjects: Joi.string().optional().allow(''), // Optional field
   viewAgain: Joi.string().optional().allow('').valid(...yesNoType), // Optional field
   considerRenting: Joi.string().optional().allow('').valid(...yesNoType), // Optional field

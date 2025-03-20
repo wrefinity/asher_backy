@@ -25,6 +25,9 @@ class LogService {
                 application: data.applicationId
                     ? { connect: { id: data.applicationId } }
                     : undefined,
+                applicationInvites: data.applicationInvitedId
+                    ? { connect: { id: data.applicationInvitedId } }
+                    : undefined,
             };
             // Only include propertyId if it is defined
             if (data.propertyId) {

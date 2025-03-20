@@ -135,7 +135,7 @@ class ApplicationControls {
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const invitedByLandordId = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.landlords) === null || _c === void 0 ? void 0 : _c.id;
-                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, invitationId: enquiryId }));
+                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, invitationId: enquiryId, responseStepsCompleted: value.response ? [value.response] : [client_1.InvitedResponse.PENDING] }));
                 const propertyId = value.propertyId;
                 const property = yield propertyServices_1.default.getPropertyById(propertyId);
                 if (!property) {

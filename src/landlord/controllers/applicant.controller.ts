@@ -1,5 +1,5 @@
 import { Response } from "express"
-import {logTypeStatus} from "@prisma/client"
+import {logTypeStatus, InvitedResponse} from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -122,7 +122,14 @@ class ApplicationControls {
             const { error, value } = createApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
             const invitedByLandordId = req.user?.landlords?.id;
-            const invite = await ApplicationInvitesService.createInvite({ ...value, invitedByLandordId, invitationId:enquiryId });
+            
+            const invite = await ApplicationInvitesService.createInvite({ 
+                ...value, 
+                invitedByLandordId, 
+                invitationId: enquiryId, 
+                responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING] 
+            });
+
             const propertyId = value.propertyId;
             const property = await propertyServices.getPropertyById(propertyId);
             if (!property) {

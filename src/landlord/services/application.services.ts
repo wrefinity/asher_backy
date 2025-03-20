@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-import { Prisma, logTypeStatus } from "@prisma/client";
+import { Prisma, logTypeStatus, InvitedResponse} from "@prisma/client";
 import { ApplicationInvite } from "../validations/interfaces/applications";
 
 class ApplicationInvitesService {
@@ -21,10 +21,14 @@ class ApplicationInvitesService {
 
     async createInvite(data: Omit<ApplicationInvite, "id">) {
         return prismaClient.applicationInvites.create({
-            data: data as Prisma.applicationInvitesUncheckedCreateInput,
+            data: { 
+                ...data, 
+                responseStepsCompleted: { set: data.responseStepsCompleted ?? [] } // Ensure correct array handling
+            },
             include: this.inviteInclude,
         });
     }
+    
 
     async getInvite(filters: {
         invitedByLandordId?: string;
@@ -43,13 +47,7 @@ class ApplicationInvitesService {
         });
     }
 
-    async updateInvite(id: string, data: Partial<ApplicationInvite>) {
-        return prismaClient.applicationInvites.update({
-            where: { id },
-            data: data as Prisma.applicationInvitesUncheckedUpdateInput,
-            include: this.inviteInclude,
-        });
-    }
+  
 
     async deleteInvite(id: string, invitedByLandordId: string) {
         return prismaClient.applicationInvites.update({
@@ -64,6 +62,43 @@ class ApplicationInvitesService {
             include: this.inviteInclude,
         });
     }
+    async updateInvite(id: string, data: Partial<ApplicationInvite>) {
+        let updated = await prismaClient.applicationInvites.update({
+            where: { id },
+            data: data as Prisma.applicationInvitesUncheckedUpdateInput,
+            include: this.inviteInclude,
+        });
+
+        if (updated && data.response) {
+            updated = await this.updateInviteResponse(id, data.response)
+        }
+        return updated;
+    }
+    async updateInviteResponse(inviteId: string, newResponse: InvitedResponse) {
+        const invite = await prismaClient.applicationInvites.findUnique({
+            where: { id: inviteId },
+            select: { responseStepsCompleted: true }
+        });
+    
+        if (!invite) {
+            throw new Error("Invite not found");
+        }
+    
+        // Check if the response is already in the array
+        const updatedResponses = invite.responseStepsCompleted.includes(newResponse)
+            ? invite.responseStepsCompleted
+            : [...invite.responseStepsCompleted, newResponse];
+    
+        return await prismaClient.applicationInvites.update({
+            where: { id: inviteId },
+            data: { 
+                response: newResponse, // Update current response
+                responseStepsCompleted: updatedResponses // Append if not already present
+            },
+            include: this.inviteInclude
+        });
+    }
+    
 }
 
 export default new ApplicationInvitesService();

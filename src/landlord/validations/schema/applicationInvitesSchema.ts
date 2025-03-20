@@ -1,6 +1,7 @@
 import Joi from 'joi';
-import { InvitedResponse} from "@prisma/client"
+import { InvitedResponse, YesNo} from "@prisma/client"
 const invitedResponseType = Object.values(InvitedResponse);
+const YesNoType = Object.values(YesNo);
 
 export const createApplicationInviteSchema = Joi.object({
   scheduleDate: Joi.date().iso().optional(),
@@ -14,5 +15,6 @@ export const createApplicationInviteSchema = Joi.object({
 export const updateApplicationInviteSchema = Joi.object({
   reScheduleDate: Joi.date().iso().optional(),
   scheduleDate: Joi.date().iso().optional(),
+  applicationFee: Joi.string().valid(...YesNoType).optional(),
   response: Joi.string().valid(...invitedResponseType).optional(),
 });

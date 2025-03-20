@@ -1,4 +1,4 @@
-import { InvitedResponse } from ".prisma/client";
+import { InvitedResponse, YesNo } from ".prisma/client";
 
 export interface ApplicationInvite {
     id: string;
@@ -7,12 +7,14 @@ export interface ApplicationInvite {
     updatedAt?: Date;
     scheduleDate?: Date;
     response?: InvitedResponse;
+    responseStepsCompleted?: InvitedResponse[];
     propertiesId?: string | null;
     apartmentsId?: string | null;
     invitedByLandordId?: string | null;
     userInvitedId?: string | null;
     tenantsId?: string | null;
     invitationId?: string | null;
+    applicationFee?: YesNo | null;
 }
 
 export interface Tenant {

@@ -11,6 +11,7 @@ interface LogIF {
   viewAgain?: YesNo;
   considerRenting?: YesNo;
   applicationId?: string;
+  applicationInvitedId?: string;
   createdById?: string;
 }
 
@@ -22,7 +23,7 @@ class LogService {
     this.inclusion = {
       property: true,
       users: {
-        select:{email:true, id:true, profile: true }
+        select: { email: true, id: true, profile: true }
       }
     }
   }
@@ -38,6 +39,9 @@ class LogService {
       // createdById: data?.createdById || undefined,
       application: data.applicationId
         ? { connect: { id: data.applicationId } }
+        : undefined,
+      applicationInvites: data.applicationInvitedId
+        ? { connect: { id: data.applicationInvitedId } }
         : undefined,
     };
 

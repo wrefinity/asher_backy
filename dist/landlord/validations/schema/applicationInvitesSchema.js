@@ -7,8 +7,9 @@ exports.updateApplicationInviteSchema = exports.createApplicationInviteSchema = 
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const invitedResponseType = Object.values(client_1.InvitedResponse);
+const YesNoType = Object.values(client_1.YesNo);
 exports.createApplicationInviteSchema = joi_1.default.object({
-    scheduleDate: joi_1.default.date().optional(),
+    scheduleDate: joi_1.default.date().iso().optional(),
     response: joi_1.default.string().valid(...invitedResponseType).default(client_1.InvitedResponse.PENDING).optional(),
     propertiesId: joi_1.default.string().optional(),
     userInvitedId: joi_1.default.string().required(),
@@ -16,7 +17,8 @@ exports.createApplicationInviteSchema = joi_1.default.object({
     tenantId: joi_1.default.string().uuid().optional()
 });
 exports.updateApplicationInviteSchema = joi_1.default.object({
-    reScheduleDate: joi_1.default.date().optional(),
+    reScheduleDate: joi_1.default.date().iso().optional(),
     scheduleDate: joi_1.default.date().iso().optional(),
+    applicationFee: joi_1.default.string().valid(...YesNoType).optional(),
     response: joi_1.default.string().valid(...invitedResponseType).optional(),
 });

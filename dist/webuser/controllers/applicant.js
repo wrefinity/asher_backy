@@ -481,13 +481,13 @@ class ApplicantControls {
             var _a;
             try {
                 const userInvitedId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                const pendingInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.PENDING });
-                const acceptInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.ACCEPTED });
-                const rescheduledInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.RESCHEDULED });
-                const rejectedInvites = yield applicantService_1.default.getInvite({ userInvitedId, status: client_1.InvitedResponse.REJECTED });
+                const pendingInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.PENDING });
+                const acceptInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.ACCEPTED });
+                const rescheduledInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.RESCHEDULED });
+                const rejectedInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.REJECTED });
                 // const invite = await ApplicantService.getInvite({ userInvitedId });
                 // if (!invite) return res.status(404).json({ message: 'Invite not found' });
-                return res.status(200).json({ invite: {
+                return res.status(200).json({ invites: {
                         pendingInvites,
                         acceptInvites,
                         rescheduledInvites,

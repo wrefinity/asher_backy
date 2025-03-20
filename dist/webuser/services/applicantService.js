@@ -35,6 +35,7 @@ const personaldetails_services_1 = __importDefault(require("../../services/perso
 const nextkin_services_1 = __importDefault(require("../../services/nextkin.services"));
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const client_2 = require("@prisma/client");
+const application_services_1 = __importDefault(require("../../landlord/services/application.services"));
 class ApplicantService {
     constructor() {
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
@@ -146,7 +147,7 @@ class ApplicantService {
         });
         this.createApplication = (data, propertiesId, userId) => __awaiter(this, void 0, void 0, function* () {
             var _a;
-            const { title, firstName, invited, middleName, lastName, dob, email, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate, } = data;
+            const { title, firstName, invited, middleName, lastName, dob, email, applicationInviteId, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate, } = data;
             const nextOfKinData = {
                 id: nextOfKin === null || nextOfKin === void 0 ? void 0 : nextOfKin.id,
                 firstName: nextOfKin.firstName,
@@ -183,6 +184,7 @@ class ApplicantService {
                 phoneNumber,
                 maritalStatus,
                 nationality,
+                applicationInviteId,
                 identificationType,
                 issuingAuthority,
                 expiryDate
@@ -574,7 +576,6 @@ class ApplicantService {
     }
     getInvite(filters) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Construct dynamic where clause
             const whereClause = Object.entries(filters).reduce((acc, [key, value]) => (value ? Object.assign(Object.assign({}, acc), { [key]: value }) : acc), {});
             return yield __1.prismaClient.applicationInvites.findMany({
                 where: whereClause,
@@ -587,7 +588,7 @@ class ApplicantService {
                                         select: {
                                             id: true,
                                             email: true,
-                                            profile: true
+                                            profile: true,
                                         },
                                     },
                                 },
@@ -600,10 +601,7 @@ class ApplicantService {
     }
     updateInvites(id, updateData) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.applicationInvites.update({
-                where: { id },
-                data: updateData,
-            });
+            return yield application_services_1.default.updateInvite(id, updateData);
         });
     }
 }

@@ -21,6 +21,7 @@ export interface NextOfKinIF {
 
 export interface ApplicantPersonalDetailsIF {
   id?: string | null;
+  applicationInviteId?: string | null;
   title: string;
   firstName: string;
   middleName?: string | null;

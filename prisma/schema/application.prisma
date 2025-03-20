@@ -18,8 +18,15 @@ enum AnswersEnum {
 enum InvitedResponse {
   PENDING
   RESCHEDULED
+  SCHEDULED
+  RE_INVITED
+  VISITED
+  NOT_VISITED
   REJECTED
   ACCEPTED
+  FEEDBACK // what do the user think about the property
+  APPLY
+  DECLINED
 }
 
 enum InvitedStatus {
@@ -102,6 +109,9 @@ model application {
 
   Log         Log[]         @relation("apply")
   declaration declaration[]
+
+  applicationInviteId String?             @unique
+  applicationInvites  applicationInvites? @relation(fields: [applicationInviteId], references: [id])
 }
 
 model applicantPersonalDetails {
@@ -272,14 +282,17 @@ model EmploymentInformation {
 }
 
 model applicationInvites {
-  id        String  @id @default(cuid())
-  isDeleted Boolean @default(false)
+  id             String  @id @default(cuid())
+  isDeleted      Boolean @default(false)
+  applicationFee YesNo?
 
-  createdAt    DateTime        @default(now()) // represents the date invited
-  updatedAt    DateTime        @updatedAt
-  scheduleDate DateTime?
+  createdAt      DateTime        @default(now()) // represents the date invited
+  updatedAt      DateTime        @updatedAt
+  scheduleDate   DateTime?
   reScheduleDate DateTime?
-  response     InvitedResponse @default(PENDING)
+  response       InvitedResponse @default(PENDING)
+
+  responseStepsCompleted InvitedResponse[]
 
   // relation ship fields
   properties         properties? @relation(fields: [propertiesId], references: [id])
@@ -294,6 +307,8 @@ model applicationInvites {
   userInvitedId      String?
   invitations        Log?        @relation(fields: [invitationId], references: [id])
   invitationId       String?
+
+  application application?
 }
 
 model applicationQuestions {
