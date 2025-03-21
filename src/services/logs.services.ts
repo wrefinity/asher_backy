@@ -24,7 +24,8 @@ class LogService {
       property: true,
       users: {
         select: { email: true, id: true, profile: true }
-      }
+      },
+      applicationInvites: true,
     }
   }
 
@@ -68,6 +69,7 @@ class LogService {
         ...(status ? { status } : {}) // Apply status condition only if it's provided
       },
       include: this.inclusion
+
     });
   };
 

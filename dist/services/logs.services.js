@@ -121,7 +121,8 @@ class LogService {
             property: true,
             users: {
                 select: { email: true, id: true, profile: true }
-            }
+            },
+            applicationInvites: true,
         };
     }
 }
