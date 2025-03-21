@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const __1 = require("../..");
+const __1 = require("..");
 class ApplicationInvitesService {
     constructor() {
         this.userInclusion = { email: true, profile: true, id: true };
@@ -25,6 +25,7 @@ class ApplicationInvitesService {
             landlords: {
                 include: { user: { select: this.userInclusion } },
             },
+            enquires: true,
         };
     }
     createInvite(data) {
@@ -64,6 +65,9 @@ class ApplicationInvitesService {
     }
     updateInvite(id, data) {
         return __awaiter(this, void 0, void 0, function* () {
+            const existingInvite = yield this.getInviteById(id);
+            if (!existingInvite)
+                throw new Error(`Invite with ID ${id} not found`);
             let updated = yield __1.prismaClient.applicationInvites.update({
                 where: { id },
                 data: data,

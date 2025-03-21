@@ -25,7 +25,7 @@ import {
 } from "../schemas/types"
 import { ApplicationInvite } from "../../landlord/validations/interfaces/applications";
 
-import applicationServices from "../../landlord/services/application.services";
+import applicationServices from "../../services/application.services";
 
 
 class ApplicantService {

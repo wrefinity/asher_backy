@@ -63,9 +63,7 @@ class LogService {
                 where: {
                     propertyId: propertyId,
                 },
-                include: {
-                    property: true,
-                }
+                include: this.inclusion
             });
         });
         this.getLogsById = (logId) => __awaiter(this, void 0, void 0, function* () {
@@ -73,9 +71,7 @@ class LogService {
                 where: {
                     id: logId,
                 },
-                include: {
-                    property: true,
-                }
+                include: this.inclusion
             });
         });
         // for milestone on maintenances
@@ -88,10 +84,7 @@ class LogService {
                     },
                     createdById: userId
                 },
-                include: {
-                    property: true,
-                    users: true
-                }
+                include: this.inclusion
             });
         });
         this.getCommunicationLog = (propertyId, userId, landlordId) => __awaiter(this, void 0, void 0, function* () {
@@ -106,10 +99,7 @@ class LogService {
                         in: [client_1.LogType.EMAIL, client_1.LogType.MESSAGE]
                     }
                 },
-                include: {
-                    property: true,
-                    users: true
-                }
+                include: this.inclusion
             });
         });
         this.getLandlordLogs = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, type = null) {
@@ -117,20 +107,14 @@ class LogService {
                 where: Object.assign(Object.assign({}, (type && { type })), { property: {
                         landlordId
                     } }),
-                include: {
-                    property: true,
-                    users: true
-                }
+                include: this.inclusion
             });
         });
         this.updateLog = (id, updateData) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.log.update({
                 where: { id },
                 data: updateData,
-                include: {
-                    property: true,
-                    users: true,
-                },
+                include: this.inclusion
             });
         });
         this.inclusion = {

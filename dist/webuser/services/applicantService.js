@@ -35,7 +35,7 @@ const personaldetails_services_1 = __importDefault(require("../../services/perso
 const nextkin_services_1 = __importDefault(require("../../services/nextkin.services"));
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const client_2 = require("@prisma/client");
-const application_services_1 = __importDefault(require("../../landlord/services/application.services"));
+const application_services_1 = __importDefault(require("../../services/application.services"));
 class ApplicantService {
     constructor() {
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {

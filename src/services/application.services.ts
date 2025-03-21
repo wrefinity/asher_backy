@@ -1,6 +1,6 @@
-import { prismaClient } from "../..";
+import { prismaClient } from "..";
 import { Prisma, logTypeStatus, InvitedResponse} from "@prisma/client";
-import { ApplicationInvite } from "../validations/interfaces/applications";
+import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 
 class ApplicationInvitesService {
     private userInclusion = { email: true, profile: true, id: true };
@@ -17,6 +17,7 @@ class ApplicationInvitesService {
         landlords: {
             include: { user: { select: this.userInclusion } },
         },
+        enquires: true,
     };
 
     async createInvite(data: Omit<ApplicationInvite, "id">) {
@@ -28,7 +29,6 @@ class ApplicationInvitesService {
             include: this.inviteInclude,
         });
     }
-    
 
     async getInvite(filters: {
         invitedByLandordId?: string;
@@ -47,8 +47,6 @@ class ApplicationInvitesService {
         });
     }
 
-  
-
     async deleteInvite(id: string, invitedByLandordId: string) {
         return prismaClient.applicationInvites.update({
             where: { id, invitedByLandordId },
@@ -63,6 +61,9 @@ class ApplicationInvitesService {
         });
     }
     async updateInvite(id: string, data: Partial<ApplicationInvite>) {
+        const existingInvite = await this.getInviteById(id);
+        if (!existingInvite) throw new Error(`Invite with ID ${id} not found`);
+
         let updated = await prismaClient.applicationInvites.update({
             where: { id },
             data: data as Prisma.applicationInvitesUncheckedUpdateInput,
@@ -74,6 +75,7 @@ class ApplicationInvitesService {
         }
         return updated;
     }
+    
     async updateInviteResponse(inviteId: string, newResponse: InvitedResponse) {
         const invite = await prismaClient.applicationInvites.findUnique({
             where: { id: inviteId },

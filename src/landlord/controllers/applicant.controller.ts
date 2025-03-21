@@ -3,7 +3,7 @@ import {logTypeStatus, InvitedResponse} from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
-import ApplicationInvitesService from '../services/application.services';
+import ApplicationInvitesService from '../../services/application.services';
 import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType } from "@prisma/client"
@@ -126,7 +126,7 @@ class ApplicationControls {
             const invite = await ApplicationInvitesService.createInvite({ 
                 ...value, 
                 invitedByLandordId, 
-                invitationId: enquiryId, 
+                enquiryId, 
                 responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING] 
             });
 
@@ -220,7 +220,6 @@ class ApplicationControls {
     getFeedbacks = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.landlords.id;
-            console.log("was called.......")
             const feedbacks = await logsServices.getLandlordLogs(landlordId, LogType.FEEDBACK);
             return res.status(200).json({ feedbacks });
         } catch (error) {

@@ -13,7 +13,7 @@ export interface ApplicationInvite {
     invitedByLandordId?: string | null;
     userInvitedId?: string | null;
     tenantsId?: string | null;
-    invitationId?: string | null;
+    enquiryId?: string | null;
     applicationFee?: YesNo | null;
 }
 

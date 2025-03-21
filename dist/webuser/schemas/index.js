@@ -17,7 +17,7 @@ const nextOfKinSchema = joi_1.default.object({
 exports.nextOfKinSchema = nextOfKinSchema;
 const applicantPersonalDetailsSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
-    applicationInviteId: joi_1.default.string().allow(null).optional(),
+    applicationInviteId: joi_1.default.string().required(),
     title: joi_1.default.string().required(),
     firstName: joi_1.default.string().required(),
     middleName: joi_1.default.string().allow(null).optional(),

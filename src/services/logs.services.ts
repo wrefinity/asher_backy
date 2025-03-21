@@ -1,7 +1,7 @@
 import { prismaClient } from "..";
 import { LogType, logTypeStatus, YesNo } from "@prisma/client"
 // Interface for Log creation
-interface LogIF {
+export interface LogIF {
   events: string;
   propertyId?: string;
   subjects?: string;
@@ -71,8 +71,6 @@ class LogService {
     });
   };
 
-
-
   checkPropertyLogs = async (createdById: string, type: LogType, propertyId: string, applicationId: string = null) => {
     return await prismaClient.log.findFirst({
       where: { type, propertyId, createdById, applicationId },
@@ -89,9 +87,7 @@ class LogService {
       where: {
         propertyId: propertyId,
       },
-      include: {
-        property: true,
-      }
+      include: this.inclusion
     });
   }
   getLogsById = async (logId: string) => {
@@ -99,9 +95,7 @@ class LogService {
       where: {
         id: logId,
       },
-      include: {
-        property: true,
-      }
+      include: this.inclusion
     });
   }
 
@@ -115,10 +109,7 @@ class LogService {
         },
         createdById: userId
       },
-      include: {
-        property: true,
-        users: true
-      }
+      include: this.inclusion
     });
   }
   getCommunicationLog = async (propertyId: string, userId: string, landlordId: string) => {
@@ -133,10 +124,7 @@ class LogService {
           in: [LogType.EMAIL, LogType.MESSAGE]
         }
       },
-      include: {
-        property: true,
-        users: true
-      }
+      include: this.inclusion
     });
   }
 
@@ -148,20 +136,14 @@ class LogService {
           landlordId
         }
       },
-      include: {
-        property: true,
-        users: true
-      }
+      include: this.inclusion
     });
   }
   updateLog = async (id: string, updateData: Partial<LogIF>) => {
     return await prismaClient.log.update({
       where: { id },
       data: updateData,
-      include: {
-        property: true,
-        users: true,
-      },
+      include: this.inclusion
     });
   };
 

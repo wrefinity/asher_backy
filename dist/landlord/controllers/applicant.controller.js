@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const applicantService_1 = __importDefault(require("../../webuser/services/applicantService"));
-const application_services_1 = __importDefault(require("../services/application.services"));
+const application_services_1 = __importDefault(require("../../services/application.services"));
 const landlord_service_1 = require("../services/landlord.service");
 const tenant_service_1 = __importDefault(require("../../services/tenant.service"));
 const client_2 = require("@prisma/client");
@@ -135,7 +135,8 @@ class ApplicationControls {
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const invitedByLandordId = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.landlords) === null || _c === void 0 ? void 0 : _c.id;
-                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, invitationId: enquiryId, responseStepsCompleted: value.response ? [value.response] : [client_1.InvitedResponse.PENDING] }));
+                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId,
+                    enquiryId, responseStepsCompleted: value.response ? [value.response] : [client_1.InvitedResponse.PENDING] }));
                 const propertyId = value.propertyId;
                 const property = yield propertyServices_1.default.getPropertyById(propertyId);
                 if (!property) {
@@ -233,7 +234,6 @@ class ApplicationControls {
         this.getFeedbacks = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.user.landlords.id;
-                console.log("was called.......");
                 const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_2.LogType.FEEDBACK);
                 return res.status(200).json({ feedbacks });
             }

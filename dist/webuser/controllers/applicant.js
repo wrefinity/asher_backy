@@ -485,13 +485,15 @@ class ApplicantControls {
                 const acceptInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.ACCEPTED });
                 const rescheduledInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.RESCHEDULED });
                 const rejectedInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.REJECTED });
+                const feedbackInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.FEEDBACK });
                 // const invite = await ApplicantService.getInvite({ userInvitedId });
                 // if (!invite) return res.status(404).json({ message: 'Invite not found' });
                 return res.status(200).json({ invites: {
                         pendingInvites,
                         acceptInvites,
                         rescheduledInvites,
-                        rejectedInvites
+                        rejectedInvites,
+                        feedbackInvites
                     } });
             }
             catch (error) {
