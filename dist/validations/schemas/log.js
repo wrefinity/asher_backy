@@ -20,3 +20,4 @@ exports.logSchema = joi_1.default.object({
     applicationId: joi_1.default.string().optional().allow(''), // Optional field
     transactionId: joi_1.default.string().optional().allow(''), // Optional field
 });
+//cm8iz07wk000111s0iiku1vi6

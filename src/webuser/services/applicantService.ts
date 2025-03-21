@@ -650,7 +650,6 @@ class ApplicantService {
     return await userServices.createUser({ ...tenantData, role: userRoles.TENANT });
   }
 
-
   getInvitedById = async (id: string) =>{
     return await prismaClient.applicationInvites.findUnique({
       where: { id },

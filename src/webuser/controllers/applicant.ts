@@ -528,6 +528,12 @@ class ApplicantControls {
     }
   }
 
+  getInvite = async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
+    const invite = await ApplicantService.getInvitedById(id);
+    return res.status(200).json({ invite });
+  }
+
   getInvites = async (req: CustomRequest, res: Response) => {
     try {
       const userInvitedId = req.user?.id;
@@ -538,13 +544,15 @@ class ApplicantControls {
       const feedbackInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.FEEDBACK });
       // const invite = await ApplicantService.getInvite({ userInvitedId });
       // if (!invite) return res.status(404).json({ message: 'Invite not found' });
-      return res.status(200).json({ invites:{
-        pendingInvites,
-        acceptInvites,
-        rescheduledInvites,
-        rejectedInvites,
-        feedbackInvites
-      } });
+      return res.status(200).json({
+        invites: {
+          pendingInvites,
+          acceptInvites,
+          rescheduledInvites,
+          rejectedInvites,
+          feedbackInvites
+        }
+      });
     } catch (error) {
       ErrorService.handleError(error, res)
     }

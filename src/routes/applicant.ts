@@ -16,6 +16,7 @@ class ApplicantRoutes {
 
     private initializeRoutes(): void {
         this.router.get('/invities/all', this.authenticateService.authorize,  ApplicantControls.getInvites);
+        this.router.get('/invities/:id/get', this.authenticateService.authorize,  ApplicantControls.getInvite);
         this.router.patch('/invites/update/:id', ApplicantControls.updateInvite);
 
         this.router.post('/:propertiesId', this.authenticateService.authorize, ApplicantControls.createOrUpdateApplicantBioData);

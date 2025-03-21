@@ -477,6 +477,11 @@ class ApplicantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            const { id } = req.params;
+            const invite = yield applicantService_1.default.getInvitedById(id);
+            return res.status(200).json({ invite });
+        });
         this.getInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
@@ -488,13 +493,15 @@ class ApplicantControls {
                 const feedbackInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.FEEDBACK });
                 // const invite = await ApplicantService.getInvite({ userInvitedId });
                 // if (!invite) return res.status(404).json({ message: 'Invite not found' });
-                return res.status(200).json({ invites: {
+                return res.status(200).json({
+                    invites: {
                         pendingInvites,
                         acceptInvites,
                         rescheduledInvites,
                         rejectedInvites,
                         feedbackInvites
-                    } });
+                    }
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
