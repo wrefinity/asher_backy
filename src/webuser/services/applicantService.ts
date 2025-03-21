@@ -206,7 +206,6 @@ class ApplicantService {
       phoneNumber,
       maritalStatus,
       nationality,
-      applicationInviteId,
       identificationType,
       issuingAuthority,
       expiryDate
@@ -256,6 +255,7 @@ class ApplicantService {
         createdById: userId,
         invited,
         userId,
+        applicationInviteId: applicationInviteId,
         lastStep: ApplicationSaveState.PERSONAL_KIN,
         completedSteps: [ApplicationSaveState.PERSONAL_KIN],
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,

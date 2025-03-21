@@ -47,6 +47,39 @@ class ApplicationInvitesService {
             });
         });
     }
+    getInviteWithoutStatus(landlordId, responseNegation) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.applicationInvites.findMany({
+                where: {
+                    NOT: [
+                        {
+                            responseStepsCompleted: {
+                                hasSome: responseNegation
+                            }
+                        }
+                    ],
+                    isDeleted: false,
+                    properties: {
+                        landlordId
+                    }
+                },
+                include: {
+                    properties: true,
+                    apartments: true,
+                    landlords: true,
+                    tenants: true,
+                    userInvited: {
+                        select: this.userInclusion
+                    },
+                    enquires: true,
+                    application: true
+                },
+                orderBy: {
+                    createdAt: "desc"
+                }
+            });
+        });
+    }
     deleteInvite(id, invitedByLandordId) {
         return __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.applicationInvites.update({
@@ -117,7 +150,9 @@ class ApplicationInvitesService {
                     apartments: true,
                     landlords: true,
                     tenants: true,
-                    userInvited: true,
+                    userInvited: {
+                        select: this.userInclusion
+                    },
                     enquires: true,
                     application: true
                 },
