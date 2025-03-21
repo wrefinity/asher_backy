@@ -37,6 +37,23 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getApplicationsWithInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const landlordId = req.user.landlords.id;
+                const completedStatuses = [
+                    client_1.InvitedResponse.PENDING,
+                    client_1.InvitedResponse.ACCEPTED,
+                    client_1.InvitedResponse.SCHEDULED,
+                    client_1.InvitedResponse.FEEDBACK,
+                    client_1.InvitedResponse.APPLY
+                ];
+                const application = yield application_services_1.default.getInvitesWithStatus(landlordId, completedStatuses);
+                return res.status(200).json({ application });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.getApplicationsPending = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             try {

@@ -13,6 +13,7 @@ class ApplicationLandlordRouter {
         this.initializeRoutes()
     }
     private initializeRoutes() {
+        this.router.get('/all', ApplicationController.getApplicationsWithInvites);
         this.router.get('/pending', ApplicationController.getApplicationsPending);
         this.router.get('/completed', ApplicationController.getApplicationsCompleted);
         this.router.get('/total', ApplicationController.getTotalApplication);

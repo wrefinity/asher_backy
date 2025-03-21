@@ -100,6 +100,31 @@ class ApplicationInvitesService {
             include: this.inviteInclude
         });
     }
+
+
+    async getInvitesWithStatus(landlordId:string, completedStatuses: InvitedResponse[]) {
+        return await prismaClient.applicationInvites.findMany({
+            where: {
+             responseStepsCompleted: { hasEvery: completedStatuses },
+              isDeleted: false,
+              properties:{
+                landlordId
+              }
+            },
+            include: {
+              properties: true,
+              apartments: true,
+              landlords: true,
+              tenants: true,
+              userInvited: true,
+              enquires: true,
+              application: true
+            },
+            orderBy: {
+              createdAt: "desc"
+            }
+          });
+    }
     
 }
 

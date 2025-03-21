@@ -102,5 +102,30 @@ class ApplicationInvitesService {
             });
         });
     }
+    getInvitesWithStatus(landlordId, completedStatuses) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.applicationInvites.findMany({
+                where: {
+                    responseStepsCompleted: { hasEvery: completedStatuses },
+                    isDeleted: false,
+                    properties: {
+                        landlordId
+                    }
+                },
+                include: {
+                    properties: true,
+                    apartments: true,
+                    landlords: true,
+                    tenants: true,
+                    userInvited: true,
+                    enquires: true,
+                    application: true
+                },
+                orderBy: {
+                    createdAt: "desc"
+                }
+            });
+        });
+    }
 }
 exports.default = new ApplicationInvitesService();

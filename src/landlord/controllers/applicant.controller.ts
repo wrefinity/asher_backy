@@ -29,6 +29,22 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+    getApplicationsWithInvites = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user.landlords.id;
+            const completedStatuses = [
+                InvitedResponse.PENDING,
+                InvitedResponse.ACCEPTED,
+                InvitedResponse.SCHEDULED,
+                InvitedResponse.FEEDBACK,
+                InvitedResponse.APPLY
+              ];
+            const application = await ApplicationInvitesService.getInvitesWithStatus(landlordId, completedStatuses);
+            return res.status(200).json({ application });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
     getApplicationsPending = async (req: CustomRequest, res: Response) => {
 
         try {
