@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { Prisma, logTypeStatus, InvitedResponse} from "@prisma/client";
+import { Prisma, logTypeStatus, InvitedResponse } from "@prisma/client";
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 
 class ApplicationInvitesService {
@@ -22,8 +22,8 @@ class ApplicationInvitesService {
 
     async createInvite(data: Omit<ApplicationInvite, "id">) {
         return prismaClient.applicationInvites.create({
-            data: { 
-                ...data, 
+            data: {
+                ...data,
                 responseStepsCompleted: { set: data.responseStepsCompleted ?? [] } // Ensure correct array handling
             },
             include: this.inviteInclude,
@@ -44,6 +44,37 @@ class ApplicationInvitesService {
         return prismaClient.applicationInvites.findMany({
             where: whereClause,
             include: this.inviteInclude,
+        });
+    }
+    async getInviteWithoutStatus(landlordId: string, responseNegation: InvitedResponse[]) {
+        return await prismaClient.applicationInvites.findMany({
+            where: {
+                NOT: [
+                    {
+                        responseStepsCompleted: {
+                            hasSome: responseNegation
+                        }
+                    }
+                ],
+                isDeleted: false,
+                properties: {
+                    landlordId
+                }
+            },
+            include: {
+                properties: true,
+                apartments: true,
+                landlords: true,
+                tenants: true,
+                userInvited: {
+                    select: this.userInclusion
+                },
+                enquires: true,
+                application: true
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
         });
     }
 
@@ -75,25 +106,25 @@ class ApplicationInvitesService {
         }
         return updated;
     }
-    
+
     async updateInviteResponse(inviteId: string, newResponse: InvitedResponse) {
         const invite = await prismaClient.applicationInvites.findUnique({
             where: { id: inviteId },
             select: { responseStepsCompleted: true }
         });
-    
+
         if (!invite) {
             throw new Error("Invite not found");
         }
-    
+
         // Check if the response is already in the array
         const updatedResponses = invite.responseStepsCompleted.includes(newResponse)
             ? invite.responseStepsCompleted
             : [...invite.responseStepsCompleted, newResponse];
-    
+
         return await prismaClient.applicationInvites.update({
             where: { id: inviteId },
-            data: { 
+            data: {
                 response: newResponse, // Update current response
                 responseStepsCompleted: updatedResponses // Append if not already present
             },
@@ -102,30 +133,32 @@ class ApplicationInvitesService {
     }
 
 
-    async getInvitesWithStatus(landlordId:string, completedStatuses: InvitedResponse[]) {
+    async getInvitesWithStatus(landlordId: string, completedStatuses: InvitedResponse[]) {
         return await prismaClient.applicationInvites.findMany({
             where: {
-             responseStepsCompleted: { hasEvery: completedStatuses },
-              isDeleted: false,
-              properties:{
-                landlordId
-              }
+                responseStepsCompleted: { hasEvery: completedStatuses },
+                isDeleted: false,
+                properties: {
+                    landlordId
+                }
             },
             include: {
-              properties: true,
-              apartments: true,
-              landlords: true,
-              tenants: true,
-              userInvited: true,
-              enquires: true,
-              application: true
+                properties: true,
+                apartments: true,
+                landlords: true,
+                tenants: true,
+                userInvited: {
+                    select: this.userInclusion
+                },
+                enquires: true,
+                application: true
             },
             orderBy: {
-              createdAt: "desc"
+                createdAt: "desc"
             }
-          });
+        });
     }
-    
+
 }
 
 export default new ApplicationInvitesService();
