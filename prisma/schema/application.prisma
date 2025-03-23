@@ -24,7 +24,8 @@ enum InvitedResponse {
   NOT_VISITED
   REJECTED
   ACCEPTED
-  FEEDBACK // what do the user think about the property
+  AWAITING_FEEDBACK
+  FEEDBACK
   APPLY
   DECLINED
 }

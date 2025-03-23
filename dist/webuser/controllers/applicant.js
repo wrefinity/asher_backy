@@ -486,21 +486,29 @@ class ApplicantControls {
             var _a;
             try {
                 const userInvitedId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                const pendingInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.PENDING });
-                const acceptInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.ACCEPTED });
-                const rescheduledInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.RESCHEDULED });
-                const rejectedInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.REJECTED });
-                const feedbackInvites = yield applicantService_1.default.getInvite({ userInvitedId, response: client_1.InvitedResponse.FEEDBACK });
-                // const invite = await ApplicantService.getInvite({ userInvitedId });
-                // if (!invite) return res.status(404).json({ message: 'Invite not found' });
+                const [pendingInvites, acceptInvites, rejectedInvites, awaitingFeedbackInvites] = yield Promise.all([
+                    applicantService_1.default.getInvite({
+                        userInvitedId,
+                        response: [client_1.InvitedResponse.PENDING]
+                    }),
+                    applicantService_1.default.getInvite({
+                        userInvitedId,
+                        response: [client_1.InvitedResponse.ACCEPTED, client_1.InvitedResponse.RESCHEDULED] // FIXED HERE
+                    }),
+                    applicantService_1.default.getInvite({
+                        userInvitedId,
+                        response: [client_1.InvitedResponse.REJECTED]
+                    }),
+                    applicantService_1.default.getInvite({
+                        userInvitedId,
+                        response: [client_1.InvitedResponse.AWAITING_FEEDBACK]
+                    })
+                ]);
                 return res.status(200).json({
-                    invites: {
-                        pendingInvites,
-                        acceptInvites,
-                        rescheduledInvites,
-                        rejectedInvites,
-                        feedbackInvites
-                    }
+                    pendingInvites,
+                    acceptInvites,
+                    rejectedInvites,
+                    awaitingFeedbackInvites
                 });
             }
             catch (error) {

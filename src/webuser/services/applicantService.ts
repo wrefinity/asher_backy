@@ -673,11 +673,18 @@ class ApplicantService {
     });
   }
 
-  async getInvite(filters: { userInvitedId?: string; response?: InvitedResponse }) {
-    const whereClause = Object.entries(filters).reduce(
-        (acc, [key, value]) => (value ? { ...acc, [key]: value } : acc),
-        {} as Prisma.applicationInvitesWhereInput
-    );
+  async getInvite(filters: { userInvitedId?: string; response?: InvitedResponse[] }) {
+    const whereClause: Prisma.applicationInvitesWhereInput = {};
+
+    if (filters.userInvitedId) {
+        whereClause.userInvitedId = filters.userInvitedId;
+    }
+
+    if (filters.response) {
+        whereClause.response = {
+            in: filters.response
+        };
+    }
 
     return await prismaClient.applicationInvites.findMany({
         where: whereClause,

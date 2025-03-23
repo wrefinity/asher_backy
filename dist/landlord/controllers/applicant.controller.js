@@ -45,7 +45,9 @@ class ApplicationControls {
                     client_1.InvitedResponse.ACCEPTED,
                     client_1.InvitedResponse.SCHEDULED,
                     client_1.InvitedResponse.FEEDBACK,
-                    client_1.InvitedResponse.APPLY
+                    client_1.InvitedResponse.APPLY,
+                    // InvitedResponse.VISITED,
+                    // InvitedResponse.NOT_VISITED,
                 ];
                 const application = yield application_services_1.default.getInvitesWithStatus(landlordId, completedStatuses);
                 return res.status(200).json({ application });

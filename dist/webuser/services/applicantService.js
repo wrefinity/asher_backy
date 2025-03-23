@@ -576,7 +576,15 @@ class ApplicantService {
     }
     getInvite(filters) {
         return __awaiter(this, void 0, void 0, function* () {
-            const whereClause = Object.entries(filters).reduce((acc, [key, value]) => (value ? Object.assign(Object.assign({}, acc), { [key]: value }) : acc), {});
+            const whereClause = {};
+            if (filters.userInvitedId) {
+                whereClause.userInvitedId = filters.userInvitedId;
+            }
+            if (filters.response) {
+                whereClause.response = {
+                    in: filters.response
+                };
+            }
             return yield __1.prismaClient.applicationInvites.findMany({
                 where: whereClause,
                 include: {

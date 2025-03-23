@@ -537,27 +537,41 @@ class ApplicantControls {
   getInvites = async (req: CustomRequest, res: Response) => {
     try {
       const userInvitedId = req.user?.id;
-      const pendingInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.PENDING });
-      const acceptInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.ACCEPTED });
-      const rescheduledInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.RESCHEDULED });
-      const rejectedInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.REJECTED });
-      const feedbackInvites = await ApplicantService.getInvite({ userInvitedId, response: InvitedResponse.FEEDBACK });
-      // const invite = await ApplicantService.getInvite({ userInvitedId });
-      // if (!invite) return res.status(404).json({ message: 'Invite not found' });
+      const [
+        pendingInvites,
+        acceptInvites,
+        rejectedInvites,
+        awaitingFeedbackInvites
+      ] = await Promise.all([
+        ApplicantService.getInvite({
+          userInvitedId,
+          response: [InvitedResponse.PENDING]
+        }),
+        ApplicantService.getInvite({
+          userInvitedId,
+          response: [InvitedResponse.ACCEPTED, InvitedResponse.RESCHEDULED] // FIXED HERE
+        }),
+        ApplicantService.getInvite({
+          userInvitedId,
+          response: [InvitedResponse.REJECTED]
+        }),
+        ApplicantService.getInvite({
+          userInvitedId,
+          response: [InvitedResponse.AWAITING_FEEDBACK]
+        })
+      ]);
+
       return res.status(200).json({
-        invites: {
-          pendingInvites,
-          acceptInvites,
-          rescheduledInvites,
-          rejectedInvites,
-          feedbackInvites
-        }
+        pendingInvites,
+        acceptInvites,
+        rejectedInvites,
+        awaitingFeedbackInvites
       });
+
     } catch (error) {
       ErrorService.handleError(error, res)
     }
   }
-
   updateInvite = async (req: CustomRequest, res: Response) => {
     try {
       const { id } = req.params;
