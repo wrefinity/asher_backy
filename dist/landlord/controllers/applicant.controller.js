@@ -204,7 +204,9 @@ class ApplicationControls {
                 const invitedByLandordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 // get all invites which has not reach application state
                 const invite = yield application_services_1.default.getInviteWithoutStatus(invitedByLandordId, [
-                    client_1.InvitedResponse.APPLY
+                    client_1.InvitedResponse.APPLY,
+                    client_1.InvitedResponse.FEEDBACK,
+                    client_1.InvitedResponse.SCHEDULED,
                 ]);
                 if (!invite)
                     return res.status(404).json({ message: 'Invite not found' });
