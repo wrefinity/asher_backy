@@ -28,6 +28,8 @@ enum InvitedResponse {
   FEEDBACK
   APPLY
   DECLINED
+  COMPLETED
+  CANCELLED
 }
 
 enum InvitedStatus {

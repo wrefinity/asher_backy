@@ -540,7 +540,7 @@ class ApplicantControls {
       const [
         pendingInvites,
         acceptInvites,
-        rejectedInvites,
+        otherInvites,
         awaitingFeedbackInvites
       ] = await Promise.all([
         ApplicantService.getInvite({
@@ -553,7 +553,7 @@ class ApplicantControls {
         }),
         ApplicantService.getInvite({
           userInvitedId,
-          response: [InvitedResponse.REJECTED]
+          response: [InvitedResponse.REJECTED, InvitedResponse.COMPLETED, InvitedResponse.CANCELLED,  InvitedResponse.DECLINED ]
         }),
         ApplicantService.getInvite({
           userInvitedId,
@@ -564,7 +564,7 @@ class ApplicantControls {
       return res.status(200).json({
         pendingInvites,
         acceptInvites,
-        rejectedInvites,
+        otherInvites,
         awaitingFeedbackInvites
       });
 

@@ -37,6 +37,12 @@ class LogController {
             var _a;
             try {
                 const { error, value } = log_1.logSchema.validate(req.body);
+                // Additional check for response requirement
+                if ((value.viewAgain || value.considerRenting) && !value.response) {
+                    return res.status(400).json({
+                        error: 'Response field is required when providing viewAgain or considerRenting'
+                    });
+                }
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const createdById = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
