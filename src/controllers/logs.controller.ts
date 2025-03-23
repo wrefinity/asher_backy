@@ -26,16 +26,22 @@ class LogController {
   createLog = async (req: CustomRequest, res: Response) => {
     try {
       const { error, value } = logSchema.validate(req.body);
+      // Additional check for response requirement
+      if ((value.viewAgain || value.considerRenting) && !value.response) {
+        return res.status(400).json({
+          error: 'Response field is required when providing viewAgain or considerRenting'
+        });
+      }
       if (error) return res.status(400).json({ error: error.details[0].message });
       const createdById = req.user?.id;
-      const log = await LogService.createLog({  ...value, createdById,});
+      const log = await LogService.createLog({ ...value, createdById, });
       res.status(201).json({ log });
     } catch (error) {
       ErrorService.handleError(error, res)
     }
   };
 
-  
+
 }
 
 export default new LogController();
