@@ -152,7 +152,10 @@ class LogService {
           landlordId
         }
       },
-      include: this.inclusion
+      include: this.inclusion,
+      orderBy: {
+        createdAt: "desc"
+      }
     });
   }
 
