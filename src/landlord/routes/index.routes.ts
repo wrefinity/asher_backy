@@ -12,7 +12,7 @@ import ComplaintRouterRouter from "./complaint.routes";
 import TaskRouter from './task.routes';
 import InventoryRouter from './inventory.routes';
 import BillRouter from './bill.routes';
-import BroadcastRouter from './braodcast.routes';
+import BroadcastRouter from './broadcast.routes';
 
 import FinanceRouter from './finance.routes';
 import LandlordTransactionRouter from './landlord-transaction.routes';

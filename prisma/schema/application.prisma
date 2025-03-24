@@ -30,6 +30,7 @@ enum InvitedResponse {
   DECLINED
   COMPLETED
   CANCELLED
+  SUBMITTED
 }
 
 enum InvitedStatus {
@@ -329,7 +330,7 @@ model applicationQuestions {
 
 model declaration {
   id              String       @id @default(cuid())
-  signature       String
+  signature       String?
   declaration     String
   additionalNotes String?
   date            DateTime

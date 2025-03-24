@@ -36,7 +36,6 @@ class GuarantorService {
         },
       });
       if(guarantorInfo){
-        await applicantService.incrementStepCompleted(applicationId, "guarantorInformation");
         await applicantService.updateLastStepStop(applicationId, ApplicationSaveState.GUARANTOR_INFO);
         await applicantService.updateCompletedStep(applicationId, ApplicationSaveState.GUARANTOR_INFO);
       }

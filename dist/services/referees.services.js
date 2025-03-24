@@ -49,7 +49,6 @@ class RefereeService {
                     data: Object.assign(Object.assign({}, rest), { user: userId ? { connect: { id: userId } } : undefined }),
                 });
                 if (refree) {
-                    yield applicantService_1.default.incrementStepCompleted(applicationId, "refereeInfo");
                     yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.REFEREE);
                     yield applicantService_1.default.updateCompletedStep(applicationId, client_1.ApplicationSaveState.REFEREE);
                 }

@@ -55,7 +55,6 @@ upsertResidentialInformation = async (data: ResidentialInformationIF, applicatio
       },
     });
     if (residential){
-      await ApplicantService.incrementStepCompleted(applicationId, "residentialInfo");
       await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.RESIDENTIAL_ADDRESS);
       await ApplicantService.updateCompletedStep(applicationId, ApplicationSaveState.RESIDENTIAL_ADDRESS);
     }

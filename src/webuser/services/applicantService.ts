@@ -27,7 +27,6 @@ import { ApplicationInvite } from "../../landlord/validations/interfaces/applica
 
 import applicationServices from "../../services/application.services";
 
-
 class ApplicantService {
 
   updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {
@@ -65,85 +64,6 @@ class ApplicantService {
     });
 
     console.log(`Step "${step}" added to completedSteps.`);
-  };
-
-  incrementStepCompleted = async (applicationId: string, newField: 'residentialInfo' | 'guarantorInformation' | 'emergencyInfo' | 'employmentInfo' | 'refereeInfo' | 'additionalInfo' | 'documents' | 'declaration') => {
-    // Fetch the current application details with relevant relationships
-    const application = await prismaClient.application.findUnique({
-      where: { id: applicationId },
-      include: {
-        residentialInfo: true,
-        guarantorInformation: true,
-        applicationQuestions: true,
-        emergencyInfo: true,
-        employmentInfo: true,
-        documents: true,
-        referee: true,
-        declaration: true
-      },
-    });
-
-    if (!application) {
-      throw new Error(`Application with ID ${applicationId} not found`);
-    }
-
-    // Initialize the step increment to the current stepCompleted value
-    let stepIncrement = application.stepCompleted ?? 1;
-
-    // Check if the new field is connected and increment accordingly
-    switch (newField) {
-      case 'residentialInfo':
-        if (application.hasOwnProperty('residentialInfo') && application.residentialInfo) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'declaration':
-        if (application.hasOwnProperty('declaration') && application.declaration) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'additionalInfo':
-        if (application.hasOwnProperty('applicationQuestions') && application.applicationQuestions) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'guarantorInformation':
-        if (application.hasOwnProperty('guarantorInformation') && application.guarantorInformation) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'emergencyInfo':
-        if (application.hasOwnProperty('emergencyInfo') && application.emergencyInfo) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'employmentInfo':
-        if (application.hasOwnProperty('employmentInfo') && application.employmentInfo) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'refereeInfo':
-        if (application.hasOwnProperty('referee') && application.referee) {
-          stepIncrement += 1;
-        }
-        break;
-      case 'documents':
-        if (application.hasOwnProperty('documents') && application.documents.length == 0) {
-          stepIncrement += 1;
-        }
-        break;
-      default:
-        throw new Error(`Invalid field: ${newField}`);
-    }
-
-
-    // Update the application with the incremented stepCompleted value if it changed
-    if (stepIncrement !== application.stepCompleted) {
-      await prismaClient.application.update({
-        where: { id: applicationId },
-        data: { stepCompleted: { increment: 1 } },
-      });
-    }
   };
 
   createApplication = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
@@ -371,7 +291,6 @@ class ApplicantService {
       });
 
       // Update progress
-      await this.incrementStepCompleted(applicationId, "documents");
       await this.updateLastStepStop(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
       await this.updateCompletedStep(applicationId, ApplicationSaveState.DOCUMENT_UPLOAD);
     }
@@ -441,12 +360,14 @@ class ApplicantService {
         },
       });
       if (declared) {
-        await this.incrementStepCompleted(applicationId, "declaration");
         await this.updateLastStepStop(applicationId, ApplicationSaveState.DECLARATION);
         await this.updateCompletedStep(applicationId, ApplicationSaveState.DECLARATION);
       }
 
       await this.updateApplicationStatus(applicationId, ApplicationStatus.SUBMITTED)
+      // update application invite to submitted
+      const application = await this.getApplicationById(applicationId)
+      await applicationServices.updateInviteResponse(application.applicationInviteId, InvitedResponse.SUBMITTED)
       return declared;
     }
     return;
@@ -491,7 +412,6 @@ class ApplicantService {
       if (newRecord) {
         await this.updateLastStepStop(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
         await this.updateCompletedStep(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
-        await this.incrementStepCompleted(applicationId, "additionalInfo")
       }
       return newRecord;
     }
@@ -549,8 +469,6 @@ class ApplicantService {
       },
     });
   };
-
-
 
 
   getApplicationById = async (applicationId: string) => {

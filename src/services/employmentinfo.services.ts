@@ -35,7 +35,7 @@ class EmploymentService {
       if(employmentInfo) {
         await ApplicationServices.updateLastStepStop(applicationId, ApplicationSaveState.EMPLOYMENT )
         await ApplicationServices.updateCompletedStep(applicationId, ApplicationSaveState.EMPLOYMENT )
-        await ApplicationServices.incrementStepCompleted(applicationId, "employmentInfo");
+
       }
       return employmentInfo
     }

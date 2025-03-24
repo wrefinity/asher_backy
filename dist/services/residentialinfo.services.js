@@ -71,7 +71,6 @@ class ResidentialInformationService {
                             : undefined }),
                 });
                 if (residential) {
-                    yield applicantService_1.default.incrementStepCompleted(applicationId, "residentialInfo");
                     yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.RESIDENTIAL_ADDRESS);
                     yield applicantService_1.default.updateCompletedStep(applicationId, client_1.ApplicationSaveState.RESIDENTIAL_ADDRESS);
                 }

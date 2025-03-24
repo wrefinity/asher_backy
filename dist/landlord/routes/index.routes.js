@@ -16,7 +16,7 @@ const complaint_routes_1 = __importDefault(require("./complaint.routes"));
 const task_routes_1 = __importDefault(require("./task.routes"));
 const inventory_routes_1 = __importDefault(require("./inventory.routes"));
 const bill_routes_1 = __importDefault(require("./bill.routes"));
-const braodcast_routes_1 = __importDefault(require("./braodcast.routes"));
+const broadcast_routes_1 = __importDefault(require("./broadcast.routes"));
 const finance_routes_1 = __importDefault(require("./finance.routes"));
 const landlord_transaction_routes_1 = __importDefault(require("./landlord-transaction.routes"));
 class LandlordRouter {
@@ -58,7 +58,7 @@ class LandlordRouter {
         this.router.use("/transactions", landlord_transaction_routes_1.default);
         this.router.use("/finance", finance_routes_1.default);
         //braodcast routes
-        this.router.use('/broadcast', braodcast_routes_1.default);
+        this.router.use('/broadcast', broadcast_routes_1.default);
     }
 }
 exports.default = new LandlordRouter().router;

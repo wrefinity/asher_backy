@@ -36,7 +36,6 @@ class EmergencyContactService {
       if (emergencyContact) {
         await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.EMERGENCY_CONTACT )
         await ApplicantService.updateCompletedStep(applicationId, ApplicationSaveState.EMERGENCY_CONTACT )
-        await ApplicantService.incrementStepCompleted(applicationId, "emergencyInfo");
       }
       return emergencyContact
     }
