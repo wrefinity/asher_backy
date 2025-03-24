@@ -130,10 +130,10 @@ class LogService {
     });
   }
 
-  getLandlordLogs = async (landlordId: string, type: LogType = null) => {
+  getLandlordLogs = async (landlordId: string, response: LogType = null) => {
     return await prismaClient.log.findMany({
       where: {
-        ...(type && { type }),
+        ...(response && { response }),
         property: {
           landlordId
         }
