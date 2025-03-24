@@ -1,5 +1,6 @@
 import { prismaClient } from "..";
-import { LogType, logTypeStatus, YesNo } from "@prisma/client"
+import { LogType, InvitedResponse, logTypeStatus, YesNo } from "@prisma/client"
+import applicationServices from "./application.services";
 // Interface for Log creation
 export interface LogIF {
   events: string;
@@ -7,6 +8,7 @@ export interface LogIF {
   subjects?: string;
   type?: LogType;
   status?: logTypeStatus,
+  response?: InvitedResponse;
   transactionId?: string;
   viewAgain?: YesNo;
   considerRenting?: YesNo;
@@ -54,9 +56,16 @@ class LogService {
       logData.users = { connect: { id: data.createdById } }
     }
 
-    return await prismaClient.log.create({
+    const log = await prismaClient.log.create({
       data: logData,
     });
+
+    if (log && data.response === InvitedResponse.FEEDBACK && data.applicationInvitedId) {
+      await applicationServices.updateInviteResponse(data.applicationInvitedId, data.response);
+    }
+  
+
+    return log;
   };
 
 
@@ -130,10 +139,15 @@ class LogService {
     });
   }
 
-  getLandlordLogs = async (landlordId: string, response: LogType = null) => {
+  getLandlordLogs = async (
+    landlordId: string,
+    type: LogType | null = null,
+    status: logTypeStatus | null = null
+  ) => {
     return await prismaClient.log.findMany({
       where: {
-        ...(response && { response }),
+        ...(type && { type }),
+        ...(status && { status }),
         property: {
           landlordId
         }
@@ -141,6 +155,7 @@ class LogService {
       include: this.inclusion
     });
   }
+
   updateLog = async (id: string, updateData: Partial<LogIF>) => {
     return await prismaClient.log.update({
       where: { id },

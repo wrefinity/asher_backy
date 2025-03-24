@@ -243,7 +243,7 @@ class ApplicationControls {
     getFeedbacks = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.landlords.id;
-            const feedbacks = await logsServices.getLandlordLogs(landlordId, LogType.FEEDBACK);
+            const feedbacks = await logsServices.getLandlordLogs(landlordId, LogType.FEEDBACK, null);
             return res.status(200).json({ feedbacks });
         } catch (error) {
             errorService.handleError(error, res)
