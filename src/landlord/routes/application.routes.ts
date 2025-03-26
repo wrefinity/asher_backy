@@ -23,6 +23,7 @@ class ApplicationLandlordRouter {
         this.router.get('/statistics', ApplicationController.getApplicationStatistics);
 
         this.router.get('/leasing', ApplicationController.getEnquiredProps);
+        this.router.patch('/leasing/reject/:enquireId', ApplicationController.updateEnquireToRejected);
         this.router.post('/invites/:enquiryId/enquire', ApplicationController.createInvite);
         this.router.get('/invites', ApplicationController.getInvites);
         this.router.get('/invites/:id', ApplicationController.getInvite);

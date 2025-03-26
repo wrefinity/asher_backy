@@ -36,6 +36,7 @@ const nextkin_services_1 = __importDefault(require("../../services/nextkin.servi
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const client_2 = require("@prisma/client");
 const application_services_1 = __importDefault(require("../../services/application.services"));
+const logs_services_2 = __importDefault(require("../../services/logs.services"));
 class ApplicantService {
     constructor() {
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
@@ -474,10 +475,11 @@ class ApplicantService {
         // statistics
         this.countApplicationStatsForLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             return {
-                pending: yield this.getApplicationCountForLandlordWithStatus(landlordId, client_1.ApplicationStatus.PENDING),
-                approved: yield this.getApplicationCountForLandlordWithStatus(landlordId, client_1.ApplicationStatus.ACCEPTED),
-                completed: yield this.getApplicationCountForLandlordWithStatus(landlordId, client_1.ApplicationStatus.COMPLETED),
-                total: yield this.getApplicationCountForLandlordWithStatus(landlordId),
+                pending: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId, client_1.InvitedResponse.PENDING),
+                approved: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId, client_1.InvitedResponse.APPROVED),
+                completed: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId, client_1.InvitedResponse.SUBMITTED),
+                total: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
+                enquiries: yield logs_services_2.default.getLogs(landlordId, client_2.LogType.FEEDBACK),
             };
         });
         this.approveApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {
@@ -503,6 +505,15 @@ class ApplicantService {
                         }
                     }
                 }
+            });
+        });
+        this.getInvitesApplicationCountForLandlordWithStatus = (landlordId, response // Make status optional
+        ) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.applicationInvites.count({
+                where: Object.assign(Object.assign({}, (response && { response })), { isDeleted: false, properties: {
+                        landlordId: landlordId,
+                        isDeleted: false,
+                    } }),
             });
         });
     }

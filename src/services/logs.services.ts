@@ -101,8 +101,9 @@ class LogService {
       include: this.inclusion
     });
   }
-  getLogsById = async (logId: string) => {
-    return await prismaClient.log.findMany({
+  
+  getLogsById = async (logId: string): Promise<LogIF | null>  =>{
+    return await prismaClient.log.findFirst({
       where: {
         id: logId,
       },

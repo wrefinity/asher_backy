@@ -214,7 +214,13 @@ class ApplicantControls {
       const applicationExist = await ApplicantService.getApplicationById(applicationId);
       if (!applicationExist) return res.status(500).json({ message: "Application Doesn't Exist" });
       const application = await ApplicantService.updateApplicationStatus(applicationId, ApplicationStatus.COMPLETED);
-      res.status(200).json(application);
+
+      if (!application) {
+        return res.status(400).json({ error: 'Application not updated' });
+      }
+      await ApplicantService.updateInvites(application.applicationInviteId, {response: InvitedResponse.SUBMITTED});
+      return res.status(200).json(application);
+
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

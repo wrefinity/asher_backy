@@ -104,6 +104,10 @@ class ApplicationControls {
 
             // get the tenant web user email 
             if (!application) return res.status(400).json({ message: "property doesn't exist" });
+
+            // update application invite status to approve
+            await ApplicationInvitesService.updateInvite(application.applicationInviteId, {response: InvitedResponse.APPROVED});
+
             const tenantWebUserEmail = application.user.email;
             const userEmail = tenantWebUserEmail.toString().split('@')[0];
             // get the current landlord email domain
@@ -212,9 +216,27 @@ class ApplicationControls {
             const { error, value } = updateApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
+            // check if the enquire is status rejected 
+            const enquire = await logsServices.getLogsById(value.enquireId)
+            if (enquire.status === logTypeStatus.REJECTED ) {
+                return res.status(400).json({ error: "enquire is already rejected" });
+            }
+
             if(value.response === InvitedResponse.APPLY || value.response === InvitedResponse.RE_INVITED  && !value.enquireId) {
                 return res.status(400).json({ error: "enquireId is required" });
             }
+            // RESCHEDULED
+            // SCHEDULED
+            // RESCHEDULED_ACCEPTED
+            if (value.response == InvitedResponse.RESCHEDULED_ACCEPTED && !value.reScheduleDate){
+                return res.status(400).json({ error: "kindly supply the reschedule date" });
+            } 
+            // check if invite is declined or rejected
+            const invite = await ApplicationInvitesService.getInviteById(id);
+            if (invite.response === InvitedResponse.DECLINED || invite.response === InvitedResponse.REJECTED) {
+                return res.status(400).json({ error: "invite is already declined or rejected" });
+            }
+
             const updatedInvite = await ApplicationInvitesService.updateInvite(id, value);
             return res.status(200).json({ updatedInvite });
         } catch (error) {
@@ -226,6 +248,16 @@ class ApplicationControls {
             const landlordId = req.user.landlords.id;
             const leasing = await logsServices.getLogs(landlordId, LogType.ENQUIRED, logTypeStatus.PENDING);
             return res.status(200).json({ leasing });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    // for rejection of enquire
+    updateEnquireToRejected = async (req: CustomRequest, res: Response) => {
+        try {
+            const enquireId = req.params.enquireId;
+            const leasingUpdated = await logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED});
+            return res.status(200).json({ leasingUpdated });
         } catch (error) {
             errorService.handleError(error, res)
         }

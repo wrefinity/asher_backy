@@ -75,7 +75,7 @@ class LogService {
             });
         });
         this.getLogsById = (logId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.log.findMany({
+            return yield __1.prismaClient.log.findFirst({
                 where: {
                     id: logId,
                 },

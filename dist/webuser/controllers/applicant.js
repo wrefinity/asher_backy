@@ -188,7 +188,11 @@ class ApplicantControls {
                 if (!applicationExist)
                     return res.status(500).json({ message: "Application Doesn't Exist" });
                 const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.COMPLETED);
-                res.status(200).json(application);
+                if (!application) {
+                    return res.status(400).json({ error: 'Application not updated' });
+                }
+                yield applicantService_1.default.updateInvites(application.applicationInviteId, { response: client_1.InvitedResponse.SUBMITTED });
+                return res.status(200).json(application);
             }
             catch (error) {
                 res.status(500).json({ error: error.message });

@@ -26,6 +26,7 @@ import {
 import { ApplicationInvite } from "../../landlord/validations/interfaces/applications";
 
 import applicationServices from "../../services/application.services";
+import logsServices from "../../services/logs.services";
 
 class ApplicantService {
 
@@ -512,7 +513,7 @@ class ApplicantService {
       where: { id: applicationId },
       data: { status }
     });
-    if(updated && status === ApplicationStatus.COMPLETED){
+    if (updated && status === ApplicationStatus.COMPLETED) {
       // update application invite to submitted
       this.updateInvites(updated.applicationInviteId, { response: InvitedResponse.SUBMITTED })
     }
@@ -563,10 +564,11 @@ class ApplicantService {
   // statistics
   countApplicationStatsForLandlord = async (landlordId: string) => {
     return {
-      pending: await this.getApplicationCountForLandlordWithStatus(landlordId, ApplicationStatus.PENDING),
-      approved: await this.getApplicationCountForLandlordWithStatus(landlordId, ApplicationStatus.ACCEPTED),
-      completed: await this.getApplicationCountForLandlordWithStatus(landlordId, ApplicationStatus.COMPLETED),
-      total: await this.getApplicationCountForLandlordWithStatus(landlordId),
+      pending: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.PENDING),
+      approved: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.APPROVED),
+      completed: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.SUBMITTED),
+      total: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
+      enquiries: await logsServices.getLogs(landlordId, LogType.FEEDBACK),
     };
   };
 
@@ -574,14 +576,14 @@ class ApplicantService {
     return await userServices.createUser({ ...tenantData, role: userRoles.TENANT });
   }
 
-  getInvitedById = async (id: string) =>{
+  getInvitedById = async (id: string) => {
     return await prismaClient.applicationInvites.findUnique({
       where: { id },
       include: {
         properties: {
           include: {
             landlord: {
-              include: { 
+              include: {
                 user: {
                   select: {
                     id: true,
@@ -589,7 +591,7 @@ class ApplicantService {
                     profile: true
                   },
                 },
-              }  
+              }
             }
           }
         }
@@ -597,44 +599,60 @@ class ApplicantService {
     });
   }
 
+  getInvitesApplicationCountForLandlordWithStatus = async (
+    landlordId: string,
+    response?: InvitedResponse // Make status optional
+  ) => {
+    return await prismaClient.applicationInvites.count({
+      where: {
+        ...(response && { response }),
+        isDeleted: false,
+        properties: {
+          landlordId: landlordId,
+          isDeleted: false,
+        },
+      },
+    });
+  };
+
   async getInvite(filters: { userInvitedId?: string; response?: InvitedResponse[] }) {
     const whereClause: Prisma.applicationInvitesWhereInput = {};
 
     if (filters.userInvitedId) {
-        whereClause.userInvitedId = filters.userInvitedId;
+      whereClause.userInvitedId = filters.userInvitedId;
     }
 
     if (filters.response) {
-        whereClause.response = {
-            in: filters.response
-        };
+      whereClause.response = {
+        in: filters.response
+      };
     }
 
     return await prismaClient.applicationInvites.findMany({
-        where: whereClause,
-        include: {
-            properties: {
-                include: {
-                    landlord: {
-                        include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    email: true,
-                                    profile: true,
-                                },
-                            },
-                        },
-                    },
+      where: whereClause,
+      include: {
+        properties: {
+          include: {
+            landlord: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    profile: true,
+                  },
                 },
+              },
             },
+          },
         },
+      },
     });
-}
+  }
 
-  async updateInvites(id, updateData:ApplicationInvite) {
+  async updateInvites(id, updateData: ApplicationInvite) {
     return await applicationServices.updateInvite(id, updateData);
-  } 
+  }
 }
 
 export default new ApplicantService();

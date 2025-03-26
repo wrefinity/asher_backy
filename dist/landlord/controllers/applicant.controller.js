@@ -125,6 +125,8 @@ class ApplicationControls {
                 // get the tenant web user email 
                 if (!application)
                     return res.status(400).json({ message: "property doesn't exist" });
+                // update application invite status to approve
+                yield application_services_1.default.updateInvite(application.applicationInviteId, { response: client_1.InvitedResponse.APPROVED });
                 const tenantWebUserEmail = application.user.email;
                 const userEmail = tenantWebUserEmail.toString().split('@')[0];
                 // get the current landlord email domain
@@ -224,8 +226,24 @@ class ApplicationControls {
                 const { error, value } = applicationInvitesSchema_1.updateApplicationInviteSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
+                // check if the enquire is status rejected 
+                const enquire = yield logs_services_1.default.getLogsById(value.enquireId);
+                if (enquire.status === client_1.logTypeStatus.REJECTED) {
+                    return res.status(400).json({ error: "enquire is already rejected" });
+                }
                 if (value.response === client_1.InvitedResponse.APPLY || value.response === client_1.InvitedResponse.RE_INVITED && !value.enquireId) {
                     return res.status(400).json({ error: "enquireId is required" });
+                }
+                // RESCHEDULED
+                // SCHEDULED
+                // RESCHEDULED_ACCEPTED
+                if (value.response == client_1.InvitedResponse.RESCHEDULED_ACCEPTED && !value.reScheduleDate) {
+                    return res.status(400).json({ error: "kindly supply the reschedule date" });
+                }
+                // check if invite is declined or rejected
+                const invite = yield application_services_1.default.getInviteById(id);
+                if (invite.response === client_1.InvitedResponse.DECLINED || invite.response === client_1.InvitedResponse.REJECTED) {
+                    return res.status(400).json({ error: "invite is already declined or rejected" });
                 }
                 const updatedInvite = yield application_services_1.default.updateInvite(id, value);
                 return res.status(200).json({ updatedInvite });
@@ -239,6 +257,17 @@ class ApplicationControls {
                 const landlordId = req.user.landlords.id;
                 const leasing = yield logs_services_1.default.getLogs(landlordId, client_2.LogType.ENQUIRED, client_1.logTypeStatus.PENDING);
                 return res.status(200).json({ leasing });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        // for rejection of enquire
+        this.updateEnquireToRejected = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const enquireId = req.params.enquireId;
+                const leasingUpdated = yield logs_services_1.default.updateLog(enquireId, { status: client_1.logTypeStatus.REJECTED });
+                return res.status(200).json({ leasingUpdated });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

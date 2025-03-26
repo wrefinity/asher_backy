@@ -16,9 +16,11 @@ enum AnswersEnum {
 }
 
 enum InvitedResponse {
+  // invites stages
   PENDING
   RESCHEDULED
   SCHEDULED
+  RESCHEDULED_ACCEPTED
   RE_INVITED
   VISITED
   NOT_VISITED
@@ -26,14 +28,16 @@ enum InvitedResponse {
   ACCEPTED
   AWAITING_FEEDBACK
   FEEDBACK
-  COMPLETED
+  COMPLETED // might be redundant
   CANCELLED
   APPLY
-  // application status
+  // application process stage
   APPLICATION_STARTED
   APPLICATION_NOT_STARTED
-  SUBMITTED
+  SUBMITTED // for submitted applications
   DECLINED
+  APPROVED
+  AGREEMENTS
 }
 
 enum InvitedStatus {
