@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { Prisma, logTypeStatus, InvitedResponse, ApplicationStatus } from "@prisma/client";
+import { Prisma, logTypeStatus, InvitedResponse, ApplicationStatus, LogType } from "@prisma/client";
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 import logsServices from "./logs.services";
 
@@ -98,7 +98,7 @@ class ApplicationInvitesService {
 
         if (data.response === InvitedResponse.APPLY || data.response === InvitedResponse.RE_INVITED && enquiryId) {
             // use the eqnuiry id to update the enquiry status
-            await logsServices.updateLog(enquiryId, { status: null });
+            await logsServices.updateLog(enquiryId, { type: LogType.ENQUIRED, status: logTypeStatus.RE_INVITED });
         }
 
         let updated = await prismaClient.applicationInvites.update({

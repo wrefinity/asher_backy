@@ -15,6 +15,7 @@ enum LogType {
 enum logTypeStatus {
     PENDING
     INVITED
+    RE_INVITED
     REJECTED
     COMPLETED
 }
@@ -26,7 +27,8 @@ model Log {
     considerRenting YesNo? // The feedback comment
     events          String // Events or comments description
     type            LogType?
-    // for enquiry pending
+
+    // for application enquiry pending
     status          logTypeStatus?
 
     createdAt       DateTime       @default(now()) // Log creation timestamp
