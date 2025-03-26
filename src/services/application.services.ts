@@ -1,6 +1,7 @@
 import { prismaClient } from "..";
-import { Prisma, logTypeStatus, InvitedResponse } from "@prisma/client";
+import { Prisma, logTypeStatus, InvitedResponse, ApplicationStatus } from "@prisma/client";
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
+import logsServices from "./logs.services";
 
 class ApplicationInvitesService {
     private userInclusion = { email: true, profile: true, id: true };
@@ -91,9 +92,14 @@ class ApplicationInvitesService {
             include: this.inviteInclude,
         });
     }
-    async updateInvite(id: string, data: Partial<ApplicationInvite>) {
+    async updateInvite(id: string, data: Partial<ApplicationInvite>, enquiryId: string = null) {
         const existingInvite = await this.getInviteById(id);
         if (!existingInvite) throw new Error(`Invite with ID ${id} not found`);
+
+        if (data.response === InvitedResponse.APPLY || data.response === InvitedResponse.RE_INVITED && enquiryId) {
+            // use the eqnuiry id to update the enquiry status
+            await logsServices.updateLog(enquiryId, { status: null });
+        }
 
         let updated = await prismaClient.applicationInvites.update({
             where: { id },
@@ -157,6 +163,66 @@ class ApplicationInvitesService {
                 createdAt: "desc"
             }
         });
+    }
+
+    // web user dashboard
+    async getDashboardData(userId: String) {
+        const [recentInvites, recentFeedback, recentSavedProperties, scheduledInvite, activeApplications, completedApplications] = await Promise.all([
+            prismaClient.applicationInvites.findMany({
+                orderBy: { createdAt: "desc" },
+                take: 3,
+                include: this.inviteInclude,
+            }),
+            prismaClient.log.findMany({
+                orderBy: { createdAt: "desc" },
+                take: 3,
+                include: {
+                    property: true,
+                    users: {
+                        select: { email: true, id: true, profile: true }
+                    },
+                    applicationInvites: true,
+                }
+
+            }),
+            prismaClient.userLikedProperty.findMany({
+                where: { userId: String(userId) },  // Fixed line
+                include: { property: true },
+                orderBy: { likedAt: "desc" },
+                take: 3,
+            }),
+            prismaClient.applicationInvites.findFirst({
+                where: { response: InvitedResponse.SCHEDULED },
+                orderBy: { createdAt: "desc" },
+            }),
+            prismaClient.applicationInvites.count({
+                where: {
+
+                    NOT: [
+                        {
+                            responseStepsCompleted: {
+                                hasSome: [
+                                    InvitedResponse.COMPLETED,
+                                    InvitedResponse.REJECTED,
+                                    InvitedResponse.CANCELLED,]
+                            }
+                        }
+                    ]
+                },
+            }),
+            prismaClient.applicationInvites.count({ where: { response: InvitedResponse.COMPLETED } }),
+        ]);
+
+        return {
+            recentInvites,
+            recentFeedback,
+            recentSavedProperties,
+            scheduledInvite,
+            applications: {
+                activeApplications,
+                completedApplications,
+            },
+        };
     }
 
 }

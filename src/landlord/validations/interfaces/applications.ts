@@ -1,7 +1,7 @@
 import { InvitedResponse, YesNo } from ".prisma/client";
 
 export interface ApplicationInvite {
-    id: string;
+    id?: string;
     isDeleted?: boolean;
     createdAt?: Date;
     updatedAt?: Date;

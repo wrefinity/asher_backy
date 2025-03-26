@@ -183,6 +183,7 @@ class ApplicantService {
     });
 
     if (app) {
+      this.updateInvites(applicationInviteId, { response: InvitedResponse.APPLICATION_STARTED })
       // check if propertyId have been applied before by the user 
       const logcreated = await LogsServices.checkPropertyLogs(
         userId,
@@ -507,10 +508,15 @@ class ApplicantService {
     });
   }
   updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {
-    return await prismaClient.application.update({
+    const updated = await prismaClient.application.update({
       where: { id: applicationId },
       data: { status }
     });
+    if(updated && status === ApplicationStatus.COMPLETED){
+      // update application invite to submitted
+      this.updateInvites(updated.applicationInviteId, { response: InvitedResponse.SUBMITTED })
+    }
+    return updated;
   }
 
   checkApplicationCompleted = async (applicationId: string) => {

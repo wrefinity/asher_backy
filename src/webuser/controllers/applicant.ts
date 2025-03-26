@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import ApplicantService from '../services/applicantService';
+import ApplicantionService from '../../services/application.services';
 import PropertyServices from '../../services/propertyServices';
 import { CustomRequest } from "../../utils/types";
 import { uploadDocsCloudinary } from '../../middlewares/multerCloudinary';
@@ -22,6 +23,18 @@ import { updateApplicationInviteSchema } from '../../landlord/validations/schema
 
 class ApplicantControls {
 
+  getBasicStats = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(403).json({ error: 'kindly login as applicant' });
+      }
+      const stats = await ApplicantionService.getDashboardData(userId);
+      res.status(200).json({ stats });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
   getPendingApplications = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user?.id;
@@ -220,6 +233,13 @@ class ApplicantControls {
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
+
+      const invitation = await ApplicantService.getInvitedById(value.applicationInvitedId);
+
+      if(invitation.response === InvitedResponse.DECLINED || invitation.response === InvitedResponse.APPLY){
+        return res.status(400).json({ error: " you are yet to provide feeback as either to reconsider or apply else the invite status is declined" });
+      }
+
       const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
 
 

@@ -156,6 +156,7 @@ class ApplicantService {
                 },
             });
             if (app) {
+                this.updateInvites(applicationInviteId, { response: client_1.InvitedResponse.APPLICATION_STARTED });
                 // check if propertyId have been applied before by the user 
                 const logcreated = yield logs_services_1.default.checkPropertyLogs(userId, client_2.LogType.APPLICATION, propertiesId, app === null || app === void 0 ? void 0 : app.id);
                 if (!logcreated) {
@@ -422,10 +423,15 @@ class ApplicantService {
             });
         });
         this.updateApplicationStatus = (applicationId, status) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.application.update({
+            const updated = yield __1.prismaClient.application.update({
                 where: { id: applicationId },
                 data: { status }
             });
+            if (updated && status === client_1.ApplicationStatus.COMPLETED) {
+                // update application invite to submitted
+                this.updateInvites(updated.applicationInviteId, { response: client_1.InvitedResponse.SUBMITTED });
+            }
+            return updated;
         });
         this.checkApplicationCompleted = (applicationId) => __awaiter(this, void 0, void 0, function* () {
             // Check if the application completed

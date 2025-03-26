@@ -1,3 +1,65 @@
+def kuskals(edges, num_vertices):
+    # sort the edges
+    sorted_edges = sorted(edges, key=lambda x: x[2])
+    # create a disjoint set
+    parent = {}
+    rank = {}
+    def initialize_uf(vertices):
+        for i in vertices:
+            parent[i] = i
+            rank[i] = 0
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+    
+    def union(x, y):
+        x_root = find(x)
+        y_root = find(y)
+        if x_root == y_root:
+            return False
+        if rank[x_root] < rank[y_root]:
+            parent[x_root] = y_root
+        else:
+            parent[y_root] = x_root
+            if rank[x_root] == rank[y_root]:
+                rank[x_root] += 1
+        return True
+    
+    
+    vertices = set()
+    for x, y, _ in sorted_edges:
+        vertices.add(x)
+        vertices.add(y)
+    initialize_uf(vertices)
+    mst = []
+    total_weight = 0
+    edges_added = 0
+    for edge in sorted_edges:
+        x, y, weight = edge
+        if find(x) != find(y):
+            mst.append((x, y, weight))
+            total_weight += weight
+            union(x, y)
+            edges_added += 1
+        if edges_added == num_vertices - 1:
+            break
+    return mst, total_weight
+            
+edges = [ 
+    ('A', 'B', 1),
+    ('B', 'C', 2),
+    ('C', 'D', 3),
+    ('D', 'A', 4),
+    ('A', 'C', 5),  
+    ('B', 'D', 6)
+]
+
+num_vertices = 4
+mst, total_weight = kuskals(edges, num_vertices)
+print(mst)
+print(total_weight)
+
 
 
 

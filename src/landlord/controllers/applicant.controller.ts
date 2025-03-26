@@ -196,6 +196,8 @@ class ApplicationControls {
                 InvitedResponse.APPLY,
                 InvitedResponse.FEEDBACK,
                 InvitedResponse.SCHEDULED,
+                InvitedResponse.APPLICATION_STARTED,
+                InvitedResponse.APPLICATION_NOT_STARTED
               ]);
             if (!invite) return res.status(404).json({ message: 'Invite not found' });
             return res.status(200).json({ invite });
@@ -209,6 +211,10 @@ class ApplicationControls {
             const { id } = req.params;
             const { error, value } = updateApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
+
+            if(value.response === InvitedResponse.APPLY || value.response === InvitedResponse.RE_INVITED  && !value.enquireId) {
+                return res.status(400).json({ error: "enquireId is required" });
+            }
             const updatedInvite = await ApplicationInvitesService.updateInvite(id, value);
             return res.status(200).json({ updatedInvite });
         } catch (error) {

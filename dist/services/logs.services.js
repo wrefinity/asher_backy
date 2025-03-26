@@ -8,9 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
 const client_1 = require("@prisma/client");
+const application_services_1 = __importDefault(require("./application.services"));
 class LogService {
     constructor() {
         this.createLog = (data) => __awaiter(this, void 0, void 0, function* () {
@@ -36,9 +40,13 @@ class LogService {
             if (data.createdById) {
                 logData.users = { connect: { id: data.createdById } };
             }
-            return yield __1.prismaClient.log.create({
+            const log = yield __1.prismaClient.log.create({
                 data: logData,
             });
+            if (log && data.response === client_1.InvitedResponse.FEEDBACK && data.applicationInvitedId) {
+                yield application_services_1.default.updateInviteResponse(data.applicationInvitedId, data.response);
+            }
+            return log;
         });
         // Get all logs by types, status, etc.
         this.getLogs = (landlordId_1, type_1, ...args_1) => __awaiter(this, [landlordId_1, type_1, ...args_1], void 0, function* (landlordId, type, status = null) {
@@ -102,12 +110,15 @@ class LogService {
                 include: this.inclusion
             });
         });
-        this.getLandlordLogs = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, type = null) {
+        this.getLandlordLogs = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, type = null, status = null) {
             return yield __1.prismaClient.log.findMany({
-                where: Object.assign(Object.assign({}, (type && { type })), { property: {
+                where: Object.assign(Object.assign(Object.assign({}, (type && { type })), (status && { status })), { property: {
                         landlordId
                     } }),
-                include: this.inclusion
+                include: this.inclusion,
+                orderBy: {
+                    createdAt: "desc"
+                }
             });
         });
         this.updateLog = (id, updateData) => __awaiter(this, void 0, void 0, function* () {

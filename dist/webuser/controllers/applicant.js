@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const applicantService_1 = __importDefault(require("../services/applicantService"));
+const application_services_1 = __importDefault(require("../../services/application.services"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 const multerCloudinary_1 = require("../../middlewares/multerCloudinary");
 const schemas_1 = require("../schemas");
@@ -22,6 +23,20 @@ const logs_services_1 = __importDefault(require("../../services/logs.services"))
 const applicationInvitesSchema_1 = require("../../landlord/validations/schema/applicationInvitesSchema");
 class ApplicantControls {
     constructor() {
+        this.getBasicStats = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                if (!userId) {
+                    return res.status(403).json({ error: 'kindly login as applicant' });
+                }
+                const stats = yield application_services_1.default.getDashboardData(userId);
+                res.status(200).json({ stats });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.getPendingApplications = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
@@ -192,6 +207,10 @@ class ApplicantControls {
                 const { error, value } = schemas_1.applicantPersonalDetailsSchema.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
+                }
+                const invitation = yield applicantService_1.default.getInvitedById(value.applicationInvitedId);
+                if (invitation.response === client_1.InvitedResponse.DECLINED || invitation.response === client_1.InvitedResponse.APPLY) {
+                    return res.status(400).json({ error: " you are yet to provide feeback as either to reconsider or apply else the invite status is declined" });
                 }
                 const application = yield applicantService_1.default.createApplication(Object.assign(Object.assign({}, value), { userId }), propertiesId, userId);
                 return res.status(201).json({ application });

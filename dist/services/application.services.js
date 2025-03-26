@@ -8,8 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const client_1 = require("@prisma/client");
+const logs_services_1 = __importDefault(require("./logs.services"));
 class ApplicationInvitesService {
     constructor() {
         this.userInclusion = { email: true, profile: true, id: true };
@@ -96,11 +101,15 @@ class ApplicationInvitesService {
             });
         });
     }
-    updateInvite(id, data) {
-        return __awaiter(this, void 0, void 0, function* () {
+    updateInvite(id_1, data_1) {
+        return __awaiter(this, arguments, void 0, function* (id, data, enquiryId = null) {
             const existingInvite = yield this.getInviteById(id);
             if (!existingInvite)
                 throw new Error(`Invite with ID ${id} not found`);
+            if (data.response === client_1.InvitedResponse.APPLY || data.response === client_1.InvitedResponse.RE_INVITED && enquiryId) {
+                // use the eqnuiry id to update the enquiry status
+                yield logs_services_1.default.updateLog(enquiryId, { status: null });
+            }
             let updated = yield __1.prismaClient.applicationInvites.update({
                 where: { id },
                 data: data,
@@ -160,6 +169,65 @@ class ApplicationInvitesService {
                     createdAt: "desc"
                 }
             });
+        });
+    }
+    // web user dashboard
+    getDashboardData(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const [recentInvites, recentFeedback, recentSavedProperties, scheduledInvite, activeApplications, completedApplications] = yield Promise.all([
+                __1.prismaClient.applicationInvites.findMany({
+                    orderBy: { createdAt: "desc" },
+                    take: 3,
+                    include: this.inviteInclude,
+                }),
+                __1.prismaClient.log.findMany({
+                    orderBy: { createdAt: "desc" },
+                    take: 3,
+                    include: {
+                        property: true,
+                        users: {
+                            select: { email: true, id: true, profile: true }
+                        },
+                        applicationInvites: true,
+                    }
+                }),
+                __1.prismaClient.userLikedProperty.findMany({
+                    where: { userId: String(userId) }, // Fixed line
+                    include: { property: true },
+                    orderBy: { likedAt: "desc" },
+                    take: 3,
+                }),
+                __1.prismaClient.applicationInvites.findFirst({
+                    where: { response: client_1.InvitedResponse.SCHEDULED },
+                    orderBy: { createdAt: "desc" },
+                }),
+                __1.prismaClient.applicationInvites.count({
+                    where: {
+                        NOT: [
+                            {
+                                responseStepsCompleted: {
+                                    hasSome: [
+                                        client_1.InvitedResponse.COMPLETED,
+                                        client_1.InvitedResponse.REJECTED,
+                                        client_1.InvitedResponse.CANCELLED,
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                }),
+                __1.prismaClient.applicationInvites.count({ where: { response: client_1.InvitedResponse.COMPLETED } }),
+            ]);
+            return {
+                recentInvites,
+                recentFeedback,
+                recentSavedProperties,
+                scheduledInvite,
+                applications: {
+                    activeApplications,
+                    completedApplications,
+                },
+            };
         });
     }
 }

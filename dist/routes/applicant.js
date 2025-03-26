@@ -39,6 +39,7 @@ class ApplicantRoutes {
         this.initializeRoutes();
     }
     initializeRoutes() {
+        this.router.get('/applicant/stats', this.authenticateService.authorize, applicant_1.default.getBasicStats);
         this.router.get('/invities/all', this.authenticateService.authorize, applicant_1.default.getInvites);
         this.router.get('/invities/:id/get', this.authenticateService.authorize, applicant_1.default.getInvite);
         this.router.patch('/invites/update/:id', applicant_1.default.updateInvite);

@@ -207,6 +207,8 @@ class ApplicationControls {
                     client_1.InvitedResponse.APPLY,
                     client_1.InvitedResponse.FEEDBACK,
                     client_1.InvitedResponse.SCHEDULED,
+                    client_1.InvitedResponse.APPLICATION_STARTED,
+                    client_1.InvitedResponse.APPLICATION_NOT_STARTED
                 ]);
                 if (!invite)
                     return res.status(404).json({ message: 'Invite not found' });
@@ -222,6 +224,9 @@ class ApplicationControls {
                 const { error, value } = applicationInvitesSchema_1.updateApplicationInviteSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
+                if (value.response === client_1.InvitedResponse.APPLY || value.response === client_1.InvitedResponse.RE_INVITED && !value.enquireId) {
+                    return res.status(400).json({ error: "enquireId is required" });
+                }
                 const updatedInvite = yield application_services_1.default.updateInvite(id, value);
                 return res.status(200).json({ updatedInvite });
             }
@@ -258,7 +263,7 @@ class ApplicationControls {
         this.getFeedbacks = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.user.landlords.id;
-                const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_2.LogType.FEEDBACK);
+                const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_2.LogType.FEEDBACK, null);
                 return res.status(200).json({ feedbacks });
             }
             catch (error) {
