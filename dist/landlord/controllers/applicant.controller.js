@@ -46,6 +46,7 @@ class ApplicationControls {
                     client_1.InvitedResponse.SCHEDULED,
                     client_1.InvitedResponse.FEEDBACK,
                     client_1.InvitedResponse.APPLY,
+                    client_1.InvitedResponse.REJECTED,
                     // InvitedResponse.VISITED,
                     // InvitedResponse.NOT_VISITED,
                 ];

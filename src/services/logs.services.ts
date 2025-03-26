@@ -81,6 +81,16 @@ class LogService {
 
     });
   };
+  getLogCounts = async (landlordId: string, type: LogType, status: logTypeStatus = null) => {
+    return await prismaClient.log.count({
+      where: {
+        type,
+        property: { landlordId },
+        ...(status ? { status } : {}) // Apply status condition only if it's provided
+      },
+
+    });
+  };
 
   checkPropertyLogs = async (createdById: string, type: LogType, propertyId: string, applicationId: string = null) => {
     return await prismaClient.log.findFirst({
@@ -101,7 +111,7 @@ class LogService {
       include: this.inclusion
     });
   }
-  
+
   getLogsById = async (logId: string): Promise<LogIF | null>  =>{
     return await prismaClient.log.findFirst({
       where: {

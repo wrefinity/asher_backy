@@ -56,6 +56,12 @@ class LogService {
                 include: this.inclusion
             });
         });
+        this.getLogCounts = (landlordId_1, type_1, ...args_1) => __awaiter(this, [landlordId_1, type_1, ...args_1], void 0, function* (landlordId, type, status = null) {
+            return yield __1.prismaClient.log.count({
+                where: Object.assign({ type, property: { landlordId } }, (status ? { status } : {}) // Apply status condition only if it's provided
+                ),
+            });
+        });
         this.checkPropertyLogs = (createdById_1, type_1, propertyId_1, ...args_1) => __awaiter(this, [createdById_1, type_1, propertyId_1, ...args_1], void 0, function* (createdById, type, propertyId, applicationId = null) {
             return yield __1.prismaClient.log.findFirst({
                 where: { type, propertyId, createdById, applicationId },

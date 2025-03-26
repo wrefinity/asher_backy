@@ -479,7 +479,7 @@ class ApplicantService {
                 approved: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId, client_1.InvitedResponse.APPROVED),
                 completed: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId, client_1.InvitedResponse.SUBMITTED),
                 total: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
-                enquiries: yield logs_services_2.default.getLogs(landlordId, client_2.LogType.FEEDBACK),
+                enquiries: yield logs_services_2.default.getLogCounts(landlordId, client_2.LogType.FEEDBACK),
             };
         });
         this.approveApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {

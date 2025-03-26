@@ -568,7 +568,7 @@ class ApplicantService {
       approved: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.APPROVED),
       completed: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.SUBMITTED),
       total: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
-      enquiries: await logsServices.getLogs(landlordId, LogType.FEEDBACK),
+      enquiries: await logsServices.getLogCounts(landlordId, LogType.FEEDBACK),
     };
   };
 
