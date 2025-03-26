@@ -38,7 +38,9 @@ class ApplicationControls {
                 InvitedResponse.SCHEDULED,
                 InvitedResponse.FEEDBACK,
                 InvitedResponse.APPLY,
-                InvitedResponse.REJECTED,
+                // InvitedResponse.REJECTED,
+                // InvitedResponse.APPLICATION_NOT_STARTED,
+                // InvitedResponse.APPLICATION_STARTED,
                 // InvitedResponse.VISITED,
                 // InvitedResponse.NOT_VISITED,
               ];
