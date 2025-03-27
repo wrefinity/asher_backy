@@ -225,7 +225,7 @@ class ApplicationControls {
                 return res.status(400).json({ error: "enquire is already rejected" });
             }
 
-            if(value.response === InvitedResponse.APPLY || value.response === InvitedResponse.RE_INVITED  && !value.enquireId) {
+            if(value.response === InvitedResponse.APPLY || value.response === InvitedResponse.RE_INVITED  && !value.enquiryId) {
                 return res.status(400).json({ error: "enquireId is required" });
             }
             // RESCHEDULED
