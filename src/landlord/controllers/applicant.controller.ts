@@ -220,7 +220,7 @@ class ApplicationControls {
             if (error) return res.status(400).json({ error: error.details[0].message });
 
             // check if the enquire is status rejected 
-            const enquire = await logsServices.getLogsById(value.enquireId)
+            const enquire = await logsServices.getLogsById(value.enquiryId)
             if (enquire.status === logTypeStatus.REJECTED ) {
                 return res.status(400).json({ error: "enquire is already rejected" });
             }
