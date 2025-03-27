@@ -17,7 +17,11 @@ exports.createApplicationInviteSchema = joi_1.default.object({
     tenantId: joi_1.default.string().uuid().optional()
 });
 exports.updateApplicationInviteSchema = joi_1.default.object({
-    reScheduleDate: joi_1.default.date().iso().optional(),
+    reScheduleDate: joi_1.default.date().when('response', {
+        is: client_1.InvitedResponse.RESCHEDULED_ACCEPTED,
+        then: joi_1.default.required(),
+        otherwise: joi_1.default.optional()
+    }),
     scheduleDate: joi_1.default.date().iso().optional(),
     enquiryId: joi_1.default.string().optional(),
     applicationFee: joi_1.default.string().valid(...YesNoType).optional(),

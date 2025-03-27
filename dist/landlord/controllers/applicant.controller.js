@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -46,7 +57,9 @@ class ApplicationControls {
                     client_1.InvitedResponse.SCHEDULED,
                     client_1.InvitedResponse.FEEDBACK,
                     client_1.InvitedResponse.APPLY,
-                    client_1.InvitedResponse.REJECTED,
+                    // InvitedResponse.REJECTED,
+                    // InvitedResponse.APPLICATION_NOT_STARTED,
+                    // InvitedResponse.APPLICATION_STARTED,
                     // InvitedResponse.VISITED,
                     // InvitedResponse.NOT_VISITED,
                 ];
@@ -224,29 +237,39 @@ class ApplicationControls {
         this.updateInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { id } = req.params;
-                const { error, value } = applicationInvitesSchema_1.updateApplicationInviteSchema.validate(req.body);
-                if (error)
-                    return res.status(400).json({ error: error.details[0].message });
-                // check if the enquire is status rejected 
-                const enquire = yield logs_services_1.default.getLogsById(value.enquireId);
-                if (enquire.status === client_1.logTypeStatus.REJECTED) {
-                    return res.status(400).json({ error: "enquire is already rejected" });
-                }
-                if (value.response === client_1.InvitedResponse.APPLY || value.response === client_1.InvitedResponse.RE_INVITED && !value.enquireId) {
-                    return res.status(400).json({ error: "enquireId is required" });
-                }
-                // RESCHEDULED
-                // SCHEDULED
-                // RESCHEDULED_ACCEPTED
-                if (value.response == client_1.InvitedResponse.RESCHEDULED_ACCEPTED && !value.reScheduleDate) {
-                    return res.status(400).json({ error: "kindly supply the reschedule date" });
-                }
-                // check if invite is declined or rejected
                 const invite = yield application_services_1.default.getInviteById(id);
+                if (!invite) {
+                    return res.status(404).json({ error: "No such application invite" });
+                }
+                // Validate request body
+                const { error, value } = applicationInvitesSchema_1.updateApplicationInviteSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                // Check current invite status
                 if (invite.response === client_1.InvitedResponse.DECLINED || invite.response === client_1.InvitedResponse.REJECTED) {
                     return res.status(400).json({ error: "invite is already declined or rejected" });
                 }
-                const updatedInvite = yield application_services_1.default.updateInvite(id, value);
+                // Handle enquiry validation if present
+                if (value.enquiryId) {
+                    const enquiry = yield logs_services_1.default.getLogsById(value.enquiryId);
+                    if (enquiry.status === client_1.logTypeStatus.REJECTED) {
+                        return res.status(400).json({ error: "Enquiry is already rejected" });
+                    }
+                }
+                if ([client_1.InvitedResponse.APPLY, client_1.InvitedResponse.RE_INVITED].includes(value.response) &&
+                    !value.enquiryId) {
+                    return res.status(400).json({ error: "Enquiry ID is required for this response type" });
+                }
+                if (value.response === client_1.InvitedResponse.RESCHEDULED_ACCEPTED &&
+                    !value.reScheduleDate) {
+                    return res.status(400).json({ error: "Reschedule date is required" });
+                }
+                const { enquiryId } = value, updateDate = __rest(value
+                // Update invite with validated data
+                , ["enquiryId"]);
+                // Update invite with validated data
+                const updatedInvite = yield application_services_1.default.updateInvite(id, updateDate, enquiryId);
                 return res.status(200).json({ updatedInvite });
             }
             catch (error) {

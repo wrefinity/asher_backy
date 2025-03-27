@@ -103,12 +103,9 @@ class ApplicationInvitesService {
     }
     updateInvite(id_1, data_1) {
         return __awaiter(this, arguments, void 0, function* (id, data, enquiryId = null) {
-            const existingInvite = yield this.getInviteById(id);
-            if (!existingInvite)
-                throw new Error(`Invite with ID ${id} not found`);
             if (data.response === client_1.InvitedResponse.APPLY || data.response === client_1.InvitedResponse.RE_INVITED && enquiryId) {
                 // use the eqnuiry id to update the enquiry status
-                yield logs_services_1.default.updateLog(enquiryId, { status: null });
+                yield logs_services_1.default.updateLog(enquiryId, { type: client_1.LogType.ENQUIRED, status: client_1.logTypeStatus.RE_INVITED });
             }
             let updated = yield __1.prismaClient.applicationInvites.update({
                 where: { id },

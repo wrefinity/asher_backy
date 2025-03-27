@@ -93,9 +93,7 @@ class ApplicationInvitesService {
         });
     }
     async updateInvite(id: string, data: Partial<ApplicationInvite>, enquiryId: string = null) {
-        const existingInvite = await this.getInviteById(id);
-        if (!existingInvite) throw new Error(`Invite with ID ${id} not found`);
-
+  
         if (data.response === InvitedResponse.APPLY || data.response === InvitedResponse.RE_INVITED && enquiryId) {
             // use the eqnuiry id to update the enquiry status
             await logsServices.updateLog(enquiryId, { type: LogType.ENQUIRED, status: logTypeStatus.RE_INVITED });
