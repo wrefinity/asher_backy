@@ -240,7 +240,7 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      const invitation = await ApplicantService.getInvitedById(value.applicationInvitedId);
+      const invitation = await ApplicantService.getInvitedById(value.applicationInviteId);
       if (!invitation) return res.status(400).json({ error: "Invalid application invitation" });
 
       if (invitation.response === InvitedResponse.DECLINED || invitation.response === InvitedResponse.APPLY) {
@@ -599,6 +599,7 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   }
+
   updateInvite = async (req: CustomRequest, res: Response) => {
     try {
       const { id } = req.params;

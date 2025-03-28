@@ -581,6 +581,9 @@ class ApplicantService {
   }
 
   getInvitedById = async (id: string) => {
+    if (!id) {
+      throw new Error("Invalid application invite ID");
+    }
     return await prismaClient.applicationInvites.findUnique({
       where: { id },
       include: {
@@ -650,6 +653,7 @@ class ApplicantService {
             },
           },
         },
+        application: true
       },
     });
   }
