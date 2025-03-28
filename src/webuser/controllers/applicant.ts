@@ -218,7 +218,7 @@ class ApplicantControls {
       if (!application) {
         return res.status(400).json({ error: 'Application not updated' });
       }
-      await ApplicantService.updateInvites(application.applicationInviteId, {response: InvitedResponse.SUBMITTED});
+      await ApplicantService.updateInvites(application.applicationInviteId, { response: InvitedResponse.SUBMITTED });
       return res.status(200).json(application);
 
     } catch (error) {
@@ -241,8 +241,9 @@ class ApplicantControls {
       }
 
       const invitation = await ApplicantService.getInvitedById(value.applicationInvitedId);
+      if (!invitation) return res.status(400).json({ error: "Invalid application invitation" });
 
-      if(invitation.response === InvitedResponse.DECLINED || invitation.response === InvitedResponse.APPLY){
+      if (invitation.response === InvitedResponse.DECLINED || invitation.response === InvitedResponse.APPLY) {
         return res.status(400).json({ error: " you are yet to provide feeback as either to reconsider or apply else the invite status is declined" });
       }
 
@@ -575,11 +576,11 @@ class ApplicantControls {
         }),
         ApplicantService.getInvite({
           userInvitedId,
-          response: [InvitedResponse.ACCEPTED, InvitedResponse.RESCHEDULED] // FIXED HERE
+          response: [InvitedResponse.ACCEPTED, InvitedResponse.RESCHEDULED, InvitedResponse.RE_INVITED, InvitedResponse.RESCHEDULED_ACCEPTED] // FIXED HERE
         }),
         ApplicantService.getInvite({
           userInvitedId,
-          response: [InvitedResponse.REJECTED, InvitedResponse.COMPLETED, InvitedResponse.CANCELLED,  InvitedResponse.DECLINED ]
+          response: [InvitedResponse.REJECTED, InvitedResponse.COMPLETED, InvitedResponse.CANCELLED, InvitedResponse.DECLINED]
         }),
         ApplicantService.getInvite({
           userInvitedId,

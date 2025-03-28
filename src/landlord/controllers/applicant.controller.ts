@@ -29,20 +29,15 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+    // get  applications base on the three most
+    // essentially step during invites stage 
     getApplicationsWithInvites = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.landlords.id;
             const completedStatuses = [
                 InvitedResponse.PENDING,
-                InvitedResponse.ACCEPTED,
-                InvitedResponse.SCHEDULED,
                 InvitedResponse.FEEDBACK,
                 InvitedResponse.APPLY,
-                // InvitedResponse.REJECTED,
-                // InvitedResponse.APPLICATION_NOT_STARTED,
-                // InvitedResponse.APPLICATION_STARTED,
-                // InvitedResponse.VISITED,
-                // InvitedResponse.NOT_VISITED,
             ];
             const application = await ApplicationInvitesService.getInvitesWithStatus(landlordId, completedStatuses);
             return res.status(200).json({ application });
@@ -50,6 +45,27 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+    // getApplicationsWithInvites = async (req: CustomRequest, res: Response) => {
+    //     try {
+    //         const landlordId = req.user.landlords.id;
+    //         const completedStatuses = [
+    //             InvitedResponse.PENDING,
+    //             InvitedResponse.ACCEPTED,
+    //             InvitedResponse.SCHEDULED,
+    //             InvitedResponse.FEEDBACK,
+    //             InvitedResponse.APPLY,
+    //             // InvitedResponse.REJECTED,
+    //             // InvitedResponse.APPLICATION_NOT_STARTED,
+    //             // InvitedResponse.APPLICATION_STARTED,
+    //             // InvitedResponse.VISITED,
+    //             // InvitedResponse.NOT_VISITED,
+    //         ];
+    //         const application = await ApplicationInvitesService.getInvitesWithStatus(landlordId, completedStatuses);
+    //         return res.status(200).json({ application });
+    //     } catch (error) {
+    //         errorService.handleError(error, res)
+    //     }
+    // }
     getApplicationsPending = async (req: CustomRequest, res: Response) => {
 
         try {
@@ -134,6 +150,8 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+
+    
     createInvite = async (req: CustomRequest, res: Response) => {
 
         try {
@@ -202,7 +220,7 @@ class ApplicationControls {
             const invite = await ApplicationInvitesService.getInviteWithoutStatus(invitedByLandordId, [
                 InvitedResponse.APPLY,
                 InvitedResponse.FEEDBACK,
-                InvitedResponse.SCHEDULED,
+                // InvitedResponse.SCHEDULED,
                 InvitedResponse.APPLICATION_STARTED,
                 InvitedResponse.APPLICATION_NOT_STARTED
             ]);

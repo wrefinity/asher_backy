@@ -156,10 +156,12 @@ class ApplicantService {
                     applicantPersonalDetailsId: (_a = upsertedPersonalDetails === null || upsertedPersonalDetails === void 0 ? void 0 : upsertedPersonalDetails.id) !== null && _a !== void 0 ? _a : existingPersonalDetails === null || existingPersonalDetails === void 0 ? void 0 : existingPersonalDetails.id,
                 },
             });
-            if (app) {
-                this.updateInvites(applicationInviteId, { response: client_1.InvitedResponse.APPLICATION_STARTED });
-                // check if propertyId have been applied before by the user 
-                const logcreated = yield logs_services_1.default.checkPropertyLogs(userId, client_2.LogType.APPLICATION, propertiesId, app === null || app === void 0 ? void 0 : app.id);
+            if (app && data.applicationInviteId) {
+                // Only update invites if applicationInviteId exists
+                yield this.updateInvites(data.applicationInviteId, {
+                    response: client_1.InvitedResponse.APPLICATION_STARTED
+                });
+                const logcreated = yield logs_services_1.default.checkPropertyLogs(userId, client_2.LogType.APPLICATION, propertiesId, app.id);
                 if (!logcreated) {
                     yield logs_services_1.default.createLog({
                         propertyId: propertiesId,
@@ -167,7 +169,7 @@ class ApplicantService {
                         events: "Application in progress",
                         createdById: userId,
                         type: client_2.LogType.APPLICATION,
-                        applicationId: app === null || app === void 0 ? void 0 : app.id
+                        applicationId: app.id
                     });
                 }
             }

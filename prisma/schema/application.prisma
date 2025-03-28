@@ -57,6 +57,19 @@ enum ApplicationSaveState {
   DECLARATION
 }
 
+enum VerificationDocumentType {
+  PAY_STUB
+  TAX_RETURN
+  EMPLOYMENT_LETTER
+  CREDIT_REPORT
+  BACKGROUND_CHECK
+  LANDLORD_REFERENCE
+  BANK_STATEMENT
+  GUARANTOR_INCOME
+  GUARANTOR_EMPLOYMENT
+  REFEREE_CONFIRMATION
+}
+
 model application {
   id             String                 @id @default(cuid())
   // Array of completed states
@@ -123,6 +136,14 @@ model application {
 
   applicationInviteId String?             @unique
   applicationInvites  applicationInvites? @relation(fields: [applicationInviteId], references: [id])
+
+  // Verification-specific fields
+  employmentVerificationStatus YesNo?
+  incomeVerificationStatus     YesNo?
+  creditCheckStatus            YesNo?
+  landlordVerificationStatus   YesNo?
+  guarantorVerificationStatus  YesNo?
+  refereeVerificationStatus    YesNo?
 }
 
 model applicantPersonalDetails {
@@ -261,6 +282,8 @@ model document {
 
   userId String?
   user   users?  @relation(fields: [userId], references: [id])
+
+  verificationType VerificationDocumentType?
 }
 
 // Define the EmploymentInformation model
@@ -317,7 +340,7 @@ model applicationInvites {
   userInvited        users?      @relation(fields: [userInvitedId], references: [id])
   userInvitedId      String?
   enquires           Log?        @relation(fields: [enquiryId], references: [id])
-  enquiryId       String?
+  enquiryId          String?
 
   application application?
 }

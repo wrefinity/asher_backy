@@ -213,6 +213,8 @@ class ApplicantControls {
                     return res.status(400).json({ error: error.details[0].message });
                 }
                 const invitation = yield applicantService_1.default.getInvitedById(value.applicationInvitedId);
+                if (!invitation)
+                    return res.status(400).json({ error: "Invalid application invitation" });
                 if (invitation.response === client_1.InvitedResponse.DECLINED || invitation.response === client_1.InvitedResponse.APPLY) {
                     return res.status(400).json({ error: " you are yet to provide feeback as either to reconsider or apply else the invite status is declined" });
                 }
@@ -516,7 +518,7 @@ class ApplicantControls {
                     }),
                     applicantService_1.default.getInvite({
                         userInvitedId,
-                        response: [client_1.InvitedResponse.ACCEPTED, client_1.InvitedResponse.RESCHEDULED] // FIXED HERE
+                        response: [client_1.InvitedResponse.ACCEPTED, client_1.InvitedResponse.RESCHEDULED, client_1.InvitedResponse.RE_INVITED, client_1.InvitedResponse.RESCHEDULED_ACCEPTED] // FIXED HERE
                     }),
                     applicantService_1.default.getInvite({
                         userInvitedId,

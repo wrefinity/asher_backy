@@ -183,15 +183,19 @@ class ApplicantService {
       },
     });
 
-    if (app) {
-      this.updateInvites(applicationInviteId, { response: InvitedResponse.APPLICATION_STARTED })
-      // check if propertyId have been applied before by the user 
+    if (app && data.applicationInviteId) {
+      // Only update invites if applicationInviteId exists
+      await this.updateInvites(data.applicationInviteId, {
+        response: InvitedResponse.APPLICATION_STARTED
+      });
+
       const logcreated = await LogsServices.checkPropertyLogs(
         userId,
         LogType.APPLICATION,
         propertiesId,
-        app?.id
-      )
+        app.id
+      );
+
       if (!logcreated) {
         await LogsServices.createLog({
           propertyId: propertiesId,
@@ -199,8 +203,8 @@ class ApplicantService {
           events: "Application in progress",
           createdById: userId,
           type: LogType.APPLICATION,
-          applicationId: app?.id
-        })
+          applicationId: app.id
+        });
       }
     }
     return app;

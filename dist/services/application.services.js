@@ -146,10 +146,15 @@ class ApplicationInvitesService {
             return yield __1.prismaClient.applicationInvites.findMany({
                 where: {
                     responseStepsCompleted: { hasEvery: completedStatuses },
+                    // response: { in: completedStatuses },
+                    // response: InvitedResponse.APPLY,
                     isDeleted: false,
                     properties: {
                         landlordId
-                    }
+                    },
+                    // application: {
+                    //     isNot: null,
+                    // }
                 },
                 include: {
                     properties: true,
@@ -168,7 +173,6 @@ class ApplicationInvitesService {
             });
         });
     }
-    // web user dashboard
     getDashboardData(userId) {
         return __awaiter(this, void 0, void 0, function* () {
             const [recentInvites, recentFeedback, recentSavedProperties, scheduledInvite, activeApplications, completedApplications] = yield Promise.all([

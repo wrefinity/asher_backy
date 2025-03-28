@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { Prisma, logTypeStatus, InvitedResponse, ApplicationStatus, LogType } from "@prisma/client";
+import { Prisma, logTypeStatus, InvitedResponse, ApplicationStatus, ApplicationSaveState, LogType } from "@prisma/client";
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 import logsServices from "./logs.services";
 
@@ -93,7 +93,7 @@ class ApplicationInvitesService {
         });
     }
     async updateInvite(id: string, data: Partial<ApplicationInvite>, enquiryId: string = null) {
-  
+
         if (data.response === InvitedResponse.APPLY || data.response === InvitedResponse.RE_INVITED && enquiryId) {
             // use the eqnuiry id to update the enquiry status
             await logsServices.updateLog(enquiryId, { type: LogType.ENQUIRED, status: logTypeStatus.RE_INVITED });
@@ -141,10 +141,15 @@ class ApplicationInvitesService {
         return await prismaClient.applicationInvites.findMany({
             where: {
                 responseStepsCompleted: { hasEvery: completedStatuses },
+                // response: { in: completedStatuses },
+                // response: InvitedResponse.APPLY,
                 isDeleted: false,
                 properties: {
                     landlordId
-                }
+                },
+                // application: {
+                //     isNot: null,
+                // }
             },
             include: {
                 properties: true,
@@ -163,7 +168,6 @@ class ApplicationInvitesService {
         });
     }
 
-    // web user dashboard
     async getDashboardData(userId: String) {
         const [recentInvites, recentFeedback, recentSavedProperties, scheduledInvite, activeApplications, completedApplications] = await Promise.all([
             prismaClient.applicationInvites.findMany({

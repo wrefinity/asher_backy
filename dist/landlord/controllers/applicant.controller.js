@@ -48,20 +48,15 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // get  applications base on the three most
+        // essentially step during invites stage 
         this.getApplicationsWithInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const landlordId = req.user.landlords.id;
                 const completedStatuses = [
                     client_1.InvitedResponse.PENDING,
-                    client_1.InvitedResponse.ACCEPTED,
-                    client_1.InvitedResponse.SCHEDULED,
                     client_1.InvitedResponse.FEEDBACK,
                     client_1.InvitedResponse.APPLY,
-                    // InvitedResponse.REJECTED,
-                    // InvitedResponse.APPLICATION_NOT_STARTED,
-                    // InvitedResponse.APPLICATION_STARTED,
-                    // InvitedResponse.VISITED,
-                    // InvitedResponse.NOT_VISITED,
                 ];
                 const application = yield application_services_1.default.getInvitesWithStatus(landlordId, completedStatuses);
                 return res.status(200).json({ application });
@@ -70,6 +65,27 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        // getApplicationsWithInvites = async (req: CustomRequest, res: Response) => {
+        //     try {
+        //         const landlordId = req.user.landlords.id;
+        //         const completedStatuses = [
+        //             InvitedResponse.PENDING,
+        //             InvitedResponse.ACCEPTED,
+        //             InvitedResponse.SCHEDULED,
+        //             InvitedResponse.FEEDBACK,
+        //             InvitedResponse.APPLY,
+        //             // InvitedResponse.REJECTED,
+        //             // InvitedResponse.APPLICATION_NOT_STARTED,
+        //             // InvitedResponse.APPLICATION_STARTED,
+        //             // InvitedResponse.VISITED,
+        //             // InvitedResponse.NOT_VISITED,
+        //         ];
+        //         const application = await ApplicationInvitesService.getInvitesWithStatus(landlordId, completedStatuses);
+        //         return res.status(200).json({ application });
+        //     } catch (error) {
+        //         errorService.handleError(error, res)
+        //     }
+        // }
         this.getApplicationsPending = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             try {
@@ -222,7 +238,7 @@ class ApplicationControls {
                 const invite = yield application_services_1.default.getInviteWithoutStatus(invitedByLandordId, [
                     client_1.InvitedResponse.APPLY,
                     client_1.InvitedResponse.FEEDBACK,
-                    client_1.InvitedResponse.SCHEDULED,
+                    // InvitedResponse.SCHEDULED,
                     client_1.InvitedResponse.APPLICATION_STARTED,
                     client_1.InvitedResponse.APPLICATION_NOT_STARTED
                 ]);
