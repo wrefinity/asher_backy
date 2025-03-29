@@ -151,7 +151,7 @@ class ApplicationControls {
         }
     }
 
-    
+
     createInvite = async (req: CustomRequest, res: Response) => {
 
         try {
@@ -246,12 +246,31 @@ class ApplicationControls {
                 return res.status(400).json({ error: error.details[0].message });
             }
 
-         
-
-            // Check current invite status
-            if (invite.response === InvitedResponse.DECLINED || invite.response === InvitedResponse.REJECTED) {
-                return res.status(400).json({ error: "invite is already declined or rejected" });
+            if (value.response === InvitedResponse.APPLY) {
+                // Check if states has PENDING, SCHEDULED, and FEEDBACK steps are completed
+                const requiredSteps: InvitedResponse[] = [InvitedResponse.FEEDBACK, InvitedResponse.SCHEDULED, InvitedResponse.PENDING];
+                // Verify that all required steps are included in responseStepsCompleted
+                const hasAllRequiredSteps = requiredSteps.every(step =>
+                    invite.responseStepsCompleted?.includes(step)
+                );
+                if (!hasAllRequiredSteps) {
+                    return res.status(400).json({
+                        error: "Application requires completion of SCHEDULING, FEEDBACK, and PENDING steps before prompting the user to apply"
+                    });
+                }
             }
+
+            // Check response steps history
+            const hasForbiddenHistory = invite.responseStepsCompleted?.some(step =>
+                ([InvitedResponse.DECLINED, InvitedResponse.REJECTED] as InvitedResponse[]).includes(step)
+            );
+
+            if (hasForbiddenHistory) {
+                return res.status(400).json({
+                    error: "This invitation is declined or rejected"
+                });
+            }
+
 
             // Handle enquiry validation if present
             if (value.enquiryId) {
@@ -275,7 +294,7 @@ class ApplicationControls {
                 return res.status(400).json({ error: "Reschedule date is required" });
             }
 
-            const {enquiryId, ...updateDate} = value
+            const { enquiryId, ...updateDate } = value
 
             // Update invite with validated data
             const updatedInvite = await ApplicationInvitesService.updateInvite(id, updateDate, enquiryId);

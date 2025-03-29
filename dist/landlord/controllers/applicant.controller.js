@@ -251,6 +251,7 @@ class ApplicationControls {
             }
         });
         this.updateInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const { id } = req.params;
                 const invite = yield application_services_1.default.getInviteById(id);
@@ -262,9 +263,23 @@ class ApplicationControls {
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                // Check current invite status
-                if (invite.response === client_1.InvitedResponse.DECLINED || invite.response === client_1.InvitedResponse.REJECTED) {
-                    return res.status(400).json({ error: "invite is already declined or rejected" });
+                if (value.response === client_1.InvitedResponse.APPLY) {
+                    // Check if states has PENDING, SCHEDULED, and FEEDBACK steps are completed
+                    const requiredSteps = [client_1.InvitedResponse.FEEDBACK, client_1.InvitedResponse.SCHEDULED, client_1.InvitedResponse.PENDING];
+                    // Verify that all required steps are included in responseStepsCompleted
+                    const hasAllRequiredSteps = requiredSteps.every(step => { var _a; return (_a = invite.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.includes(step); });
+                    if (!hasAllRequiredSteps) {
+                        return res.status(400).json({
+                            error: "Application requires completion of SCHEDULING, FEEDBACK, and PENDING steps before prompting the user to apply"
+                        });
+                    }
+                }
+                // Check response steps history
+                const hasForbiddenHistory = (_a = invite.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.some(step => [client_1.InvitedResponse.DECLINED, client_1.InvitedResponse.REJECTED].includes(step));
+                if (hasForbiddenHistory) {
+                    return res.status(400).json({
+                        error: "This invitation is declined or rejected"
+                    });
                 }
                 // Handle enquiry validation if present
                 if (value.enquiryId) {
