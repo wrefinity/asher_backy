@@ -201,6 +201,7 @@ class ApplicantControls {
         // done
         // creating an application 
         this.createOrUpdateApplicantBioData = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const userId = String(req.user.id);
                 const propertiesId = req.params.propertiesId;
@@ -212,11 +213,24 @@ class ApplicantControls {
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                const invitation = yield applicantService_1.default.getInvitedById(value.applicationInvitedId);
+                const invitation = yield applicantService_1.default.getInvitedById(value.applicationInviteId);
                 if (!invitation)
                     return res.status(400).json({ error: "Invalid application invitation" });
-                if (invitation.response === client_1.InvitedResponse.DECLINED || invitation.response === client_1.InvitedResponse.APPLY) {
-                    return res.status(400).json({ error: " you are yet to provide feeback as either to reconsider or apply else the invite status is declined" });
+                // Check response steps history
+                const hasForbiddenHistory = (_a = invitation.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.some(step => [client_1.InvitedResponse.DECLINED, client_1.InvitedResponse.REJECTED].includes(step));
+                if (hasForbiddenHistory) {
+                    return res.status(400).json({
+                        error: "This invitation is declined or rejected"
+                    });
+                }
+                // Check if APPLY, FEEDBACK, and PENDING steps are completed
+                const requiredSteps = [client_1.InvitedResponse.APPLY, client_1.InvitedResponse.FEEDBACK, client_1.InvitedResponse.PENDING];
+                // Verify that all required steps are included in responseStepsCompleted
+                const hasAllRequiredSteps = requiredSteps.every(step => { var _a; return (_a = invitation.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.includes(step); });
+                if (!hasAllRequiredSteps) {
+                    return res.status(400).json({
+                        error: "Application requires completion of APPLY, FEEDBACK, and PENDING steps"
+                    });
                 }
                 const application = yield applicantService_1.default.createApplication(Object.assign(Object.assign({}, value), { userId }), propertiesId, userId);
                 return res.status(201).json({ application });

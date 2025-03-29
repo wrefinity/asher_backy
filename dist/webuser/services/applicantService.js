@@ -488,6 +488,9 @@ class ApplicantService {
             return yield user_services_1.default.createUser(Object.assign(Object.assign({}, tenantData), { role: client_1.userRoles.TENANT }));
         });
         this.getInvitedById = (id) => __awaiter(this, void 0, void 0, function* () {
+            if (!id) {
+                throw new Error("Invalid application invite ID");
+            }
             return yield __1.prismaClient.applicationInvites.findUnique({
                 where: { id },
                 include: {
@@ -548,6 +551,7 @@ class ApplicantService {
                             },
                         },
                     },
+                    application: true
                 },
             });
         });

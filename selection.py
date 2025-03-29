@@ -1,64 +1,115 @@
-def kuskals(edges, num_vertices):
-    # sort the edges
-    sorted_edges = sorted(edges, key=lambda x: x[2])
-    # create a disjoint set
-    parent = {}
-    rank = {}
-    def initialize_uf(vertices):
-        for i in vertices:
-            parent[i] = i
-            rank[i] = 0
-    def find(x):
-        if parent[x] != x:
-            parent[x] = find(parent[x])
-        return parent[x]
-    
-    def union(x, y):
-        x_root = find(x)
-        y_root = find(y)
-        if x_root == y_root:
-            return False
-        if rank[x_root] < rank[y_root]:
-            parent[x_root] = y_root
-        else:
-            parent[y_root] = x_root
-            if rank[x_root] == rank[y_root]:
-                rank[x_root] += 1
-        return True
-    
-    
-    vertices = set()
-    for x, y, _ in sorted_edges:
-        vertices.add(x)
-        vertices.add(y)
-    initialize_uf(vertices)
-    mst = []
-    total_weight = 0
-    edges_added = 0
-    for edge in sorted_edges:
-        x, y, weight = edge
-        if find(x) != find(y):
-            mst.append((x, y, weight))
-            total_weight += weight
-            union(x, y)
-            edges_added += 1
-        if edges_added == num_vertices - 1:
-            break
-    return mst, total_weight
-            
-edges = [ 
-    ('A', 'B', 1),
-    ('B', 'C', 2),
-    ('C', 'D', 3),
-    ('D', 'A', 4),
-    ('A', 'C', 5),  
-    ('B', 'D', 6)
-]
+from collections import deque
 
-num_vertices = 4
-mst, total_weight = kuskals(edges, num_vertices)
-print(mst)
-print(total_weight)
+def bfs(graph, start_node):
+    visited = set()
+    queue = deque([start_node])
+
+    while queue:
+        node = queue.popleft()
+        if node not in visited:
+            print(node, end=" ")
+            visited.add(node)
+
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    queue.append(neighbor)
+
+graph = {
+    "A": ["B", "C"],
+    "B": ["A", "D", "E"],
+    "C": ["A", "F", "G"],
+    "D": ["B"],
+    "E": ["B", "H"],
+    "F": ["C"],
+    "G": ["C"],
+    "H": ["E"]
+}
+
+
+print("BFS TRAVERSAL")
+bfs(graph, "A")
+
+print("==================== \n", end=" ")
+
+
+def dfs(graph, node, visited=set()):
+
+    if node not in visited:
+        print(node, end=" ")
+        visited.add(node)
+
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                dfs(graph, neighbor, visited)
+
+    
+
+print("DFS TRAVERSAL")
+dfs(graph, "A")
+print("====================", end=" ")
+
+
+# def kuskals(edges, num_vertices):
+#     # sort the edges
+#     sorted_edges = sorted(edges, key=lambda x: x[2])
+#     # create a disjoint set
+#     parent = {}
+#     rank = {}
+#     def initialize_uf(vertices):
+#         for i in vertices:
+#             parent[i] = i
+#             rank[i] = 0
+#     def find(x):
+#         if parent[x] != x:
+#             parent[x] = find(parent[x])
+#         return parent[x]
+    
+#     def union(x, y):
+#         x_root = find(x)
+#         y_root = find(y)
+#         if x_root == y_root:
+#             return False
+#         if rank[x_root] < rank[y_root]:
+#             parent[x_root] = y_root
+#         else:
+#             parent[y_root] = x_root
+#             if rank[x_root] == rank[y_root]:
+#                 rank[x_root] += 1
+#         return True
+    
+    
+#     vertices = set()
+#     for x, y, _ in sorted_edges:
+#         vertices.add(x)
+#         vertices.add(y)
+#     initialize_uf(vertices)
+#     mst = []
+#     total_weight = 0
+#     edges_added = 0
+#     for edge in sorted_edges:
+#         x, y, weight = edge
+#         if find(x) != find(y):
+#             mst.append((x, y, weight))
+#             total_weight += weight
+#             union(x, y)
+#             edges_added += 1
+#         if edges_added == num_vertices - 1:
+#             break
+#     return mst, total_weight
+            
+# edges = [ 
+#     ('A', 'B', 1),
+#     ('B', 'C', 2),
+#     ('C', 'D', 3),
+#     ('D', 'A', 4),
+#     ('A', 'C', 5),  
+#     ('B', 'D', 6)
+# ]
+
+# num_vertices = 4
+# mst, total_weight = kuskals(edges, num_vertices)
+# print(mst)
+# print(total_weight)
 
 
 
@@ -111,17 +162,17 @@ print(total_weight)
 
 
 
-def cut_rod(prices, n):
-    if n == 0:
-        return 0  # Base case: no revenue for length 0
-    max_revenue = float('-inf')
-    for i in range(1, n + 1):
-        max_revenue = max(max_revenue, prices[i - 1] + cut_rod(prices, n - i))
-    return max_revenue
+# def cut_rod(prices, n):
+#     if n == 0:
+#         return 0  # Base case: no revenue for length 0
+#     max_revenue = float('-inf')
+#     for i in range(1, n + 1):
+#         max_revenue = max(max_revenue, prices[i - 1] + cut_rod(prices, n - i))
+#     return max_revenue
 
-prices = [1, 5, 8, 9, 10, 17, 17, 20, 24, 30]  # 1-based index adjusted
-print(cut_rod(prices, 4))  
-Output: 10 (2 + 2)
+# prices = [1, 5, 8, 9, 10, 17, 17, 20, 24, 30]  # 1-based index adjusted
+# print(cut_rod(prices, 4))  
+# Output: 10 (2 + 2)
 
 
 

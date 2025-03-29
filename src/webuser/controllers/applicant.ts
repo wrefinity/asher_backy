@@ -243,12 +243,32 @@ class ApplicantControls {
       const invitation = await ApplicantService.getInvitedById(value.applicationInviteId);
       if (!invitation) return res.status(400).json({ error: "Invalid application invitation" });
 
-      if (invitation.response === InvitedResponse.DECLINED || invitation.response === InvitedResponse.APPLY) {
-        return res.status(400).json({ error: " you are yet to provide feeback as either to reconsider or apply else the invite status is declined" });
+      // Check response steps history
+      const hasForbiddenHistory = invitation.responseStepsCompleted?.some(step =>
+        ([InvitedResponse.DECLINED, InvitedResponse.REJECTED] as InvitedResponse[]).includes(step)
+      );
+
+      if (hasForbiddenHistory) {
+        return res.status(400).json({
+          error: "This invitation is declined or rejected"
+        });
+      }
+
+      // Check if APPLY, FEEDBACK, and PENDING steps are completed
+      const requiredSteps: InvitedResponse[] = [InvitedResponse.APPLY, InvitedResponse.FEEDBACK, InvitedResponse.PENDING];
+
+      // Verify that all required steps are included in responseStepsCompleted
+      const hasAllRequiredSteps = requiredSteps.every(step =>
+        invitation.responseStepsCompleted?.includes(step)
+      );
+
+      if (!hasAllRequiredSteps) {
+        return res.status(400).json({
+          error: "Application requires completion of APPLY, FEEDBACK, and PENDING steps"
+        });
       }
 
       const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
-
 
       return res.status(201).json({ application });
     } catch (error: unknown) {
