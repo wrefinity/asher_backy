@@ -1,0 +1,177 @@
+enum ReferenceStatus {
+    PENDING
+    COMPLETED
+    DRAFT
+    SUBMITTED
+    APPROVED
+    REJECTED
+}
+
+// Enums
+enum EmploymentType {
+  EMPLOYED
+  SELF_EMPLOYED
+  FREELANCE
+  DIRECTOR
+  SOLE_PROPRIETOR
+}
+
+model ExternalLandlord {
+  id            String                  @id @default(cuid())
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  // Landlord Information
+  name          String
+  contactNumber String
+  emailAddress  String
+
+  //            Relationship
+  referenceForm LandlordReferenceForm?
+
+}
+model LandlordReferenceForm {
+  id                        String                   @id @default(cuid())
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+
+  // Form metadata
+  status                    ReferenceStatus          @default(PENDING)
+
+  //                        Relationships
+  TenancyReferenceHistoryId String                   @unique
+  tenancyReferenceHistory   TenancyReferenceHistory @relation(fields: [TenancyReferenceHistoryId], references: [id])
+
+  externalLandlordId        String                   @unique
+  externalLandlord          ExternalLandlord        @relation(fields: [externalLandlordId], references: [id])
+
+  conductId                 String                   @unique
+  conduct                   TenantConduct           @relation(fields: [conductId], references: [id])
+
+  // Additional Comments
+  additionalComments        String?                  @db.Text
+
+  // Signature Information
+  signerName                String?
+  signature                 String?
+  signedDate                DateTime                 @default(now())
+
+  // One-to-one relationship with application
+  applicationId             String                   @unique
+  application               application             @relation(fields: [applicationId], references: [id])
+}
+
+model TenancyReferenceHistory {
+  id               String                  @id @default(cuid())
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  // Tenant Information
+  fullName         String
+  propertyAddress  String
+  rentAmount       String
+  tenancyStartDate DateTime?
+  tenancyEndDate   DateTime?
+  reasonForLeaving String?
+
+  //               Relationship
+  referenceForm    LandlordReferenceForm?
+}
+
+model TenantConduct {
+  id                       String                  @id @default(cuid())
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  // Tenant Conduct & Payment History
+  rentOnTime               Boolean?
+  rentOnTimeDetails        String?                 @db.Text
+
+  rentArrears              Boolean?
+  rentArrearsDetails       String?                 @db.Text
+
+  propertyCondition        Boolean?
+  propertyConditionDetails String?                 @db.Text
+
+  complaints               Boolean?
+  complaintsDetails        String?                 @db.Text
+
+  endCondition             Boolean?
+  endConditionDetails      String?                 @db.Text
+
+  rentAgain                Boolean?
+  rentAgainDetails         String?                 @db.Text
+
+  //                       Relationship
+  referenceForm            LandlordReferenceForm?
+}
+
+//  guarantor agreement model
+model GuarantorAgreement {
+  id                    String                    @id @default(cuid())
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  status                String                    @default("DRAFT")
+  submittedAt           DateTime?
+
+  //                    relationships
+  guarantor             guarantorInformation     @relation(fields: [guarantorId], references: [id])
+  guarantorId           String                    @unique
+  guarantorEmployment   GuarantorEmploymentInfo? @relation(fields: [guarantorEmploymentId], references: [id])
+  guarantorEmploymentId String?                   @unique
+  documents             document[]
+
+  // Agreement details
+  agreementText         String                    @db.Text
+  signedByGuarantor     Boolean                   @default(false)
+  guarantorSignature    String?
+  guarantorSignedAt     DateTime?
+  // One-to-one relationship with application
+  applicationId         String                    @unique
+  application           application              @relation(fields: [applicationId], references: [id])
+}
+
+model GuarantorEmploymentInfo {
+  id                         String               @id @default(cuid())
+  employmentType             EmploymentType
+
+  // Common fields across employment types
+  annualIncome               Decimal?             @db.Decimal(10, 2)
+
+  // Employed specific fields
+  employerName               String?
+  jobTitle                   String?
+  employmentStartDate        DateTime?
+  employerAddress            String?
+  employerPhone              String?
+  employerEmail              String?
+
+  // Self-employed specific fields
+  businessName               String?
+  businessNature             String?
+  yearsInBusiness            Int?
+  businessAddress            String?
+  accountantName             String?
+  accountantContact          String?
+  utrNumber                  String?
+
+  // Freelance specific fields
+  freelanceType              String?
+  yearsFreelancing           Int?
+  monthlyIncome              Decimal?             @db.Decimal(10, 2)
+  portfolioWebsite           String?
+  majorClients               String?
+
+  // Director specific fields
+  companyName                String?
+  companyNumber              String?
+  position                   String?
+  ownershipPercentage        Int?
+  companyFounded             Int?
+  companyAddress             String?
+
+  // Sole proprietor specific fields
+  businessRegistrationNumber String?
+
+  //                         Relationship
+  guarantorAgreement         GuarantorAgreement?
+}

@@ -1,0 +1,44 @@
+enum VerificationDocumentType {
+  PAY_STUB
+  TAX_RETURN
+  EMPLOYMENT_LETTER
+  CREDIT_REPORT
+  BACKGROUND_CHECK
+  LANDLORD_REFERENCE
+  BANK_STATEMENT
+  GUARANTOR_INCOME
+  GUARANTOR_EMPLOYMENT
+  REFEREE_CONFIRMATION
+  ID
+  ADDRESS_PROOF
+  INCOME_PROOF
+  ADDITIONAL
+}
+enum IdType {
+  PASSPORT
+  DRIVING_LICENSE
+}
+
+model document {
+  id               String                     @id @default(cuid())
+  documentName     String
+  documentUrl      String
+  type             String?
+  size             String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  applicantId      String
+  application      application               @relation(fields: [applicantId], references: [id])
+
+  userId           String?
+  user             users?                    @relation(fields: [userId], references: [id])
+
+  // For ID documents
+  idType            IdType?
+  verificationType VerificationDocumentType?
+  
+  // Relationship
+  agreement         GuarantorAgreement? @relation(fields: [agreementId], references: [id])
+  agreementId       String?
+}

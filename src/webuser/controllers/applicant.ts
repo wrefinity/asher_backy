@@ -240,6 +240,10 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
 
+      if (!value.applicationInviteId == null){
+        return res.status(400).json({ error: "cannot pass null application invite id" }); 
+      }
+
       const invitation = await ApplicantService.getInvitedById(value.applicationInviteId);
       if (!invitation) return res.status(400).json({ error: "Invalid application invitation" });
 

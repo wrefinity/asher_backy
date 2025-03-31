@@ -278,7 +278,7 @@ class ApplicationControls {
                 const hasForbiddenHistory = (_a = invite.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.some(step => [client_1.InvitedResponse.DECLINED, client_1.InvitedResponse.REJECTED].includes(step));
                 if (hasForbiddenHistory) {
                     return res.status(400).json({
-                        error: "This invitation is declined or rejected"
+                        error: "This invitation was declined or rejected"
                     });
                 }
                 // Handle enquiry validation if present

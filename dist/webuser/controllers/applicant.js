@@ -213,6 +213,9 @@ class ApplicantControls {
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
+                if (!value.applicationInviteId == null) {
+                    return res.status(400).json({ error: "cannot pass null application invite id" });
+                }
                 const invitation = yield applicantService_1.default.getInvitedById(value.applicationInviteId);
                 if (!invitation)
                     return res.status(400).json({ error: "Invalid application invitation" });

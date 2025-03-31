@@ -31,6 +31,21 @@ class ApplicationInvitesService {
                 include: { user: { select: this.userInclusion } },
             },
             enquires: true,
+            application: {
+                include: {
+                    employmentInfo: true,
+                    personalDetails: true,
+                    emergencyInfo: true,
+                    guarantorInformation: true,
+                    residentialInfo: true,
+                    createdBy: {
+                        select: {
+                            email: true,
+                            profile: true
+                        }
+                    }
+                }
+            }
         };
     }
     createInvite(data) {

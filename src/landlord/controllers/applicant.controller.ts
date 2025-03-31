@@ -267,7 +267,7 @@ class ApplicationControls {
 
             if (hasForbiddenHistory) {
                 return res.status(400).json({
-                    error: "This invitation is declined or rejected"
+                    error: "This invitation was declined or rejected"
                 });
             }
 
