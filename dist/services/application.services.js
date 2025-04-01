@@ -47,6 +47,40 @@ class ApplicationInvitesService {
                 }
             }
         };
+        this.getPreviousLandlordInfo = (applicationId) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                // Get residential information with previous addresses
+                const residentialInfo = yield __1.prismaClient.residentialInformation.findFirst({
+                    where: {
+                        application: {
+                            some: { id: applicationId }
+                        }
+                    },
+                    include: {
+                        prevAddresses: {
+                            take: 1 // Get only the most recent previous address
+                        }
+                    }
+                });
+                if (!((_a = residentialInfo === null || residentialInfo === void 0 ? void 0 : residentialInfo.prevAddresses) === null || _a === void 0 ? void 0 : _a.length)) {
+                    return null;
+                }
+                // Extract most recent previous address with landlord info
+                const mostRecentAddress = residentialInfo.prevAddresses[0];
+                return {
+                    name: residentialInfo.landlordOrAgencyName,
+                    email: residentialInfo.landlordOrAgencyEmail,
+                    phone: residentialInfo.landlordOrAgencyPhoneNumber,
+                    address: mostRecentAddress.address,
+                    duration: mostRecentAddress.lengthOfResidence,
+                    reasonForLeaving: residentialInfo.reasonForLeaving
+                };
+            }
+            catch (error) {
+                throw new Error('Could not retrieve landlord information');
+            }
+        });
     }
     createInvite(data) {
         return __awaiter(this, void 0, void 0, function* () {

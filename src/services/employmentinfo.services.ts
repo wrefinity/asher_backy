@@ -1,7 +1,9 @@
 import { prismaClient } from "..";
 import ApplicationServices from "../webuser/services/applicantService";
 import { EmploymentInformationIF } from "../webuser/schemas/types";
-import { ApplicationSaveState } from '@prisma/client';
+import { ApplicationSaveState, ApplicationStatus } from '@prisma/client';
+import { IEmployeeReference } from '../validations/interfaces/references.interfaces';
+import applicantService from "../webuser/services/applicantService";
 
 class EmploymentService {
   // Upsert Employment Information
@@ -26,15 +28,15 @@ class EmploymentService {
       });
     } else {
       // Perform create if ID does not exist
-      const employmentInfo =  await prismaClient.employmentInformation.create({
+      const employmentInfo = await prismaClient.employmentInformation.create({
         data: {
           ...rest,
           user: userId ? { connect: { id: userId } } : undefined,
         },
       });
-      if(employmentInfo) {
-        await ApplicationServices.updateLastStepStop(applicationId, ApplicationSaveState.EMPLOYMENT )
-        await ApplicationServices.updateCompletedStep(applicationId, ApplicationSaveState.EMPLOYMENT )
+      if (employmentInfo) {
+        await ApplicationServices.updateLastStepStop(applicationId, ApplicationSaveState.EMPLOYMENT)
+        await ApplicationServices.updateCompletedStep(applicationId, ApplicationSaveState.EMPLOYMENT)
 
       }
       return employmentInfo
@@ -61,6 +63,57 @@ class EmploymentService {
       where: { id },
     });
   };
+
+  // employee reference information
+  // =====================================
+  async createEmployeeReference(data: Omit<IEmployeeReference, 'id'>, applicationId: string) {
+    try {
+      const created = await prismaClient.employeeReferenceForm.create({
+        data: {
+          ...data,
+          application: {
+            connect: { id: applicationId }
+          }
+        }
+      });
+
+      if (created){
+        await applicantService.updateApplicationStatus(applicationId, ApplicationStatus.EMPLOYEE_REFERENCE)
+      }
+      return created
+    } catch (error) {
+      throw new Error(`Error creating employee reference: ${error}`);
+    }
+  }
+
+  async updateEmployeeReference(id: string, data: Partial<IEmployeeReference>) {
+    try {
+      return await prismaClient.employeeReferenceForm.update({
+        where: { id },
+        data
+      });
+    } catch (error) {
+      throw new Error(`Error updating employee reference: ${error}`);
+    }
+  }
+
+  async getEmployeeReferenceById(id: string) {
+    try {
+      return await prismaClient.employeeReferenceForm.findUnique({
+        where: { id }
+      });
+    } catch (error) {
+      throw new Error(`Error fetching employee reference: ${error}`);
+    }
+  }
+
+  async getAllEmployeeReferences() {
+    try {
+      return await prismaClient.employeeReferenceForm.findMany();
+    } catch (error) {
+      throw new Error(`Error fetching all employee references: ${error}`);
+    }
+  }
 }
 
 export default new EmploymentService();

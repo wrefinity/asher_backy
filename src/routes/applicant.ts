@@ -1,5 +1,8 @@
 import { Router } from "express";
 import ApplicantControls from '../webuser/controllers/applicant';
+import LandlordReferenceFormControls from '../controllers/landlord.referenceform.controller';
+import GuarantorReferenceFormControls from '../controllers/guarantor.referenceform.controller';
+import EmployeeReferenceFormControls from '../controllers/employee.reference.controller';
 import { Authorize } from "../middlewares/authorize";
 import { uploadToCloudinary } from '../middlewares/multerCloudinary';
 import upload, {uploadControl} from "../configs/multer";
@@ -38,6 +41,13 @@ class ApplicantRoutes {
 
         this.router.get('/:id', this.authenticateService.authorize,  ApplicantControls.getApplication);
         this.router.delete('/:id', this.authenticateService.authorize,  ApplicantControls.deleteApplicant);
+        
+        // application reference for landlord and guarantor
+        this.router.post('/landlord-reference/:id', LandlordReferenceFormControls.createReferenceForm);
+        this.router.post('/guarantor-reference/:id', upload.array('files'), uploadToCloudinary, GuarantorReferenceFormControls.createGuarantorAgreement);
+        this.router.post('/employee-reference/:id', upload.array('files'), uploadToCloudinary, EmployeeReferenceFormControls.createEmployeeReference);
+        this.router.get('/references/:id', LandlordReferenceFormControls.getReferenceForm);
+
     }
 }
 

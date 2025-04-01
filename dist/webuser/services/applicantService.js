@@ -72,6 +72,46 @@ class ApplicantService {
             });
             console.log(`Step "${step}" added to completedSteps.`);
         });
+        this.updateApplicationStatusStep = (applicationId, status) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                // 1. Verify application exists
+                const application = yield __1.prismaClient.application.findUnique({
+                    where: { id: applicationId },
+                    select: { statuesCompleted: true }
+                });
+                if (!application) {
+                    throw new Error(`Application with ID ${applicationId} not found`);
+                }
+                // 2. Check for existing status
+                if ((_a = application.statuesCompleted) === null || _a === void 0 ? void 0 : _a.includes(status)) {
+                    console.log(`Status "${status}" already exists. Skipping update.`);
+                    return;
+                }
+                // 3. Prepare updated array
+                const updatedStatuses = [
+                    ...(application.statuesCompleted || []),
+                    status
+                ];
+                // update application
+                const applicationExist = yield __1.prismaClient.application.update({
+                    where: { id: applicationId },
+                    data: {
+                        statuesCompleted: updatedStatuses,
+                        status,
+                    }
+                });
+                console.log(`Successfully added status "${status}" to application ${applicationId}`);
+                if (!(applicationExist === null || applicationExist === void 0 ? void 0 : applicationExist.applicationInviteId)) {
+                    throw new Error('update the invites id on the application ');
+                }
+                return yield this.getInvitedById(applicationExist === null || applicationExist === void 0 ? void 0 : applicationExist.applicationInviteId);
+            }
+            catch (error) {
+                console.error(`Error updating application status: ${error.message}`);
+                throw new Error('Failed to update application status');
+            }
+        });
         this.createApplication = (data, propertiesId, userId) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             const { title, firstName, invited, middleName, lastName, dob, email, applicationInviteId, phoneNumber, maritalStatus, nextOfKin, nationality, identificationType, issuingAuthority, expiryDate, } = data;
@@ -378,7 +418,10 @@ class ApplicantService {
                     personalDetails: true,
                     guarantorInformation: true,
                     applicationQuestions: true,
-                    declaration: true
+                    declaration: true,
+                    referenceForm: true,
+                    guarantorAgreement: true,
+                    employeeRefence: true,
                 },
             });
         });
@@ -410,6 +453,9 @@ class ApplicantService {
                     referee: true,
                     Log: true,
                     declaration: true,
+                    referenceForm: true,
+                    employeeRefence: true,
+                    guarantorAgreement: true,
                     applicationQuestions: true,
                     personalDetails: {
                         include: {
@@ -551,7 +597,31 @@ class ApplicantService {
                             },
                         },
                     },
-                    application: true
+                    application: {
+                        include: {
+                            user: true,
+                            residentialInfo: {
+                                include: {
+                                    prevAddresses: true,
+                                    user: true,
+                                },
+                            },
+                            guarantorInformation: true,
+                            emergencyInfo: true,
+                            documents: true,
+                            employmentInfo: true,
+                            properties: true,
+                            referee: true,
+                            Log: true,
+                            declaration: true,
+                            applicationQuestions: true,
+                            personalDetails: {
+                                include: {
+                                    nextOfKin: true,
+                                },
+                            },
+                        }
+                    }
                 },
             });
         });

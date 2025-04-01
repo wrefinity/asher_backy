@@ -19,7 +19,7 @@ import ErrorService from "../../services/error.service";
 import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
 import { updateApplicationInviteSchema } from '../../landlord/validations/schema/applicationInvitesSchema';
-
+import { sendApplicationCompletionEmails } from "../../utils/emailer"
 
 class ApplicantControls {
 
@@ -218,7 +218,10 @@ class ApplicantControls {
       if (!application) {
         return res.status(400).json({ error: 'Application not updated' });
       }
+
       await ApplicantService.updateInvites(application.applicationInviteId, { response: InvitedResponse.SUBMITTED });
+      // Send notifications (fire and forget)
+      sendApplicationCompletionEmails(applicationExist);
       return res.status(200).json(application);
 
     } catch (error) {
@@ -240,8 +243,8 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      if (!value.applicationInviteId == null){
-        return res.status(400).json({ error: "cannot pass null application invite id" }); 
+      if (!value.applicationInviteId == null) {
+        return res.status(400).json({ error: "cannot pass null application invite id" });
       }
 
       const invitation = await ApplicantService.getInvitedById(value.applicationInviteId);
@@ -377,8 +380,6 @@ class ApplicantControls {
     try {
       const applicationId = req.params.applicationId;
       const userId = req.user.id;
-
-      console.log("Received files:", req.files);
 
       // Ensure `req.files` exists and is not empty
       if (!req.files || Object.keys(req.files).length === 0) {

@@ -24,8 +24,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
+const client_1 = require("@prisma/client");
 const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
-const client_1 = require(".prisma/client");
+const client_2 = require(".prisma/client");
 class GuarantorService {
     constructor() {
         // Upsert Guarantor Information
@@ -53,8 +54,8 @@ class GuarantorService {
                         } }),
                 });
                 if (guarantorInfo) {
-                    yield applicantService_1.default.updateLastStepStop(applicationId, client_1.ApplicationSaveState.GUARANTOR_INFO);
-                    yield applicantService_1.default.updateCompletedStep(applicationId, client_1.ApplicationSaveState.GUARANTOR_INFO);
+                    yield applicantService_1.default.updateLastStepStop(applicationId, client_2.ApplicationSaveState.GUARANTOR_INFO);
+                    yield applicantService_1.default.updateCompletedStep(applicationId, client_2.ApplicationSaveState.GUARANTOR_INFO);
                 }
                 return guarantorInfo;
             }
@@ -77,6 +78,66 @@ class GuarantorService {
                 where: { id },
             });
         });
+    }
+    // guarantor reference services
+    createGuarantorAgreement(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.$transaction((prisma) => __awaiter(this, void 0, void 0, function* () {
+                // Validate and create employment info if provided
+                let employmentInfo = yield prisma.guarantorEmploymentInfo.create({
+                    data: this.mapEmploymentData(data.guarantorEmployment)
+                });
+                // Validate guarantor exists
+                const guarantor = yield prisma.application.findFirst({
+                    where: { id: data.applicationId }, include: { guarantorInformation: true }
+                });
+                if (!guarantor) {
+                    throw new Error(`Guarantor not found`);
+                }
+                // Create main agreement
+                const created = yield prisma.guarantorAgreement.create({
+                    data: {
+                        status: data.status,
+                        agreementText: data.agreementText,
+                        signedByGuarantor: data.signedByGuarantor || false,
+                        guarantorSignature: data.guarantorSignature,
+                        guarantorSignedAt: data.guarantorSignedAt,
+                        applicationId: data.applicationId,
+                        guarantorId: guarantor.id,
+                        guarantorEmploymentId: employmentInfo === null || employmentInfo === void 0 ? void 0 : employmentInfo.id
+                    },
+                    include: {
+                        guarantor: true,
+                        guarantorEmployment: true,
+                        application: true
+                    }
+                });
+                if (created) {
+                    yield applicantService_1.default.updateApplicationStatus(data.applicationId, client_2.ApplicationStatus.GUARANTOR_REFERENCE);
+                }
+                return created;
+            }));
+        });
+    }
+    mapEmploymentData(data) {
+        const baseData = {
+            employmentType: data.employmentType,
+            annualIncome: data.annualIncome,
+        };
+        switch (data.employmentType) {
+            case client_1.EmploymentType.EMPLOYED:
+                return Object.assign(Object.assign({}, baseData), { employerName: data.employerName, jobTitle: data.jobTitle, employmentStartDate: data.employmentStartDate, employerAddress: data.employerAddress, employerPhone: data.employerPhone, employerEmail: data.employerEmail });
+            case client_1.EmploymentType.SELF_EMPLOYED:
+                return Object.assign(Object.assign({}, baseData), { businessName: data.businessName, businessNature: data.businessNature, yearsInBusiness: data.yearsInBusiness, businessAddress: data.businessAddress, accountantName: data.accountantName, accountantContact: data.accountantContact, utrNumber: data.utrNumber });
+            case client_1.EmploymentType.FREELANCE:
+                return Object.assign(Object.assign({}, baseData), { freelanceType: data.freelanceType, yearsFreelancing: data.yearsFreelancing, monthlyIncome: data.monthlyIncome, portfolioWebsite: data.portfolioWebsite, majorClients: data.majorClients });
+            case client_1.EmploymentType.DIRECTOR:
+                return Object.assign(Object.assign({}, baseData), { companyName: data.companyName, companyNumber: data.companyNumber, position: data.position, ownershipPercentage: data.ownershipPercentage, companyFounded: data.companyFounded, companyAddress: data.companyAddress });
+            case client_1.EmploymentType.SOLE_PROPRIETOR:
+                return Object.assign(Object.assign({}, baseData), { businessRegistrationNumber: data.businessRegistrationNumber });
+            default:
+                throw new Error(`Invalid employment type: ${data.employmentType}`);
+        }
     }
 }
 exports.default = new GuarantorService();

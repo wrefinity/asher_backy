@@ -21,6 +21,7 @@ const error_service_1 = __importDefault(require("../../services/error.service"))
 const client_1 = require("@prisma/client");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const applicationInvitesSchema_1 = require("../../landlord/validations/schema/applicationInvitesSchema");
+const emailer_1 = require("../../utils/emailer");
 class ApplicantControls {
     constructor() {
         this.getBasicStats = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -192,6 +193,8 @@ class ApplicantControls {
                     return res.status(400).json({ error: 'Application not updated' });
                 }
                 yield applicantService_1.default.updateInvites(application.applicationInviteId, { response: client_1.InvitedResponse.SUBMITTED });
+                // Send notifications (fire and forget)
+                (0, emailer_1.sendApplicationCompletionEmails)(applicationExist);
                 return res.status(200).json(application);
             }
             catch (error) {
@@ -334,7 +337,6 @@ class ApplicantControls {
             try {
                 const applicationId = req.params.applicationId;
                 const userId = req.user.id;
-                console.log("Received files:", req.files);
                 // Ensure `req.files` exists and is not empty
                 if (!req.files || Object.keys(req.files).length === 0) {
                     return res.status(400).json({ error: "No files provided" });

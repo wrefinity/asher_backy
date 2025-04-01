@@ -242,6 +242,42 @@ class ApplicationInvitesService {
         };
     }
 
+    getPreviousLandlordInfo = async (applicationId: string) => {
+        try {
+          // Get residential information with previous addresses
+          const residentialInfo = await prismaClient.residentialInformation.findFirst({
+            where: { 
+              application: {
+                some: { id: applicationId }
+              }
+            },
+            include: {
+              prevAddresses: {
+                take: 1 // Get only the most recent previous address
+              }
+            }
+          });
+      
+          if (!residentialInfo?.prevAddresses?.length) {
+            return null;
+          }
+      
+          // Extract most recent previous address with landlord info
+          const mostRecentAddress = residentialInfo.prevAddresses[0];
+          
+          return {
+            name: residentialInfo.landlordOrAgencyName,
+            email: residentialInfo.landlordOrAgencyEmail,
+            phone: residentialInfo.landlordOrAgencyPhoneNumber,
+            address: mostRecentAddress.address,
+            duration: mostRecentAddress.lengthOfResidence,
+            reasonForLeaving: residentialInfo.reasonForLeaving
+          };
+        } catch (error) {
+          throw new Error('Could not retrieve landlord information');
+        }
+      };
+
 }
 
 export default new ApplicationInvitesService();

@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
 const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
 const client_1 = require("@prisma/client");
+const applicantService_2 = __importDefault(require("../webuser/services/applicantService"));
 class EmploymentService {
     constructor() {
         // Upsert Employment Information
@@ -72,6 +73,61 @@ class EmploymentService {
             return yield __1.prismaClient.employmentInformation.delete({
                 where: { id },
             });
+        });
+    }
+    // employee reference information
+    // =====================================
+    createEmployeeReference(data, applicationId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const created = yield __1.prismaClient.employeeReferenceForm.create({
+                    data: Object.assign(Object.assign({}, data), { application: {
+                            connect: { id: applicationId }
+                        } })
+                });
+                if (created) {
+                    yield applicantService_2.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.EMPLOYEE_REFERENCE);
+                }
+                return created;
+            }
+            catch (error) {
+                throw new Error(`Error creating employee reference: ${error}`);
+            }
+        });
+    }
+    updateEmployeeReference(id, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield __1.prismaClient.employeeReferenceForm.update({
+                    where: { id },
+                    data
+                });
+            }
+            catch (error) {
+                throw new Error(`Error updating employee reference: ${error}`);
+            }
+        });
+    }
+    getEmployeeReferenceById(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield __1.prismaClient.employeeReferenceForm.findUnique({
+                    where: { id }
+                });
+            }
+            catch (error) {
+                throw new Error(`Error fetching employee reference: ${error}`);
+            }
+        });
+    }
+    getAllEmployeeReferences() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield __1.prismaClient.employeeReferenceForm.findMany();
+            }
+            catch (error) {
+                throw new Error(`Error fetching all employee references: ${error}`);
+            }
         });
     }
 }

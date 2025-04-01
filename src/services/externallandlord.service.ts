@@ -1,0 +1,106 @@
+import { ApplicationStatus, Prisma } from "@prisma/client";
+import { prismaClient } from "..";
+import {
+  LandlordReferenceFormCreateDTO,
+  TenancyReferenceHistoryCreateDTO,
+  ExternalLandlordCreateDTO,
+  TenantConductCreateDTO
+} from '../validations/interfaces/references.interfaces';
+import applicantService from "../webuser/services/applicantService";
+
+class LandlordReferenceService {
+  async createLandlordReferenceForm(
+    data: LandlordReferenceFormCreateDTO
+  ): Promise<Prisma.LandlordReferenceFormGetPayload<{
+    include: {
+      tenancyReferenceHistory: true;
+      externalLandlord: true;
+      conduct: true;
+      application: true;
+    };
+  }>> {
+    return prismaClient.$transaction(async (prisma) => {
+      // Use CreateDTO interfaces for creation
+      const tenancyHistory = await this.createTenancyHistory(prisma, data.tenancyHistory);
+      const externalLandlord = await this.createExternalLandlord(prisma, data.externalLandlord);
+      const tenantConduct = await this.createTenantConduct(prisma, data.conduct);
+
+      const created = await prisma.landlordReferenceForm.create({
+        data: {
+          status: data.status,
+          additionalComments: data.additionalComments,
+          signerName: data.signerName,
+          signature: data.signature,
+          applicationId: data.applicationId,
+          TenancyReferenceHistoryId: tenancyHistory.id,
+          externalLandlordId: externalLandlord.id,
+          conductId: tenantConduct.id
+        },
+        include: {
+          tenancyReferenceHistory: true,
+          externalLandlord: true,
+          conduct: true,
+          application: true
+        }
+      });
+
+      if (created){
+        await applicantService.updateApplicationStatus(data.applicationId, ApplicationStatus.LANDLORD_REFERENCE)
+      }
+      return created
+    });
+  }
+
+  private async createTenancyHistory(
+    prisma: Prisma.TransactionClient,
+    data: TenancyReferenceHistoryCreateDTO
+  ) {
+    return prisma.tenancyReferenceHistory.create({
+      data: {
+        fullName: data.fullName,
+        propertyAddress: data.propertyAddress,
+        rentAmount: data.rentAmount,
+        tenancyStartDate: data.tenancyStartDate,
+        tenancyEndDate: data.tenancyEndDate,
+        reasonForLeaving: data.reasonForLeaving
+      }
+    });
+  }
+
+  private async createExternalLandlord(
+    prisma: Prisma.TransactionClient,
+    data: ExternalLandlordCreateDTO
+  ) {
+    return prisma.externalLandlord.create({
+      data: {
+        name: data.name,
+        contactNumber: data.contactNumber,
+        emailAddress: data.emailAddress
+      }
+    });
+  }
+
+  private async createTenantConduct(
+    prisma: Prisma.TransactionClient,
+    data: TenantConductCreateDTO
+  ) {
+    return prisma.tenantConduct.create({
+      data: {
+        rentOnTime: data.rentOnTime,
+        rentOnTimeDetails: data.rentOnTimeDetails,
+        rentArrears: data.rentArrears,
+        rentArrearsDetails: data.rentArrearsDetails,
+        propertyCondition: data.propertyCondition,
+        propertyConditionDetails: data.propertyConditionDetails,
+        complaints: data.complaints,
+        complaintsDetails: data.complaintsDetails,
+        endCondition: data.endCondition,
+        endConditionDetails: data.endConditionDetails,
+        rentAgain: data.rentAgain,
+        rentAgainDetails: data.rentAgainDetails
+      }
+    });
+  }
+}
+
+export default new LandlordReferenceService();

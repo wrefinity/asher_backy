@@ -128,6 +128,7 @@ model GuarantorAgreement {
   // One-to-one relationship with application
   applicationId         String                    @unique
   application           application              @relation(fields: [applicationId], references: [id])
+
 }
 
 model GuarantorEmploymentInfo {
@@ -174,4 +175,36 @@ model GuarantorEmploymentInfo {
 
   //                         Relationship
   guarantorAgreement         GuarantorAgreement?
+}
+
+// Employee Information
+model EmployeeReferenceForm {
+  id                         String       @id @default(cuid())
+  employeeName               String?
+  jobTitle                   String?
+  department                 String?
+  employmentStartDate        DateTime?
+  employmentEndDate          DateTime?
+  reasonForLeaving           String?
+  companyName                String?
+  refereeName                String?
+  refereePosition            String?
+  contactNumber              String?
+  emailAddress               String?
+  employmentType             String?
+  mainResponsibilities       String?
+  workPerformance            Int?
+  punctualityAttendance      Int?
+  reliabilityProfessionalism Int?
+  teamworkInterpersonal      Int?
+  wouldReemploy              Boolean?
+  reemployDetails            String?
+  additionalComments         String?
+  declarationConfirmed       Boolean      @default(true)
+  signerName                 String?
+  signature                  String?
+  date                       DateTime?
+  // One-to-one relationship with application
+  applicationId              String       @unique
+  application                application @relation(fields: [applicationId], references: [id])
 }

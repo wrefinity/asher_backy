@@ -66,6 +66,53 @@ class ApplicantService {
 
     console.log(`Step "${step}" added to completedSteps.`);
   };
+  updateApplicationStatusStep = async (
+    applicationId: string,
+    status: ApplicationStatus
+  ) => {
+    try {
+      // 1. Verify application exists
+      const application = await prismaClient.application.findUnique({
+        where: { id: applicationId },
+        select: { statuesCompleted: true }
+      });
+
+      if (!application) {
+        throw new Error(`Application with ID ${applicationId} not found`);
+      }
+
+      // 2. Check for existing status
+      if (application.statuesCompleted?.includes(status)) {
+        console.log(`Status "${status}" already exists. Skipping update.`);
+        return;
+      }
+
+      // 3. Prepare updated array
+      const updatedStatuses = [
+        ...(application.statuesCompleted || []),
+        status
+      ];
+
+      // update application
+      const applicationExist = await prismaClient.application.update({
+        where: { id: applicationId },
+        data: {
+          statuesCompleted: updatedStatuses,
+          status,
+        }
+      });
+
+      console.log(`Successfully added status "${status}" to application ${applicationId}`);
+      if(!applicationExist?.applicationInviteId) {
+        throw new Error('update the invites id on the application ');
+      }
+      return await this.getInvitedById(applicationExist?.applicationInviteId);
+
+    } catch (error) {
+      console.error(`Error updating application status: ${error.message}`);
+      throw new Error('Failed to update application status');
+    }
+  };
 
   createApplication = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
     const {
@@ -376,7 +423,7 @@ class ApplicantService {
       await applicationServices.updateInviteResponse(application.applicationInviteId, InvitedResponse.SUBMITTED)
       return declared;
     }
-    return;
+    return 
   }
 
   createOrUpdateEmploymentInformation = async (data: EmploymentInformationIF) => {
@@ -455,7 +502,10 @@ class ApplicantService {
         personalDetails: true,
         guarantorInformation: true,
         applicationQuestions: true,
-        declaration: true
+        declaration: true,
+        referenceForm: true,
+        guarantorAgreement: true,
+        employeeRefence: true,
       },
     });
   };
@@ -496,6 +546,9 @@ class ApplicantService {
         referee: true,
         Log: true,
         declaration: true,
+        referenceForm: true,
+        employeeRefence: true,
+        guarantorAgreement: true,
         applicationQuestions: true,
         personalDetails: {
           include: {
@@ -653,7 +706,31 @@ class ApplicantService {
             },
           },
         },
-        application: true
+        application: {
+          include: {
+            user: true,
+            residentialInfo: {
+              include: {
+                prevAddresses: true,
+                user: true,
+              },
+            },
+            guarantorInformation: true,
+            emergencyInfo: true,
+            documents: true,
+            employmentInfo: true,
+            properties: true,
+            referee: true,
+            Log: true,
+            declaration: true,
+            applicationQuestions: true,
+            personalDetails: {
+              include: {
+                nextOfKin: true,
+              },
+            },
+          }
+        }
       },
     });
   }

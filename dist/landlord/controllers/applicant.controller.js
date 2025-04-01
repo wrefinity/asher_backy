@@ -35,6 +35,7 @@ const emailer_1 = __importDefault(require("../../utils/emailer"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const user_services_1 = __importDefault(require("../../services/user.services"));
+const applicantService_2 = __importDefault(require("../../webuser/services/applicantService"));
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -349,6 +350,37 @@ class ApplicationControls {
                 const landlordId = req.user.landlords.id;
                 const feedbacks = yield logs_services_1.default.getLandlordLogs(landlordId, client_2.LogType.FEEDBACK, null);
                 return res.status(200).json({ feedbacks });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.updateApplicationStatusStep = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const applicationId = req.params.id;
+                // Validate application ID
+                if (!applicationId) {
+                    return res.status(400).json({
+                        error: "Application ID is required",
+                        details: ["Missing application ID in URL parameters"]
+                    });
+                }
+                // Verify application exists
+                const application = yield applicantService_2.default.getApplicationById(applicationId);
+                if (!application) {
+                    return res.status(404).json({
+                        error: "Application not found",
+                        details: [`Application with ID ${applicationId} does not exist`]
+                    });
+                }
+                // Validate request body
+                const { error, value } = applicationInvitesSchema_1.updateApplicationStatusSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const landlordId = req.user.landlords.id;
+                const applicationInvite = yield applicantService_2.default.updateApplicationStatusStep(applicationId, value.status);
+                return res.status(200).json({ applicationInvite });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

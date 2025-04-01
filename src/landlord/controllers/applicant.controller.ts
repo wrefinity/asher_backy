@@ -7,11 +7,12 @@ import ApplicationInvitesService from '../../services/application.services';
 import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType } from "@prisma/client"
-import { createApplicationInviteSchema, updateApplicationInviteSchema } from '../validations/schema/applicationInvitesSchema';
+import { createApplicationInviteSchema, updateApplicationInviteSchema, updateApplicationStatusSchema} from '../validations/schema/applicationInvitesSchema';
 import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
+import applicantService from "../../webuser/services/applicantService"
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -349,6 +350,38 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+
+    updateApplicationStatusStep = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+
+            // Validate application ID
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+            // Verify application exists
+            const application = await applicantService.getApplicationById(applicationId);
+            if (!application) {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${applicationId} does not exist`]
+                });
+            }
+            // Validate request body
+            const { error, value } = updateApplicationStatusSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+            const landlordId = req.user.landlords.id;
+            const applicationInvite = await applicantService.updateApplicationStatusStep(applicationId, value.status);
+            return res.status(200).json({ applicationInvite });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    } 
 }
 
 

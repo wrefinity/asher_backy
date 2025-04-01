@@ -28,6 +28,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const applicant_1 = __importDefault(require("../webuser/controllers/applicant"));
+const landlord_referenceform_controller_1 = __importDefault(require("../controllers/landlord.referenceform.controller"));
+const guarantor_referenceform_controller_1 = __importDefault(require("../controllers/guarantor.referenceform.controller"));
+const employee_reference_controller_1 = __importDefault(require("../controllers/employee.reference.controller"));
 const authorize_1 = require("../middlewares/authorize");
 const multerCloudinary_1 = require("../middlewares/multerCloudinary");
 const multer_1 = __importStar(require("../configs/multer"));
@@ -60,6 +63,11 @@ class ApplicantRoutes {
         this.router.post('/declaration/:applicationId', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, applicant_1.default.createOrUpdateDeclaration);
         this.router.get('/:id', this.authenticateService.authorize, applicant_1.default.getApplication);
         this.router.delete('/:id', this.authenticateService.authorize, applicant_1.default.deleteApplicant);
+        // application reference for landlord and guarantor
+        this.router.post('/landlord-reference/:id', landlord_referenceform_controller_1.default.createReferenceForm);
+        this.router.post('/guarantor-reference/:id', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, guarantor_referenceform_controller_1.default.createGuarantorAgreement);
+        this.router.post('/employee-reference/:id', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, employee_reference_controller_1.default.createEmployeeReference);
+        this.router.get('/references/:id', landlord_referenceform_controller_1.default.getReferenceForm);
     }
 }
 exports.default = new ApplicantRoutes().router;

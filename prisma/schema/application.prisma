@@ -7,6 +7,8 @@ enum ApplicationStatus {
   AGREEMENTS
   LANDLORD_REFERENCE
   GUARANTOR_REFERENCE
+  EMPLOYEE_REFERENCE
+  APPROVED
   MAKEPAYMENT
   PAYMENT_COMPLETED
   PAYMENT_PARTIALLY_COMPLETED
@@ -140,6 +142,7 @@ model application {
   // One-to-one relationship with LandlordReferenceForm
   referenceForm                                                     LandlordReferenceForm?
   guarantorAgreement                                                GuarantorAgreement?
+  employeeRefence                                                   EmployeeReferenceForm?
 }
 model applicantPersonalDetails {
   id                                                  String         @id @default(cuid())
