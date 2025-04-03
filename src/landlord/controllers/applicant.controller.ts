@@ -249,7 +249,7 @@ class ApplicationControls {
 
             if (value.response === InvitedResponse.APPLY) {
                 // Check if states has PENDING, SCHEDULED, and FEEDBACK steps are completed
-                const requiredSteps: InvitedResponse[] = [InvitedResponse.FEEDBACK, InvitedResponse.SCHEDULED, InvitedResponse.PENDING];
+                const requiredSteps: InvitedResponse[] = [InvitedResponse.FEEDBACK, InvitedResponse.AWAITING_FEEDBACK, InvitedResponse.PENDING];
                 // Verify that all required steps are included in responseStepsCompleted
                 const hasAllRequiredSteps = requiredSteps.every(step =>
                     invite.responseStepsCompleted?.includes(step)
@@ -442,9 +442,12 @@ class ApplicationControls {
             }
 
 
+            // referenceForm                                                     
+            // guarantorAgreement                                               
+            // employeeRefence                                                  
             const landlordId = req.user.landlords.id;
             // match name
-            // if (application.user.profile.firstName === )
+            // if (application.guarantorInformation.fullName === application.guarantorAgreement.firstName, )
             const applicationInvite = await ApplicationInvitesService.updateVerificationStatus(applicationId, value);
             return res.status(200).json({ applicationInvite });
         } catch (error) {
@@ -452,68 +455,6 @@ class ApplicationControls {
         }
     }
 
-
-    // {
-    //     "fullName": "west",
-    //     "propertyAddress": "same",
-    //     "rentAmount": "123",
-    //     "tenancyStartDate": "5",
-    //     "employmentType": "",
-    //     "idType": "",
-    //     "idNumber": "",
-    //     "idExpiryDate": "",
-    //     "incomeProof": "",
-    //     "additionalDocs": [],
-    //     "title": "Mr",
-    //     "firstName": "Weldson",
-    //     "middleName": "Addin",
-    //     "lastName": "Shell",
-    //     "dateOfBirth": "4",
-    //     "nationalInsuranceNumber": "324334545465",
-    //     "contactNumber": "09090887755",
-    //     "emailAddress": "ade@gmail.com",
-    //     "employerName": "Western",
-    //     "employerAddress": "580 California Street",
-    //     "employerPhone": "098989090",
-    //     "employerEmail": "west@gmail.com",
-
-    //     "businessName": "",
-    //     "businessNature": "",
-    //     "businessYears": "",
-    //     "annualIncome": "1232322",
-    //     "annualIncomeSelf": "",
-    //     "businessAddress": "",
-    //     "accountantName": "",
-    //     "accountantContact": "",
-    //     "utrNumber": "",
-
-    //     "freelanceType": "",
-    //     "freelanceYears": "",
-    //     "freelanceMonthlyIncome": "",
-    //     "freelancePortfolioWebsite": "",
-    //     "freelanceMajorClients": "",
-    //     "freelanceUtrNumber": "",
-      
-    //     "businessNameSole": "",
-    //     "businessNatureSole": "",
-    //     "businessYearsSole": "",
-    //     "annualIncomeSole": "",
-    //     "businessAddressSole": "",
-    //     "businessRegistration": "",
-    //     "utrNumberSole": "",
-
-    //     "guarantorName": "",
-    //     "guarantorSignature": "wesretete",
-    //     "guarantorDate": "12322-02-21",
-    //     "tenantName": "AdeWest",
-    //     "declaration": false,
-    //     "employmentStartDate": "2222-12-12",
-    //     "monthlyIncome": "",
-    //     "portfolioWebsite": "",
-    //     "majorClients": "",
-    //     "jobTitle": "Shelli",
-    //     "businessRegistrationNumber": ""
-    // }
 }
 
 
