@@ -33,23 +33,23 @@ enum ShortletType {
 }
 
 model propertyListingHistory {
-  id                String        @id @default(cuid())
-  payApplicationFee Boolean       @default(false)
-  isActive          Boolean       @default(true)
-  isShortlet        Boolean       @default(false)
-  shortletDuration  ShortletType? @default(MONTHLY)
-  onListing         Boolean       @default(true) // turn it to be false if is leased out
+  id                String         @id @default(cuid())
+  payApplicationFee Boolean        @default(false)
+  isActive          Boolean        @default(true)
+  isShortlet        Boolean        @default(false)
+  shortletDuration  ShortletType?  @default(MONTHLY)
+  onListing         Boolean        @default(true) // turn it to be false if is leased out
 
-  type ListingType? @default(LISTING_WEBSITE)
+  type              ListingType?   @default(LISTING_WEBSITE)
 
-  propertyId String?     @unique // If set, these settings apply to the property
-  property   properties? @relation(fields: [propertyId], references: [id])
+  propertyId        String?        @unique // If set, these settings apply to the property
+  property          properties?   @relation(fields: [propertyId], references: [id])
 
-  apartmentId String?     @unique // If set, these settings apply to a specific apartment
-  apartment   apartments? @relation(fields: [apartmentId], references: [id])
+  apartmentId       String?        @unique // If set, these settings apply to a specific apartment
+  apartment         apartments?   @relation(fields: [apartmentId], references: [id])
 
   // time attributes
-  createdAt DateTime? @default(now())
+  createdAt         DateTime?      @default(now())
 }
 
 enum PropertyType {
@@ -64,205 +64,209 @@ enum PropertySpecificationType {
 }
 
 model properties {
-  id             String    @id @default(cuid())
-  name           String
-  description    String
-  propertysize   Int?
-  isDeleted      Boolean   @default(false)
-  showCase       Boolean   @default(false) //showcase as rentals
-  // owners
-  landlordId     String
-  landlord       landlords @relation(fields: [landlordId], references: [id])
-  agencyId       String?
-  agency         agency?   @relation(fields: [agencyId], references: [id])
-  agents         agents[]
+  id                                               String                      @id @default(cuid())
+  name                                             String
+  description                                      String
+  propertysize                                     Int?
+  isDeleted                                        Boolean                     @default(false)
+  showCase                                         Boolean                     @default(false) //showcase as rentals
+  //                                               owners
+  landlordId                                       String
+  landlord                                         landlords                  @relation(fields: [landlordId], references: [id])
+  agencyId                                         String?
+  agency                                           agency?                    @relation(fields: [agencyId], references: [id])
+  agents                                           agents[]
   currency       String? // Example: USD, EUR, NGN
-  // marketValue
-  marketValue    Decimal?  @default(0.00) @db.Decimal(18, 2)
-  rentalFee      Decimal?  @default(0.00) @db.Decimal(18, 2)
-  initialDeposit Decimal?  @default(0.00) @db.Decimal(18, 2)
-  dueDate        DateTime?
+  //                                               marketValue
+  marketValue                                      Decimal?                    @default(0.00) @db.Decimal(18, 2)
+  rentalFee                                        Decimal?                    @default(0.00) @db.Decimal(18, 2)
+  initialDeposit                                   Decimal?                    @default(0.00) @db.Decimal(18, 2)
+  dueDate                                          DateTime?
 
   // time attributes
-  yearBuilt DateTime?
-  createdAt DateTime? @default(now())
+  yearBuilt                                        DateTime?
+  createdAt                                        DateTime?                   @default(now())
 
   //
-  noBedRoom  Int? @default(1)
-  noKitchen  Int? @default(1)
-  noGarage   Int? @default(0)
-  noBathRoom Int? @default(1)
+  noBedRoom                                        Int?                        @default(1)
+  noKitchen                                        Int?                        @default(1)
+  noGarage                                         Int?                        @default(0)
+  noBathRoom                                       Int?                        @default(1)
 
-  // address
-  city    String
-  stateId String?
-  state   state?  @relation(fields: [stateId], references: [id])
+  //                                               address
+  city                                             String
+  stateId                                          String?
+  state                                            state?                     @relation(fields: [stateId], references: [id])
 
-  country  String
-  zipcode  String
-  location String?
+  country                                          String
+  zipcode                                          String
+  location                                         String?
 
-  // visualizations
-  images   String[]
-  videourl String[]
+  //                                               visualizations
+  images                                           String[]
+  videourl                                         String[]
 
-  amenities            String[]
-  // apartments
-  totalApartments      Int?
-  apartments           apartments[]
-  ratings              Rating[]
-  tenants              tenants[]
-  applicant            application[]
-  maintenance          maintenance[]
-  reviews              reviews[]
-  propertyDocument     propertyDocument[]
-  bills                bills[]
-  taskManagement       taskManagement[]
-  inventoryManageMent  inventoryManageMent[]
-  maintenanceWhitelist maintenanceWhitelist[]
-  longitude            Decimal?               @db.Decimal(18, 6)
-  latitude             Decimal?               @db.Decimal(18, 6)
+  amenities                                        String[]
+  //                                               apartments
+  totalApartments                                  Int?
+  apartments                                       apartments[]
+  ratings                                          Rating[]
+  tenants                                          tenants[]
+  applicant                                        application[]
+  maintenance                                      maintenance[]
+  reviews                                          reviews[]
+  propertyDocument                                 propertyDocument[]
+  bills                                            bills[]
+  taskManagement                                   taskManagement[]
+  inventoryManageMent                              inventoryManageMent[]
+  maintenanceWhitelist                             maintenanceWhitelist[]
+  longitude                                        Decimal?                    @db.Decimal(18, 6)
+  latitude                                         Decimal?                    @db.Decimal(18, 6)
 
   //transaction can be expenses incurred or income generated
-  transactions Transaction[]
-  Budget       Budget[]
+  transactions                                     Transaction[]
+  Budget                                           Budget[]
   // late fee for due payment (either daily or one time stuff)
   // rental fee should be for both  appartment and property
   // is it rental fee weekly, monthly, or yearly
   // due date on rental for both appartment or property
 
-  // IDEAS:
+  //                                               IDEAS:
   // make a history of properties
   // create a setting a property setting
 
-  //setting 
-  settings          propApartmentSettings[]
-  availability      PropsApartmentStatus?      @default(VACANT)
-  type              PropertyType?              @default(SINGLE_UNIT)
+  //setting
+  settings                                         propApartmentSettings[]
+  availability                                     PropsApartmentStatus?       @default(VACANT)
+  type                                             PropertyType?               @default(SINGLE_UNIT)
   // specification for use types
-  specificationType PropertySpecificationType? @default(RESIDENTIAL)
-  useTypeCategory   String?
+  specificationType                                PropertySpecificationType?  @default(RESIDENTIAL)
+  useTypeCategory                                  String?
 
   // Relation to applicationInvites
-  applicationInvites     applicationInvites[]
-  propertyListingHistory propertyListingHistory[]
+  applicationInvites                               applicationInvites[]
+  propertyListingHistory                           propertyListingHistory[]
 
-  Complaint Complaint[]
+  Complaint                                        Complaint[]
 
-  Log       Log[]       @relation("props")
-  violation violation[] @relation("violations")
+  Log                                              Log[]                      @relation("props")
+  violation                                        violation[]                @relation("violations")
 
-  PropertyViewing PropertyViewing[]
+  PropertyViewing                                  PropertyViewing[]
 
   @@unique([landlordId, name, stateId, city])
-  UserLikedProperty UserLikedProperty[]
+  UserLikedProperty                                UserLikedProperty[]
 }
 
 model propApartmentSettings {
-  id         String     @id @default(cuid())
+  id                                                                  String               @id @default(cuid())
   // Optional relationships to differentiate setting scopes
-  landlordId String?
-  landlord   landlords? @relation(fields: [landlordId], references: [id])
+  landlordId                                                          String?
+  landlord                                                            landlords?          @relation(fields: [landlordId], references: [id])
 
-  propertyId String?
-  property   properties? @relation(fields: [propertyId], references: [id])
+  propertyId                                                          String?
+  property                                                            properties?         @relation(fields: [propertyId], references: [id])
 
-  apartmentId String?
-  apartment   apartments? @relation(fields: [apartmentId], references: [id])
+  apartmentId                                                         String?
+  apartment                                                           apartments?         @relation(fields: [apartmentId], references: [id])
 
   // Setting categorization
-  settingType PropsSettingType @default(NOT_DEFINED)
+  settingType                                                         PropsSettingType     @default(NOT_DEFINED)
 
   // late fee settings
-  lateFee           Decimal             @default(0.00) @db.Decimal(18, 2) // for fixed scenario
-  lateFeeFrequency  LatePaymentFeeType?
-  lateFeePercentage Int?                @default(0)
-  gracePeriodDays   Int?
+  lateFee                                                             Decimal              @default(0.00) @db.Decimal(18, 2) // for fixed scenario
+  lateFeeFrequency                                                    LatePaymentFeeType?
+  lateFeePercentage                                                   Int?                 @default(0)
+  gracePeriodDays                                                     Int?
 
   // security deposit
-  depositPercentage Decimal @default(0.00) @db.Decimal(5, 2)
+  depositPercentage                                                   Decimal              @default(0.00) @db.Decimal(5, 2)
   refundTimeframe   String? // Options like '7 days', '30 days'
 
-  // application
-  applicationFee Decimal        @default(0.00) @db.Decimal(5, 2)
+  //                                                                  application
+  applicationFee                                                      Decimal              @default(0.00) @db.Decimal(5, 2)
   refundPolicy   Refundability? // Describe refund policy [YES OR NO]
 
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  //                                                                  Timestamps
+  createdAt                                                           DateTime             @default(now())
+  updatedAt                                                           DateTime             @updatedAt
 
-  @@unique([propertyId, settingType])
+  @@unique([propertyId,                                               settingType])
 }
 
 model propertyDocument {
-  id          String   @id @default(cuid())
-  name        String
-  documentUrl String[]
-  size        String?
-  filetype    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String         @id @default(cuid())
+  name         String
+  documentUrl  String[]
+  size         String?
+  filetype     String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // For ID documents
+  idType       IdType?
+  docType      DocumentType?
 
   apartmentsId String?
-  apartments   apartments? @relation(fields: [apartmentsId], references: [id])
+  apartments   apartments?   @relation(fields: [apartmentsId], references: [id])
   propertyId   String?
-  properties   properties? @relation(fields: [propertyId], references: [id])
+  properties   properties?   @relation(fields: [propertyId], references: [id])
   uploadedBy   String?
-  users        users?      @relation(fields: [uploadedBy], references: [id])
+  users        users?        @relation(fields: [uploadedBy], references: [id])
 }
 
 model apartments {
-  id                   String                         @id @default(cuid())
-  code                 String
-  name                 String
+  id                                     String                          @id @default(cuid())
+  code                                   String
+  name                                   String
   size                 String // 2500sqf
-  monthlyRent          String
-  minLeaseDuration     String
-  maxLeaseDuration     String
-  description          String
-  sittingRoom          Int?
-  waitingRoom          Int?
-  bedrooms             Int?
-  kitchen              Int?
-  bathrooms            Int?
-  garages              Int?
-  floorplans           String[]
-  facilities           String[]
-  offices              Int?
-  isVacant             Boolean                        @default(true)
-  isDeleted            Boolean                        @default(false)
-  rentalAmount         Decimal
-  images               String[]
-  videourl             String[]
-  propertyId           String
-  property             properties                     @relation(fields: [propertyId], references: [id])
-  histories            appartmentTransactionHistory[]
-  tenantPaymentHistory tenantPaymentHistory[]
-  tenantsId            String?
-  currentTenant        tenants?                       @relation(fields: [tenantsId], references: [id])
-  maintenance          maintenance[]
-  reviews              reviews[]
-  propertyDocument     propertyDocument[]
-  inventoryManageMent  inventoryManageMent[]
-  maintenanceWhitelist maintenanceWhitelist[]
-  transactions         Transaction[]
+  monthlyRent                            String
+  minLeaseDuration                       String
+  maxLeaseDuration                       String
+  description                            String
+  sittingRoom                            Int?
+  waitingRoom                            Int?
+  bedrooms                               Int?
+  kitchen                                Int?
+  bathrooms                              Int?
+  garages                                Int?
+  floorplans                             String[]
+  facilities                             String[]
+  offices                                Int?
+  isVacant                               Boolean                         @default(true)
+  isDeleted                              Boolean                         @default(false)
+  rentalAmount                           Decimal
+  images                                 String[]
+  videourl                               String[]
+  propertyId                             String
+  property                               properties                     @relation(fields: [propertyId], references: [id])
+  histories                              appartmentTransactionHistory[]
+  tenantPaymentHistory                   tenantPaymentHistory[]
+  tenantsId                              String?
+  currentTenant                          tenants?                       @relation(fields: [tenantsId], references: [id])
+  maintenance                            maintenance[]
+  reviews                                reviews[]
+  propertyDocument                       propertyDocument[]
+  inventoryManageMent                    inventoryManageMent[]
+  maintenanceWhitelist                   maintenanceWhitelist[]
+  transactions                           Transaction[]
 
-  settings               propApartmentSettings[]
-  applicationInvites     applicationInvites[]
-  propertyListingHistory propertyListingHistory?
+  settings                               propApartmentSettings[]
+  applicationInvites                     applicationInvites[]
+  propertyListingHistory                 propertyListingHistory?
 }
 
 model PropertyViewing {
-  id         String   @id @default(cuid())
+  id                                                                          String      @id @default(cuid())
   userId     String // Foreign key reference to the user viewing the property
   propertyId String // Foreign key reference to the property being viewed
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  isLiked    Boolean  @default(false) // Indicates if the user liked the property
+  createdAt                                                                   DateTime    @default(now())
+  updatedAt                                                                   DateTime    @updatedAt
+  isLiked                                                                     Boolean     @default(false) // Indicates if the user liked the property
   review     String? // Optional review text left by the user
   rating     Int? // Optional rating (e.g., 1-5 stars)
 
-  // Relationships
-  user     users      @relation(fields: [userId], references: [id])
-  property properties @relation(fields: [propertyId], references: [id])
+  //                                                                          Relationships
+  user                                                                        users      @relation(fields: [userId], references: [id])
+  property                                                                    properties @relation(fields: [propertyId], references: [id])
 }

@@ -1,9 +1,8 @@
 import { prismaClient } from "..";
-import { Prisma, EmploymentType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { GuarantorInformationIF } from "../webuser/schemas/types";
 import {
   GuarantorAgreement,
-  GuarantorEmploymentInfo
 } from '../validations/interfaces/references.interfaces';
 import applicantService from "../webuser/services/applicantService";
 import { ApplicationSaveState, ApplicationStatus } from ".prisma/client";
@@ -80,9 +79,9 @@ class GuarantorService {
   }>> {
     return prismaClient.$transaction(async (prisma) => {
       // Validate and create employment info if provided
-      let employmentInfo = await prisma.guarantorEmploymentInfo.create({
-        data: this.mapEmploymentData(data.guarantorEmployment)
-      });
+      // let employmentInfo = await prisma.guarantorEmploymentInfo.create({
+      //   data: this.mapEmploymentData(data.guarantorEmployment)
+      // });
       // Validate guarantor exists
       const guarantor = await prisma.application.findFirst({
         where: { id: data.applicationId}, include:{guarantorInformation: true}
@@ -94,17 +93,24 @@ class GuarantorService {
       const created = await prisma.guarantorAgreement.create({
         data: {
           status: data.status,
-          agreementText: data.agreementText,
+          title: data.title,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          middleName: data.middleName,
+          dateOfBirth: data.dateOfBirth,
+          contactNumber: data.contactNumber,
+          emailAddress: data.emailAddress,
+          nationalInsuranceNumber: data.nationalInsuranceNumber,
           signedByGuarantor: data.signedByGuarantor || false,
           guarantorSignature: data.guarantorSignature,
           guarantorSignedAt: data.guarantorSignedAt,
           applicationId: data.applicationId,
           guarantorId: guarantor.id,
-          guarantorEmploymentId: employmentInfo?.id
+          // guarantorEmploymentId: employmentInfo?.id
         },
         include: {
           guarantor: true,
-          guarantorEmployment: true,
+          // guarantorEmployment: true,
           application: true
         }
       });
@@ -116,62 +122,62 @@ class GuarantorService {
     });
   }
 
-  private mapEmploymentData(data: GuarantorEmploymentInfo) {
-    const baseData = {
-      employmentType: data.employmentType,
-      annualIncome: data.annualIncome,
-    };
+  // private mapEmploymentData(data: GuarantorEmploymentInfo) {
+  //   const baseData = {
+  //     employmentType: data.employmentType,
+  //     annualIncome: data.annualIncome,
+  //   };
 
-    switch (data.employmentType) {
-      case EmploymentType.EMPLOYED:
-        return {
-          ...baseData,
-          employerName: data.employerName,
-          jobTitle: data.jobTitle,
-          employmentStartDate: data.employmentStartDate,
-          employerAddress: data.employerAddress,
-          employerPhone: data.employerPhone,
-          employerEmail: data.employerEmail
-        };
-      case EmploymentType.SELF_EMPLOYED:
-        return {
-          ...baseData,
-          businessName: data.businessName,
-          businessNature: data.businessNature,
-          yearsInBusiness: data.yearsInBusiness,
-          businessAddress: data.businessAddress,
-          accountantName: data.accountantName,
-          accountantContact: data.accountantContact,
-          utrNumber: data.utrNumber
-        };
-      case EmploymentType.FREELANCE:
-        return {
-          ...baseData,
-          freelanceType: data.freelanceType,
-          yearsFreelancing: data.yearsFreelancing,
-          monthlyIncome: data.monthlyIncome,
-          portfolioWebsite: data.portfolioWebsite,
-          majorClients: data.majorClients
-        };
-      case EmploymentType.DIRECTOR:
-        return {
-          ...baseData,
-          companyName: data.companyName,
-          companyNumber: data.companyNumber,
-          position: data.position,
-          ownershipPercentage: data.ownershipPercentage,
-          companyFounded: data.companyFounded,
-          companyAddress: data.companyAddress
-        };
-      case EmploymentType.SOLE_PROPRIETOR:
-        return {
-          ...baseData,
-          businessRegistrationNumber: data.businessRegistrationNumber
-        };
-      default:
-        throw new Error(`Invalid employment type: ${data.employmentType}`);
-    }
-  }
+  //   switch (data.employmentType) {
+  //     case EmploymentType.EMPLOYED:
+  //       return {
+  //         ...baseData,
+  //         employerName: data.employerName,
+  //         jobTitle: data.jobTitle,
+  //         employmentStartDate: data.employmentStartDate,
+  //         employerAddress: data.employerAddress,
+  //         employerPhone: data.employerPhone,
+  //         employerEmail: data.employerEmail
+  //       };
+  //     case EmploymentType.SELF_EMPLOYED:
+  //       return {
+  //         ...baseData,
+  //         businessName: data.businessName,
+  //         businessNature: data.businessNature,
+  //         yearsInBusiness: data.yearsInBusiness,
+  //         businessAddress: data.businessAddress,
+  //         accountantName: data.accountantName,
+  //         accountantContact: data.accountantContact,
+  //         utrNumber: data.utrNumber
+  //       };
+  //     case EmploymentType.FREELANCE:
+  //       return {
+  //         ...baseData,
+  //         freelanceType: data.freelanceType,
+  //         yearsFreelancing: data.yearsFreelancing,
+  //         monthlyIncome: data.monthlyIncome,
+  //         portfolioWebsite: data.portfolioWebsite,
+  //         majorClients: data.majorClients
+  //       };
+  //     case EmploymentType.DIRECTOR:
+  //       return {
+  //         ...baseData,
+  //         companyName: data.companyName,
+  //         companyNumber: data.companyNumber,
+  //         position: data.position,
+  //         ownershipPercentage: data.ownershipPercentage,
+  //         companyFounded: data.companyFounded,
+  //         companyAddress: data.companyAddress
+  //       };
+  //     case EmploymentType.SOLE_PROPRIETOR:
+  //       return {
+  //         ...baseData,
+  //         businessRegistrationNumber: data.businessRegistrationNumber
+  //       };
+  //     default:
+  //       throw new Error(`Invalid employment type: ${data.employmentType}`);
+  //   }
+  // }
 }
 
 export default new GuarantorService();

@@ -1,14 +1,14 @@
 
-import { ReferenceStatus, EmploymentType, guarantorInformation, document } from '@prisma/client';
+import { ReferenceStatus, YesNo, guarantorInformation, document } from '@prisma/client';
 import { BaseModel } from './base.interface';
 
 
 export interface TenancyReferenceHistoryCreateDTO {
-  fullName: string;
-  propertyAddress: string;
-  rentAmount: string;
-  tenancyStartDate?: Date;
-  tenancyEndDate?: Date;
+  tenantName: string;
+  currentAddress: string;
+  monthlyRent: string;
+  rentStartDate?: Date;
+  rentEndDate?: Date;
   reasonForLeaving?: string;
 }
 
@@ -91,45 +91,24 @@ export interface TenantConduct extends BaseModel {
 }
 export interface GuarantorAgreement extends BaseModel {
     status: string;
+    title: string;
+    firstName: string;
+    lastName: string;
+    middleName: string;
+    dateOfBirth: Date;
+    contactNumber: string;
+    emailAddress: string;
+    nationalInsuranceNumber: string;
     submittedAt?: Date;
-    agreementText: string;
+    // agreementText: string;
     signedByGuarantor: boolean;
     guarantorSignature?: string;
     guarantorSignedAt?: Date;
     guarantor: guarantorInformation;
-    guarantorEmployment?: GuarantorEmploymentInfo;
+    // guarantorEmployment?: GuarantorEmploymentInfo;
+    guarantorEmployment?: any;
     documents?: document[];
     applicationId: string;
-}
-
-export interface GuarantorEmploymentInfo extends BaseModel {
-    employmentType: EmploymentType;
-    annualIncome?: number;
-    employerName?: string;
-    jobTitle?: string;
-    employmentStartDate?: Date;
-    employerAddress?: string;
-    employerPhone?: string;
-    employerEmail?: string;
-    businessName?: string;
-    businessNature?: string;
-    yearsInBusiness?: number;
-    businessAddress?: string;
-    accountantName?: string;
-    accountantContact?: string;
-    utrNumber?: string;
-    freelanceType?: string;
-    yearsFreelancing?: number;
-    monthlyIncome?: number;
-    portfolioWebsite?: string;
-    majorClients?: string;
-    companyName?: string;
-    companyNumber?: string;
-    position?: string;
-    ownershipPercentage?: number;
-    companyFounded?: number;
-    companyAddress?: string;
-    businessRegistrationNumber?: string;
 }
 
 export interface IEmployeeReference {
@@ -158,4 +137,13 @@ export interface IEmployeeReference {
   signerName?: string;
   signature?: string;
   date: Date;
+}
+
+export interface VerificationUpdateIF {
+  employmentVerificationStatus?: YesNo;
+  incomeVerificationStatus?: YesNo;
+  creditCheckStatus?: YesNo;
+  landlordVerificationStatus?: YesNo;
+  guarantorVerificationStatus?: YesNo;
+  refereeVerificationStatus?: YesNo;
 }

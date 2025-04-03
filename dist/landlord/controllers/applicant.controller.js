@@ -386,6 +386,70 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.sendApplicationReminder = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const applicationId = req.params.id;
+                // Validate application ID
+                if (!applicationId) {
+                    return res.status(400).json({
+                        error: "Application ID is required",
+                        details: ["Missing application ID in URL parameters"]
+                    });
+                }
+                // Verify application exists
+                const application = yield applicantService_2.default.getApplicationById(applicationId);
+                if (!application) {
+                    return res.status(404).json({
+                        error: "Application not found",
+                        details: [`Application with ID ${applicationId} does not exist`]
+                    });
+                }
+                const landlordId = req.user.landlords.id;
+                if (landlordId !== application.properties.landlordId) {
+                    return res.status(400).json({
+                        message: "you can only send application reminder for application on your properties"
+                    });
+                }
+                // get the application email to send reminder
+                return res.status(200).json({ data: [] });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.updateApplicationVerificationStatus = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const applicationId = req.params.id;
+                // Validate application ID
+                if (!applicationId) {
+                    return res.status(400).json({
+                        error: "Application ID is required",
+                        details: ["Missing application ID in URL parameters"]
+                    });
+                }
+                // Verify application exists
+                const application = yield applicantService_2.default.getApplicationById(applicationId);
+                if (!application) {
+                    return res.status(404).json({
+                        error: "Application not found",
+                        details: [`Application with ID ${applicationId} does not exist`]
+                    });
+                }
+                // Validate request body
+                const { error, value } = applicationInvitesSchema_1.updateApplicationStatusSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const landlordId = req.user.landlords.id;
+                // match name
+                // if (application.user.profile.firstName === )
+                const applicationInvite = yield application_services_1.default.updateVerificationStatus(applicationId, value);
+                return res.status(200).json({ applicationInvite });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.landlordService = new landlord_service_1.LandlordService();
     }
 }

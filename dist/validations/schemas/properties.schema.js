@@ -7,6 +7,8 @@ exports.updatePropertyViewingSchema = exports.createPropertyViewingSchema = expo
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const propertyType = Object.values(client_1.PropertyType);
+const documentType = Object.values(client_1.DocumentType);
+const idType = Object.values(client_1.IdType);
 const propertySpecificationType = Object.values(client_1.PropertySpecificationType);
 exports.createPropertySchema = joi_1.default.object({
     name: joi_1.default.string().required(),
@@ -85,6 +87,8 @@ exports.createPropertyDocumentSchema = joi_1.default.object({
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().required(),
     filetype: joi_1.default.string().required(),
+    docType: joi_1.default.string().valid(...documentType).optional(),
+    idType: joi_1.default.string().valid(...idType).optional(),
 });
 exports.updatePropertyDocumentSchema = joi_1.default.object({
     name: joi_1.default.string().optional(),

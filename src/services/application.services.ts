@@ -1,8 +1,9 @@
 import { prismaClient } from "..";
-import { Prisma, logTypeStatus, InvitedResponse, ApplicationStatus, ApplicationSaveState, LogType } from "@prisma/client";
+import { Prisma, logTypeStatus, YesNo, InvitedResponse, ApplicationStatus, ApplicationSaveState, LogType } from "@prisma/client";
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 import logsServices from "./logs.services";
-
+import applicantService from "../webuser/services/applicantService";
+import {VerificationUpdateIF} from "../validations/interfaces/references.interfaces"
 class ApplicationInvitesService {
     private userInclusion = { email: true, profile: true, id: true };
 
@@ -27,7 +28,7 @@ class ApplicationInvitesService {
                 guarantorInformation: true,
                 residentialInfo: true,
                 createdBy: {
-                    select:{
+                    select: {
                         email: true,
                         profile: true
                     }
@@ -244,40 +245,59 @@ class ApplicationInvitesService {
 
     getPreviousLandlordInfo = async (applicationId: string) => {
         try {
-          // Get residential information with previous addresses
-          const residentialInfo = await prismaClient.residentialInformation.findFirst({
-            where: { 
-              application: {
-                some: { id: applicationId }
-              }
-            },
-            include: {
-              prevAddresses: {
-                take: 1 // Get only the most recent previous address
-              }
-            }
-          });
-      
-          if (!residentialInfo?.prevAddresses?.length) {
-            return null;
-          }
-      
-          // Extract most recent previous address with landlord info
-          const mostRecentAddress = residentialInfo.prevAddresses[0];
-          
-          return {
-            name: residentialInfo.landlordOrAgencyName,
-            email: residentialInfo.landlordOrAgencyEmail,
-            phone: residentialInfo.landlordOrAgencyPhoneNumber,
-            address: mostRecentAddress.address,
-            duration: mostRecentAddress.lengthOfResidence,
-            reasonForLeaving: residentialInfo.reasonForLeaving
-          };
-        } catch (error) {
-          throw new Error('Could not retrieve landlord information');
-        }
-      };
+            // Get residential information with previous addresses
+            const residentialInfo = await prismaClient.residentialInformation.findFirst({
+                where: {
+                    application: {
+                        some: { id: applicationId }
+                    }
+                },
+                include: {
+                    prevAddresses: {
+                        take: 1 // Get only the most recent previous address
+                    }
+                }
+            });
 
+            if (!residentialInfo?.prevAddresses?.length) {
+                return null;
+            }
+
+            // Extract most recent previous address with landlord info
+            const mostRecentAddress = residentialInfo.prevAddresses[0];
+
+            return {
+                name: residentialInfo.landlordOrAgencyName,
+                email: residentialInfo.landlordOrAgencyEmail,
+                phone: residentialInfo.landlordOrAgencyPhoneNumber,
+                address: mostRecentAddress.address,
+                duration: mostRecentAddress.lengthOfResidence,
+                reasonForLeaving: residentialInfo.reasonForLeaving
+            };
+        } catch (error) {
+            throw new Error('Could not retrieve landlord information');
+        }
+    };
+
+    async updateVerificationStatus(applicationId: string, data: VerificationUpdateIF) {
+        const application = await applicantService.getApplicationById(applicationId);
+    
+        if (!application) {
+          throw new Error('Application not found');
+        }
+    
+        return await prismaClient.application.update({
+          where: { id: applicationId },
+          data: {
+            employmentVerificationStatus: data.employmentVerificationStatus,
+            incomeVerificationStatus: data.incomeVerificationStatus,
+            creditCheckStatus: data.creditCheckStatus,
+            landlordVerificationStatus: data.landlordVerificationStatus,
+            guarantorVerificationStatus: data.guarantorVerificationStatus,
+            refereeVerificationStatus: data.refereeVerificationStatus,
+          },
+        });
+      }
 }
 
 export default new ApplicationInvitesService();

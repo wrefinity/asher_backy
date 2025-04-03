@@ -1,7 +1,9 @@
 import Joi from 'joi';
-import {ListingType, PropertyType, PropertySpecificationType, ShortletType} from "@prisma/client"
+import {ListingType, PropertyType, PropertySpecificationType, ShortletType, DocumentType, IdType} from "@prisma/client"
 
 const propertyType = Object.values(PropertyType);
+const documentType = Object.values(DocumentType);
+const idType = Object.values(IdType);
 const propertySpecificationType = Object.values(PropertySpecificationType);
 
 export const createPropertySchema = Joi.object({
@@ -84,6 +86,8 @@ export const createPropertyDocumentSchema = Joi.object({
   propertyId: Joi.string().optional(),
   size: Joi.string().required(),
   filetype: Joi.string().required(),
+  docType: Joi.string().valid(...documentType).optional(),
+  idType: Joi.string().valid(...idType).optional(),
 });
 
 

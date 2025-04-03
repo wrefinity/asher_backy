@@ -38,16 +38,15 @@ class GuarantorController {
             });
           }
           const data = req.body;
-          const documents = data.cloudinaryDocumentUrls;
-          delete data.cloudinaryUrls;
-          delete data.cloudinaryVideoUrls;
-          delete data.cloudinaryDocumentUrls;
-          delete data.cloudinaryAudioUrls;
-    
+          // const documents = data.cloudinaryDocumentUrls;
+          // delete data.cloudinaryUrls;
+          // delete data.cloudinaryVideoUrls;
+          // delete data.cloudinaryDocumentUrls;
+          // delete data.cloudinaryAudioUrls;
+         
           // Create agreement with nested employment info
           const result = await guarantorService.createGuarantorAgreement({
             ...value,
-            documents,
             applicationId,
             employmentInfo: value.employmentInfo 
           });

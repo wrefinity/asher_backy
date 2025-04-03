@@ -16,6 +16,7 @@ class UploadsRouter {
     }
     initializeRoutes() {
         this.router.post('/', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, file_upload_controller_1.default.uploadToCloudinary);
+        this.router.post('/single', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, file_upload_controller_1.default.uploadAppDocumentsWithProps);
     }
 }
 exports.default = new UploadsRouter().router;

@@ -1,4 +1,4 @@
-import { PropertyType, PropertySpecificationType } from "@prisma/client"
+import { PropertyType, DocumentType, IdType, PropertySpecificationType } from "@prisma/client"
 
 export interface IPropertyDocument {
     id?: string;
@@ -9,6 +9,8 @@ export interface IPropertyDocument {
     apartmentsId?: string;
     propertyId?: string;
     uploadedBy?: string;
+    docType?: DocumentType;
+    idType?: IdType;
 }
 
 export interface ICreateProperty {

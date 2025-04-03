@@ -1,4 +1,4 @@
-enum VerificationDocumentType {
+enum DocumentType {
   PAY_STUB
   TAX_RETURN
   EMPLOYMENT_LETTER
@@ -13,6 +13,7 @@ enum VerificationDocumentType {
   ADDRESS_PROOF
   INCOME_PROOF
   ADDITIONAL
+  AGREEMENT_DOC
 }
 enum IdType {
   PASSPORT
@@ -20,25 +21,25 @@ enum IdType {
 }
 
 model document {
-  id               String                     @id @default(cuid())
-  documentName     String
-  documentUrl      String
-  type             String?
-  size             String?
-  createdAt        DateTime                   @default(now())
-  updatedAt        DateTime                   @updatedAt
+  id           String               @id @default(cuid())
+  documentName String
+  documentUrl  String
+  type         String?
+  size         String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
-  applicantId      String
-  application      application               @relation(fields: [applicantId], references: [id])
+  applicantId  String
+  application  application         @relation(fields: [applicantId], references: [id])
 
-  userId           String?
-  user             users?                    @relation(fields: [userId], references: [id])
+  userId       String?
+  user         users?              @relation(fields: [userId], references: [id])
 
   // For ID documents
-  idType            IdType?
-  verificationType VerificationDocumentType?
-  
-  // Relationship
-  agreement         GuarantorAgreement? @relation(fields: [agreementId], references: [id])
-  agreementId       String?
+  idType       IdType?
+  docType      DocumentType?
+
+  //           Relationship
+  agreement    GuarantorAgreement? @relation(fields: [agreementId], references: [id])
+  agreementId  String?
 }

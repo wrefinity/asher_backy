@@ -14,6 +14,7 @@ class ApplicationLandlordRouter {
     }
     private initializeRoutes() {
         this.router.patch('/statuses/:id', ApplicationController.updateApplicationStatusStep);
+        this.router.post('/reminder/:id', ApplicationController.sendApplicationReminder);
         this.router.get('/all', ApplicationController.getApplicationsWithInvites);
         this.router.get('/pending', ApplicationController.getApplicationsPending);
         this.router.get('/completed', ApplicationController.getApplicationsCompleted);

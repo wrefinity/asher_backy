@@ -66,11 +66,11 @@ model TenancyReferenceHistory {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   // Tenant Information
-  fullName         String
-  propertyAddress  String
-  rentAmount       String
-  tenancyStartDate DateTime?
-  tenancyEndDate   DateTime?
+  tenantName       String
+  currentAddress   String
+  monthlyRent      String
+  rentStartDate    DateTime?
+  rentEndDate      DateTime?
   reasonForLeaving String?
 
   //               Relationship
@@ -107,75 +107,93 @@ model TenantConduct {
 
 //  guarantor agreement model
 model GuarantorAgreement {
-  id                    String                    @id @default(cuid())
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  status                String                    @default("DRAFT")
-  submittedAt           DateTime?
+  id                      String                @id @default(cuid())
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  status                  String                @default("DRAFT")
+  submittedAt             DateTime?
+  // guarantor personal information for screening
+  title                   String?
+  firstName               String
+  middleName              String?
+  lastName                String
+  dateOfBirth             DateTime
+  nationalInsuranceNumber String?
+  contactNumber           String
+  emailAddress            String
 
-  //                    relationships
-  guarantor             guarantorInformation     @relation(fields: [guarantorId], references: [id])
-  guarantorId           String                    @unique
-  guarantorEmployment   GuarantorEmploymentInfo? @relation(fields: [guarantorEmploymentId], references: [id])
-  guarantorEmploymentId String?                   @unique
-  documents             document[]
+  //                      relationships
+  guarantor               guarantorInformation @relation(fields: [guarantorId], references: [id])
+  guarantorId             String                    @unique
+  guarantorEmployment     Json?
+  // guarantorEmployment     GuarantorEmploymentInfo? @relation(fields: [guarantorEmploymentId], references: [id])
+  // guarantorEmploymentId   String?               @unique
+  documents               document[]
 
   // Agreement details
-  agreementText         String                    @db.Text
-  signedByGuarantor     Boolean                   @default(false)
-  guarantorSignature    String?
-  guarantorSignedAt     DateTime?
+  // agreementText           String                @db.Text
+  signedByGuarantor       Boolean               @default(false)
+  guarantorSignature      String?
+  guarantorSignedAt       DateTime?
   // One-to-one relationship with application
-  applicationId         String                    @unique
-  application           application              @relation(fields: [applicationId], references: [id])
+  applicationId           String                @unique
+  application             application          @relation(fields: [applicationId], references: [id])
 
 }
 
-model GuarantorEmploymentInfo {
-  id                         String               @id @default(cuid())
-  employmentType             EmploymentType
+// model GuarantorEmploymentInfo {
+//   id                        String               @id @default(cuid())
+//   employmentType            EmploymentType
 
-  // Common fields across employment types
-  annualIncome               Decimal?             @db.Decimal(10, 2)
+//   // Common fields across employment types
+//   annualIncome              Decimal?             @db.Decimal(10, 2)
 
-  // Employed specific fields
-  employerName               String?
-  jobTitle                   String?
-  employmentStartDate        DateTime?
-  employerAddress            String?
-  employerPhone              String?
-  employerEmail              String?
+//   // Employed specific fields
+//   employerName              Json?
+//   jobTitle                  String?
+//   employmentStartDate       DateTime?
+//   employerAddress           String?
+//   employerPhone             String?
+//   employerEmail             String?
 
-  // Self-employed specific fields
-  businessName               String?
-  businessNature             String?
-  yearsInBusiness            Int?
-  businessAddress            String?
-  accountantName             String?
-  accountantContact          String?
-  utrNumber                  String?
+//   // Self-employed specific fields
+//   businessName              String?
+//   businessNature            String?
+//   businessYears             Int?
+//   businessAddress           String?
+//   accountantName            String?
+//   accountantContact         String?
+//   utrNumber                 String?
 
-  // Freelance specific fields
-  freelanceType              String?
-  yearsFreelancing           Int?
-  monthlyIncome              Decimal?             @db.Decimal(10, 2)
-  portfolioWebsite           String?
-  majorClients               String?
+//   // Freelance specific fields
+//   freelanceType             String?
+//   freelanceYears            Int?
+//   freelanceMonthlyIncome    Decimal?             @db.Decimal(10, 2)
+//   freelancePortfolioWebsite String?
+//   freelanceMajorClients     String?
+//   freelanceUtrNumber        String?
 
-  // Director specific fields
-  companyName                String?
-  companyNumber              String?
-  position                   String?
-  ownershipPercentage        Int?
-  companyFounded             Int?
-  companyAddress             String?
+//   // Director specific fields
+//   companyName               String?
+//   companyNumber             String?
+//   position                  String?
+//   directorIncome            String?
+//   ownershipPercentage       Int?
+//   companyFounded            Int?
+//   companyAddress            String?
 
-  // Sole proprietor specific fields
-  businessRegistrationNumber String?
+//   // Sole proprietor specific fields
+//   businessNameSole          String?
+//   businessNatureSole        String?
+//   businessYearsSole         String?
+//   annualIncomeSole          String?
+//   businessAddressSole       String?
+//   businessRegistration      String?
+//   utrNumberSole             String?
 
-  //                         Relationship
-  guarantorAgreement         GuarantorAgreement?
-}
+//   //                        Relationship
+//   guarantorAgreement        GuarantorAgreement?
+// }
 
 // Employee Information
 model EmployeeReferenceForm {

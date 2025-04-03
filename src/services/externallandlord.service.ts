@@ -57,11 +57,11 @@ class LandlordReferenceService {
   ) {
     return prisma.tenancyReferenceHistory.create({
       data: {
-        fullName: data.fullName,
-        propertyAddress: data.propertyAddress,
-        rentAmount: data.rentAmount,
-        tenancyStartDate: data.tenancyStartDate,
-        tenancyEndDate: data.tenancyEndDate,
+        tenantName: data.tenantName,
+        currentAddress: data.currentAddress,
+        monthlyRent: data.monthlyRent,
+        rentStartDate: data.rentStartDate,
+        rentEndDate: data.rentEndDate,
         reasonForLeaving: data.reasonForLeaving
       }
     });

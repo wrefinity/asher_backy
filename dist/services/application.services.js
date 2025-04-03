@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
 const client_1 = require("@prisma/client");
 const logs_services_1 = __importDefault(require("./logs.services"));
+const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
 class ApplicationInvitesService {
     constructor() {
         this.userInclusion = { email: true, profile: true, id: true };
@@ -278,6 +279,25 @@ class ApplicationInvitesService {
                     completedApplications,
                 },
             };
+        });
+    }
+    updateVerificationStatus(applicationId, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const application = yield applicantService_1.default.getApplicationById(applicationId);
+            if (!application) {
+                throw new Error('Application not found');
+            }
+            return yield __1.prismaClient.application.update({
+                where: { id: applicationId },
+                data: {
+                    employmentVerificationStatus: data.employmentVerificationStatus,
+                    incomeVerificationStatus: data.incomeVerificationStatus,
+                    creditCheckStatus: data.creditCheckStatus,
+                    landlordVerificationStatus: data.landlordVerificationStatus,
+                    guarantorVerificationStatus: data.guarantorVerificationStatus,
+                    refereeVerificationStatus: data.refereeVerificationStatus,
+                },
+            });
         });
     }
 }

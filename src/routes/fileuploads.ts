@@ -22,6 +22,12 @@ class UploadsRouter {
             uploadToCloudinary,
             FileUploadController.uploadToCloudinary
         )
+        this.router.post(
+            '/single',
+            upload.array('files'),
+            uploadToCloudinary,
+            FileUploadController.uploadAppDocumentsWithProps
+        )
     }
 }
 

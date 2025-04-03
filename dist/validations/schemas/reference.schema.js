@@ -3,9 +3,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.employeeReferenceSchema = exports.GuarantorAgreementCreateSchema = exports.GuarantorEmploymentInfoCreateSchema = exports.LandlordReferenceFormCreateSchema = exports.TenantConductCreateSchema = exports.TenancyReferenceHistoryCreateSchema = exports.ExternalLandlordUpdateSchema = exports.ExternalLandlordCreateSchema = void 0;
+exports.VerificationUpdateSchema = exports.employeeReferenceSchema = exports.GuarantorAgreementCreateSchema = exports.documentCreateSchema = exports.GuarantorEmploymentInfoCreateSchema = exports.LandlordReferenceFormCreateSchema = exports.TenantConductCreateSchema = exports.TenancyReferenceHistoryCreateSchema = exports.ExternalLandlordUpdateSchema = exports.ExternalLandlordCreateSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
+var EmploymentType;
+(function (EmploymentType) {
+    EmploymentType["EMPLOYED"] = "EMPLOYED";
+    EmploymentType["SELF_EMPLOYED"] = "SELF_EMPLOYED";
+    EmploymentType["FREELANCE"] = "FREELANCE";
+    EmploymentType["DIRECTOR"] = "DIRECTOR";
+    EmploymentType["SOLE_PROPRIETOR"] = "SOLE_PROPRIETOR";
+})(EmploymentType || (EmploymentType = {}));
 // Base schemas with common configurations
 const requiredString = (label) => joi_1.default.string().required().label(label);
 const optionalString = (label) => joi_1.default.string().optional().label(label);
@@ -23,12 +31,12 @@ exports.ExternalLandlordUpdateSchema = joi_1.default.object({
     emailAddress: requiredString('Email Address').email(),
 });
 exports.TenancyReferenceHistoryCreateSchema = joi_1.default.object({
-    fullName: requiredString('Full Name'),
-    propertyAddress: requiredString('Property Address'),
+    tenantName: requiredString('Full Name'),
+    currentAddress: requiredString('Property Address'),
     rentAmount: requiredString('Rent Amount')
         .pattern(/^\d+(\.\d{1,2})?$/),
-    tenancyStartDate: optionalDate('Tenancy Start Date'),
-    tenancyEndDate: optionalDate('Tenancy End Date'),
+    rentStartDate: optionalDate('Tenancy Start Date'),
+    rentEndDate: optionalDate('Tenancy End Date'),
     reasonForLeaving: optionalString('Reason for Leaving'),
 });
 exports.TenantConductCreateSchema = joi_1.default.object({
@@ -65,109 +73,157 @@ exports.LandlordReferenceFormCreateSchema = joi_1.default.object({
     .label('Landlord Reference Form');
 exports.GuarantorEmploymentInfoCreateSchema = joi_1.default.object({
     employmentType: joi_1.default.string()
-        .valid(...Object.values(client_1.EmploymentType))
+        .valid(...Object.values(EmploymentType))
         .required()
         .label('Employment Type'),
     // Common fields
     annualIncome: joi_1.default.number().precision(2).optional(),
-    // Employed fields
+    // Employed
     employerName: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.EMPLOYED,
+        is: EmploymentType.EMPLOYED,
         then: joi_1.default.required(),
     }),
     jobTitle: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.EMPLOYED,
+        is: EmploymentType.EMPLOYED,
         then: joi_1.default.required(),
     }),
     employmentStartDate: joi_1.default.date().when('employmentType', {
-        is: client_1.EmploymentType.EMPLOYED,
+        is: EmploymentType.EMPLOYED,
         then: joi_1.default.required(),
     }),
     employerAddress: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.EMPLOYED,
+        is: EmploymentType.EMPLOYED,
         then: joi_1.default.required(),
     }),
     employerPhone: joi_1.default.string()
         .pattern(/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/)
         .when('employmentType', {
-        is: client_1.EmploymentType.EMPLOYED,
+        is: EmploymentType.EMPLOYED,
         then: joi_1.default.required(),
     }),
     employerEmail: joi_1.default.string().email().when('employmentType', {
-        is: client_1.EmploymentType.EMPLOYED,
+        is: EmploymentType.EMPLOYED,
         then: joi_1.default.required(),
     }),
-    // Self-Employed fields
+    // Self-Employed
     businessName: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.SELF_EMPLOYED,
+        is: EmploymentType.SELF_EMPLOYED,
         then: joi_1.default.required(),
     }),
     businessNature: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.SELF_EMPLOYED,
+        is: EmploymentType.SELF_EMPLOYED,
         then: joi_1.default.required(),
     }),
     yearsInBusiness: joi_1.default.number().integer().min(0).when('employmentType', {
-        is: client_1.EmploymentType.SELF_EMPLOYED,
+        is: EmploymentType.SELF_EMPLOYED,
         then: joi_1.default.required(),
     }),
     businessAddress: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.SELF_EMPLOYED,
+        is: EmploymentType.SELF_EMPLOYED,
         then: joi_1.default.required(),
     }),
     accountantName: joi_1.default.string().optional(),
     accountantContact: joi_1.default.string().optional(),
     utrNumber: joi_1.default.string().pattern(/^\d{10}$/).optional(),
-    // Freelance fields
+    // Freelance
     freelanceType: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.FREELANCE,
+        is: EmploymentType.FREELANCE,
         then: joi_1.default.required(),
     }),
     yearsFreelancing: joi_1.default.number().integer().min(0).when('employmentType', {
-        is: client_1.EmploymentType.FREELANCE,
+        is: EmploymentType.FREELANCE,
         then: joi_1.default.required(),
     }),
-    monthlyIncome: joi_1.default.number().precision(2).when('employmentType', {
-        is: client_1.EmploymentType.FREELANCE,
+    freelanceMonthlyIncome: joi_1.default.number().precision(2).when('employmentType', {
+        is: EmploymentType.FREELANCE,
         then: joi_1.default.required(),
     }),
-    portfolioWebsite: joi_1.default.string().uri().optional(),
-    majorClients: joi_1.default.string().optional(),
-    // Director fields
+    freelanceUtrNumber: joi_1.default.number().precision(2).when('employmentType', {
+        is: EmploymentType.FREELANCE,
+        then: joi_1.default.required(),
+    }),
+    freelancePortfolioWebsite: joi_1.default.string().uri().optional(),
+    freelanceMajorClients: joi_1.default.string().optional(),
+    // Director
     companyName: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.DIRECTOR,
+        is: EmploymentType.DIRECTOR,
         then: joi_1.default.required(),
     }),
     companyNumber: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.DIRECTOR,
+        is: EmploymentType.DIRECTOR,
         then: joi_1.default.required(),
     }),
     position: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.DIRECTOR,
+        is: EmploymentType.DIRECTOR,
         then: joi_1.default.required(),
     }),
     ownershipPercentage: joi_1.default.number().integer().min(0).max(100).when('employmentType', {
-        is: client_1.EmploymentType.DIRECTOR,
+        is: EmploymentType.DIRECTOR,
+        then: joi_1.default.required(),
+    }),
+    directorIncome: joi_1.default.number().integer().min(0).max(100).when('employmentType', {
+        is: EmploymentType.DIRECTOR,
         then: joi_1.default.required(),
     }),
     companyFounded: joi_1.default.number().integer().min(1900).max(new Date().getFullYear()).when('employmentType', {
-        is: client_1.EmploymentType.DIRECTOR,
+        is: EmploymentType.DIRECTOR,
         then: joi_1.default.required(),
     }),
     companyAddress: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.DIRECTOR,
+        is: EmploymentType.DIRECTOR,
         then: joi_1.default.required(),
     }),
-    // Sole Proprietor fields
-    businessRegistrationNumber: joi_1.default.string().when('employmentType', {
-        is: client_1.EmploymentType.SOLE_PROPRIETOR,
+    // Sole Proprietor (New Section)
+    businessNameSole: joi_1.default.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
         then: joi_1.default.required(),
     }),
+    businessNatureSole: joi_1.default.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: joi_1.default.required(),
+    }),
+    businessYearsSole: joi_1.default.number().integer().min(0).when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: joi_1.default.required(),
+    }),
+    annualIncomeSole: joi_1.default.number().precision(2).when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: joi_1.default.required(),
+    }),
+    businessAddressSole: joi_1.default.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: joi_1.default.required(),
+    }),
+    businessRegistration: joi_1.default.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: joi_1.default.required(),
+    }),
+    utrNumberSole: joi_1.default.string().pattern(/^\d{10}$/).optional(),
 }).options({ stripUnknown: true });
+exports.documentCreateSchema = joi_1.default.object({
+    documentName: joi_1.default.string().required(),
+    documentUrl: joi_1.default.string().required(),
+    type: joi_1.default.string().required(),
+    size: joi_1.default.string().required(),
+    idType: joi_1.default.string().valid(...Object.values(client_1.IdType)).optional(),
+    docType: joi_1.default.string().valid(...Object.values(client_1.DocumentType)).optional()
+});
 exports.GuarantorAgreementCreateSchema = joi_1.default.object({
     status: joi_1.default.string().valid(...Object.values(client_1.ReferenceStatus))
         .default(client_1.ReferenceStatus.PENDING),
-    agreementText: joi_1.default.string().required(),
-    guarantorId: joi_1.default.string().required(),
+    documents: joi_1.default.array().items(exports.documentCreateSchema).required(),
+    // agreementText: Joi.string().required(),
+    title: joi_1.default.string().required(),
+    firstName: joi_1.default.string().required(),
+    lastName: joi_1.default.string().required(),
+    middleName: joi_1.default.string().required(),
+    dateOfBirth: joi_1.default.string().required(),
+    contactNumber: joi_1.default.string().required(),
+    emailAddress: joi_1.default.string().required(),
+    nationalInsuranceNumber: joi_1.default.date().required(),
+    signedByGuarantor: joi_1.default.boolean().required(),
+    guarantorSignature: joi_1.default.string().required(),
+    guarantorSignedAt: joi_1.default.date().required(),
     guarantorEmployment: exports.GuarantorEmploymentInfoCreateSchema,
     applicationId: joi_1.default.string().required(),
 });
@@ -197,3 +253,11 @@ exports.employeeReferenceSchema = joi_1.default.object({
     signature: joi_1.default.string().optional(),
     date: joi_1.default.date().required()
 }).options({ abortEarly: false });
+exports.VerificationUpdateSchema = joi_1.default.object({
+    employmentVerificationStatus: joi_1.default.string().valid(...Object.values(client_1.YesNo)).required(),
+    incomeVerificationStatus: joi_1.default.string().valid(...Object.values(client_1.YesNo)).required(),
+    creditCheckStatus: joi_1.default.string().valid(...Object.values(client_1.YesNo)).required(),
+    landlordVerificationStatus: joi_1.default.string().valid(...Object.values(client_1.YesNo)).required(),
+    guarantorVerificationStatus: joi_1.default.string().valid(...Object.values(client_1.YesNo)).required(),
+    refereeVerificationStatus: joi_1.default.string().valid(...Object.values(client_1.YesNo)).required()
+});

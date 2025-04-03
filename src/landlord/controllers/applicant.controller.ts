@@ -381,7 +381,139 @@ class ApplicationControls {
         } catch (error) {
             errorService.handleError(error, res)
         }
-    } 
+    }
+    sendApplicationReminder = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+
+            // Validate application ID
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+            // Verify application exists
+            const application = await applicantService.getApplicationById(applicationId);
+            if (!application) {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${applicationId} does not exist`]
+                });
+            }
+           
+            const landlordId = req.user.landlords.id;
+
+            if (landlordId !== application.properties.landlordId){
+                return res.status(400).json({
+                    message: "you can only send application reminder for application on your properties"
+                });
+            }
+            // get the application email to send reminder
+    
+            return res.status(200).json({ data: [] });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    updateApplicationVerificationStatus = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+
+            // Validate application ID
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+            // Verify application exists
+            const application = await applicantService.getApplicationById(applicationId);
+            if (!application) {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${applicationId} does not exist`]
+                });
+            }
+            // Validate request body
+            const { error, value } = updateApplicationStatusSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+
+
+            const landlordId = req.user.landlords.id;
+            // match name
+            // if (application.user.profile.firstName === )
+            const applicationInvite = await ApplicationInvitesService.updateVerificationStatus(applicationId, value);
+            return res.status(200).json({ applicationInvite });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+
+
+    // {
+    //     "fullName": "west",
+    //     "propertyAddress": "same",
+    //     "rentAmount": "123",
+    //     "tenancyStartDate": "5",
+    //     "employmentType": "",
+    //     "idType": "",
+    //     "idNumber": "",
+    //     "idExpiryDate": "",
+    //     "incomeProof": "",
+    //     "additionalDocs": [],
+    //     "title": "Mr",
+    //     "firstName": "Weldson",
+    //     "middleName": "Addin",
+    //     "lastName": "Shell",
+    //     "dateOfBirth": "4",
+    //     "nationalInsuranceNumber": "324334545465",
+    //     "contactNumber": "09090887755",
+    //     "emailAddress": "ade@gmail.com",
+    //     "employerName": "Western",
+    //     "employerAddress": "580 California Street",
+    //     "employerPhone": "098989090",
+    //     "employerEmail": "west@gmail.com",
+
+    //     "businessName": "",
+    //     "businessNature": "",
+    //     "businessYears": "",
+    //     "annualIncome": "1232322",
+    //     "annualIncomeSelf": "",
+    //     "businessAddress": "",
+    //     "accountantName": "",
+    //     "accountantContact": "",
+    //     "utrNumber": "",
+
+    //     "freelanceType": "",
+    //     "freelanceYears": "",
+    //     "freelanceMonthlyIncome": "",
+    //     "freelancePortfolioWebsite": "",
+    //     "freelanceMajorClients": "",
+    //     "freelanceUtrNumber": "",
+      
+    //     "businessNameSole": "",
+    //     "businessNatureSole": "",
+    //     "businessYearsSole": "",
+    //     "annualIncomeSole": "",
+    //     "businessAddressSole": "",
+    //     "businessRegistration": "",
+    //     "utrNumberSole": "",
+
+    //     "guarantorName": "",
+    //     "guarantorSignature": "wesretete",
+    //     "guarantorDate": "12322-02-21",
+    //     "tenantName": "AdeWest",
+    //     "declaration": false,
+    //     "employmentStartDate": "2222-12-12",
+    //     "monthlyIncome": "",
+    //     "portfolioWebsite": "",
+    //     "majorClients": "",
+    //     "jobTitle": "Shelli",
+    //     "businessRegistrationNumber": ""
+    // }
 }
 
 

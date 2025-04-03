@@ -438,7 +438,12 @@ class ApplicantService {
             return yield __1.prismaClient.application.findUnique({
                 where: { id: applicationId },
                 include: {
-                    user: true,
+                    user: {
+                        select: {
+                            email: true,
+                            profile: true
+                        }
+                    },
                     residentialInfo: {
                         include: {
                             prevAddresses: true,
