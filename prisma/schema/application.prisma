@@ -63,6 +63,35 @@ enum ApplicationSaveState {
 }
 
 
+model applicationInvites {
+  id                     String             @id @default(cuid())
+  isDeleted              Boolean            @default(false)
+  applicationFee         YesNo?
+
+  createdAt              DateTime           @default(now()) // represents the date invited
+  updatedAt              DateTime           @updatedAt
+  scheduleDate           DateTime?
+  reScheduleDate         DateTime?
+  response               InvitedResponse    @default(PENDING)
+
+  responseStepsCompleted InvitedResponse[]
+
+  // relation ship fields
+  properties             properties?       @relation(fields: [propertiesId], references: [id])
+  propertiesId           String?
+  apartments             apartments?       @relation(fields: [apartmentsId], references: [id])
+  apartmentsId           String?
+  invitedByLandordId     String?
+  landlords              landlords?        @relation(fields: [invitedByLandordId], references: [id])
+  tenants                tenants?          @relation(fields: [tenantsId], references: [id])
+  tenantsId              String?
+  userInvited            users?            @relation(fields: [userInvitedId], references: [id])
+  userInvitedId          String?
+  enquires               Log?              @relation(fields: [enquiryId], references: [id])
+  enquiryId              String?
+
+  application            application?
+}
 
 model application {
   id                                                                String                    @id @default(cuid())
@@ -301,35 +330,6 @@ model EmploymentInformation {
   user                 users?        @relation(fields: [userId], references: [id])
 }
 
-model applicationInvites {
-  id                     String             @id @default(cuid())
-  isDeleted              Boolean            @default(false)
-  applicationFee         YesNo?
-
-  createdAt              DateTime           @default(now()) // represents the date invited
-  updatedAt              DateTime           @updatedAt
-  scheduleDate           DateTime?
-  reScheduleDate         DateTime?
-  response               InvitedResponse    @default(PENDING)
-
-  responseStepsCompleted InvitedResponse[]
-
-  // relation ship fields
-  properties             properties?       @relation(fields: [propertiesId], references: [id])
-  propertiesId           String?
-  apartments             apartments?       @relation(fields: [apartmentsId], references: [id])
-  apartmentsId           String?
-  invitedByLandordId     String?
-  landlords              landlords?        @relation(fields: [invitedByLandordId], references: [id])
-  tenants                tenants?          @relation(fields: [tenantsId], references: [id])
-  tenantsId              String?
-  userInvited            users?            @relation(fields: [userInvitedId], references: [id])
-  userInvitedId          String?
-  enquires               Log?              @relation(fields: [enquiryId], references: [id])
-  enquiryId              String?
-
-  application            application?
-}
 
 model applicationQuestions {
   id                    String        @id @default(cuid())

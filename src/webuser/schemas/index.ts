@@ -1,3 +1,4 @@
+import { DocumentType, IdType } from '.prisma/client';
 import Joi from 'joi';
 
 const nextOfKinSchema = Joi.object({
@@ -101,6 +102,15 @@ const documentSchema = Joi.object({
     applicantId: Joi.string().optional(),
 });
 
+const appDocumentSchema = Joi.object({
+    // id: Joi.string().allow(null).optional(),
+    documentName: Joi.string().required(),
+    type: Joi.string().required(),
+    size: Joi.string().required(),
+    IdType: Joi.string().valid(...Object.keys(IdType)).optional(),
+    docType: Joi.string().valid(...Object.keys(DocumentType)).optional(),
+});
+
 
 const additionalInfoSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
@@ -183,6 +193,7 @@ export {
     guarantorInformationSchema,
     emergencyContactSchema,
     documentSchema,
+    appDocumentSchema,
     prevAddressSchema,
     refreeSchema,
     additionalInfoSchema,

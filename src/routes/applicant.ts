@@ -36,7 +36,7 @@ class ApplicantRoutes {
         this.router.post('/additional-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateAdditionInfo);
         this.router.post('/referees/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateRefree);
         // this.router.post('/document/:applicationId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ApplicantControls.createApplicantionDocument);
-        this.router.post('/document/:applicationId',  uploadControl.array("files"), this.authenticateService.authorize, ApplicantControls.uploadAppDocuments);
+        this.router.post('/document/:applicationId',  this.authenticateService.authorize, ApplicantControls.uploadAppDocuments);
         this.router.post('/declaration/:applicationId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ApplicantControls.createOrUpdateDeclaration);
 
         this.router.get('/:id', this.authenticateService.authorize,  ApplicantControls.getApplication);

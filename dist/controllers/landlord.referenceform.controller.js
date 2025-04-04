@@ -48,7 +48,7 @@ class LandlordReferenceFormControls {
                 // Combine validated data with application ID
                 const formData = Object.assign(Object.assign({}, value), { applicationId: applicationId });
                 // Create reference form
-                const result = yield externallandlord_service_1.default.createLandlordReferenceForm(formData);
+                const result = yield externallandlord_service_1.default.createLandlordReferenceForm(formData, applicationId);
                 res.status(201).json(result);
             }
             catch (error) {

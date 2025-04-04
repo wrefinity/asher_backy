@@ -10,7 +10,8 @@ import applicantService from "../webuser/services/applicantService";
 
 class LandlordReferenceService {
   async createLandlordReferenceForm(
-    data: LandlordReferenceFormCreateDTO
+    data: LandlordReferenceFormCreateDTO,
+    applicationId
   ): Promise<Prisma.LandlordReferenceFormGetPayload<{
     include: {
       tenancyReferenceHistory: true;
@@ -31,10 +32,18 @@ class LandlordReferenceService {
           additionalComments: data.additionalComments,
           signerName: data.signerName,
           signature: data.signature,
-          applicationId: data.applicationId,
-          TenancyReferenceHistoryId: tenancyHistory.id,
-          externalLandlordId: externalLandlord.id,
-          conductId: tenantConduct.id
+          application:{
+            connect: {id: applicationId}
+          },
+          tenancyReferenceHistory: {
+            connect:{id: tenancyHistory.id }
+          },
+          externalLandlord: {
+            connect: {id: externalLandlord.id}
+          },
+          conduct: {
+            connect: {id: tenantConduct.id}
+          }
         },
         include: {
           tenancyReferenceHistory: true,
@@ -45,7 +54,7 @@ class LandlordReferenceService {
       });
 
       if (created){
-        await applicantService.updateApplicationStatus(data.applicationId, ApplicationStatus.LANDLORD_REFERENCE)
+        await applicantService.updateApplicationStatus(applicationId, ApplicationStatus.LANDLORD_REFERENCE)
       }
       return created
     });

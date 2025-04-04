@@ -43,7 +43,7 @@ class LandlordReferenceFormControls {
             };
 
             // Create reference form
-            const result = await landlordReferenceService.createLandlordReferenceForm(formData);
+            const result = await landlordReferenceService.createLandlordReferenceForm(formData,  applicationId);
             
             res.status(201).json(result);
         } catch (error) {

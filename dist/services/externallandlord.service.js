@@ -16,7 +16,7 @@ const client_1 = require("@prisma/client");
 const __1 = require("..");
 const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
 class LandlordReferenceService {
-    createLandlordReferenceForm(data) {
+    createLandlordReferenceForm(data, applicationId) {
         return __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.$transaction((prisma) => __awaiter(this, void 0, void 0, function* () {
                 // Use CreateDTO interfaces for creation
@@ -29,10 +29,18 @@ class LandlordReferenceService {
                         additionalComments: data.additionalComments,
                         signerName: data.signerName,
                         signature: data.signature,
-                        applicationId: data.applicationId,
-                        TenancyReferenceHistoryId: tenancyHistory.id,
-                        externalLandlordId: externalLandlord.id,
-                        conductId: tenantConduct.id
+                        application: {
+                            connect: { id: applicationId }
+                        },
+                        tenancyReferenceHistory: {
+                            connect: { id: tenancyHistory.id }
+                        },
+                        externalLandlord: {
+                            connect: { id: externalLandlord.id }
+                        },
+                        conduct: {
+                            connect: { id: tenantConduct.id }
+                        }
                     },
                     include: {
                         tenancyReferenceHistory: true,
@@ -42,7 +50,7 @@ class LandlordReferenceService {
                     }
                 });
                 if (created) {
-                    yield applicantService_1.default.updateApplicationStatus(data.applicationId, client_1.ApplicationStatus.LANDLORD_REFERENCE);
+                    yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.LANDLORD_REFERENCE);
                 }
                 return created;
             }));
