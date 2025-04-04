@@ -93,6 +93,7 @@ class ApplicantControls {
         }
       });
     } catch (error) {
+      console.log(error)
       ErrorService.handleError(error, res)
     }
   };
