@@ -68,60 +68,66 @@ class GuarantorService {
   };
 
   // guarantor reference services
-  async createGuarantorAgreement(
-    data: GuarantorAgreement
-  ): Promise<Prisma.GuarantorAgreementGetPayload<{
-    include: {
-      guarantor: true;
-      guarantorEmployment: true;
-      application: true;
-    };
-  }>> {
-    return prismaClient.$transaction(async (prisma) => {
-      // Validate and create employment info if provided
-      // let employmentInfo = await prisma.guarantorEmploymentInfo.create({
-      //   data: this.mapEmploymentData(data.guarantorEmployment)
-      // });
-      // Validate guarantor exists
-      const guarantor = await prisma.application.findFirst({
-        where: { id: data.applicationId}, include:{guarantorInformation: true}
-      });
-      if (!guarantor) {
-        throw new Error(`Guarantor not found`);
-      }
-      // Create main agreement
-      const created = await prisma.guarantorAgreement.create({
-        data: {
-          status: data.status,
-          title: data.title,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          middleName: data.middleName,
-          dateOfBirth: data.dateOfBirth,
-          contactNumber: data.contactNumber,
-          emailAddress: data.emailAddress,
-          nationalInsuranceNumber: data.nationalInsuranceNumber,
-          signedByGuarantor: data.signedByGuarantor || false,
-          guarantorSignature: data.guarantorSignature,
-          guarantorSignedAt: data.guarantorSignedAt,
-          applicationId: data.applicationId,
-          guarantorId: guarantor.id,
-          // guarantorEmploymentId: employmentInfo?.id
-        },
-        include: {
-          guarantor: true,
-          // guarantorEmployment: true,
-          application: true
-        }
-      });
+// 1. Use Prisma's generated type instead of custom interface
+async createGuarantorAgreement(
+  data: Prisma.GuarantorAgreementCreateInput, applicationId: string
+): Promise<Prisma.GuarantorAgreementGetPayload<{
+  include: {
+    guarantor: true;
+    guarantorEmployment: true;
+    application: true;
+  };
+}>> {
 
-      if (created){
-        await applicantService.updateApplicationStatus(data.applicationId, ApplicationStatus.GUARANTOR_REFERENCE)
-      }
-      return created
+  console.log("===========================")
+  return prismaClient.$transaction(async (prisma) => {
+    const apx = await prisma.application.findFirst({
+      where: { id: applicationId },
+      include: { guarantorInformation: true }
     });
-  }
+    console.log(apx)
 
+    if (!apx?.guarantorInformation) {
+      throw new Error("Guarantor not found");
+    }
+
+    // 2. Create without spreading entire data object
+    const created = await prisma.guarantorAgreement.create({
+      data: {
+        status: data.status,
+        title: data.title,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        middleName: data.middleName,
+        dateOfBirth: data.dateOfBirth,
+        contactNumber: data.contactNumber,
+        emailAddress: data.emailAddress,
+        nationalInsuranceNumber: data.nationalInsuranceNumber,
+        signedByGuarantor: data.signedByGuarantor || false,
+        guarantorSignature: data.guarantorSignature,
+        guarantorSignedAt: data.guarantorSignedAt,
+        guarantor: {
+          connect: { id: apx.guarantorInformation.id }
+        },
+        application: {
+          connect: { id: applicationId }
+        }
+      },
+      include: {
+        guarantor: true,
+        application: true
+      }
+    });
+
+    if (created) {
+      await applicantService.updateApplicationStatus(
+        data.application.connect?.id!, 
+        ApplicationStatus.GUARANTOR_REFERENCE
+      );
+    }
+    return created;
+  });
+}
   // private mapEmploymentData(data: GuarantorEmploymentInfo) {
   //   const baseData = {
   //     employmentType: data.employmentType,

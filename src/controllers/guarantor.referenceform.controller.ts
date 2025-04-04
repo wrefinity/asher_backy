@@ -47,9 +47,8 @@ class GuarantorController {
           // Create agreement with nested employment info
           const result = await guarantorService.createGuarantorAgreement({
             ...value,
-            applicationId,
             employmentInfo: value.employmentInfo 
-          });
+          },  applicationId);
     
           res.status(201).json(result);
         } catch (error) {

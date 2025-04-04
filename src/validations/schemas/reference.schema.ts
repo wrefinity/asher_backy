@@ -233,7 +233,7 @@ export const GuarantorAgreementCreateSchema = Joi.object({
     dateOfBirth: Joi.string().required(),
     contactNumber: Joi.string().required(),
     emailAddress: Joi.string().required(),
-    nationalInsuranceNumber: Joi.date().required(),
+    nationalInsuranceNumber: Joi.string().required(),
     signedByGuarantor: Joi.boolean().required(),
     guarantorSignature: Joi.string().required(), 
     guarantorSignedAt: Joi.date().required(),
