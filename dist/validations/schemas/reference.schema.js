@@ -37,6 +37,7 @@ exports.TenancyReferenceHistoryCreateSchema = joi_1.default.object({
         .pattern(/^\d+(\.\d{1,2})?$/),
     rentStartDate: optionalDate('Tenancy Start Date'),
     rentEndDate: optionalDate('Tenancy End Date'),
+    monthlyRent: joi_1.default.string().optional(),
     reasonForLeaving: optionalString('Reason for Leaving'),
 });
 exports.TenantConductCreateSchema = joi_1.default.object({

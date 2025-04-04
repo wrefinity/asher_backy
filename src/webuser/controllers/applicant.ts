@@ -239,7 +239,6 @@ class ApplicantControls {
       // Send notifications (fire and forget)
       sendApplicationCompletionEmails(applicationExist);
       return res.status(200).json(application);
-
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -277,8 +276,13 @@ class ApplicantControls {
         });
       }
 
-      // Check if APPLY, FEEDBACK, and PENDING steps are completed
-      const requiredSteps: InvitedResponse[] = [InvitedResponse.APPLY, InvitedResponse.FEEDBACK, InvitedResponse.PENDING];
+      // Check if APPLY, AWAITING_FEEDBACK, FEEDBACK, and PENDING steps are completed
+      const requiredSteps: InvitedResponse[] = [
+        InvitedResponse.APPLY,
+        InvitedResponse.AWAITING_FEEDBACK,
+        InvitedResponse.FEEDBACK,
+        InvitedResponse.PENDING
+      ];
 
       // Verify that all required steps are included in responseStepsCompleted
       const hasAllRequiredSteps = requiredSteps.every(step =>
@@ -290,7 +294,6 @@ class ApplicantControls {
           error: "Application requires completion of APPLY, FEEDBACK, and PENDING steps"
         });
       }
-
       const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
 
       return res.status(201).json({ application });
@@ -302,7 +305,6 @@ class ApplicantControls {
     try {
       const userId = String(req.user.id);
       const applicationId = req.params.applicationId;
-
       const { error, value } = additionalInfoSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });

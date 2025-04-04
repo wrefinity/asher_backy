@@ -242,8 +242,13 @@ class ApplicantControls {
                         error: "This invitation is declined or rejected"
                     });
                 }
-                // Check if APPLY, FEEDBACK, and PENDING steps are completed
-                const requiredSteps = [client_1.InvitedResponse.APPLY, client_1.InvitedResponse.FEEDBACK, client_1.InvitedResponse.PENDING];
+                // Check if APPLY, AWAITING_FEEDBACK, FEEDBACK, and PENDING steps are completed
+                const requiredSteps = [
+                    client_1.InvitedResponse.APPLY,
+                    client_1.InvitedResponse.AWAITING_FEEDBACK,
+                    client_1.InvitedResponse.FEEDBACK,
+                    client_1.InvitedResponse.PENDING
+                ];
                 // Verify that all required steps are included in responseStepsCompleted
                 const hasAllRequiredSteps = requiredSteps.every(step => { var _a; return (_a = invitation.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.includes(step); });
                 if (!hasAllRequiredSteps) {

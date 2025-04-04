@@ -68,7 +68,7 @@ model TenancyReferenceHistory {
   // Tenant Information
   tenantName       String
   currentAddress   String
-  monthlyRent      String
+  monthlyRent      String?
   rentStartDate    DateTime?
   rentEndDate      DateTime?
   reasonForLeaving String?

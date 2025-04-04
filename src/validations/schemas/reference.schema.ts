@@ -36,6 +36,7 @@ export const TenancyReferenceHistoryCreateSchema = Joi.object({
         .pattern(/^\d+(\.\d{1,2})?$/),
     rentStartDate: optionalDate('Tenancy Start Date'),
     rentEndDate: optionalDate('Tenancy End Date'),
+    monthlyRent: Joi.string().optional(),
     reasonForLeaving: optionalString('Reason for Leaving'),
 });
 
