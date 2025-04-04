@@ -134,21 +134,21 @@ class GuarantorService {
         // }
     }
     // guarantor reference services
-    createGuarantorAgreement(data) {
+    // 1. Use Prisma's generated type instead of custom interface
+    createGuarantorAgreement(data, applicationId) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log("===========================");
             return __1.prismaClient.$transaction((prisma) => __awaiter(this, void 0, void 0, function* () {
-                // Validate and create employment info if provided
-                // let employmentInfo = await prisma.guarantorEmploymentInfo.create({
-                //   data: this.mapEmploymentData(data.guarantorEmployment)
-                // });
-                // Validate guarantor exists
-                const guarantor = yield prisma.application.findFirst({
-                    where: { id: data.applicationId }, include: { guarantorInformation: true }
+                var _a;
+                const apx = yield prisma.application.findFirst({
+                    where: { id: applicationId },
+                    include: { guarantorInformation: true }
                 });
-                if (!guarantor) {
-                    throw new Error(`Guarantor not found`);
+                console.log(apx);
+                if (!(apx === null || apx === void 0 ? void 0 : apx.guarantorInformation)) {
+                    throw new Error("Guarantor not found");
                 }
-                // Create main agreement
+                // 2. Create without spreading entire data object
                 const created = yield prisma.guarantorAgreement.create({
                     data: {
                         status: data.status,
@@ -163,18 +163,20 @@ class GuarantorService {
                         signedByGuarantor: data.signedByGuarantor || false,
                         guarantorSignature: data.guarantorSignature,
                         guarantorSignedAt: data.guarantorSignedAt,
-                        applicationId: data.applicationId,
-                        guarantorId: guarantor.id,
-                        // guarantorEmploymentId: employmentInfo?.id
+                        guarantor: {
+                            connect: { id: apx.guarantorInformation.id }
+                        },
+                        application: {
+                            connect: { id: applicationId }
+                        }
                     },
                     include: {
                         guarantor: true,
-                        // guarantorEmployment: true,
                         application: true
                     }
                 });
                 if (created) {
-                    yield applicantService_1.default.updateApplicationStatus(data.applicationId, client_1.ApplicationStatus.GUARANTOR_REFERENCE);
+                    yield applicantService_1.default.updateApplicationStatus((_a = data.application.connect) === null || _a === void 0 ? void 0 : _a.id, client_1.ApplicationStatus.GUARANTOR_REFERENCE);
                 }
                 return created;
             }));

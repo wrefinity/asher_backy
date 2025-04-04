@@ -189,6 +189,18 @@ class ApplicantControls {
                 const applicationExist = yield applicantService_1.default.getApplicationById(applicationId);
                 if (!applicationExist)
                     return res.status(500).json({ message: "Application Doesn't Exist" });
+                if (!applicationExist.guarantorInformationId ||
+                    !applicationExist.residentialId ||
+                    !applicationExist.emergencyContactId ||
+                    !applicationExist.employmentInformationId ||
+                    !applicationExist.applicantPersonalDetailsId ||
+                    !applicationExist.refereeId) {
+                    return res.status(400).json({ message: "Kindly complete the application field before submitting" });
+                }
+                // Validate questions content
+                if (applicationExist.applicationQuestions.length < 3) {
+                    return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
+                }
                 const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.COMPLETED);
                 if (!application) {
                     return res.status(400).json({ error: 'Application not updated' });

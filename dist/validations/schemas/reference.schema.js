@@ -220,7 +220,7 @@ exports.GuarantorAgreementCreateSchema = joi_1.default.object({
     dateOfBirth: joi_1.default.string().required(),
     contactNumber: joi_1.default.string().required(),
     emailAddress: joi_1.default.string().required(),
-    nationalInsuranceNumber: joi_1.default.date().required(),
+    nationalInsuranceNumber: joi_1.default.string().required(),
     signedByGuarantor: joi_1.default.boolean().required(),
     guarantorSignature: joi_1.default.string().required(),
     guarantorSignedAt: joi_1.default.date().required(),

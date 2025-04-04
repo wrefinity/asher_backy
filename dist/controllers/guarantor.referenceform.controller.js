@@ -51,7 +51,7 @@ class GuarantorController {
                 // delete data.cloudinaryDocumentUrls;
                 // delete data.cloudinaryAudioUrls;
                 // Create agreement with nested employment info
-                const result = yield guarantor_services_1.default.createGuarantorAgreement(Object.assign(Object.assign({}, value), { applicationId, employmentInfo: value.employmentInfo }));
+                const result = yield guarantor_services_1.default.createGuarantorAgreement(Object.assign(Object.assign({}, value), { employmentInfo: value.employmentInfo }), applicationId);
                 res.status(201).json(result);
             }
             catch (error) {

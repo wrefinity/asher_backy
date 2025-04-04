@@ -74,143 +74,143 @@ export const LandlordReferenceFormCreateSchema = Joi.object({
     .label('Landlord Reference Form');
 
 
-    export const GuarantorEmploymentInfoCreateSchema = Joi.object({
-        employmentType: Joi.string()
-            .valid(...Object.values(EmploymentType))
-            .required()
-            .label('Employment Type'),
-    
-        // Common fields
-        annualIncome: Joi.number().precision(2).optional(),
-    
-        // Employed
-        employerName: Joi.string().when('employmentType', {
+export const GuarantorEmploymentInfoCreateSchema = Joi.object({
+    employmentType: Joi.string()
+        .valid(...Object.values(EmploymentType))
+        .required()
+        .label('Employment Type'),
+
+    // Common fields
+    annualIncome: Joi.number().precision(2).optional(),
+
+    // Employed
+    employerName: Joi.string().when('employmentType', {
+        is: EmploymentType.EMPLOYED,
+        then: Joi.required(),
+    }),
+    jobTitle: Joi.string().when('employmentType', {
+        is: EmploymentType.EMPLOYED,
+        then: Joi.required(),
+    }),
+    employmentStartDate: Joi.date().when('employmentType', {
+        is: EmploymentType.EMPLOYED,
+        then: Joi.required(),
+    }),
+    employerAddress: Joi.string().when('employmentType', {
+        is: EmploymentType.EMPLOYED,
+        then: Joi.required(),
+    }),
+    employerPhone: Joi.string()
+        .pattern(/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/)
+        .when('employmentType', {
             is: EmploymentType.EMPLOYED,
             then: Joi.required(),
         }),
-        jobTitle: Joi.string().when('employmentType', {
-            is: EmploymentType.EMPLOYED,
-            then: Joi.required(),
-        }),
-        employmentStartDate: Joi.date().when('employmentType', {
-            is: EmploymentType.EMPLOYED,
-            then: Joi.required(),
-        }),
-        employerAddress: Joi.string().when('employmentType', {
-            is: EmploymentType.EMPLOYED,
-            then: Joi.required(),
-        }),
-        employerPhone: Joi.string()
-            .pattern(/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/)
-            .when('employmentType', {
-                is: EmploymentType.EMPLOYED,
-                then: Joi.required(),
-            }),
-        employerEmail: Joi.string().email().when('employmentType', {
-            is: EmploymentType.EMPLOYED,
-            then: Joi.required(),
-        }),
-    
-        // Self-Employed
-        businessName: Joi.string().when('employmentType', {
-            is: EmploymentType.SELF_EMPLOYED,
-            then: Joi.required(),
-        }),
-        businessNature: Joi.string().when('employmentType', {
-            is: EmploymentType.SELF_EMPLOYED,
-            then: Joi.required(),
-        }),
-        yearsInBusiness: Joi.number().integer().min(0).when('employmentType', {
-            is: EmploymentType.SELF_EMPLOYED,
-            then: Joi.required(),
-        }),
-        businessAddress: Joi.string().when('employmentType', {
-            is: EmploymentType.SELF_EMPLOYED,
-            then: Joi.required(),
-        }),
-        accountantName: Joi.string().optional(),
-        accountantContact: Joi.string().optional(),
-        utrNumber: Joi.string().pattern(/^\d{10}$/).optional(),
-    
-        // Freelance
-        freelanceType: Joi.string().when('employmentType', {
-            is: EmploymentType.FREELANCE,
-            then: Joi.required(),
-        }),
-        yearsFreelancing: Joi.number().integer().min(0).when('employmentType', {
-            is: EmploymentType.FREELANCE,
-            then: Joi.required(),
-        }),
-        freelanceMonthlyIncome: Joi.number().precision(2).when('employmentType', {
-            is: EmploymentType.FREELANCE,
-            then: Joi.required(),
-        }),
-        freelanceUtrNumber: Joi.number().precision(2).when('employmentType', {
-            is: EmploymentType.FREELANCE,
-            then: Joi.required(),
-        }),
-        freelancePortfolioWebsite: Joi.string().uri().optional(),
-        freelanceMajorClients: Joi.string().optional(),
-        
-        // Director
-        companyName: Joi.string().when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-        companyNumber: Joi.string().when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-        position: Joi.string().when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-        ownershipPercentage: Joi.number().integer().min(0).max(100).when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-        directorIncome: Joi.number().integer().min(0).max(100).when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-        companyFounded: Joi.number().integer().min(1900).max(new Date().getFullYear()).when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-        companyAddress: Joi.string().when('employmentType', {
-            is: EmploymentType.DIRECTOR,
-            then: Joi.required(),
-        }),
-    
-        // Sole Proprietor (New Section)
-        businessNameSole: Joi.string().when('employmentType', {
-            is: EmploymentType.SOLE_PROPRIETOR,
-            then: Joi.required(),
-        }),
-        businessNatureSole: Joi.string().when('employmentType', {
-            is: EmploymentType.SOLE_PROPRIETOR,
-            then: Joi.required(),
-        }),
-        businessYearsSole: Joi.number().integer().min(0).when('employmentType', {
-            is: EmploymentType.SOLE_PROPRIETOR,
-            then: Joi.required(),
-        }),
-        annualIncomeSole: Joi.number().precision(2).when('employmentType', {
-            is: EmploymentType.SOLE_PROPRIETOR,
-            then: Joi.required(),
-        }),
-        businessAddressSole: Joi.string().when('employmentType', {
-            is: EmploymentType.SOLE_PROPRIETOR,
-            then: Joi.required(),
-        }),
-        businessRegistration: Joi.string().when('employmentType', {
-            is: EmploymentType.SOLE_PROPRIETOR,
-            then: Joi.required(),
-        }),
-        utrNumberSole: Joi.string().pattern(/^\d{10}$/).optional(),
-    
-    }).options({ stripUnknown: true });
-    
+    employerEmail: Joi.string().email().when('employmentType', {
+        is: EmploymentType.EMPLOYED,
+        then: Joi.required(),
+    }),
+
+    // Self-Employed
+    businessName: Joi.string().when('employmentType', {
+        is: EmploymentType.SELF_EMPLOYED,
+        then: Joi.required(),
+    }),
+    businessNature: Joi.string().when('employmentType', {
+        is: EmploymentType.SELF_EMPLOYED,
+        then: Joi.required(),
+    }),
+    yearsInBusiness: Joi.number().integer().min(0).when('employmentType', {
+        is: EmploymentType.SELF_EMPLOYED,
+        then: Joi.required(),
+    }),
+    businessAddress: Joi.string().when('employmentType', {
+        is: EmploymentType.SELF_EMPLOYED,
+        then: Joi.required(),
+    }),
+    accountantName: Joi.string().optional(),
+    accountantContact: Joi.string().optional(),
+    utrNumber: Joi.string().pattern(/^\d{10}$/).optional(),
+
+    // Freelance
+    freelanceType: Joi.string().when('employmentType', {
+        is: EmploymentType.FREELANCE,
+        then: Joi.required(),
+    }),
+    yearsFreelancing: Joi.number().integer().min(0).when('employmentType', {
+        is: EmploymentType.FREELANCE,
+        then: Joi.required(),
+    }),
+    freelanceMonthlyIncome: Joi.number().precision(2).when('employmentType', {
+        is: EmploymentType.FREELANCE,
+        then: Joi.required(),
+    }),
+    freelanceUtrNumber: Joi.number().precision(2).when('employmentType', {
+        is: EmploymentType.FREELANCE,
+        then: Joi.required(),
+    }),
+    freelancePortfolioWebsite: Joi.string().uri().optional(),
+    freelanceMajorClients: Joi.string().optional(),
+
+    // Director
+    companyName: Joi.string().when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+    companyNumber: Joi.string().when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+    position: Joi.string().when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+    ownershipPercentage: Joi.number().integer().min(0).max(100).when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+    directorIncome: Joi.number().integer().min(0).max(100).when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+    companyFounded: Joi.number().integer().min(1900).max(new Date().getFullYear()).when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+    companyAddress: Joi.string().when('employmentType', {
+        is: EmploymentType.DIRECTOR,
+        then: Joi.required(),
+    }),
+
+    // Sole Proprietor (New Section)
+    businessNameSole: Joi.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: Joi.required(),
+    }),
+    businessNatureSole: Joi.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: Joi.required(),
+    }),
+    businessYearsSole: Joi.number().integer().min(0).when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: Joi.required(),
+    }),
+    annualIncomeSole: Joi.number().precision(2).when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: Joi.required(),
+    }),
+    businessAddressSole: Joi.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: Joi.required(),
+    }),
+    businessRegistration: Joi.string().when('employmentType', {
+        is: EmploymentType.SOLE_PROPRIETOR,
+        then: Joi.required(),
+    }),
+    utrNumberSole: Joi.string().pattern(/^\d{10}$/).optional(),
+
+}).options({ stripUnknown: true });
+
 
 export const documentCreateSchema = Joi.object({
     documentName: Joi.string().required(),
@@ -224,7 +224,7 @@ export const documentCreateSchema = Joi.object({
 export const GuarantorAgreementCreateSchema = Joi.object({
     status: Joi.string().valid(...Object.values(ReferenceStatus))
         .default(ReferenceStatus.PENDING),
-    documents: Joi.array().items(documentCreateSchema).required(), 
+    documents: Joi.array().items(documentCreateSchema).required(),
     // agreementText: Joi.string().required(),
     title: Joi.string().required(),
     firstName: Joi.string().required(),
@@ -235,7 +235,7 @@ export const GuarantorAgreementCreateSchema = Joi.object({
     emailAddress: Joi.string().required(),
     nationalInsuranceNumber: Joi.string().required(),
     signedByGuarantor: Joi.boolean().required(),
-    guarantorSignature: Joi.string().required(), 
+    guarantorSignature: Joi.string().required(),
     guarantorSignedAt: Joi.date().required(),
     guarantorEmployment: GuarantorEmploymentInfoCreateSchema,
     // applicationId: Joi.string().required(),
