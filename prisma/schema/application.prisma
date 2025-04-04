@@ -142,7 +142,7 @@ model application {
   // One-to-one relationship with LandlordReferenceForm
   referenceForm                                                     LandlordReferenceForm?
   guarantorAgreement                                                GuarantorAgreement?
-  employeeRefence                                                   EmployeeReferenceForm?
+  employeeReference                                                   EmployeeReferenceForm?
 }
 model applicantPersonalDetails {
   id                                                  String         @id @default(cuid())

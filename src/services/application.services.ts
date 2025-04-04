@@ -3,9 +3,27 @@ import { Prisma, logTypeStatus, YesNo, InvitedResponse, ApplicationStatus, Appli
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 import logsServices from "./logs.services";
 import applicantService from "../webuser/services/applicantService";
-import {VerificationUpdateIF} from "../validations/interfaces/references.interfaces"
+import { VerificationUpdateIF } from "../validations/interfaces/references.interfaces"
 class ApplicationInvitesService {
     private userInclusion = { email: true, profile: true, id: true };
+    private applicationInclusion = {
+        documents: true,
+        employmentInfo: true,
+        personalDetails: true,
+        properties: true,
+        emergencyInfo: true,
+        guarantorInformation: true,
+        residentialInfo: true,
+        referenceForm: true,
+        employeeReference: true,
+        guarantorAgreement: true,
+        createdBy: {
+            select: this.userInclusion
+        },
+        user: {
+            select: this.userInclusion
+        }
+    }
 
     private inviteInclude = {
         properties: true,
@@ -21,19 +39,7 @@ class ApplicationInvitesService {
         },
         enquires: true,
         application: {
-            include: {
-                employmentInfo: true,
-                personalDetails: true,
-                emergencyInfo: true,
-                guarantorInformation: true,
-                residentialInfo: true,
-                createdBy: {
-                    select: {
-                        email: true,
-                        profile: true
-                    }
-                }
-            }
+            include: this.applicationInclusion
         }
     };
 
@@ -78,17 +84,7 @@ class ApplicationInvitesService {
                     landlordId
                 }
             },
-            include: {
-                properties: true,
-                apartments: true,
-                landlords: true,
-                tenants: true,
-                userInvited: {
-                    select: this.userInclusion
-                },
-                enquires: true,
-                application: true
-            },
+            include: this.inviteInclude,
             orderBy: {
                 createdAt: "desc"
             }
@@ -167,17 +163,7 @@ class ApplicationInvitesService {
                 //     isNot: null,
                 // }
             },
-            include: {
-                properties: true,
-                apartments: true,
-                landlords: true,
-                tenants: true,
-                userInvited: {
-                    select: this.userInclusion
-                },
-                enquires: true,
-                application: true
-            },
+            include: this.inviteInclude,
             orderBy: {
                 createdAt: "desc"
             }
@@ -281,23 +267,24 @@ class ApplicationInvitesService {
 
     async updateVerificationStatus(applicationId: string, data: VerificationUpdateIF) {
         const application = await applicantService.getApplicationById(applicationId);
-    
+
         if (!application) {
-          throw new Error('Application not found');
+            throw new Error('Application not found');
         }
-    
+
         return await prismaClient.application.update({
-          where: { id: applicationId },
-          data: {
-            employmentVerificationStatus: data.employmentVerificationStatus,
-            incomeVerificationStatus: data.incomeVerificationStatus,
-            creditCheckStatus: data.creditCheckStatus,
-            landlordVerificationStatus: data.landlordVerificationStatus,
-            guarantorVerificationStatus: data.guarantorVerificationStatus,
-            refereeVerificationStatus: data.refereeVerificationStatus,
-          },
+            where: { id: applicationId },
+            data: {
+                employmentVerificationStatus: data.employmentVerificationStatus,
+                incomeVerificationStatus: data.incomeVerificationStatus,
+                creditCheckStatus: data.creditCheckStatus,
+                landlordVerificationStatus: data.landlordVerificationStatus,
+                guarantorVerificationStatus: data.guarantorVerificationStatus,
+                refereeVerificationStatus: data.refereeVerificationStatus,
+            },
+            include: this.applicationInclusion
         });
-      }
+    }
 }
 
 export default new ApplicationInvitesService();

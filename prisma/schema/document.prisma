@@ -43,3 +43,24 @@ model document {
   agreement    GuarantorAgreement? @relation(fields: [agreementId], references: [id])
   agreementId  String?
 }
+
+model propertyDocument {
+  id           String         @id @default(cuid())
+  name         String
+  documentUrl  String[]
+  size         String?
+  filetype     String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // For ID documents
+  idType       IdType?
+  docType      DocumentType?
+
+  apartmentsId String?
+  apartments   apartments?   @relation(fields: [apartmentsId], references: [id])
+  propertyId   String?
+  properties   properties?   @relation(fields: [propertyId], references: [id])
+  uploadedBy   String?
+  users        users?        @relation(fields: [uploadedBy], references: [id])
+}

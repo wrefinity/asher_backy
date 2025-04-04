@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateApplicationStatusSchema = exports.updateApplicationInviteSchema = exports.createApplicationInviteSchema = void 0;
+exports.applicationReminderSchema = exports.ReminderType = exports.updateApplicationStatusSchema = exports.updateApplicationInviteSchema = exports.createApplicationInviteSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const invitedResponseType = Object.values(client_1.InvitedResponse);
@@ -30,4 +30,12 @@ exports.updateApplicationInviteSchema = joi_1.default.object({
 });
 exports.updateApplicationStatusSchema = joi_1.default.object({
     status: joi_1.default.string().valid(...ApplicationStatusType).required(),
+});
+var ReminderType;
+(function (ReminderType) {
+    ReminderType["REFERENCE_REMINDER"] = "REFERENCE_REMINDER";
+    ReminderType["SCHEDULE_REMINDER"] = "SCHEDULE_REMINDER";
+})(ReminderType || (exports.ReminderType = ReminderType = {}));
+exports.applicationReminderSchema = joi_1.default.object({
+    status: joi_1.default.string().valid(...Object.values(ReminderType)).required(),
 });

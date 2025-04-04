@@ -30,6 +30,56 @@ import logsServices from "../../services/logs.services";
 
 class ApplicantService {
 
+
+  private userInclusion = {
+    select: {
+      id: true,
+      email: true,
+      profile: true
+    }
+  }
+  private propsIncusion = {
+    landlord: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: true,
+          },
+        },
+      },
+    }
+  }
+  private applicationInclusion = {
+    user: this.userInclusion,
+    residentialInfo: {
+      include: {
+        prevAddresses: true,
+        user: true,
+      },
+    },
+    emergencyInfo: true,
+    employmentInfo: true,
+    documents: true,
+    properties: {
+      include: this.propsIncusion
+    },
+    personalDetails: {
+      include: {
+        nextOfKin: true,
+      },
+    },
+    guarantorInformation: true,
+    applicationQuestions: true,
+    declaration: true,
+    referenceForm: true,
+    guarantorAgreement: true,
+    employeeReference: true,
+    referee: true,
+    Log: true
+  }
+
   updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {
     await prismaClient.application.update({
       where: { id: applicationId },
@@ -103,7 +153,7 @@ class ApplicantService {
       });
 
       console.log(`Successfully added status "${status}" to application ${applicationId}`);
-      if(!applicationExist?.applicationInviteId) {
+      if (!applicationExist?.applicationInviteId) {
         throw new Error('update the invites id on the application ');
       }
       return await this.getInvitedById(applicationExist?.applicationInviteId);
@@ -356,11 +406,7 @@ class ApplicantService {
           connect: { id: docInfo.id },
         },
       },
-      include: {
-        documents: true,
-        guarantorInformation: true,
-        personalDetails: true,
-      },
+      include: this.applicationInclusion,
     });
 
     return { ...docInfo, ...updatedApplication };
@@ -423,7 +469,7 @@ class ApplicantService {
       await applicationServices.updateInviteResponse(application.applicationInviteId, InvitedResponse.SUBMITTED)
       return declared;
     }
-    return 
+    return
   }
 
   createOrUpdateEmploymentInformation = async (data: EmploymentInformationIF) => {
@@ -492,21 +538,7 @@ class ApplicantService {
           isDeleted: false,
         },
       },
-      include: {
-        user: true,
-        residentialInfo: true,
-        emergencyInfo: true,
-        employmentInfo: true,
-        documents: true,
-        properties: true,
-        personalDetails: true,
-        guarantorInformation: true,
-        applicationQuestions: true,
-        declaration: true,
-        referenceForm: true,
-        guarantorAgreement: true,
-        employeeRefence: true,
-      },
+      include: this.applicationInclusion,
     });
   };
 
@@ -530,37 +562,7 @@ class ApplicantService {
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({
       where: { id: applicationId },
-      include: {
-        user: {
-          select:{
-            email: true,
-            profile: true
-          }
-        },
-        residentialInfo: {
-          include: {
-            prevAddresses: true,
-            user: true,
-          },
-        },
-        guarantorInformation: true,
-        emergencyInfo: true,
-        documents: true,
-        employmentInfo: true,
-        properties: true,
-        referee: true,
-        Log: true,
-        declaration: true,
-        referenceForm: true,
-        employeeRefence: true,
-        guarantorAgreement: true,
-        applicationQuestions: true,
-        personalDetails: {
-          include: {
-            nextOfKin: true,
-          },
-        },
-      },
+      include: this.applicationInclusion,
     });
   }
 
@@ -597,29 +599,7 @@ class ApplicantService {
         status: Array.isArray(status) ? { in: status } : status,
         isDeleted: false,
       },
-      include: {
-        user: true,
-        residentialInfo: {
-          include: {
-            prevAddresses: true,
-            user: true,
-          },
-        },
-        guarantorInformation: true,
-        emergencyInfo: true,
-        documents: true,
-        employmentInfo: true,
-        properties: true,
-        referee: true,
-        Log: true,
-        declaration: true,
-        applicationQuestions: true,
-        personalDetails: {
-          include: {
-            nextOfKin: true,
-          },
-        },
-      },
+      include: this.applicationInclusion,
     });
   }
 
@@ -646,19 +626,7 @@ class ApplicantService {
       where: { id },
       include: {
         properties: {
-          include: {
-            landlord: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    profile: true
-                  },
-                },
-              }
-            }
-          }
+          include: this.propsIncusion
         }
       }
     });
@@ -697,44 +665,10 @@ class ApplicantService {
       where: whereClause,
       include: {
         properties: {
-          include: {
-            landlord: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    profile: true,
-                  },
-                },
-              },
-            },
-          },
+          include: this.propsIncusion,
         },
         application: {
-          include: {
-            user: true,
-            residentialInfo: {
-              include: {
-                prevAddresses: true,
-                user: true,
-              },
-            },
-            guarantorInformation: true,
-            emergencyInfo: true,
-            documents: true,
-            employmentInfo: true,
-            properties: true,
-            referee: true,
-            Log: true,
-            declaration: true,
-            applicationQuestions: true,
-            personalDetails: {
-              include: {
-                nextOfKin: true,
-              },
-            },
-          }
+          include: this.applicationInclusion
         }
       },
     });

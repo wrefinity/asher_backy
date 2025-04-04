@@ -19,6 +19,24 @@ const applicantService_1 = __importDefault(require("../webuser/services/applican
 class ApplicationInvitesService {
     constructor() {
         this.userInclusion = { email: true, profile: true, id: true };
+        this.applicationInclusion = {
+            documents: true,
+            employmentInfo: true,
+            personalDetails: true,
+            properties: true,
+            emergencyInfo: true,
+            guarantorInformation: true,
+            residentialInfo: true,
+            referenceForm: true,
+            employeeReference: true,
+            guarantorAgreement: true,
+            createdBy: {
+                select: this.userInclusion
+            },
+            user: {
+                select: this.userInclusion
+            }
+        };
         this.inviteInclude = {
             properties: true,
             apartments: true,
@@ -33,19 +51,7 @@ class ApplicationInvitesService {
             },
             enquires: true,
             application: {
-                include: {
-                    employmentInfo: true,
-                    personalDetails: true,
-                    emergencyInfo: true,
-                    guarantorInformation: true,
-                    residentialInfo: true,
-                    createdBy: {
-                        select: {
-                            email: true,
-                            profile: true
-                        }
-                    }
-                }
+                include: this.applicationInclusion
             }
         };
         this.getPreviousLandlordInfo = (applicationId) => __awaiter(this, void 0, void 0, function* () {
@@ -118,17 +124,7 @@ class ApplicationInvitesService {
                         landlordId
                     }
                 },
-                include: {
-                    properties: true,
-                    apartments: true,
-                    landlords: true,
-                    tenants: true,
-                    userInvited: {
-                        select: this.userInclusion
-                    },
-                    enquires: true,
-                    application: true
-                },
+                include: this.inviteInclude,
                 orderBy: {
                     createdAt: "desc"
                 }
@@ -206,17 +202,7 @@ class ApplicationInvitesService {
                     //     isNot: null,
                     // }
                 },
-                include: {
-                    properties: true,
-                    apartments: true,
-                    landlords: true,
-                    tenants: true,
-                    userInvited: {
-                        select: this.userInclusion
-                    },
-                    enquires: true,
-                    application: true
-                },
+                include: this.inviteInclude,
                 orderBy: {
                     createdAt: "desc"
                 }
@@ -297,6 +283,7 @@ class ApplicationInvitesService {
                     guarantorVerificationStatus: data.guarantorVerificationStatus,
                     refereeVerificationStatus: data.refereeVerificationStatus,
                 },
+                include: this.applicationInclusion
             });
         });
     }

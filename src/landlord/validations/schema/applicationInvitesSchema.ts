@@ -27,3 +27,12 @@ export const updateApplicationInviteSchema = Joi.object({
 export const updateApplicationStatusSchema = Joi.object({ 
   status: Joi.string().valid(...ApplicationStatusType).required(),
 });
+
+export enum ReminderType {
+  REFERENCE_REMINDER = "REFERENCE_REMINDER",
+  SCHEDULE_REMINDER = "SCHEDULE_REMINDER",
+}
+
+export const applicationReminderSchema = Joi.object({ 
+  status: Joi.string().valid(...Object.values(ReminderType)).required(),
+});

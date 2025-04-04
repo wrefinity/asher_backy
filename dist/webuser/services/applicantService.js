@@ -39,6 +39,54 @@ const application_services_1 = __importDefault(require("../../services/applicati
 const logs_services_2 = __importDefault(require("../../services/logs.services"));
 class ApplicantService {
     constructor() {
+        this.userInclusion = {
+            select: {
+                id: true,
+                email: true,
+                profile: true
+            }
+        };
+        this.propsIncusion = {
+            landlord: {
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: true,
+                        },
+                    },
+                },
+            }
+        };
+        this.applicationInclusion = {
+            user: this.userInclusion,
+            residentialInfo: {
+                include: {
+                    prevAddresses: true,
+                    user: true,
+                },
+            },
+            emergencyInfo: true,
+            employmentInfo: true,
+            documents: true,
+            properties: {
+                include: this.propsIncusion
+            },
+            personalDetails: {
+                include: {
+                    nextOfKin: true,
+                },
+            },
+            guarantorInformation: true,
+            applicationQuestions: true,
+            declaration: true,
+            referenceForm: true,
+            guarantorAgreement: true,
+            employeeReference: true,
+            referee: true,
+            Log: true
+        };
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
             yield __1.prismaClient.application.update({
                 where: { id: applicationId },
@@ -297,11 +345,7 @@ class ApplicantService {
                         connect: { id: docInfo.id },
                     },
                 },
-                include: {
-                    documents: true,
-                    guarantorInformation: true,
-                    personalDetails: true,
-                },
+                include: this.applicationInclusion,
             });
             return Object.assign(Object.assign({}, docInfo), updatedApplication);
         });
@@ -408,21 +452,7 @@ class ApplicantService {
                         landlordId: landlordId,
                         isDeleted: false,
                     } }),
-                include: {
-                    user: true,
-                    residentialInfo: true,
-                    emergencyInfo: true,
-                    employmentInfo: true,
-                    documents: true,
-                    properties: true,
-                    personalDetails: true,
-                    guarantorInformation: true,
-                    applicationQuestions: true,
-                    declaration: true,
-                    referenceForm: true,
-                    guarantorAgreement: true,
-                    employeeRefence: true,
-                },
+                include: this.applicationInclusion,
             });
         });
         this.getApplicationCountForLandlordWithStatus = (landlordId, status // Make status optional
@@ -437,37 +467,7 @@ class ApplicantService {
         this.getApplicationById = (applicationId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.application.findUnique({
                 where: { id: applicationId },
-                include: {
-                    user: {
-                        select: {
-                            email: true,
-                            profile: true
-                        }
-                    },
-                    residentialInfo: {
-                        include: {
-                            prevAddresses: true,
-                            user: true,
-                        },
-                    },
-                    guarantorInformation: true,
-                    emergencyInfo: true,
-                    documents: true,
-                    employmentInfo: true,
-                    properties: true,
-                    referee: true,
-                    Log: true,
-                    declaration: true,
-                    referenceForm: true,
-                    employeeRefence: true,
-                    guarantorAgreement: true,
-                    applicationQuestions: true,
-                    personalDetails: {
-                        include: {
-                            nextOfKin: true,
-                        },
-                    },
-                },
+                include: this.applicationInclusion,
             });
         });
         this.checkApplicationExistance = (applicationId) => __awaiter(this, void 0, void 0, function* () {
@@ -500,29 +500,7 @@ class ApplicantService {
                     status: Array.isArray(status) ? { in: status } : status,
                     isDeleted: false,
                 },
-                include: {
-                    user: true,
-                    residentialInfo: {
-                        include: {
-                            prevAddresses: true,
-                            user: true,
-                        },
-                    },
-                    guarantorInformation: true,
-                    emergencyInfo: true,
-                    documents: true,
-                    employmentInfo: true,
-                    properties: true,
-                    referee: true,
-                    Log: true,
-                    declaration: true,
-                    applicationQuestions: true,
-                    personalDetails: {
-                        include: {
-                            nextOfKin: true,
-                        },
-                    },
-                },
+                include: this.applicationInclusion,
             });
         });
         // statistics
@@ -546,19 +524,7 @@ class ApplicantService {
                 where: { id },
                 include: {
                     properties: {
-                        include: {
-                            landlord: {
-                                include: {
-                                    user: {
-                                        select: {
-                                            id: true,
-                                            email: true,
-                                            profile: true
-                                        },
-                                    },
-                                }
-                            }
-                        }
+                        include: this.propsIncusion
                     }
                 }
             });
@@ -588,44 +554,10 @@ class ApplicantService {
                 where: whereClause,
                 include: {
                     properties: {
-                        include: {
-                            landlord: {
-                                include: {
-                                    user: {
-                                        select: {
-                                            id: true,
-                                            email: true,
-                                            profile: true,
-                                        },
-                                    },
-                                },
-                            },
-                        },
+                        include: this.propsIncusion,
                     },
                     application: {
-                        include: {
-                            user: true,
-                            residentialInfo: {
-                                include: {
-                                    prevAddresses: true,
-                                    user: true,
-                                },
-                            },
-                            guarantorInformation: true,
-                            emergencyInfo: true,
-                            documents: true,
-                            employmentInfo: true,
-                            properties: true,
-                            referee: true,
-                            Log: true,
-                            declaration: true,
-                            applicationQuestions: true,
-                            personalDetails: {
-                                include: {
-                                    nextOfKin: true,
-                                },
-                            },
-                        }
+                        include: this.applicationInclusion
                     }
                 },
             });

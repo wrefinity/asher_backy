@@ -35,7 +35,9 @@ const emailer_1 = __importDefault(require("../../utils/emailer"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const user_services_1 = __importDefault(require("../../services/user.services"));
+const emailer_2 = __importDefault(require("../../utils/emailer"));
 const applicantService_2 = __importDefault(require("../../webuser/services/applicantService"));
+const screener_1 = require("../../utils/screener");
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -266,7 +268,7 @@ class ApplicationControls {
                 }
                 if (value.response === client_1.InvitedResponse.APPLY) {
                     // Check if states has PENDING, SCHEDULED, and FEEDBACK steps are completed
-                    const requiredSteps = [client_1.InvitedResponse.FEEDBACK, client_1.InvitedResponse.SCHEDULED, client_1.InvitedResponse.PENDING];
+                    const requiredSteps = [client_1.InvitedResponse.FEEDBACK, client_1.InvitedResponse.AWAITING_FEEDBACK, client_1.InvitedResponse.PENDING];
                     // Verify that all required steps are included in responseStepsCompleted
                     const hasAllRequiredSteps = requiredSteps.every(step => { var _a; return (_a = invite.responseStepsCompleted) === null || _a === void 0 ? void 0 : _a.includes(step); });
                     if (!hasAllRequiredSteps) {
@@ -387,6 +389,7 @@ class ApplicationControls {
             }
         });
         this.sendApplicationReminder = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d, _e, _f, _g;
             try {
                 const applicationId = req.params.id;
                 // Validate application ID
@@ -396,22 +399,82 @@ class ApplicationControls {
                         details: ["Missing application ID in URL parameters"]
                     });
                 }
+                const { error, value } = applicationInvitesSchema_1.applicationReminderSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
                 // Verify application exists
-                const application = yield applicantService_2.default.getApplicationById(applicationId);
+                let application = null;
+                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
+                    application = yield applicantService_2.default.getApplicationById(applicationId);
+                }
+                else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
+                    application = yield applicantService_2.default.getInvitedById(applicationId);
+                }
                 if (!application) {
                     return res.status(404).json({
                         error: "Application not found",
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
+                // Check landlord authorization
                 const landlordId = req.user.landlords.id;
-                if (landlordId !== application.properties.landlordId) {
-                    return res.status(400).json({
-                        message: "you can only send application reminder for application on your properties"
+                const actualLandlordId = value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER
+                    ? (_b = (_a = application.properties) === null || _a === void 0 ? void 0 : _a.landlord) === null || _b === void 0 ? void 0 : _b.id
+                    : (_c = application.properties) === null || _c === void 0 ? void 0 : _c.landlordId;
+                if (landlordId !== actualLandlordId) {
+                    return res.status(403).json({
+                        error: "Unauthorized",
+                        message: "You can only send reminders for applications on your properties."
                     });
                 }
-                // get the application email to send reminder
-                return res.status(200).json({ data: [] });
+                // Get recipient email
+                let recipientEmail = null;
+                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
+                    recipientEmail = application.user.email;
+                }
+                else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
+                    recipientEmail = application.userInvited.email;
+                }
+                if (!recipientEmail) {
+                    return res.status(400).json({
+                        error: "Missing recipient email",
+                        message: "The applicant's email is required to send a reminder."
+                    });
+                }
+                // Define email content based on reminder type
+                let subject = "";
+                let htmlContent = "";
+                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
+                    subject = "Asher Reference Reminder";
+                    htmlContent = `<p>Dear ${(_e = (_d = application === null || application === void 0 ? void 0 : application.user) === null || _d === void 0 ? void 0 : _d.profile) === null || _e === void 0 ? void 0 : _e.firstName}, please contact your reference to submit your reference documents as soon as possible.</p>`;
+                }
+                else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
+                    subject = "Asher Schedule Reminder";
+                    htmlContent = `<p>Dear ${(_g = (_f = application === null || application === void 0 ? void 0 : application.user) === null || _f === void 0 ? void 0 : _f.profile) === null || _g === void 0 ? void 0 : _g.firstName}, please confirm your scheduled appointment.</p>`;
+                }
+                // Send email
+                yield (0, emailer_2.default)(recipientEmail, subject, htmlContent);
+                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
+                    yield logs_services_1.default.createLog({
+                        applicationId,
+                        subjects: "Reference Document Reminder",
+                        events: "please contact your reference to submit your reference documents as soon as possible",
+                        createdById: application.user.id
+                    });
+                }
+                else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
+                    yield logs_services_1.default.createLog({
+                        applicationId,
+                        subjects: "Schedule Reminder",
+                        events: `please confirm your scheduled appointmen for`,
+                        createdById: application.user.id
+                    });
+                }
+                return res.status(200).json({
+                    message: "Reminder sent successfully",
+                    details: { recipient: recipientEmail, type: value.status }
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -435,16 +498,43 @@ class ApplicationControls {
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
-                // Validate request body
-                const { error, value } = applicationInvitesSchema_1.updateApplicationStatusSchema.validate(req.body);
-                if (error) {
-                    return res.status(400).json({ error: error.details[0].message });
+                // Ensure required fields are not null
+                if (!application.referenceForm || !application.guarantorAgreement || !application.employeeReference) {
+                    return res.status(400).json({
+                        error: "Missing required verification data",
+                        details: {
+                            referenceForm: application.referenceForm ? "Provided" : "Missing",
+                            guarantorAgreement: application.guarantorAgreement ? "Provided" : "Missing",
+                            employeeReference: application.employeeReference ? "Provided" : "Missing"
+                        }
+                    });
                 }
-                const landlordId = req.user.landlords.id;
-                // match name
-                // if (application.user.profile.firstName === )
-                const applicationInvite = yield application_services_1.default.updateVerificationStatus(applicationId, value);
-                return res.status(200).json({ applicationInvite });
+                // Perform screenings
+                const landlordScreeningResult = yield (0, screener_1.landlordScreener)(application);
+                const guarantorScreeningResult = yield (0, screener_1.guarantorScreener)(application);
+                const employmentScreeningResult = yield (0, screener_1.employmentScreener)(application);
+                // Consolidate screening results
+                const allScreeningsPassed = landlordScreeningResult && guarantorScreeningResult && employmentScreeningResult;
+                if (!allScreeningsPassed) {
+                    return res.status(400).json({
+                        error: "Application verification failed",
+                        details: {
+                            landlordScreening: landlordScreeningResult,
+                            guarantorScreening: guarantorScreeningResult,
+                            employmentScreening: employmentScreeningResult
+                        }
+                    });
+                }
+                // Proceed with updating verification status if all screenings passed
+                const screener = yield application_services_1.default.updateVerificationStatus(applicationId, {
+                    employmentVerificationStatus: client_1.YesNo.YES,
+                    incomeVerificationStatus: client_1.YesNo.YES,
+                    creditCheckStatus: client_1.YesNo.YES,
+                    landlordVerificationStatus: client_1.YesNo.YES,
+                    guarantorVerificationStatus: client_1.YesNo.YES,
+                    refereeVerificationStatus: client_1.YesNo.YES,
+                });
+                return res.status(200).json({ screener });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

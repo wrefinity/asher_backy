@@ -14,7 +14,7 @@ class ApplicationLandlordRouter {
     }
     initializeRoutes() {
         this.router.patch('/statuses/:id', applicant_controller_1.default.updateApplicationStatusStep);
-        this.router.post('/reminder/:id', applicant_controller_1.default.sendApplicationReminder);
+        this.router.patch('/reminder/:id', applicant_controller_1.default.sendApplicationReminder);
         this.router.get('/all', applicant_controller_1.default.getApplicationsWithInvites);
         this.router.get('/pending', applicant_controller_1.default.getApplicationsPending);
         this.router.get('/completed', applicant_controller_1.default.getApplicationsCompleted);
@@ -31,7 +31,8 @@ class ApplicationLandlordRouter {
         this.router.patch('/invites/:id/update', applicant_controller_1.default.updateInvite);
         this.router.delete('/invites/:id', applicant_controller_1.default.deleteInvite);
         this.router.get('/invites/feedbacks/all', applicant_controller_1.default.getFeedbacks);
-        /// feedbacks
+        /// screening phase
+        this.router.patch('/references/screening/:id', applicant_controller_1.default.updateApplicationVerificationStatus);
     }
 }
 exports.default = new ApplicationLandlordRouter().router;
