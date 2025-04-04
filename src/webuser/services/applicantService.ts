@@ -372,7 +372,7 @@ class ApplicantService {
 
     let docInfo = null;
     if (id) {
-      docInfo = await prismaClient.document.update({
+      docInfo = await prismaClient.propertyDocument.update({
         where: { id },
         data: {
           ...rest,
@@ -383,7 +383,7 @@ class ApplicantService {
         },
       });
     } else {
-      docInfo = await prismaClient.document.create({
+      docInfo = await prismaClient.propertyDocument.create({
         data: {
           ...rest,
           documentUrl,

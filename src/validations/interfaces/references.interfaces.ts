@@ -1,5 +1,5 @@
 
-import { ReferenceStatus, YesNo, guarantorInformation, document } from '@prisma/client';
+import { ReferenceStatus, YesNo, guarantorInformation, propertyDocument } from '@prisma/client';
 import { BaseModel } from './base.interface';
 
 
@@ -107,7 +107,7 @@ export interface GuarantorAgreement extends BaseModel {
     guarantor: guarantorInformation;
     // guarantorEmployment?: GuarantorEmploymentInfo;
     guarantorEmployment?: any;
-    documents?: document[];
+    documents?: propertyDocument[];
     applicationId: string;
 }
 

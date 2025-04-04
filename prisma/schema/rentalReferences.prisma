@@ -128,7 +128,7 @@ model GuarantorAgreement {
   guarantorEmployment     Json?
   // guarantorEmployment     GuarantorEmploymentInfo? @relation(fields: [guarantorEmploymentId], references: [id])
   // guarantorEmploymentId   String?               @unique
-  documents               document[]
+  documents               propertyDocument[]
 
   // Agreement details
   // agreementText           String                @db.Text

@@ -195,7 +195,6 @@ model propApartmentSettings {
 }
 
 
-
 model apartments {
   id                                     String                          @id @default(cuid())
   code                                   String

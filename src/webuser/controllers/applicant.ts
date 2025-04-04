@@ -460,7 +460,7 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const application = await ApplicantService.createOrUpdateApplicationDoc({ ...value, documentUrl: documentUrl[0], applicationId });
+      const application = await ApplicantService.createOrUpdateApplicationDoc({ ...value, documentUrl, applicationId });
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)

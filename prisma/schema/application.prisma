@@ -103,7 +103,7 @@ model application {
 
   employmentInformationId                                           String?
   employmentInfo                                                    EmploymentInformation?   @relation(fields: [employmentInformationId], references: [id])
-  documents                                                         document[]
+  documents                                                         propertyDocument[]
 
   properties                                                        properties?              @relation(fields: [propertiesId], references: [id])
   propertiesId                                                      String?

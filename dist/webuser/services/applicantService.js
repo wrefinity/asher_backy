@@ -320,7 +320,7 @@ class ApplicantService {
             }
             let docInfo = null;
             if (id) {
-                docInfo = yield __1.prismaClient.document.update({
+                docInfo = yield __1.prismaClient.propertyDocument.update({
                     where: { id },
                     data: Object.assign(Object.assign({}, rest), { documentUrl, application: {
                             connect: { id: applicationId },
@@ -328,7 +328,7 @@ class ApplicantService {
                 });
             }
             else {
-                docInfo = yield __1.prismaClient.document.create({
+                docInfo = yield __1.prismaClient.propertyDocument.create({
                     data: Object.assign(Object.assign({}, rest), { documentUrl, application: {
                             connect: { id: applicationId },
                         } }),

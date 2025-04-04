@@ -78,7 +78,7 @@ exports.updatePropertySchema = joi_1.default.object({
     propertyDocument: joi_1.default.array().items(joi_1.default.string()).optional(),
 });
 exports.createPropertyDocumentSchema = joi_1.default.object({
-    name: joi_1.default.string().required(),
+    documentName: joi_1.default.string().required(),
     cloudinaryDocumentUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string()).optional(),

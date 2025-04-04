@@ -405,7 +405,7 @@ class ApplicantControls {
                 if (isCompletd) {
                     return res.status(400).json({ error: "application completed" });
                 }
-                const application = yield applicantService_1.default.createOrUpdateApplicationDoc(Object.assign(Object.assign({}, value), { documentUrl: documentUrl[0], applicationId }));
+                const application = yield applicantService_1.default.createOrUpdateApplicationDoc(Object.assign(Object.assign({}, value), { documentUrl, applicationId }));
                 return res.status(201).json({ application });
             }
             catch (error) {

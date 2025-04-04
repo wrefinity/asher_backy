@@ -2,7 +2,7 @@ import { PropertyType, DocumentType, IdType, PropertySpecificationType } from "@
 
 export interface IPropertyDocument {
     id?: string;
-    name: string;
+    documentName: string;
     documentUrl: string[];
     createdAt?: Date;
     updatedAt?: Date;

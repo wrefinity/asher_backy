@@ -85,7 +85,7 @@ export interface AppDocumentIF extends BaseIF {
   documentName: string;
   type?: string;
   size?: string;
-  documentUrl?: string;
+  documentUrl?: string[];
   updatedAt?: Date;
 }
 

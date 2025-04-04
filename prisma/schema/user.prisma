@@ -48,7 +48,7 @@ model users {
     // tenantMaintenanceUser maintenance[]      @relation("tenantUser")
     // vendorMaintenaceUser  maintenance[]      @relation("vendorUser")
     creditScore              creditScore?
-    propertyDocument         propertyDocument[]
+    // propertyDocument         propertyDocument[]
     reviews                  reviews[]
     Subscription             Subscription[]
     vendors                  vendors?
@@ -60,7 +60,7 @@ model users {
     guarantorInformation     guarantorInformation[]
     emergencyContact         emergencyContact[]
     referees                 referees[]
-    document                 document[]
+    document                 propertyDocument[]
     EmploymentInformation    EmploymentInformation[]
     applicantPersonalDetails applicantPersonalDetails[]
     Complaint                Complaint[]

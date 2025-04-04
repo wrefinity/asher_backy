@@ -20,47 +20,52 @@ enum IdType {
   DRIVING_LICENSE
 }
 
-model document {
-  id           String               @id @default(cuid())
-  documentName String
-  documentUrl  String
-  type         String?
-  size         String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+// model document {
+//   id           String               @id @default(cuid())
+//   documentName String
+//   documentUrl  String
+//   type         String?
+//   size         String?
+//   createdAt    DateTime             @default(now())
+//   updatedAt    DateTime             @updatedAt
 
-  applicantId  String
-  application  application         @relation(fields: [applicantId], references: [id])
+//   applicantId  String
+//   application  application         @relation(fields: [applicantId], references: [id])
 
-  userId       String?
-  user         users?              @relation(fields: [userId], references: [id])
+//   userId       String?
+//   user         users?              @relation(fields: [userId], references: [id])
 
-  // For ID documents
-  idType       IdType?
-  docType      DocumentType?
+//   // For ID documents
+//   idType       IdType?
+//   docType      DocumentType?
 
-  //           Relationship
-  agreement    GuarantorAgreement? @relation(fields: [agreementId], references: [id])
-  agreementId  String?
-}
+
+// }
 
 model propertyDocument {
-  id           String         @id @default(cuid())
-  name         String
-  documentUrl  String[]
-  size         String?
-  filetype     String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id            String               @id @default(cuid())
+  documentName  String
+  documentUrl   String[]
+  size          String?
+  type          String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   // For ID documents
-  idType       IdType?
-  docType      DocumentType?
+  idType        IdType?
+  docType       DocumentType?
 
-  apartmentsId String?
-  apartments   apartments?   @relation(fields: [apartmentsId], references: [id])
-  propertyId   String?
-  properties   properties?   @relation(fields: [propertyId], references: [id])
-  uploadedBy   String?
-  users        users?        @relation(fields: [uploadedBy], references: [id])
+  //            Relationship
+  agreement     GuarantorAgreement? @relation(fields: [agreementId], references: [id])
+  agreementId   String?
+
+  application   application?        @relation(fields: [applicationId], references: [id])
+  applicationId String?
+
+  apartmentsId  String?
+  apartments    apartments?         @relation(fields: [apartmentsId], references: [id])
+  propertyId    String?
+  properties    properties?         @relation(fields: [propertyId], references: [id])
+  uploadedBy    String?
+  users         users?              @relation(fields: [uploadedBy], references: [id])
 }
