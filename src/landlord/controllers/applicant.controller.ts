@@ -402,7 +402,10 @@ class ApplicationControls {
             // Verify application exists
             let application = null;
 
-            if (value.status === ReminderType.REFERENCE_REMINDER) {
+            if (
+                value.status === ReminderType.REFERENCE_REMINDER ||
+                value.status === ReminderType.APPLICATION_REMINDER
+            ) {
                 application = await applicantService.getApplicationById(applicationId);
             } else if (value.status === ReminderType.SCHEDULE_REMINDER) {
                 application = await applicantService.getInvitedById(applicationId);
@@ -428,7 +431,10 @@ class ApplicationControls {
             }
             // Get recipient email
             let recipientEmail = null;
-            if (value.status === ReminderType.REFERENCE_REMINDER) {
+            if (
+                value.status === ReminderType.REFERENCE_REMINDER ||
+                value.status === ReminderType.APPLICATION_REMINDER
+            ) {
                 recipientEmail = application.user.email;
             } else if (value.status === ReminderType.SCHEDULE_REMINDER) {
                 recipientEmail = application.userInvited.email;
@@ -446,7 +452,12 @@ class ApplicationControls {
             if (value.status === ReminderType.REFERENCE_REMINDER) {
                 subject = "Asher Reference Reminder";
                 htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, please contact your reference to submit your reference documents as soon as possible.</p>`;
-            } else if (value.status === ReminderType.SCHEDULE_REMINDER) {
+            } 
+            if (value.status === ReminderType.APPLICATION_REMINDER) {
+                subject = "Asher Application Reminder";
+                htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, you have an ongoing application for the property ${application?.properties?.name}</p>`;
+            } 
+            else if (value.status === ReminderType.SCHEDULE_REMINDER) {
                 subject = "Asher Schedule Reminder";
                 htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, please confirm your scheduled appointment.</p>`;
             }
@@ -459,7 +470,16 @@ class ApplicationControls {
                     events: "please contact your reference to submit your reference documents as soon as possible",
                     createdById: application.user.id
                 })
-            } else if (value.status === ReminderType.SCHEDULE_REMINDER) {
+            } 
+            else if (value.status === ReminderType.APPLICATION_REMINDER) {
+                await logsServices.createLog({
+                    applicationId,
+                    subjects: "Application Reminder",
+                    events: `Dear ${application?.user?.profile?.firstName}, you have an ongoing application for the property ${application?.properties?.name}`,
+                    createdById: application.user.id
+                })
+            } 
+            else if (value.status === ReminderType.SCHEDULE_REMINDER) {
                 await logsServices.createLog({
                     applicationId,
                     subjects: "Schedule Reminder",
@@ -588,7 +608,7 @@ class ApplicationControls {
           `;
 
             // Send email
-            await sendMail(recipientEmail, "Your Agreement Form", htmlContent);
+            await sendMail(recipientEmail, `Asher - ${application?.properties?.name} Agreement Form`, htmlContent);
 
             await logsServices.createLog({
                 applicationId,

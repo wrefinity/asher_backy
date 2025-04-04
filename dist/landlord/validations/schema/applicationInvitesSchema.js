@@ -35,6 +35,7 @@ var ReminderType;
 (function (ReminderType) {
     ReminderType["REFERENCE_REMINDER"] = "REFERENCE_REMINDER";
     ReminderType["SCHEDULE_REMINDER"] = "SCHEDULE_REMINDER";
+    ReminderType["APPLICATION_REMINDER"] = "APPLICATION_REMINDER";
 })(ReminderType || (exports.ReminderType = ReminderType = {}));
 exports.applicationReminderSchema = joi_1.default.object({
     status: joi_1.default.string().valid(...Object.values(ReminderType)).required(),

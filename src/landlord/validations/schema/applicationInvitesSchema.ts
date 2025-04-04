@@ -31,6 +31,7 @@ export const updateApplicationStatusSchema = Joi.object({
 export enum ReminderType {
   REFERENCE_REMINDER = "REFERENCE_REMINDER",
   SCHEDULE_REMINDER = "SCHEDULE_REMINDER",
+  APPLICATION_REMINDER = "APPLICATION_REMINDER",
 }
 
 export const applicationReminderSchema = Joi.object({ 

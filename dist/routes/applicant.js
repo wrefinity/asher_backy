@@ -65,7 +65,7 @@ class ApplicantRoutes {
         this.router.delete('/:id', this.authenticateService.authorize, applicant_1.default.deleteApplicant);
         // application reference for landlord and guarantor
         this.router.post('/landlord-reference/:id', landlord_referenceform_controller_1.default.createReferenceForm);
-        this.router.post('/guarantor-reference/:id', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, guarantor_referenceform_controller_1.default.createGuarantorAgreement);
+        this.router.post('/guarantor-reference/:id', guarantor_referenceform_controller_1.default.createGuarantorAgreement);
         this.router.post('/employee-reference/:id', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, employee_reference_controller_1.default.createEmployeeReference);
         this.router.get('/references/:id', landlord_referenceform_controller_1.default.getReferenceForm);
     }

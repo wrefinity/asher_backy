@@ -390,7 +390,7 @@ class ApplicationControls {
             }
         });
         this.sendApplicationReminder = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c, _d, _e, _f, _g;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
             try {
                 const applicationId = req.params.id;
                 // Validate application ID
@@ -406,7 +406,8 @@ class ApplicationControls {
                 }
                 // Verify application exists
                 let application = null;
-                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
+                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER ||
+                    value.status === applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER) {
                     application = yield applicantService_2.default.getApplicationById(applicationId);
                 }
                 else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
@@ -431,7 +432,8 @@ class ApplicationControls {
                 }
                 // Get recipient email
                 let recipientEmail = null;
-                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
+                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER ||
+                    value.status === applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER) {
                     recipientEmail = application.user.email;
                 }
                 else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
@@ -450,9 +452,13 @@ class ApplicationControls {
                     subject = "Asher Reference Reminder";
                     htmlContent = `<p>Dear ${(_e = (_d = application === null || application === void 0 ? void 0 : application.user) === null || _d === void 0 ? void 0 : _d.profile) === null || _e === void 0 ? void 0 : _e.firstName}, please contact your reference to submit your reference documents as soon as possible.</p>`;
                 }
+                if (value.status === applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER) {
+                    subject = "Asher Application Reminder";
+                    htmlContent = `<p>Dear ${(_g = (_f = application === null || application === void 0 ? void 0 : application.user) === null || _f === void 0 ? void 0 : _f.profile) === null || _g === void 0 ? void 0 : _g.firstName}, you have an ongoing application for the property ${(_h = application === null || application === void 0 ? void 0 : application.properties) === null || _h === void 0 ? void 0 : _h.name}</p>`;
+                }
                 else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
                     subject = "Asher Schedule Reminder";
-                    htmlContent = `<p>Dear ${(_g = (_f = application === null || application === void 0 ? void 0 : application.user) === null || _f === void 0 ? void 0 : _f.profile) === null || _g === void 0 ? void 0 : _g.firstName}, please confirm your scheduled appointment.</p>`;
+                    htmlContent = `<p>Dear ${(_k = (_j = application === null || application === void 0 ? void 0 : application.user) === null || _j === void 0 ? void 0 : _j.profile) === null || _k === void 0 ? void 0 : _k.firstName}, please confirm your scheduled appointment.</p>`;
                 }
                 // Send email
                 yield (0, emailer_2.default)(recipientEmail, subject, htmlContent);
@@ -461,6 +467,14 @@ class ApplicationControls {
                         applicationId,
                         subjects: "Reference Document Reminder",
                         events: "please contact your reference to submit your reference documents as soon as possible",
+                        createdById: application.user.id
+                    });
+                }
+                else if (value.status === applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER) {
+                    yield logs_services_1.default.createLog({
+                        applicationId,
+                        subjects: "Application Reminder",
+                        events: `Dear ${(_m = (_l = application === null || application === void 0 ? void 0 : application.user) === null || _l === void 0 ? void 0 : _l.profile) === null || _m === void 0 ? void 0 : _m.firstName}, you have an ongoing application for the property ${(_o = application === null || application === void 0 ? void 0 : application.properties) === null || _o === void 0 ? void 0 : _o.name}`,
                         createdById: application.user.id
                     });
                 }
@@ -542,7 +556,7 @@ class ApplicationControls {
             }
         });
         this.sendAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             try {
                 const applicationId = req.params.id;
                 // Validate application ID
@@ -584,11 +598,11 @@ class ApplicationControls {
             </div>
           `;
                 // Send email
-                yield (0, emailer_2.default)(recipientEmail, "Your Agreement Form", htmlContent);
+                yield (0, emailer_2.default)(recipientEmail, `Asher - ${(_b = application === null || application === void 0 ? void 0 : application.properties) === null || _b === void 0 ? void 0 : _b.name} Agreement Form`, htmlContent);
                 yield logs_services_1.default.createLog({
                     applicationId,
                     subjects: "Asher Agreement Letter",
-                    events: `Kindly check your email address for an agreement letter for the application of the property named: ${(_b = application === null || application === void 0 ? void 0 : application.properties) === null || _b === void 0 ? void 0 : _b.name}`,
+                    events: `Kindly check your email address for an agreement letter for the application of the property named: ${(_c = application === null || application === void 0 ? void 0 : application.properties) === null || _c === void 0 ? void 0 : _c.name}`,
                     createdById: application.user.id
                 });
                 return res.status(200).json({
