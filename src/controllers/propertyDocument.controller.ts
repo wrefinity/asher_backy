@@ -80,6 +80,8 @@ class PropertyDocumentController {
             res.status(500).json({ message: 'Failed to delete property document', error });
         }
     }
+
+    
 }
 
 

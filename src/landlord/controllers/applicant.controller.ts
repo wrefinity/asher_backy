@@ -1,5 +1,5 @@
 import { Response } from "express"
-import { logTypeStatus, InvitedResponse, YesNo } from "@prisma/client"
+import { logTypeStatus, InvitedResponse, YesNo, DocumentType } from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -15,6 +15,7 @@ import userServices from "../../services/user.services"
 import sendMail from "../../utils/emailer"
 import applicantService from "../../webuser/services/applicantService"
 import { landlordScreener, guarantorScreener, employmentScreener } from "../../utils/screener"
+import { PropertyDocumentService } from "../../services/propertyDocument.service"
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -537,6 +538,76 @@ class ApplicationControls {
             errorService.handleError(error, res);
         }
     };
+    sendAgreementForm = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+
+            // Validate application ID
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+
+            // Fetch application
+            const application = await applicantService.getApplicationById(applicationId);
+            if (!application) {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${applicationId} does not exist`]
+                });
+            }
+
+            // Get recipient email
+            const recipientEmail = application.user.email;
+
+            // Generate or fetch agreement form URL
+            // (Assuming it's hosted or already uploaded as a document of type AGREEMENT_DOC)
+            const agreementDocument = await new PropertyDocumentService().getDocumentBaseOnLandlordAndStatus(req.user.landlords.id, DocumentType.AGREEMENT_DOC)
+
+            if (!agreementDocument || !agreementDocument.documentUrl?.[0]) {
+                return res.status(404).json({
+                    error: "Agreement document not found, kindly upload one",
+                });
+            }
+
+            const agreementUrl = agreementDocument.documentUrl[0];
+
+            // Build HTML content
+            const htmlContent = `
+            <div style="font-family: Arial, sans-serif;">
+              <h2>Agreement Form</h2>
+              <p>Hello,</p>
+              <p>Please find the link below to access and complete your agreement form:</p>
+              <p><a href="${agreementUrl}" target="_blank">${agreementUrl}</a></p>
+              <p>If you have any questions, feel free to reply to this email.</p>
+              <br>
+              <p>Best regards,<br/>Your Team</p>
+            </div>
+          `;
+
+            // Send email
+            await sendMail(recipientEmail, "Your Agreement Form", htmlContent);
+
+            await logsServices.createLog({
+                applicationId,
+                subjects: "Asher Agreement Letter",
+                events: `Kindly check your email address for an agreement letter for the application of the property named: ${application?.properties?.name}`,
+                createdById: application.user.id
+            })
+
+            return res.status(200).json({
+                message: "Agreement form email sent successfully",
+                recipient: recipientEmail,
+                agreementDocument
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+
 }
 
 

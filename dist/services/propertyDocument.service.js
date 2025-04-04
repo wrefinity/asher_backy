@@ -54,6 +54,23 @@ class PropertyDocumentService {
                 }
             });
         });
+        this.getDocumentBaseOnLandlordAndStatus = (landlordId, docType) => __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.propertyDocument.findFirst({
+                where: {
+                    docType,
+                    users: {
+                        landlords: {
+                            id: landlordId,
+                        },
+                    },
+                },
+                include: {
+                    users: true,
+                    apartments: true,
+                    properties: true,
+                },
+            });
+        });
     }
 }
 exports.PropertyDocumentService = PropertyDocumentService;

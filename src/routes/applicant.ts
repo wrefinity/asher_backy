@@ -47,7 +47,6 @@ class ApplicantRoutes {
         this.router.post('/guarantor-reference/:id', upload.array('files'), uploadToCloudinary, GuarantorReferenceFormControls.createGuarantorAgreement);
         this.router.post('/employee-reference/:id', upload.array('files'), uploadToCloudinary, EmployeeReferenceFormControls.createEmployeeReference);
         this.router.get('/references/:id', LandlordReferenceFormControls.getReferenceForm);
-
     }
 }
 

@@ -1,6 +1,6 @@
 import { IPropertyDocument } from '../validations/interfaces/properties.interface';
 import { prismaClient } from "..";
-import { Prisma } from '@prisma/client';
+import { Prisma, DocumentType } from '@prisma/client';
 
 export class PropertyDocumentService {
 
@@ -49,4 +49,27 @@ export class PropertyDocumentService {
       }
     });
   }
+  getDocumentBaseOnLandlordAndStatus = async (
+    landlordId: string,
+    docType: DocumentType
+  ) => {
+    return prismaClient.propertyDocument.findFirst({
+      where: {
+        docType,
+        users: {
+          landlords: {
+              id: landlordId,
+          },
+        },
+      },
+      include: {
+        users: true,
+        apartments: true,
+        properties: true,
+      },
+    });
+  };
+  
+  
+ 
 }

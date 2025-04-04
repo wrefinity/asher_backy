@@ -225,7 +225,7 @@ exports.GuarantorAgreementCreateSchema = joi_1.default.object({
     guarantorSignature: joi_1.default.string().required(),
     guarantorSignedAt: joi_1.default.date().required(),
     guarantorEmployment: exports.GuarantorEmploymentInfoCreateSchema,
-    applicationId: joi_1.default.string().required(),
+    // applicationId: Joi.string().required(),
 });
 exports.employeeReferenceSchema = joi_1.default.object({
     employeeName: joi_1.default.string().required(),

@@ -20,28 +20,6 @@ enum IdType {
   DRIVING_LICENSE
 }
 
-// model document {
-//   id           String               @id @default(cuid())
-//   documentName String
-//   documentUrl  String
-//   type         String?
-//   size         String?
-//   createdAt    DateTime             @default(now())
-//   updatedAt    DateTime             @updatedAt
-
-//   applicantId  String
-//   application  application         @relation(fields: [applicantId], references: [id])
-
-//   userId       String?
-//   user         users?              @relation(fields: [userId], references: [id])
-
-//   // For ID documents
-//   idType       IdType?
-//   docType      DocumentType?
-
-
-// }
-
 model propertyDocument {
   id            String               @id @default(cuid())
   documentName  String
@@ -69,3 +47,26 @@ model propertyDocument {
   uploadedBy    String?
   users         users?              @relation(fields: [uploadedBy], references: [id])
 }
+
+
+// model document {
+//   id           String               @id @default(cuid())
+//   documentName String
+//   documentUrl  String
+//   type         String?
+//   size         String?
+//   createdAt    DateTime             @default(now())
+//   updatedAt    DateTime             @updatedAt
+
+//   applicantId  String
+//   application  application         @relation(fields: [applicantId], references: [id])
+
+//   userId       String?
+//   user         users?              @relation(fields: [userId], references: [id])
+
+//   // For ID documents
+//   idType       IdType?
+//   docType      DocumentType?
+
+
+// }

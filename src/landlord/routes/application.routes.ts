@@ -34,6 +34,7 @@ class ApplicationLandlordRouter {
         this.router.get('/invites/feedbacks/all', ApplicationController.getFeedbacks);
 
         /// screening phase
+        this.router.get('/send-agreement-doc/:id', ApplicationController.sendAgreementForm);
         this.router.patch('/references/screening/:id', ApplicationController.updateApplicationVerificationStatus);
     }
 }

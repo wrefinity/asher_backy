@@ -44,7 +44,7 @@ class GuarantorController {
                         details: error.details.map(d => d.message)
                     });
                 }
-                const data = req.body;
+                // const data = req.body;
                 // const documents = data.cloudinaryDocumentUrls;
                 // delete data.cloudinaryUrls;
                 // delete data.cloudinaryVideoUrls;

@@ -97,6 +97,7 @@ class ApplicantControls {
                 });
             }
             catch (error) {
+                console.log(error);
                 error_service_1.default.handleError(error, res);
             }
         });

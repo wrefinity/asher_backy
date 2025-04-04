@@ -32,6 +32,7 @@ class ApplicationLandlordRouter {
         this.router.delete('/invites/:id', applicant_controller_1.default.deleteInvite);
         this.router.get('/invites/feedbacks/all', applicant_controller_1.default.getFeedbacks);
         /// screening phase
+        this.router.get('/send-agreement-doc/:id', applicant_controller_1.default.sendAgreementForm);
         this.router.patch('/references/screening/:id', applicant_controller_1.default.updateApplicationVerificationStatus);
     }
 }

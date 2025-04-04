@@ -38,6 +38,7 @@ const user_services_1 = __importDefault(require("../../services/user.services"))
 const emailer_2 = __importDefault(require("../../utils/emailer"));
 const applicantService_2 = __importDefault(require("../../webuser/services/applicantService"));
 const screener_1 = require("../../utils/screener");
+const propertyDocument_service_1 = require("../../services/propertyDocument.service");
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -535,6 +536,66 @@ class ApplicationControls {
                     refereeVerificationStatus: client_1.YesNo.YES,
                 });
                 return res.status(200).json({ screener });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.sendAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const applicationId = req.params.id;
+                // Validate application ID
+                if (!applicationId) {
+                    return res.status(400).json({
+                        error: "Application ID is required",
+                        details: ["Missing application ID in URL parameters"]
+                    });
+                }
+                // Fetch application
+                const application = yield applicantService_2.default.getApplicationById(applicationId);
+                if (!application) {
+                    return res.status(404).json({
+                        error: "Application not found",
+                        details: [`Application with ID ${applicationId} does not exist`]
+                    });
+                }
+                // Get recipient email
+                const recipientEmail = application.user.email;
+                // Generate or fetch agreement form URL
+                // (Assuming it's hosted or already uploaded as a document of type AGREEMENT_DOC)
+                const agreementDocument = yield new propertyDocument_service_1.PropertyDocumentService().getDocumentBaseOnLandlordAndStatus(req.user.landlords.id, client_1.DocumentType.AGREEMENT_DOC);
+                if (!agreementDocument || !((_a = agreementDocument.documentUrl) === null || _a === void 0 ? void 0 : _a[0])) {
+                    return res.status(404).json({
+                        error: "Agreement document not found, kindly upload one",
+                    });
+                }
+                const agreementUrl = agreementDocument.documentUrl[0];
+                // Build HTML content
+                const htmlContent = `
+            <div style="font-family: Arial, sans-serif;">
+              <h2>Agreement Form</h2>
+              <p>Hello,</p>
+              <p>Please find the link below to access and complete your agreement form:</p>
+              <p><a href="${agreementUrl}" target="_blank">${agreementUrl}</a></p>
+              <p>If you have any questions, feel free to reply to this email.</p>
+              <br>
+              <p>Best regards,<br/>Your Team</p>
+            </div>
+          `;
+                // Send email
+                yield (0, emailer_2.default)(recipientEmail, "Your Agreement Form", htmlContent);
+                yield logs_services_1.default.createLog({
+                    applicationId,
+                    subjects: "Asher Agreement Letter",
+                    events: `Kindly check your email address for an agreement letter for the application of the property named: ${(_b = application === null || application === void 0 ? void 0 : application.properties) === null || _b === void 0 ? void 0 : _b.name}`,
+                    createdById: application.user.id
+                });
+                return res.status(200).json({
+                    message: "Agreement form email sent successfully",
+                    recipient: recipientEmail,
+                    agreementDocument
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
