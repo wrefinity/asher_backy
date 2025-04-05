@@ -463,10 +463,10 @@ class ApplicantService {
         await this.updateCompletedStep(applicationId, ApplicationSaveState.DECLARATION);
       }
 
-      await this.updateApplicationStatus(applicationId, ApplicationStatus.SUBMITTED)
+      // await this.updateApplicationStatus(applicationId, ApplicationStatus.SUBMITTED)
       // update application invite to submitted
-      const application = await this.getApplicationById(applicationId)
-      await applicationServices.updateInviteResponse(application.applicationInviteId, InvitedResponse.SUBMITTED)
+      // const application = await this.getApplicationById(applicationId)
+      // await applicationServices.updateInviteResponse(application.applicationInviteId, InvitedResponse.SUBMITTED)
       return declared;
     }
     return
