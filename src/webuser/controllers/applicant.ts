@@ -216,26 +216,28 @@ class ApplicantControls {
       const applicationExist = await ApplicantService.getApplicationById(applicationId);
       if (!applicationExist) return res.status(500).json({ message: "Application Doesn't Exist" });
 
-      if (
-        !applicationExist.guarantorInformationId ||
-        !applicationExist.residentialId ||
-        !applicationExist.emergencyContactId ||
-        !applicationExist.employmentInformationId ||
-        !applicationExist.applicantPersonalDetailsId ||
-        !applicationExist.refereeId
-      ) {
-        return res.status(400).json({ message: "Kindly complete the application field before submitting" });
+      const requiredFields = [
+        { field: applicationExist.guarantorInformationId, name: 'guarantorInformationId' },
+        { field: applicationExist.residentialId, name: 'residentialId' },
+        { field: applicationExist.employmentInformationId, name: 'employmentInformationId' },
+        { field: applicationExist.applicantPersonalDetailsId, name: 'applicantPersonalDetailsId' },
+        { field: applicationExist.refereeId, name: 'refereeId' }
+      ];
+
+      const missingFields = requiredFields.filter(item => !item.field).map(item => item.name);
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          message: "Kindly complete the application fields before submitting",
+          missingFields: missingFields
+        });
       }
-      // Validate questions content
-      if (applicationExist.applicationQuestions.length < 3) {
-        return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
-      }
+
       const application = await ApplicantService.updateApplicationStatus(applicationId, ApplicationStatus.COMPLETED);
 
       if (!application) {
         return res.status(400).json({ error: 'Application not updated' });
       }
-
       await ApplicantService.updateInvites(application.applicationInviteId, { response: InvitedResponse.SUBMITTED });
       // Send notifications (fire and forget)
       sendApplicationCompletionEmails(applicationExist);
@@ -478,9 +480,6 @@ class ApplicantControls {
         ? req.body.documentName
         : [req.body.documentName];
 
-      console.log("Test==================")
-      console.log(typeof (req.body.documentName))
-
       if (documentNames.length !== files.length) {
         return res.status(400).json({ error: "Metadata length mismatch with files" });
       }
@@ -507,8 +506,6 @@ class ApplicantControls {
             documentName: documentData.documentName,
             type: file.mimetype,
             size: String(file.size),
-            // type: documentData.type,
-            // size: documentData.size,
             applicationId,
             documentUrl: [uploadResult.secure_url],
           });
