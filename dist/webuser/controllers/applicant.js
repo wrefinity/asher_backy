@@ -351,16 +351,54 @@ class ApplicantControls {
             }
         });
         // Upload Documents Handler
+        // uploadAppDocuments = async (req: CustomRequest, res: Response) => {
+        //   try {
+        //     const applicationId = req.params.applicationId;
+        //     const userId = req.user.id;
+        //     // Ensure `req.files` exists and is not empty
+        //     if (!req.files || Object.keys(req.files).length === 0) {
+        //       return res.status(400).json({ error: "No files provided" });
+        //     }
+        //     // Convert `req.files` to an array
+        //     const files: Express.Multer.File[] = Object.values(req.files).flat();
+        //     // Validate application existence
+        //     const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
+        //     if (!existingApplication) {
+        //       return res.status(400).json({ error: "Invalid application ID provided" });
+        //     }
+        //     // Validate application completion
+        //     const isCompleted = await ApplicantService.checkApplicationCompleted(applicationId);
+        //     if (isCompleted) {
+        //       return res.status(400).json({ error: "Application is already completed" });
+        //     }
+        //     // Upload files and save metadata
+        //     const uploadedFiles = await Promise.all(
+        //       files.map(async (file) => {
+        //         const uploadResult: any = await uploadDocsCloudinary(file);
+        //         // Ensure `documentUrl` is always available
+        //         if (!uploadResult.secure_url) {
+        //           throw new Error("Failed to upload document");
+        //         }
+        //         // Remove file extension (e.g., ".jpg", ".pdf")
+        //         const documentName = file.originalname.replace(/\.[^/.]+$/, "");
+        //         return await ApplicantService.createOrUpdateApplicationDoc({
+        //           documentName, // File name
+        //           type: file.mimetype, // MIME type (e.g., image/jpeg, application/pdf)
+        //           size: String(file.size), // File size in bytes
+        //           applicationId,
+        //           documentUrl: uploadResult.secure_url
+        //         });
+        //       })
+        //     );
+        //     return res.status(201).json({ success: true, uploadedFiles });
+        //   } catch (error) {
+        //     ErrorService.handleError(error, res)
+        //   }
+        // };
         this.uploadAppDocuments = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const applicationId = req.params.applicationId;
                 const userId = req.user.id;
-                // Ensure `req.files` exists and is not empty
-                if (!req.files || Object.keys(req.files).length === 0) {
-                    return res.status(400).json({ error: "No files provided" });
-                }
-                // Convert `req.files` to an array
-                const files = Object.values(req.files).flat();
                 // Validate application existence
                 const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
                 if (!existingApplication) {
@@ -371,26 +409,48 @@ class ApplicantControls {
                 if (isCompleted) {
                     return res.status(400).json({ error: "Application is already completed" });
                 }
-                // Upload files and save metadata
-                const uploadedFiles = yield Promise.all(files.map((file) => __awaiter(this, void 0, void 0, function* () {
-                    const uploadResult = yield (0, multerCloudinary_1.uploadDocsCloudinary)(file);
-                    // Ensure `documentUrl` is always available
-                    if (!uploadResult.secure_url) {
-                        throw new Error("Failed to upload document");
+                // const files = req.files as Express.Multer.File[];
+                const files = Object.values(req.files).flat();
+                if (!files || files.length === 0) {
+                    return res.status(400).json({ error: "No files provided" });
+                }
+                // Normalize metadata from req.body
+                const documentNames = Array.isArray(req.body.documentName)
+                    ? req.body.documentName
+                    : [req.body.documentName];
+                console.log("Test==================");
+                console.log(typeof (req.body.documentName));
+                if (documentNames.length !== files.length) {
+                    return res.status(400).json({ error: "Metadata length mismatch with files" });
+                }
+                const uploadedFiles = yield Promise.all(files.map((file, index) => __awaiter(this, void 0, void 0, function* () {
+                    const documentData = {
+                        documentName: documentNames[index],
+                        type: "filex",
+                        size: "0kB",
+                    };
+                    const { error } = schemas_1.appDocumentSchema.validate(documentData);
+                    if (error) {
+                        throw new Error(`Validation failed for document ${index + 1}: ${error.message}`);
                     }
-                    // Remove file extension (e.g., ".jpg", ".pdf")
-                    const documentName = file.originalname.replace(/\.[^/.]+$/, "");
+                    const uploadResult = yield (0, multerCloudinary_1.uploadDocsCloudinary)(file);
+                    if (!uploadResult.secure_url) {
+                        throw new Error(`Failed to upload file: ${file.originalname}`);
+                    }
                     return yield applicantService_1.default.createOrUpdateApplicationDoc({
-                        documentName, // File name
-                        type: file.mimetype, // MIME type (e.g., image/jpeg, application/pdf)
-                        size: String(file.size), // File size in bytes
+                        documentName: documentData.documentName,
+                        type: file.mimetype,
+                        size: String(file.size),
+                        // type: documentData.type,
+                        // size: documentData.size,
                         applicationId,
-                        documentUrl: uploadResult.secure_url
+                        documentUrl: [uploadResult.secure_url],
                     });
                 })));
                 return res.status(201).json({ success: true, uploadedFiles });
             }
             catch (error) {
+                console.log(error);
                 error_service_1.default.handleError(error, res);
             }
         });
@@ -453,6 +513,18 @@ class ApplicantControls {
                 const existingApplication = yield applicantService_1.default.checkApplicationExistance(applicationId);
                 if (!existingApplication) {
                     return res.status(400).json({ error: "wrong application id supplied" });
+                }
+                if (!existingApplication.guarantorInformationId ||
+                    !existingApplication.residentialId ||
+                    !existingApplication.emergencyContactId ||
+                    !existingApplication.employmentInformationId ||
+                    !existingApplication.applicantPersonalDetailsId ||
+                    !existingApplication.refereeId) {
+                    return res.status(400).json({ message: "Kindly complete the application field before submitting" });
+                }
+                // Validate questions content
+                if (existingApplication.applicationQuestions.length < 3) {
+                    return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
                 }
                 const isCompletd = yield applicantService_1.default.checkApplicationCompleted(applicationId);
                 if (isCompletd) {

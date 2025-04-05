@@ -474,6 +474,7 @@ class ApplicantService {
             // Check if the application exists
             return yield __1.prismaClient.application.findUnique({
                 where: { id: applicationId },
+                include: this.applicationInclusion
             });
         });
         this.updateApplicationStatus = (applicationId, status) => __awaiter(this, void 0, void 0, function* () {

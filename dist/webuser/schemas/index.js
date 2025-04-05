@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.residentialInformationSchema = exports.declarationSchema = exports.additionalInfoSchema = exports.refreeSchema = exports.prevAddressSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
+exports.residentialInformationSchema = exports.declarationSchema = exports.additionalInfoSchema = exports.refreeSchema = exports.prevAddressSchema = exports.appDocumentSchema = exports.documentSchema = exports.emergencyContactSchema = exports.guarantorInformationSchema = exports.employmentInformationSchema = exports.applicantPersonalDetailsSchema = exports.nextOfKinSchema = void 0;
+const client_1 = require(".prisma/client");
 const joi_1 = __importDefault(require("joi"));
 const nextOfKinSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
@@ -104,6 +105,15 @@ const documentSchema = joi_1.default.object({
     applicantId: joi_1.default.string().optional(),
 });
 exports.documentSchema = documentSchema;
+const appDocumentSchema = joi_1.default.object({
+    // id: Joi.string().allow(null).optional(),
+    documentName: joi_1.default.string().required(),
+    type: joi_1.default.string().required(),
+    size: joi_1.default.string().required(),
+    IdType: joi_1.default.string().valid(...Object.keys(client_1.IdType)).optional(),
+    docType: joi_1.default.string().valid(...Object.keys(client_1.DocumentType)).optional(),
+});
+exports.appDocumentSchema = appDocumentSchema;
 const additionalInfoSchema = joi_1.default.object({
     id: joi_1.default.string().allow(null).optional(),
     havePet: joi_1.default.string().valid('YES', 'NO').default('NO'),

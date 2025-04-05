@@ -570,6 +570,7 @@ class ApplicantService {
     // Check if the application exists
     return await prismaClient.application.findUnique({
       where: { id: applicationId },
+      include: this.applicationInclusion
     });
   }
   updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {

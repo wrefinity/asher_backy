@@ -450,79 +450,78 @@ class ApplicantControls {
     try {
       const applicationId = req.params.applicationId;
       const userId = req.user.id;
-  
+
       // Validate application existence
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
         return res.status(400).json({ error: "Invalid application ID provided" });
       }
-  
+
       // Validate application completion
       const isCompleted = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompleted) {
         return res.status(400).json({ error: "Application is already completed" });
       }
-  
+
+
+
       // const files = req.files as Express.Multer.File[];
       const files: Express.Multer.File[] = Object.values(req.files).flat();
-  
+
       if (!files || files.length === 0) {
         return res.status(400).json({ error: "No files provided" });
       }
-  
+
+      
       // Normalize metadata from req.body
-      const documentNames = Array.isArray(req.body.documentNames)
-        ? req.body.documentNames
-        : [req.body.documentNames];
-  
-      const types = Array.isArray(req.body.types)
-        ? req.body.types
-        : [req.body.types];
-  
-      const sizes = Array.isArray(req.body.sizes)
-        ? req.body.sizes
-        : [req.body.sizes];
-  
-      if (documentNames.length !== files.length || types.length !== files.length || sizes.length !== files.length) {
+      const documentNames = Array.isArray(req.body.documentName)
+      ? req.body.documentName
+      : [req.body.documentName];
+      
+      console.log("Test==================")
+      console.log(typeof(req.body.documentName))
+
+      if (documentNames.length !== files.length) {
         return res.status(400).json({ error: "Metadata length mismatch with files" });
       }
-  
+
       const uploadedFiles = await Promise.all(
         files.map(async (file, index) => {
           const documentData = {
             documentName: documentNames[index],
-            type: types[index],
-            size: sizes[index],
+            type: "filex",
+            size: "0kB",
           };
-  
+
           const { error } = appDocumentSchema.validate(documentData);
           if (error) {
             throw new Error(`Validation failed for document ${index + 1}: ${error.message}`);
           }
-  
-          const uploadResult:any = await uploadDocsCloudinary(file);
+
+          const uploadResult: any = await uploadDocsCloudinary(file);
           if (!uploadResult.secure_url) {
             throw new Error(`Failed to upload file: ${file.originalname}`);
           }
-  
+
           return await ApplicantService.createOrUpdateApplicationDoc({
             documentName: documentData.documentName,
-            type:  file.mimetype,
+            type: file.mimetype,
             size: String(file.size),
             // type: documentData.type,
             // size: documentData.size,
             applicationId,
-            documentUrl: uploadResult.secure_url,
+            documentUrl: [uploadResult.secure_url],
           });
         })
       );
-  
+
       return res.status(201).json({ success: true, uploadedFiles });
     } catch (error) {
+      console.log(error)
       ErrorService.handleError(error, res);
     }
   };
-  
+
   createApplicantionDocument = async (req: CustomRequest, res: Response) => {
     try {
       const { error, value } = documentSchema.validate(req.body);
@@ -586,6 +585,20 @@ class ApplicantControls {
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" });
+      }
+      if (
+        !existingApplication.guarantorInformationId ||
+        !existingApplication.residentialId ||
+        !existingApplication.emergencyContactId ||
+        !existingApplication.employmentInformationId ||
+        !existingApplication.applicantPersonalDetailsId ||
+        !existingApplication.refereeId
+      ) {
+        return res.status(400).json({ message: "Kindly complete the application field before submitting" });
+      }
+      // Validate questions content
+      if (existingApplication.applicationQuestions.length < 3) {
+        return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
       }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
