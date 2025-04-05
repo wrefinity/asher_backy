@@ -589,7 +589,7 @@ class ApplicantControls {
       if (
         !existingApplication.guarantorInformationId ||
         !existingApplication.residentialId ||
-        !existingApplication.emergencyContactId ||
+        // !existingApplication.emergencyContactId ||
         !existingApplication.employmentInformationId ||
         !existingApplication.applicantPersonalDetailsId ||
         !existingApplication.refereeId
