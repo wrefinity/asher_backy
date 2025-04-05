@@ -472,14 +472,14 @@ class ApplicantControls {
         return res.status(400).json({ error: "No files provided" });
       }
 
-      
+
       // Normalize metadata from req.body
       const documentNames = Array.isArray(req.body.documentName)
-      ? req.body.documentName
-      : [req.body.documentName];
-      
+        ? req.body.documentName
+        : [req.body.documentName];
+
       console.log("Test==================")
-      console.log(typeof(req.body.documentName))
+      console.log(typeof (req.body.documentName))
 
       if (documentNames.length !== files.length) {
         return res.status(400).json({ error: "Metadata length mismatch with files" });
@@ -586,20 +586,27 @@ class ApplicantControls {
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" });
       }
-      if (
-        !existingApplication.guarantorInformationId ||
-        !existingApplication.residentialId ||
-        // !existingApplication.emergencyContactId ||
-        !existingApplication.employmentInformationId ||
-        !existingApplication.applicantPersonalDetailsId ||
-        !existingApplication.refereeId
-      ) {
-        return res.status(400).json({ message: "Kindly complete the application field before submitting" });
+      const requiredFields = [
+        { field: existingApplication.guarantorInformationId, name: 'guarantorInformationId' },
+        { field: existingApplication.residentialId, name: 'residentialId' },
+        { field: existingApplication.employmentInformationId, name: 'employmentInformationId' },
+        { field: existingApplication.applicantPersonalDetailsId, name: 'applicantPersonalDetailsId' },
+        { field: existingApplication.refereeId, name: 'refereeId' }
+      ];
+
+      const missingFields = requiredFields.filter(item => !item.field).map(item => item.name);
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          message: "Kindly complete the application fields before submitting",
+          missingFields: missingFields
+        });
       }
-      // Validate questions content
-      if (existingApplication.applicationQuestions.length < 3) {
-        return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
-      }
+
+      // // Validate questions content
+      // if (existingApplication.applicationQuestions.length < 3) {
+      //   return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
+      // }
       const isCompletd = await ApplicantService.checkApplicationCompleted(applicationId);
       if (isCompletd) {
         return res.status(400).json({ error: "application completed" });
