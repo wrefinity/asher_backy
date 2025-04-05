@@ -14,9 +14,19 @@ class ApplicationInvitesService {
         emergencyInfo: true,
         guarantorInformation: true,
         residentialInfo: true,
-        referenceForm: true,
+        referenceForm: {
+            include: {
+                tenancyReferenceHistory: true,
+                externalLandlord: true,
+                conduct: true,
+            }
+        },
         employeeReference: true,
-        guarantorAgreement: true,
+        guarantorAgreement: {
+            include: {
+                documents: true
+            }
+        },
         createdBy: {
             select: this.userInclusion
         },

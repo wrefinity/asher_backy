@@ -73,8 +73,18 @@ class ApplicantService {
     guarantorInformation: true,
     applicationQuestions: true,
     declaration: true,
-    referenceForm: true,
-    guarantorAgreement: true,
+    referenceForm: {
+      include: {
+        tenancyReferenceHistory: true,
+        conduct: true,
+        externalLandlord: true
+      }
+    },
+    guarantorAgreement: {
+      include: {
+        documents: true,
+      }
+    },
     employeeReference: true,
     referee: true,
     Log: true

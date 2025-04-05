@@ -79,7 +79,13 @@ class PropertyDocumentService {
                         },
                     } }),
                 include: {
-                    users: true,
+                    users: {
+                        select: {
+                            email: true,
+                            id: true,
+                            profile: true,
+                        }
+                    },
                     apartments: true,
                     properties: true,
                     application: true
