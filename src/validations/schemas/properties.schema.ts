@@ -85,9 +85,19 @@ export const createPropertyDocumentSchema = Joi.object({
   apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
   size: Joi.string().required(),
-  filetype: Joi.string().required(),
+  type: Joi.string().required(),
   docType: Joi.string().valid(...documentType).optional(),
   idType: Joi.string().valid(...idType).optional(),
+});
+
+
+export const documentUploadSchema = Joi.object({
+  documentName: Joi.string().required(),
+  apartmentsId: Joi.string().optional(),
+  propertyId: Joi.string().optional(),
+  size: Joi.string().optional(),
+  type: Joi.string().optional(),
+  docType: Joi.string().valid(...documentType).required()
 });
 
 
@@ -97,7 +107,7 @@ export const updatePropertyDocumentSchema = Joi.object({
   apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
   size: Joi.string().optional(),
-  filetype: Joi.string().optional(),
+  type: Joi.string().optional(),
 });
 
 // property listing schema

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePropertyViewingSchema = exports.createPropertyViewingSchema = exports.updateListingStatusSchema = exports.updatePropertyListingSchema = exports.createPropertyListingSchema = exports.updatePropertyDocumentSchema = exports.createPropertyDocumentSchema = exports.updatePropertySchema = exports.createPropertySchema = void 0;
+exports.updatePropertyViewingSchema = exports.createPropertyViewingSchema = exports.updateListingStatusSchema = exports.updatePropertyListingSchema = exports.createPropertyListingSchema = exports.updatePropertyDocumentSchema = exports.documentUploadSchema = exports.createPropertyDocumentSchema = exports.updatePropertySchema = exports.createPropertySchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const propertyType = Object.values(client_1.PropertyType);
@@ -86,9 +86,17 @@ exports.createPropertyDocumentSchema = joi_1.default.object({
     apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().required(),
-    filetype: joi_1.default.string().required(),
+    type: joi_1.default.string().required(),
     docType: joi_1.default.string().valid(...documentType).optional(),
     idType: joi_1.default.string().valid(...idType).optional(),
+});
+exports.documentUploadSchema = joi_1.default.object({
+    documentName: joi_1.default.string().required(),
+    apartmentsId: joi_1.default.string().optional(),
+    propertyId: joi_1.default.string().optional(),
+    size: joi_1.default.string().optional(),
+    type: joi_1.default.string().optional(),
+    docType: joi_1.default.string().valid(...documentType).required()
 });
 exports.updatePropertyDocumentSchema = joi_1.default.object({
     name: joi_1.default.string().optional(),
@@ -96,7 +104,7 @@ exports.updatePropertyDocumentSchema = joi_1.default.object({
     apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().optional(),
-    filetype: joi_1.default.string().optional(),
+    type: joi_1.default.string().optional(),
 });
 // property listing schema
 const listingTypes = Object.values(client_1.ListingType);

@@ -71,6 +71,21 @@ class PropertyDocumentService {
                 },
             });
         });
+        this.getDocumentLandlordAndStatuses = (landlordId, docType) => __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.propertyDocument.findMany({
+                where: Object.assign(Object.assign({}, (docType !== undefined && { docType })), { users: {
+                        landlords: {
+                            id: landlordId,
+                        },
+                    } }),
+                include: {
+                    users: true,
+                    apartments: true,
+                    properties: true,
+                    application: true
+                },
+            });
+        });
     }
 }
 exports.PropertyDocumentService = PropertyDocumentService;

@@ -68,77 +68,78 @@ class GuarantorService {
   };
 
   // guarantor reference services
-// 1. Use Prisma's generated type instead of custom interface
-async createGuarantorAgreement(
-  data: Prisma.GuarantorAgreementCreateInput, applicationId: string
-): Promise<Prisma.GuarantorAgreementGetPayload<{
-  include: {
-    guarantor: true;
-    guarantorEmployment: true;
-    application: true;
-  };
-}>> {
-
-   // Check if reference form already exists for this application
-   const existingForm = await prismaClient.guarantorAgreement.findFirst({
-    where: { applicationId },
+  // 1. Use Prisma's generated type instead of custom interface
+  async createGuarantorAgreement(
+    data: Prisma.GuarantorAgreementCreateInput, applicationId: string
+  ): Promise<Prisma.GuarantorAgreementGetPayload<{
     include: {
-      application: true
-    }
-  });
-  if (existingForm) {
-    throw Error("Guarantor reference completed")
-  }
+      guarantor: true;
+      guarantorEmployment: true;
+      application: true;
+    };
+  }>> {
 
-
-  return prismaClient.$transaction(async (prisma) => {
-    const apx = await prisma.application.findFirst({
-      where: { id: applicationId },
-      include: { guarantorInformation: true }
-    });
-    console.log(apx)
-
-    if (!apx?.guarantorInformation) {
-      throw new Error("Guarantor not found");
-    }
-
-    // 2. Create without spreading entire data object
-    const created = await prisma.guarantorAgreement.create({
-      data: {
-        status: data.status,
-        title: data.title,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        middleName: data.middleName,
-        dateOfBirth: data.dateOfBirth,
-        contactNumber: data.contactNumber,
-        emailAddress: data.emailAddress,
-        nationalInsuranceNumber: data.nationalInsuranceNumber,
-        signedByGuarantor: data.signedByGuarantor || false,
-        guarantorSignature: data.guarantorSignature,
-        guarantorSignedAt: data.guarantorSignedAt,
-        guarantor: {
-          connect: { id: apx.guarantorInformation.id }
-        },
-        application: {
-          connect: { id: applicationId }
-        }
-      },
+    // Check if reference form already exists for this application
+    const existingForm = await prismaClient.guarantorAgreement.findFirst({
+      where: { applicationId },
       include: {
-        guarantor: true,
         application: true
       }
     });
-
-    if (created) {
-      await applicantService.updateApplicationStatus(
-        applicationId, 
-        ApplicationStatus.GUARANTOR_REFERENCE
-      );
+    if (existingForm) {
+      throw Error("Guarantor reference completed")
     }
-    return created;
-  });
-}
+
+    return prismaClient.$transaction(async (prisma) => {
+      const apx = await prisma.application.findFirst({
+        where: { id: applicationId },
+        include: { guarantorInformation: true }
+      });
+      if (!apx?.guarantorInformation) {
+        throw new Error("Guarantor not found");
+      }
+
+      // 2. Create without spreading entire data object
+      const created = await prisma.guarantorAgreement.create(
+        {
+          data: {
+            status: data.status,
+            title: data.title,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            middleName: data.middleName,
+            dateOfBirth: data.dateOfBirth,
+            contactNumber: data.contactNumber,
+            emailAddress: data.emailAddress,
+            nationalInsuranceNumber: data.nationalInsuranceNumber,
+            signedByGuarantor: data.signedByGuarantor || false,
+            guarantorSignature: data.guarantorSignature,
+            guarantorSignedAt: data.guarantorSignedAt,
+            guarantor: {
+              connect: { id: apx.guarantorInformation.id }
+            },
+            application: {
+              connect: { id: applicationId }
+            }
+          },
+          include: {
+            guarantor: true,
+            application: true
+          }
+        });
+
+      if (created) {
+        await applicantService.updateApplicationStatus(
+          applicationId,
+          ApplicationStatus.GUARANTOR_REFERENCE
+        );
+      }
+      return created;
+    }, {
+      maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
+      timeout: 20000  // Allow 20 seconds for the transaction execution
+    });
+  }
   // private mapEmploymentData(data: GuarantorEmploymentInfo) {
   //   const baseData = {
   //     employmentType: data.employmentType,

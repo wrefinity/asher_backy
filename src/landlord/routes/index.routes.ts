@@ -8,6 +8,7 @@ import PropertyRouter from "./property.routes";
 import AppartmentRoute from "./apartment.routes";
 import MaintenanceRouter from "./maintenance.routes";
 import ComplaintRouterRouter from "./complaint.routes";
+import DocumentRouter from "./documents.route";
 
 import TaskRouter from './task.routes';
 import InventoryRouter from './inventory.routes';
@@ -68,6 +69,8 @@ class LandlordRouter {
         );
         // complaints modules under landlord
         this.router.use("/complaints", ComplaintRouterRouter)
+        // document modules under landlord
+        this.router.use("/documents", DocumentRouter)
         // maintenances modules under landlord
         this.router.use("/maintenance", MaintenanceRouter)
         // tenants modules under landlord

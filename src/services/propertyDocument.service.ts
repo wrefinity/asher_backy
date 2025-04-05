@@ -58,7 +58,7 @@ export class PropertyDocumentService {
         docType,
         users: {
           landlords: {
-              id: landlordId,
+            id: landlordId,
           },
         },
       },
@@ -69,7 +69,26 @@ export class PropertyDocumentService {
       },
     });
   };
-  
-  
- 
+  getDocumentLandlordAndStatuses = async (
+    landlordId: string,
+    docType?: DocumentType | null
+  ) => {
+    return prismaClient.propertyDocument.findMany({
+      where: {
+        // handle optional docType
+        ...(docType !== undefined && { docType }),
+        users: {
+          landlords: {
+            id: landlordId,
+          },
+        },
+      },
+      include: {
+        users: true,
+        apartments: true,
+        properties: true,
+        application: true
+      },
+    });
+  };
 }

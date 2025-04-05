@@ -152,7 +152,6 @@ class GuarantorService {
                     where: { id: applicationId },
                     include: { guarantorInformation: true }
                 });
-                console.log(apx);
                 if (!(apx === null || apx === void 0 ? void 0 : apx.guarantorInformation)) {
                     throw new Error("Guarantor not found");
                 }
@@ -187,7 +186,10 @@ class GuarantorService {
                     yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.GUARANTOR_REFERENCE);
                 }
                 return created;
-            }));
+            }), {
+                maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
+                timeout: 20000 // Allow 20 seconds for the transaction execution
+            });
         });
     }
 }
