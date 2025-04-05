@@ -79,7 +79,18 @@ async createGuarantorAgreement(
   };
 }>> {
 
-  console.log("===========================")
+   // Check if reference form already exists for this application
+   const existingForm = await prismaClient.guarantorAgreement.findFirst({
+    where: { applicationId },
+    include: {
+      application: true
+    }
+  });
+  if (existingForm) {
+    throw Error("Guarantor reference completed")
+  }
+
+
   return prismaClient.$transaction(async (prisma) => {
     const apx = await prisma.application.findFirst({
       where: { id: applicationId },
@@ -121,7 +132,7 @@ async createGuarantorAgreement(
 
     if (created) {
       await applicantService.updateApplicationStatus(
-        data.application.connect?.id!, 
+        applicationId, 
         ApplicationStatus.GUARANTOR_REFERENCE
       );
     }

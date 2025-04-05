@@ -80,6 +80,16 @@ class EmploymentService {
     createEmployeeReference(data, applicationId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
+                // Check if reference form already exists for this application
+                const existingForm = yield __1.prismaClient.employeeReferenceForm.findFirst({
+                    where: { applicationId },
+                    include: {
+                        application: true
+                    }
+                });
+                if (existingForm) {
+                    throw Error("Employment reference completed");
+                }
                 const created = yield __1.prismaClient.employeeReferenceForm.create({
                     data: Object.assign(Object.assign({}, data), { application: {
                             connect: { id: applicationId }

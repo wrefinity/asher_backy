@@ -189,17 +189,19 @@ class ApplicantControls {
                 const applicationExist = yield applicantService_1.default.getApplicationById(applicationId);
                 if (!applicationExist)
                     return res.status(500).json({ message: "Application Doesn't Exist" });
-                if (!applicationExist.guarantorInformationId ||
-                    !applicationExist.residentialId ||
-                    !applicationExist.emergencyContactId ||
-                    !applicationExist.employmentInformationId ||
-                    !applicationExist.applicantPersonalDetailsId ||
-                    !applicationExist.refereeId) {
-                    return res.status(400).json({ message: "Kindly complete the application field before submitting" });
-                }
-                // Validate questions content
-                if (applicationExist.applicationQuestions.length < 3) {
-                    return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
+                const requiredFields = [
+                    { field: applicationExist.guarantorInformationId, name: 'guarantorInformationId' },
+                    { field: applicationExist.residentialId, name: 'residentialId' },
+                    { field: applicationExist.employmentInformationId, name: 'employmentInformationId' },
+                    { field: applicationExist.applicantPersonalDetailsId, name: 'applicantPersonalDetailsId' },
+                    { field: applicationExist.refereeId, name: 'refereeId' }
+                ];
+                const missingFields = requiredFields.filter(item => !item.field).map(item => item.name);
+                if (missingFields.length > 0) {
+                    return res.status(400).json({
+                        message: "Kindly complete the application fields before submitting",
+                        missingFields: missingFields
+                    });
                 }
                 const application = yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.COMPLETED);
                 if (!application) {
@@ -418,8 +420,6 @@ class ApplicantControls {
                 const documentNames = Array.isArray(req.body.documentName)
                     ? req.body.documentName
                     : [req.body.documentName];
-                console.log("Test==================");
-                console.log(typeof (req.body.documentName));
                 if (documentNames.length !== files.length) {
                     return res.status(400).json({ error: "Metadata length mismatch with files" });
                 }
@@ -441,8 +441,6 @@ class ApplicantControls {
                         documentName: documentData.documentName,
                         type: file.mimetype,
                         size: String(file.size),
-                        // type: documentData.type,
-                        // size: documentData.size,
                         applicationId,
                         documentUrl: [uploadResult.secure_url],
                     });
@@ -514,18 +512,24 @@ class ApplicantControls {
                 if (!existingApplication) {
                     return res.status(400).json({ error: "wrong application id supplied" });
                 }
-                if (!existingApplication.guarantorInformationId ||
-                    !existingApplication.residentialId ||
-                    !existingApplication.emergencyContactId ||
-                    !existingApplication.employmentInformationId ||
-                    !existingApplication.applicantPersonalDetailsId ||
-                    !existingApplication.refereeId) {
-                    return res.status(400).json({ message: "Kindly complete the application field before submitting" });
+                const requiredFields = [
+                    { field: existingApplication.guarantorInformationId, name: 'guarantorInformationId' },
+                    { field: existingApplication.residentialId, name: 'residentialId' },
+                    { field: existingApplication.employmentInformationId, name: 'employmentInformationId' },
+                    { field: existingApplication.applicantPersonalDetailsId, name: 'applicantPersonalDetailsId' },
+                    { field: existingApplication.refereeId, name: 'refereeId' }
+                ];
+                const missingFields = requiredFields.filter(item => !item.field).map(item => item.name);
+                if (missingFields.length > 0) {
+                    return res.status(400).json({
+                        message: "Kindly complete the application fields before submitting",
+                        missingFields: missingFields
+                    });
                 }
-                // Validate questions content
-                if (existingApplication.applicationQuestions.length < 3) {
-                    return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
-                }
+                // // Validate questions content
+                // if (existingApplication.applicationQuestions.length < 3) {
+                //   return res.status(400).json({ message: "Kindly complete the application questions field before submitting" });
+                // }
                 const isCompletd = yield applicantService_1.default.checkApplicationCompleted(applicationId);
                 if (isCompletd) {
                     return res.status(400).json({ error: "application completed" });

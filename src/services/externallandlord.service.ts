@@ -21,10 +21,26 @@ class LandlordReferenceService {
     };
   }>> {
     return prismaClient.$transaction(async (prisma) => {
-      // Use CreateDTO interfaces for creation
-      const tenancyHistory = await this.createTenancyHistory(prisma, data.tenancyHistory);
-      const externalLandlord = await this.createExternalLandlord(prisma, data.externalLandlord);
-      const tenantConduct = await this.createTenantConduct(prisma, data.conduct);
+
+      // Check if reference form already exists for this application
+      const existingForm = await prismaClient.landlordReferenceForm.findFirst({
+        where: { applicationId },
+        include: {
+          tenancyReferenceHistory: true,
+          externalLandlord: true,
+          conduct: true,
+          application: true
+        }
+      });
+      if (existingForm) {
+        throw Error("Landlord reference completed")
+      }
+      // Run these operations in parallel to save time
+      const [tenancyHistory, externalLandlord, tenantConduct] = await Promise.all([
+        this.createTenancyHistory(prisma, data.tenancyHistory),
+        this.createExternalLandlord(prisma, data.externalLandlord),
+        this.createTenantConduct(prisma, data.conduct)
+      ]);
 
       const created = await prisma.landlordReferenceForm.create({
         data: {
@@ -32,17 +48,17 @@ class LandlordReferenceService {
           additionalComments: data.additionalComments,
           signerName: data.signerName,
           signature: data.signature,
-          application:{
-            connect: {id: applicationId}
+          application: {
+            connect: { id: applicationId }
           },
           tenancyReferenceHistory: {
-            connect:{id: tenancyHistory.id }
+            connect: { id: tenancyHistory.id }
           },
           externalLandlord: {
-            connect: {id: externalLandlord.id}
+            connect: { id: externalLandlord.id }
           },
           conduct: {
-            connect: {id: tenantConduct.id}
+            connect: { id: tenantConduct.id }
           }
         },
         include: {
@@ -53,10 +69,14 @@ class LandlordReferenceService {
         }
       });
 
-      if (created){
-        await applicantService.updateApplicationStatus(applicationId, ApplicationStatus.LANDLORD_REFERENCE)
+      if (created) {
+        await applicantService.updateApplicationStatus(applicationId, ApplicationStatus.LANDLORD_REFERENCE);
       }
-      return created
+
+      return created;
+    }, {
+      maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
+      timeout: 20000  // Allow 20 seconds for the transaction execution
     });
   }
 

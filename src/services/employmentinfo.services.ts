@@ -68,6 +68,18 @@ class EmploymentService {
   // =====================================
   async createEmployeeReference(data: Omit<IEmployeeReference, 'id'>, applicationId: string) {
     try {
+
+      // Check if reference form already exists for this application
+      const existingForm = await prismaClient.employeeReferenceForm.findFirst({
+        where: { applicationId },
+        include: {
+          application: true
+        }
+      });
+      if (existingForm) {
+        throw Error("Employment reference completed")
+      }
+
       const created = await prismaClient.employeeReferenceForm.create({
         data: {
           ...data,
@@ -77,7 +89,7 @@ class EmploymentService {
         }
       });
 
-      if (created){
+      if (created) {
         await applicantService.updateApplicationStatus(applicationId, ApplicationStatus.EMPLOYEE_REFERENCE)
       }
       return created

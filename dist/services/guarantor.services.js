@@ -137,9 +137,17 @@ class GuarantorService {
     // 1. Use Prisma's generated type instead of custom interface
     createGuarantorAgreement(data, applicationId) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("===========================");
+            // Check if reference form already exists for this application
+            const existingForm = yield __1.prismaClient.guarantorAgreement.findFirst({
+                where: { applicationId },
+                include: {
+                    application: true
+                }
+            });
+            if (existingForm) {
+                throw Error("Guarantor reference completed");
+            }
             return __1.prismaClient.$transaction((prisma) => __awaiter(this, void 0, void 0, function* () {
-                var _a;
                 const apx = yield prisma.application.findFirst({
                     where: { id: applicationId },
                     include: { guarantorInformation: true }
@@ -176,7 +184,7 @@ class GuarantorService {
                     }
                 });
                 if (created) {
-                    yield applicantService_1.default.updateApplicationStatus((_a = data.application.connect) === null || _a === void 0 ? void 0 : _a.id, client_1.ApplicationStatus.GUARANTOR_REFERENCE);
+                    yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.GUARANTOR_REFERENCE);
                 }
                 return created;
             }));

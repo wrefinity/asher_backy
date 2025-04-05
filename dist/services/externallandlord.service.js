@@ -19,10 +19,25 @@ class LandlordReferenceService {
     createLandlordReferenceForm(data, applicationId) {
         return __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.$transaction((prisma) => __awaiter(this, void 0, void 0, function* () {
-                // Use CreateDTO interfaces for creation
-                const tenancyHistory = yield this.createTenancyHistory(prisma, data.tenancyHistory);
-                const externalLandlord = yield this.createExternalLandlord(prisma, data.externalLandlord);
-                const tenantConduct = yield this.createTenantConduct(prisma, data.conduct);
+                // Check if reference form already exists for this application
+                const existingForm = yield __1.prismaClient.landlordReferenceForm.findFirst({
+                    where: { applicationId },
+                    include: {
+                        tenancyReferenceHistory: true,
+                        externalLandlord: true,
+                        conduct: true,
+                        application: true
+                    }
+                });
+                if (existingForm) {
+                    throw Error("Landlord reference completed");
+                }
+                // Run these operations in parallel to save time
+                const [tenancyHistory, externalLandlord, tenantConduct] = yield Promise.all([
+                    this.createTenancyHistory(prisma, data.tenancyHistory),
+                    this.createExternalLandlord(prisma, data.externalLandlord),
+                    this.createTenantConduct(prisma, data.conduct)
+                ]);
                 const created = yield prisma.landlordReferenceForm.create({
                     data: {
                         status: data.status,
@@ -53,7 +68,10 @@ class LandlordReferenceService {
                     yield applicantService_1.default.updateApplicationStatus(applicationId, client_1.ApplicationStatus.LANDLORD_REFERENCE);
                 }
                 return created;
-            }));
+            }), {
+                maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
+                timeout: 20000 // Allow 20 seconds for the transaction execution
+            });
         });
     }
     createTenancyHistory(prisma, data) {

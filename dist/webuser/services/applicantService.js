@@ -391,10 +391,10 @@ class ApplicantService {
                     yield this.updateLastStepStop(applicationId, client_1.ApplicationSaveState.DECLARATION);
                     yield this.updateCompletedStep(applicationId, client_1.ApplicationSaveState.DECLARATION);
                 }
-                yield this.updateApplicationStatus(applicationId, client_1.ApplicationStatus.SUBMITTED);
+                // await this.updateApplicationStatus(applicationId, ApplicationStatus.SUBMITTED)
                 // update application invite to submitted
-                const application = yield this.getApplicationById(applicationId);
-                yield application_services_1.default.updateInviteResponse(application.applicationInviteId, client_1.InvitedResponse.SUBMITTED);
+                // const application = await this.getApplicationById(applicationId)
+                // await applicationServices.updateInviteResponse(application.applicationInviteId, InvitedResponse.SUBMITTED)
                 return declared;
             }
             return;
