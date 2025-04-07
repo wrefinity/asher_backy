@@ -83,7 +83,6 @@ export const GuarantorEmploymentInfoCreateSchema = Joi.object({
 
     // Common fields
     annualIncome: Joi.number().precision(2).optional(),
-
     // Employed
     employerName: Joi.string().when('employmentType', {
         is: EmploymentType.EMPLOYED,
@@ -122,6 +121,10 @@ export const GuarantorEmploymentInfoCreateSchema = Joi.object({
         then: Joi.required(),
     }),
     yearsInBusiness: Joi.number().integer().min(0).when('employmentType', {
+        is: EmploymentType.SELF_EMPLOYED,
+        then: Joi.required(),
+    }),
+    annualIncomeSelf: Joi.number().integer().min(0).when('employmentType', {
         is: EmploymentType.SELF_EMPLOYED,
         then: Joi.required(),
     }),

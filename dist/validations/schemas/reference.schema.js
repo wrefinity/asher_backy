@@ -119,6 +119,10 @@ exports.GuarantorEmploymentInfoCreateSchema = joi_1.default.object({
         is: EmploymentType.SELF_EMPLOYED,
         then: joi_1.default.required(),
     }),
+    annualIncomeSelf: joi_1.default.number().integer().min(0).when('employmentType', {
+        is: EmploymentType.SELF_EMPLOYED,
+        then: joi_1.default.required(),
+    }),
     businessAddress: joi_1.default.string().when('employmentType', {
         is: EmploymentType.SELF_EMPLOYED,
         then: joi_1.default.required(),

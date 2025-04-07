@@ -115,6 +115,7 @@ class GuarantorService {
             signedByGuarantor: data.signedByGuarantor || false,
             guarantorSignature: data.guarantorSignature,
             guarantorSignedAt: data.guarantorSignedAt,
+            guarantorEmployment: data.guarantorEmployment,
             guarantor: {
               connect: { id: apx.guarantorInformation.id }
             },
