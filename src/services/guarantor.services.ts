@@ -71,7 +71,9 @@ class GuarantorService {
   // 1. Use Prisma's generated type instead of custom interface
   async createGuarantorAgreement(
     data: Omit<Prisma.GuarantorAgreementCreateInput, 'documents'> & {
-      documents?: Prisma.propertyDocumentCreateWithoutAgreementInput[];
+      documents?: (Omit<Prisma.propertyDocumentCreateWithoutAgreementInput, 'documentUrl'> & {
+        documentUrl: string[];
+      })[];
     },
     applicationId: string
   ): Promise<Prisma.GuarantorAgreementGetPayload<{
@@ -118,17 +120,18 @@ class GuarantorService {
           guarantorSignedAt: data.guarantorSignedAt,
           guarantorEmployment: data.guarantorEmployment,
           documents: data.documents && data.documents.length > 0
-            ? {
+          ? {
               create: data.documents.map((doc) => ({
                 documentName: doc.documentName,
-                documentUrl: doc.documentUrl,
+                documentUrl: Array.isArray(doc.documentUrl) ? doc.documentUrl : [doc.documentUrl],
                 type: doc.type,
                 size: doc.size,
                 idType: doc.idType,
                 docType: doc.docType
               }))
             }
-            : undefined,
+          : undefined,
+        
           guarantor: {
             connect: { id: apx.guarantorInformation.id }
           },

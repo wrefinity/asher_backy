@@ -173,7 +173,7 @@ class GuarantorService {
                             ? {
                                 create: data.documents.map((doc) => ({
                                     documentName: doc.documentName,
-                                    documentUrl: doc.documentUrl,
+                                    documentUrl: Array.isArray(doc.documentUrl) ? doc.documentUrl : [doc.documentUrl],
                                     type: doc.type,
                                     size: doc.size,
                                     idType: doc.idType,

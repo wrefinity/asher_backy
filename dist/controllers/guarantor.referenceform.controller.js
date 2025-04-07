@@ -47,7 +47,7 @@ class GuarantorController {
                 // Create agreement with nested employment info
                 const result = yield guarantor_services_1.default.createGuarantorAgreement(Object.assign(Object.assign({}, value), { documents: value.documents.map((doc) => ({
                         documentName: doc.documentName,
-                        documentUrl: doc.documentUrl,
+                        documentUrl: [doc.documentUrl],
                         type: doc.type,
                         size: doc.size,
                         idType: doc.idType,

@@ -43,7 +43,7 @@ class GuarantorController {
         ...value,
         documents: value.documents.map((doc: any) => ({
           documentName: doc.documentName,
-          documentUrl: doc.documentUrl,
+          documentUrl: [doc.documentUrl],
           type: doc.type,
           size: doc.size,
           idType: doc.idType,
