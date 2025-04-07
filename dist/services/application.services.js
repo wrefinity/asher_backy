@@ -38,7 +38,7 @@ class ApplicationInvitesService {
             guarantorAgreement: {
                 include: {
                     documents: true,
-                    guarantorEmployment: true
+                    // guarantorEmployment: true
                 }
             },
             createdBy: {

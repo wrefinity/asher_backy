@@ -45,7 +45,14 @@ class GuarantorController {
                     });
                 }
                 // Create agreement with nested employment info
-                const result = yield guarantor_services_1.default.createGuarantorAgreement(Object.assign(Object.assign({}, value), { employmentInfo: value.employmentInfo }), applicationId);
+                const result = yield guarantor_services_1.default.createGuarantorAgreement(Object.assign(Object.assign({}, value), { documents: value.documents.map((doc) => ({
+                        documentName: doc.documentName,
+                        documentUrl: doc.documentUrl,
+                        type: doc.type,
+                        size: doc.size,
+                        idType: doc.idType,
+                        docType: doc.docType
+                    })), employmentInfo: value.employmentInfo }), applicationId);
                 res.status(201).json(result);
             }
             catch (error) {

@@ -70,24 +70,26 @@ class GuarantorService {
   // guarantor reference services
   // 1. Use Prisma's generated type instead of custom interface
   async createGuarantorAgreement(
-    data: Prisma.GuarantorAgreementCreateInput, applicationId: string
+    data: Omit<Prisma.GuarantorAgreementCreateInput, 'documents'> & {
+      documents?: Prisma.propertyDocumentCreateWithoutAgreementInput[];
+    },
+    applicationId: string
   ): Promise<Prisma.GuarantorAgreementGetPayload<{
     include: {
       guarantor: true;
-      guarantorEmployment: true;
       application: true;
     };
   }>> {
 
-    // Check if reference form already exists for this application
     const existingForm = await prismaClient.guarantorAgreement.findFirst({
       where: { applicationId },
       include: {
         application: true
       }
     });
+
     if (existingForm) {
-      throw Error("Guarantor reference completed")
+      throw Error("Guarantor reference completed");
     }
 
     return prismaClient.$transaction(async (prisma) => {
@@ -95,40 +97,50 @@ class GuarantorService {
         where: { id: applicationId },
         include: { guarantorInformation: true }
       });
+
       if (!apx?.guarantorInformation) {
         throw new Error("Guarantor not found");
       }
 
-      // 2. Create without spreading entire data object
-      const created = await prisma.guarantorAgreement.create(
-        {
-          data: {
-            status: data.status,
-            title: data.title,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            middleName: data.middleName,
-            dateOfBirth: data.dateOfBirth,
-            contactNumber: data.contactNumber,
-            documents: data.documents,
-            emailAddress: data.emailAddress,
-            nationalInsuranceNumber: data.nationalInsuranceNumber,
-            signedByGuarantor: data.signedByGuarantor || false,
-            guarantorSignature: data.guarantorSignature,
-            guarantorSignedAt: data.guarantorSignedAt,
-            guarantorEmployment: data.guarantorEmployment,
-            guarantor: {
-              connect: { id: apx.guarantorInformation.id }
-            },
-            application: {
-              connect: { id: applicationId }
+      const created = await prisma.guarantorAgreement.create({
+        data: {
+          status: data.status,
+          title: data.title,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          middleName: data.middleName,
+          dateOfBirth: data.dateOfBirth,
+          contactNumber: data.contactNumber,
+          emailAddress: data.emailAddress,
+          nationalInsuranceNumber: data.nationalInsuranceNumber,
+          signedByGuarantor: data.signedByGuarantor || false,
+          guarantorSignature: data.guarantorSignature,
+          guarantorSignedAt: data.guarantorSignedAt,
+          guarantorEmployment: data.guarantorEmployment,
+          documents: data.documents && data.documents.length > 0
+            ? {
+              create: data.documents.map((doc) => ({
+                documentName: doc.documentName,
+                documentUrl: doc.documentUrl,
+                type: doc.type,
+                size: doc.size,
+                idType: doc.idType,
+                docType: doc.docType
+              }))
             }
+            : undefined,
+          guarantor: {
+            connect: { id: apx.guarantorInformation.id }
           },
-          include: {
-            guarantor: true,
-            application: true
+          application: {
+            connect: { id: applicationId }
           }
-        });
+        },
+        include: {
+          guarantor: true,
+          application: true
+        }
+      });
 
       if (created) {
         await applicantService.updateApplicationStatus(
@@ -136,12 +148,14 @@ class GuarantorService {
           ApplicationStatus.GUARANTOR_REFERENCE
         );
       }
+
       return created;
     }, {
-      maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
-      timeout: 20000  // Allow 20 seconds for the transaction execution
+      maxWait: 20000,
+      timeout: 20000
     });
   }
+
   // private mapEmploymentData(data: GuarantorEmploymentInfo) {
   //   const baseData = {
   //     employmentType: data.employmentType,

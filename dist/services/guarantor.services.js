@@ -137,7 +137,6 @@ class GuarantorService {
     // 1. Use Prisma's generated type instead of custom interface
     createGuarantorAgreement(data, applicationId) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Check if reference form already exists for this application
             const existingForm = yield __1.prismaClient.guarantorAgreement.findFirst({
                 where: { applicationId },
                 include: {
@@ -155,7 +154,6 @@ class GuarantorService {
                 if (!(apx === null || apx === void 0 ? void 0 : apx.guarantorInformation)) {
                     throw new Error("Guarantor not found");
                 }
-                // 2. Create without spreading entire data object
                 const created = yield prisma.guarantorAgreement.create({
                     data: {
                         status: data.status,
@@ -171,6 +169,18 @@ class GuarantorService {
                         guarantorSignature: data.guarantorSignature,
                         guarantorSignedAt: data.guarantorSignedAt,
                         guarantorEmployment: data.guarantorEmployment,
+                        documents: data.documents && data.documents.length > 0
+                            ? {
+                                create: data.documents.map((doc) => ({
+                                    documentName: doc.documentName,
+                                    documentUrl: doc.documentUrl,
+                                    type: doc.type,
+                                    size: doc.size,
+                                    idType: doc.idType,
+                                    docType: doc.docType
+                                }))
+                            }
+                            : undefined,
                         guarantor: {
                             connect: { id: apx.guarantorInformation.id }
                         },
@@ -188,8 +198,8 @@ class GuarantorService {
                 }
                 return created;
             }), {
-                maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
-                timeout: 20000 // Allow 20 seconds for the transaction execution
+                maxWait: 20000,
+                timeout: 20000
             });
         });
     }
