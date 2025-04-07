@@ -110,6 +110,7 @@ class GuarantorService {
             middleName: data.middleName,
             dateOfBirth: data.dateOfBirth,
             contactNumber: data.contactNumber,
+            documents: data.documents,
             emailAddress: data.emailAddress,
             nationalInsuranceNumber: data.nationalInsuranceNumber,
             signedByGuarantor: data.signedByGuarantor || false,
