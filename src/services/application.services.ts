@@ -24,10 +24,7 @@ class ApplicationInvitesService {
         },
         employeeReference: true,
         guarantorAgreement: {
-            include: {
-                documents: true,
-                // guarantorEmployment: true
-            }
+            include: { documents: true }
         },
         createdBy: {
             select: this.userInclusion
