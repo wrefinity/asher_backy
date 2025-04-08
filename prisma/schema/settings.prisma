@@ -1,5 +1,7 @@
 enum SettingType {
     SECURITY_DEPOSIT
+    APPLICATION_FEE
+    RECURRING_FEE
 }
 
 model Settings {

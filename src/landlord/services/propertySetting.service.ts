@@ -1,6 +1,6 @@
+import { SettingType } from "@prisma/client";
 import { prismaClient } from "../..";
 import { IPropApartmentSettings, IGlobalSetting } from '../validations/interfaces/propsSettings';
-
 
 class LandlordSettingsService {
 
@@ -59,6 +59,14 @@ class LandlordSettingsService {
 
     getAllGlobalSettings = async (landlordId:string): Promise<IGlobalSetting[]> => {
         return prismaClient.settings.findMany({where: {landlordId}});
+    }
+    getLandlordGlobalSettingWithStatus = async (landlordId:string, type: SettingType): Promise<IGlobalSetting|null> => {
+        return prismaClient.settings.findFirst({
+            where: {
+                ...(type ? { type } : {}),
+                landlordId
+            }}
+        );
     }
 
     updateGlobalSetting = async (id: string, data: Partial<IGlobalSetting>): Promise<IGlobalSetting | null> => {

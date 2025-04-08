@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import LandlordSettingsService from '../services/propertySetting.service';
 import {
     propApartmentSettingsUpdateSchema,
@@ -8,15 +8,13 @@ import {
 import { CustomRequest } from '../../utils/types';
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-
+import {SettingType} from "@prisma/client";
+import { LandlordService } from '../services/landlord.service';
 class SettingsController {
 
     createPropApartmentSetting = async (req: CustomRequest, res: Response) => {
         const { error, value } = propApartmentSettingsSchema.validate(req.body);
-        console.log(error)
-        if (error) {
-            return res.status(400).json({ error: error.details[0].message });
-        }
+        if (error) return res.status(400).json({ error: error.details[0].message });
         try {
             const landlordId = req.user?.landlords?.id;
             const propertiesId = value.propertyId;
@@ -30,7 +28,7 @@ class SettingsController {
         }
     }
 
-    // Retrieve a single PropApartmentSettings by ID
+    // Retrieve a single by ID
     getById = async (req: CustomRequest, res: Response) => {
         const { id } = req.params;
         try {
@@ -117,7 +115,7 @@ class SettingsController {
             const settings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
 
             // Return the retrieved settings
-            res.status(200).json(settings);
+            res.status(200).json({settings});
         } catch (error) {
             // Handle any errors using the error service
             ErrorService.handleError(error, res);
@@ -154,7 +152,6 @@ class SettingsController {
     deleteLandlordGlobalSetting = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
-
             // Retrieve the setting by ID to confirm it belongs to the authenticated landlord
             const checkSetting = await LandlordSettingsService.getGlobalSettingById(id);
             const landlordId = req.user?.landlords?.id;
@@ -166,11 +163,28 @@ class SettingsController {
 
             // Delete the setting and confirm the deletion; otherwise, send a 'not found' message
             const setting = await LandlordSettingsService.deleteGlobalSetting(id);
+
             if (setting) res.status(200).json({ message: 'Setting deleted successfully' });
             else res.status(404).json({ message: 'Setting not found' });
         } catch (error) {
             // Handle deletion errors and return a message
             res.status(500).json({ message: 'Error deleting setting', error });
+        }
+    }
+
+    getApplicationFee = async (req: CustomRequest, res: Response) => {
+        try {
+            const { id } = req.params;
+            const landlord = await new LandlordService().getLandlordById(id);
+            if (!landlord) return res.status(404).json({ message: "Landlord not found" });
+            const applicationFee = await LandlordSettingsService.getLandlordGlobalSettingWithStatus(
+                landlord.id,
+                SettingType.APPLICATION_FEE
+            );
+            if (!applicationFee) return res.status(404).json({ message: "The current landlord needs to set application" });
+            return res.status(200).json({applicationFee});
+        } catch (error) {
+            ErrorService.handleError(error, res);
         }
     }
 

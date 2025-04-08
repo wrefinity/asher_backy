@@ -13,6 +13,7 @@ class ApplicationInvitesService {
         properties: true,
         emergencyInfo: true,
         guarantorInformation: true,
+        declaration: true,
         residentialInfo: true,
         referenceForm: {
             include: {

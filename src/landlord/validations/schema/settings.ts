@@ -1,10 +1,8 @@
 import Joi from 'joi';
-import {PayableBy, PropsSettingType, LatePaymentFeeType} from '@prisma/client';
+import {PayableBy, PropsSettingType, LatePaymentFeeType, SettingType} from '@prisma/client';
 const propsSettingsType = Object.values(PropsSettingType);
 const latePaymentFeeType = Object.values(LatePaymentFeeType);
 
-
-console.log(...propsSettingsType)
 
 export const propApartmentSettingsSchema = Joi.object({
     propertyId: Joi.string().required(),
@@ -26,7 +24,7 @@ export const propApartmentSettingsSchema = Joi.object({
 
 export const GlobalSettingsSchema = Joi.object({
     percentageOrAmount: Joi.number().required(),
-    type: Joi.string().valid('SECURITY_DEPOSIT', 'RECURRING').required(),
+    type: Joi.string().valid(...Object.keys(SettingType)).required(),
 });
 
 export const propApartmentSettingsUpdateSchema = Joi.object({
