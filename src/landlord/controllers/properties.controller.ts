@@ -201,6 +201,20 @@ class PropertyController {
             ErrorService.handleError(err, res);
         }
     }
+    unListPropertyListing = async (req: CustomRequest, res: Response) => {
+        const propertyId = req.params.propertyId
+        try {
+          
+            const landlordId = req.user?.landlords?.id;
+            const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, propertyId);
+            // scenario where property doesnot belong to landlord
+            if (!checkOwnership) return res.status(404).json({ message: 'property does not exist under landlord' });
+            const unlisted = await PropertyServices.deletePropertyListing(propertyId);
+            return res.status(200).json({ message: 'Property unlisted', unlisted });
+        } catch (err) {
+            ErrorService.handleError(err, res);
+        }
+    }
     // this code get landlord listing of properties including 
     // using filters base on property size, type and location
     getLandlordPropertyListing = async (req: CustomRequest, res: Response) => {

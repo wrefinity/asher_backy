@@ -20,6 +20,7 @@ class ApartmentLandlordRouter {
         this.router.patch('/property/showcase/:propertyId', PropertyController.showCaseRentals)
         this.router.get('/property/rentals', PropertyController.categorizedPropsInRentals)
         this.router.post('/property/property-listing', PropertyController.createPropertyListing);
+        this.router.delete('/property/property-unlisting/:propertyId', PropertyController.unListPropertyListing);
         this.router.get('/property/property-listing', PropertyController.getLandlordPropertyListing);
         this.router.get('/property/property-listing/active-inactive', PropertyController.getActiveOrInactivePropsListing);
         this.router.patch('/property/property-listing/:propertyId', PropertyController.updatePropsListing);

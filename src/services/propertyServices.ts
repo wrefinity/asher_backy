@@ -589,6 +589,13 @@ class PropertyService {
             data,
         });
     };
+    deletePropertyListing = async (propertyId:string) => {
+        const propListed = await this.getPropsListedById(propertyId);
+        if (propListed) throw new Error(`The props with ID ${propertyId} have been listed`);
+        return await prismaClient.propertyListingHistory.delete({
+            where:{propertyId}
+        });
+    };
 
     getPropsListedById = async (propertyId: string) => {
         const propsListed = await prismaClient.propertyListingHistory.findFirst({
