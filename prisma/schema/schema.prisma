@@ -178,6 +178,8 @@ model tenants {
   bills              bills[]
   applicationInvites applicationInvites[]
   violation          violation[]          @relation("tenant")
+  applicationId      String?              @unique
+  application        application?         @relation("ApplicationTenant", fields: [applicationId], references: [id])
 
   @@unique([userId, propertyId])
   @@unique([userId])

@@ -223,6 +223,22 @@ class PropertyController {
                 error_service_1.default.handleError(err, res);
             }
         });
+        this.unListPropertyListing = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const propertyId = req.params.propertyId;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const checkOwnership = yield propertyServices_1.default.checkLandlordPropertyExist(landlordId, propertyId);
+                // scenario where property doesnot belong to landlord
+                if (!checkOwnership)
+                    return res.status(404).json({ message: 'property does not exist under landlord' });
+                const unlisted = yield propertyServices_1.default.deletePropertyListing(propertyId);
+                return res.status(200).json({ message: 'Property unlisted', unlisted });
+            }
+            catch (err) {
+                error_service_1.default.handleError(err, res);
+            }
+        });
         // this code get landlord listing of properties including 
         // using filters base on property size, type and location
         this.getLandlordPropertyListing = (req, res) => __awaiter(this, void 0, void 0, function* () {

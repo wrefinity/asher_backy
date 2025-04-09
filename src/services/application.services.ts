@@ -64,7 +64,7 @@ class ApplicationInvitesService {
 
     async getInvite(filters: {
         invitedByLandordId?: string;
-        tenantId?: string;
+        // tenantId?: string;
         userInvitedId?: string;
         status?: logTypeStatus
     }) {

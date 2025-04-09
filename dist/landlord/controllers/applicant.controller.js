@@ -161,7 +161,7 @@ class ApplicationControls {
                     return res.status(400).json({ message: "property doesn't exist" });
                 // update application invite status to approve
                 yield application_services_1.default.updateInvite(application.applicationInviteId, { response: client_1.InvitedResponse.APPROVED });
-                // TODO: update the application aaslo to completed
+                // update the application also to completed
                 const tenantWebUserEmail = application === null || application === void 0 ? void 0 : application.user.email;
                 const userEmail = tenantWebUserEmail.toString().split('@')[0];
                 // get the current landlord email domain

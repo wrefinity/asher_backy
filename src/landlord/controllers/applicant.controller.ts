@@ -131,7 +131,7 @@ class ApplicationControls {
             // update application invite status to approve
             await ApplicationInvitesService.updateInvite(application.applicationInviteId, { response: InvitedResponse.APPROVED });
 
-            // TODO: update the application aaslo to completed
+            // update the application also to completed
             const tenantWebUserEmail = application?.user.email;
             const userEmail = tenantWebUserEmail.toString().split('@')[0];
             // get the current landlord email domain

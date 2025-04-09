@@ -27,7 +27,6 @@ model users {
     sentEmails             Email[]                  @relation("SentEmails") // Emails sent by this user
     receivedEmails         Email[]                  @relation("ReceivedEmails") // Emails received by this user
     applicantion           application[]
-    tenantApplications     application[]            @relation("TenantApplications") // Applications where the user is a tenant
     agents                 agents[]
     Comments               Comments[]
     ratingsGiven           Rating[]                 @relation("ratedByUser")
@@ -69,6 +68,8 @@ model users {
     PropertyViewing          PropertyViewing[]
     UserLikedProperty        UserLikedProperty[]
     applicationInvites       applicationInvites[]
+
+    application application[] @relation("ApplicationUser")
 }
 
 model UserLikedProperty {

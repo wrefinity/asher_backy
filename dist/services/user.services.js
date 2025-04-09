@@ -209,13 +209,23 @@ class UserService {
                     const tenant = yield __1.prismaClient.tenants.create({
                         data: {
                             tenantCode,
-                            userId: user.id,
-                            initialDeposit: userData.initialDeposit,
+                            user: {
+                                connect: { id: user.id }
+                            },
+                            landlord: {
+                                connect: { id: landlord.id }
+                            },
+                            property: {
+                                connect: { id: property.id }
+                            },
+                            initialDeposit: userData.initialDeposit || 0,
                             tenantWebUserEmail: userData.tenantWebUserEmail,
-                            propertyId: userData === null || userData === void 0 ? void 0 : userData.propertyId,
-                            landlordId: userData === null || userData === void 0 ? void 0 : userData.landlordId,
-                            leaseStartDate: (userData === null || userData === void 0 ? void 0 : userData.leaseStartDate) || Date.now(),
-                            leaseEndDate: userData === null || userData === void 0 ? void 0 : userData.leaseEndDate,
+                            leaseStartDate: (userData === null || userData === void 0 ? void 0 : userData.leaseStartDate) ? new Date(userData.leaseStartDate) : new Date(),
+                            leaseEndDate: (userData === null || userData === void 0 ? void 0 : userData.leaseEndDate) ? new Date(userData.leaseEndDate) : undefined,
+                            // password: this.hashPassword(userData?.password),
+                            application: userData.applicationId ? {
+                                connect: { id: userData.applicationId }
+                            } : undefined,
                         },
                     });
                     if (tenant && landlordUploads) {
@@ -233,7 +243,7 @@ class UserService {
                             where: { id: userData.applicationId },
                             data: {
                                 status: client_1.ApplicationStatus.ACCEPTED,
-                                tenantId: user.id,
+                                // tenantId: user.id,
                             },
                         });
                     }
@@ -331,7 +341,7 @@ class UserService {
                             data: {
                                 status: client_1.ApplicationStatus.COMPLETED,
                                 userId: user.id,
-                                tenantId: user.id,
+                                // tenantId: user.id,
                                 residentialId: null, // null because the current user is a tenant and reside in the linked property
                                 emergencyContactId: emergencyInfo.id,
                                 employmentInformationId: employmentInfo.id,

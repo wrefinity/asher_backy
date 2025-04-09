@@ -65,160 +65,162 @@ enum ApplicationSaveState {
   DECLARATION
 }
 
-
 model applicationInvites {
-  id                     String             @id @default(cuid())
-  isDeleted              Boolean            @default(false)
-  applicationFee         YesNo?
+  id             String  @id @default(cuid())
+  isDeleted      Boolean @default(false)
+  applicationFee YesNo?
 
-  createdAt              DateTime           @default(now()) // represents the date invited
-  updatedAt              DateTime           @updatedAt
-  scheduleDate           DateTime?
-  reScheduleDate         DateTime?
-  response               InvitedResponse    @default(PENDING)
+  createdAt      DateTime        @default(now()) // represents the date invited
+  updatedAt      DateTime        @updatedAt
+  scheduleDate   DateTime?
+  reScheduleDate DateTime?
+  response       InvitedResponse @default(PENDING)
 
   responseStepsCompleted InvitedResponse[]
 
   // relation ship fields
-  properties             properties?       @relation(fields: [propertiesId], references: [id])
-  propertiesId           String?
-  apartments             apartments?       @relation(fields: [apartmentsId], references: [id])
-  apartmentsId           String?
-  invitedByLandordId     String?
-  landlords              landlords?        @relation(fields: [invitedByLandordId], references: [id])
-  tenants                tenants?          @relation(fields: [tenantsId], references: [id])
-  tenantsId              String?
-  userInvited            users?            @relation(fields: [userInvitedId], references: [id])
-  userInvitedId          String?
-  enquires               Log?              @relation(fields: [enquiryId], references: [id])
-  enquiryId              String?
+  properties         properties? @relation(fields: [propertiesId], references: [id])
+  propertiesId       String?
+  apartments         apartments? @relation(fields: [apartmentsId], references: [id])
+  apartmentsId       String?
+  invitedByLandordId String?
+  landlords          landlords?  @relation(fields: [invitedByLandordId], references: [id])
+  tenants            tenants?    @relation(fields: [tenantsId], references: [id])
+  tenantsId          String?
+  userInvited        users?      @relation(fields: [userInvitedId], references: [id])
+  userInvitedId      String?
+  enquires           Log?        @relation(fields: [enquiryId], references: [id])
+  enquiryId          String?
 
-  application            application?
+  application application?
 }
 
 model application {
-  id                                                                String                    @id @default(cuid())
+  id             String                 @id @default(cuid())
   // Array of completed states
   completedSteps ApplicationSaveState[] // Array of completed steps
 
   // state of application
-  lastStep                                                          ApplicationSaveState?     @default(PERSONAL_KIN)
+  lastStep ApplicationSaveState? @default(PERSONAL_KIN)
 
   // start of property related
-  leaseStartDate                                                    DateTime?
-  leaseEndDate                                                      DateTime?
-  propertyType                                                      String?
-  moveInDate                                                        DateTime?
-  rentAmountPaid                                                    Decimal?
-  securityDeposit                                                   Decimal?
-  leaseTerm                                                         String?
+  leaseStartDate   DateTime?
+  leaseEndDate     DateTime?
+  propertyType     String?
+  moveInDate       DateTime?
+  rentAmountPaid   Decimal?
+  securityDeposit  Decimal?
+  leaseTerm        String?
   // end of property relates
-  status                                                            ApplicationStatus         @default(PENDING)
-  statuesCompleted                                                  ApplicationStatus[]
+  status           ApplicationStatus   @default(PENDING)
+  statuesCompleted ApplicationStatus[]
 
-  invited                                                           InvitedStatus?            @default(NO)
-  stepCompleted                                                     Int?                      @default(1)
-  isDeleted                                                         Boolean                   @default(false)
+  invited       InvitedStatus? @default(NO)
+  stepCompleted Int?           @default(1)
+  isDeleted     Boolean        @default(false)
 
-  createdAt                                                         DateTime                  @default(now())
-  updatedAt                                                         DateTime                  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // relation ship fields
-  userId                                                            String?
-  user                                                              users?                   @relation(fields: [userId], references: [id])
+
+  userId String?
+  user   users?  @relation("ApplicationUser", fields: [userId], references: [id])
 
   // residentialInformation residentialInformation[]
-  residentialId                                                     String?
-  residentialInfo                                                   residentialInformation?  @relation(fields: [residentialId], references: [id])
-  emergencyContactId                                                String?
-  emergencyInfo                                                     emergencyContact?        @relation(fields: [emergencyContactId], references: [id])
+  residentialId      String?
+  residentialInfo    residentialInformation? @relation(fields: [residentialId], references: [id])
+  emergencyContactId String?
+  emergencyInfo      emergencyContact?       @relation(fields: [emergencyContactId], references: [id])
 
-  employmentInformationId                                           String?
-  employmentInfo                                                    EmploymentInformation?   @relation(fields: [employmentInformationId], references: [id])
-  documents                                                         propertyDocument[]
+  employmentInformationId String?
+  employmentInfo          EmploymentInformation? @relation(fields: [employmentInformationId], references: [id])
+  documents               propertyDocument[]
 
-  properties                                                        properties?              @relation(fields: [propertiesId], references: [id])
-  propertiesId                                                      String?
+  properties   properties? @relation(fields: [propertiesId], references: [id])
+  propertiesId String?
 
-  personalDetails                                                   applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
-  applicantPersonalDetailsId                                        String
-  guarantorInformation                                              guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
-  guarantorInformationId                                            String?
-  refereeId                                                         String?
-  referee                                                           referees?                @relation("referee", fields: [refereeId], references: [id])
+  personalDetails            applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
+  applicantPersonalDetailsId String
+  guarantorInformation       guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
+  guarantorInformationId     String?
+  refereeId                  String?
+  referee                    referees?                @relation("referee", fields: [refereeId], references: [id])
   // Relation to the tenant after application approval
   // Tenant (new user created upon approval)
-  tenantId                                                          String?
-  tenant                                                            users?                   @relation("TenantApplications", fields: [tenantId], references: [id])
+  tenant                     tenants?                 @relation("ApplicationTenant")
 
-  createdById                                                       String?
-  createdBy                                                         users?                   @relation("createdBy", fields: [createdById], references: [id])
-  updatedById                                                       String?
-  updatedBy                                                         users?                   @relation("updatedBy", fields: [updatedById], references: [id])
+  createdById String?
+  createdBy   users?  @relation("createdBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   users?  @relation("updatedBy", fields: [updatedById], references: [id])
 
-  applicationQuestions                                              applicationQuestions[]
+  applicationQuestions applicationQuestions[]
 
-  Log                                                               Log[]                    @relation("apply")
-  declaration                                                       declaration[]
+  Log         Log[]         @relation("apply")
+  declaration declaration[]
 
-  applicationInviteId                                               String?                   @unique
-  applicationInvites                                                applicationInvites?      @relation(fields: [applicationInviteId], references: [id])
+  applicationInviteId String?             @unique
+  applicationInvites  applicationInvites? @relation(fields: [applicationInviteId], references: [id])
 
   // Verification-specific fields
-  employmentVerificationStatus                                      YesNo?
-  incomeVerificationStatus                                          YesNo?
-  creditCheckStatus                                                 YesNo?
-  landlordVerificationStatus                                        YesNo?
-  guarantorVerificationStatus                                       YesNo?
-  refereeVerificationStatus                                         YesNo?
+  employmentVerificationStatus YesNo?
+  incomeVerificationStatus     YesNo?
+  creditCheckStatus            YesNo?
+  landlordVerificationStatus   YesNo?
+  guarantorVerificationStatus  YesNo?
+  refereeVerificationStatus    YesNo?
   // One-to-one relationship with LandlordReferenceForm
-  referenceForm                                                     LandlordReferenceForm?
-  guarantorAgreement                                                GuarantorAgreement?
-  employeeReference                                                   EmployeeReferenceForm?
-}
-model applicantPersonalDetails {
-  id                                                  String         @id @default(cuid())
-  title                                               String
-  firstName                                           String
-  middleName                                          String?
-  lastName                                            String
-  dob                                                 DateTime
-  email                                               String?        @unique
-  phoneNumber                                         String
-  maritalStatus                                       String
-  nationality                                         String?
-  identificationType                                  String?
-  //                                                  additions
-  identificationNo                                    String?
+  referenceForm                LandlordReferenceForm?
+  guarantorAgreement           GuarantorAgreement?
+  employeeReference            EmployeeReferenceForm?
 
-  issuingAuthority                                    String?
-  expiryDate                                          DateTime
-  application                                         application[]
-  nextOfKin                                           nextOfKin[]
-  user                                                users?        @relation(fields: [userId], references: [id])
+  users users[]
+}
+
+model applicantPersonalDetails {
+  id                 String   @id @default(cuid())
+  title              String
+  firstName          String
+  middleName         String?
+  lastName           String
+  dob                DateTime
+  email              String?  @unique
+  phoneNumber        String
+  maritalStatus      String
+  nationality        String?
+  identificationType String?
+  //                                                  additions
+  identificationNo   String?
+
+  issuingAuthority String?
+  expiryDate       DateTime
+  application      application[]
+  nextOfKin        nextOfKin[]
+  user             users?        @relation(fields: [userId], references: [id])
   userId           String? // Ensure this is nullable
 }
 
 model nextOfKin {
-  id                         String                     @id @default(cuid())
+  id                         String                    @id @default(cuid())
   lastName                   String
   relationship               String
   email                      String
   firstName                  String
   phoneNumber                String
-  createdAt                  DateTime                   @default(now())
-  updatedAt                  DateTime                   @updatedAt
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
   middleName                 String?
   // One-to-one relationship with applicantPersonalDetails
   applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
-  applicantPersonalDetailsId String?                    @unique
+  applicantPersonalDetailsId String?                   @unique
   userId                     String
   user                       users                     @relation(fields: [userId], references: [id])
 }
 
 // Define the residentialInformation model
 model PrevAddress {
-  id                       String                   @id @default(cuid())
+  id                       String                  @id @default(cuid())
   address                  String
   lengthOfResidence        String
   residentialInformation   residentialInformation? @relation(fields: [residentialInformationId], references: [id])
@@ -226,46 +228,46 @@ model PrevAddress {
 }
 
 model residentialInformation {
-  id                          String         @id @default(cuid())
-  address                     String
-  addressStatus               String
+  id            String @id @default(cuid())
+  address       String
+  addressStatus String
 
-  city                        String?
-  state                       String?
-  country                     String?
-  zipCode                     String?
+  city    String?
+  state   String?
+  country String?
+  zipCode String?
 
   // how long have you leave
-  lengthOfResidence           String
+  lengthOfResidence String
 
   // reason for leaving
-  reasonForLeaving            String?
+  reasonForLeaving String?
 
   landlordOrAgencyPhoneNumber String
   landlordOrAgencyEmail       String
   landlordOrAgencyName        String
 
-  user                        users?        @relation(fields: [userId], references: [id])
-  userId                      String?
+  user   users?  @relation(fields: [userId], references: [id])
+  userId String?
 
-  prevAddresses               PrevAddress[]
-  application                 application[]
+  prevAddresses PrevAddress[]
+  application   application[]
 }
 
 model guarantorInformation {
-  id                      String               @id @default(cuid())
-  fullName                String
-  phoneNumber             String
-  email                   String
-  address                 String
-  relationship            String?
-  identificationType      String?
-  identificationNo        String?
-  monthlyIncome           String?
-  employerName            String?
-  application             application[]
-  userId                  String?
-  user                    users?              @relation(fields: [userId], references: [id])
+  id                 String        @id @default(cuid())
+  fullName           String
+  phoneNumber        String
+  email              String
+  address            String
+  relationship       String?
+  identificationType String?
+  identificationNo   String?
+  monthlyIncome      String?
+  employerName       String?
+  application        application[]
+  userId             String?
+  user               users?        @relation(fields: [userId], references: [id])
 
   // the below information is to be upload by the gaurantor himself
   dateOfBirth             DateTime?
@@ -275,7 +277,7 @@ model guarantorInformation {
 }
 
 model emergencyContact {
-  id          String         @id @default(cuid())
+  id          String        @id @default(cuid())
   fullname    String
   phoneNumber String
   email       String
@@ -286,7 +288,7 @@ model emergencyContact {
 }
 
 model referees {
-  id                        String         @id @default(cuid())
+  id                        String @id @default(cuid())
   professionalReferenceName String
   personalReferenceName     String
   personalEmail             String
@@ -297,16 +299,15 @@ model referees {
   professionalRelationship  String
 
   // Foreign key to application
-  application               application[] @relation("referee")
+  application application[] @relation("referee")
 
-  userId                    String?
-  user                      users?        @relation(fields: [userId], references: [id])
+  userId String?
+  user   users?  @relation(fields: [userId], references: [id])
 }
-
 
 // Define the EmploymentInformation model
 model EmploymentInformation {
-  id                   String         @id @default(cuid())
+  id                   String        @id @default(cuid())
   employmentStatus     String
   taxCredit            String?
   startDate            DateTime?
@@ -329,26 +330,25 @@ model EmploymentInformation {
   positionTitle        String?
   application          application[]
 
-  userId               String?
-  user                 users?        @relation(fields: [userId], references: [id])
+  userId String?
+  user   users?  @relation(fields: [userId], references: [id])
 }
 
-
 model applicationQuestions {
-  id                    String        @id @default(cuid())
-  havePet               AnswersEnum?  @default(NO)
-  youSmoke              AnswersEnum?  @default(NO)
-  requireParking        AnswersEnum?  @default(NO)
-  haveOutstandingDebts  AnswersEnum?  @default(NO)
+  id                   String       @id @default(cuid())
+  havePet              AnswersEnum? @default(NO)
+  youSmoke             AnswersEnum? @default(NO)
+  requireParking       AnswersEnum? @default(NO)
+  haveOutstandingDebts AnswersEnum? @default(NO)
 
   additionalOccupants   String?
   additionalInformation String?
   applicantId           String
-  application           application  @relation(fields: [applicantId], references: [id])
+  application           application @relation(fields: [applicantId], references: [id])
 }
 
 model declaration {
-  id              String        @id @default(cuid())
+  id              String       @id @default(cuid())
   signature       String?
   declaration     String
   additionalNotes String?

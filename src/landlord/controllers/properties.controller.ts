@@ -204,7 +204,6 @@ class PropertyController {
     unListPropertyListing = async (req: CustomRequest, res: Response) => {
         const propertyId = req.params.propertyId
         try {
-          
             const landlordId = req.user?.landlords?.id;
             const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, propertyId);
             // scenario where property doesnot belong to landlord

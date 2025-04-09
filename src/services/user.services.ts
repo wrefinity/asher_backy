@@ -212,15 +212,26 @@ class UserService {
 
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
                 const tenant = await prismaClient.tenants.create({
+                 
                     data: {
                         tenantCode,
-                        userId: user.id,
-                        initialDeposit: userData.initialDeposit,
+                        user: {
+                            connect: { id: user.id }
+                        },
+                        landlord: {
+                            connect: { id: landlord.id }
+                        },
+                        property: {
+                            connect: { id: property.id }
+                        },
+                        initialDeposit: userData.initialDeposit || 0,
                         tenantWebUserEmail: userData.tenantWebUserEmail,
-                        propertyId: userData?.propertyId,
-                        landlordId: userData?.landlordId,
-                        leaseStartDate: userData?.leaseStartDate || Date.now(),
-                        leaseEndDate: userData?.leaseEndDate,
+                        leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
+                        leaseEndDate: userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined,
+                        // password: this.hashPassword(userData?.password),
+                        application: userData.applicationId ? {
+                            connect: { id: userData.applicationId }
+                        } : undefined,
                     },
                 });
                 if (tenant && landlordUploads) {
@@ -241,7 +252,7 @@ class UserService {
                         where: { id: userData.applicationId },
                         data: {
                             status: ApplicationStatus.ACCEPTED,
-                            tenantId: user.id,
+                            // tenantId: user.id,
                         },
                     });
                 }
@@ -346,7 +357,7 @@ class UserService {
                         data: {
                             status: ApplicationStatus.COMPLETED,
                             userId: user.id,
-                            tenantId: user.id,
+                            // tenantId: user.id,
                             residentialId: null, // null because the current user is a tenant and reside in the linked property
                             emergencyContactId: emergencyInfo.id,
                             employmentInformationId: employmentInfo.id,

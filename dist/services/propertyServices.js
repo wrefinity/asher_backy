@@ -371,6 +371,14 @@ class PropertyService {
                 data,
             });
         });
+        this.deletePropertyListing = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            const propListed = yield this.getPropsListedById(propertyId);
+            if (propListed)
+                throw new Error(`The props with ID ${propertyId} have been listed`);
+            return yield __1.prismaClient.propertyListingHistory.delete({
+                where: { propertyId }
+            });
+        });
         this.getPropsListedById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
             const propsListed = yield __1.prismaClient.propertyListingHistory.findFirst({
                 where: {
