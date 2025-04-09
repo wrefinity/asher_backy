@@ -68,6 +68,15 @@ class TenantControls {
             const currentTenants = yield tenants_services_1.default.getCurrenntTenantsForLandlord(landlordId);
             return res.status(200).json({ currentTenants });
         });
+        this.getAllCurrentTenant = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const currentTenants = yield tenants_services_1.default.getCurrentTenantsGeneric();
+            return res.status(200).json({ currentTenants });
+        });
         this.getPreviousTenant = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;

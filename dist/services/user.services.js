@@ -25,6 +25,7 @@ const nextkin_services_1 = __importDefault(require("../services/nextkin.services
 const personaldetails_services_1 = __importDefault(require("../services/personaldetails.services"));
 const wallet_service_1 = __importDefault(require("./wallet.service"));
 const helpers_1 = require("../utils/helpers");
+const emailer_1 = __importDefault(require("../utils/emailer"));
 class UserService {
     constructor() {
         // cm641qu2d00003wf057tudib7
@@ -48,7 +49,7 @@ class UserService {
                 this.inclusion.vendors = true;
             if (user === null || user === void 0 ? void 0 : user.profile)
                 this.inclusion.profile = true;
-            console.log(user);
+            // console.log(user)
             return user;
         });
         this.findUserByEmail = (email) => __awaiter(this, void 0, void 0, function* () {
@@ -136,13 +137,13 @@ class UserService {
             return code;
         });
         this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false, createdBy = null) {
-            var _a, _b, _c;
+            var _a, _b, _c, _d;
             let user = null;
             user = yield __1.prismaClient.users.findUnique({
                 where: { email: userData === null || userData === void 0 ? void 0 : userData.email },
                 include: { profile: true } // Include profile if needed
             });
-            if (!user) {
+            if (!user && !landlordUploads) {
                 // Create a new user if not found
                 user = yield __1.prismaClient.users.create({
                     data: {
@@ -213,10 +214,19 @@ class UserService {
                             tenantWebUserEmail: userData.tenantWebUserEmail,
                             propertyId: userData === null || userData === void 0 ? void 0 : userData.propertyId,
                             landlordId: userData === null || userData === void 0 ? void 0 : userData.landlordId,
-                            leaseStartDate: userData === null || userData === void 0 ? void 0 : userData.leaseStartDate,
+                            leaseStartDate: (userData === null || userData === void 0 ? void 0 : userData.leaseStartDate) || Date.now(),
                             leaseEndDate: userData === null || userData === void 0 ? void 0 : userData.leaseEndDate,
                         },
                     });
+                    if (tenant && landlordUploads) {
+                        (0, emailer_1.default)(user.email, "ACCOUNT CREATION", `<h3>Your account has been created successfully.</h3>
+                        <p>Dear ${(_d = user === null || user === void 0 ? void 0 : user.profle) === null || _d === void 0 ? void 0 : _d.firstName},</p>
+                        <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
+                        <p>To get started, please login to your account using the credentials below:</p>
+                        <p>Username: ${tenant === null || tenant === void 0 ? void 0 : tenant.tenantCode}</p>
+                        <p>Thank you for choosing us. </p>
+                        <p>Best regards,</p>`);
+                    }
                     if (tenant && !landlordUploads) {
                         // Update application with tenant info
                         yield __1.prismaClient.application.update({
@@ -346,7 +356,7 @@ class UserService {
                 default:
                     break;
             }
-            return user;
+            return yield this.getUserById(user.id);
         });
         this.updateUserInfo = (id, userData) => __awaiter(this, void 0, void 0, function* () {
             const updateData = Object.assign({}, userData);
@@ -451,10 +461,10 @@ class UserService {
             return updated;
         });
         this.inclusion = {
-            tenant: false,
-            landlords: false,
-            vendors: false,
-            profile: false
+            tenant: true,
+            landlords: true,
+            vendors: true,
+            profile: true
         };
     }
 }

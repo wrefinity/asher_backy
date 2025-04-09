@@ -45,9 +45,9 @@ const guarantorInformationSchema = joi_1.default.object({
     address: joi_1.default.string().required(),
     applicationId: joi_1.default.string().optional(),
     relationship: joi_1.default.string().required(),
-    identificationType: joi_1.default.string().required(),
-    identificationNo: joi_1.default.string().required(),
-    monthlyIncome: joi_1.default.string().required(),
+    identificationType: joi_1.default.string().optional(),
+    identificationNo: joi_1.default.string().optional(),
+    monthlyIncome: joi_1.default.string().optional(),
     employerName: joi_1.default.string().required(),
 });
 exports.guarantorInformationSchema = guarantorInformationSchema;

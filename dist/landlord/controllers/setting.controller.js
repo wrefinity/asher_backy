@@ -16,15 +16,15 @@ const propertySetting_service_1 = __importDefault(require("../services/propertyS
 const settings_1 = require("../validations/schema/settings");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
+const client_1 = require("@prisma/client");
+const landlord_service_1 = require("../services/landlord.service");
 class SettingsController {
     constructor() {
         this.createPropApartmentSetting = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const { error, value } = settings_1.propApartmentSettingsSchema.validate(req.body);
-            console.log(error);
-            if (error) {
+            if (error)
                 return res.status(400).json({ error: error.details[0].message });
-            }
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const propertiesId = value.propertyId;
@@ -40,7 +40,7 @@ class SettingsController {
                 error_service_1.default.handleError(err, res);
             }
         });
-        // Retrieve a single PropApartmentSettings by ID
+        // Retrieve a single by ID
         this.getById = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { id } = req.params;
             try {
@@ -123,7 +123,7 @@ class SettingsController {
                 // Fetch all settings for the specified landlord
                 const settings = yield propertySetting_service_1.default.getAllGlobalSettings(landlordId);
                 // Return the retrieved settings
-                res.status(200).json(settings);
+                res.status(200).json({ settings });
             }
             catch (error) {
                 // Handle any errors using the error service
@@ -177,6 +177,21 @@ class SettingsController {
             catch (error) {
                 // Handle deletion errors and return a message
                 res.status(500).json({ message: 'Error deleting setting', error });
+            }
+        });
+        this.getApplicationFee = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { id } = req.params;
+                const landlord = yield new landlord_service_1.LandlordService().getLandlordById(id);
+                if (!landlord)
+                    return res.status(404).json({ message: "Landlord not found" });
+                const applicationFee = yield propertySetting_service_1.default.getLandlordGlobalSettingWithStatus(landlord.id, client_1.SettingType.APPLICATION_FEE);
+                if (!applicationFee)
+                    return res.status(404).json({ message: "The current landlord needs to set application" });
+                return res.status(200).json({ applicationFee });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
             }
         });
     }

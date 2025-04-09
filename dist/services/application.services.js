@@ -26,6 +26,7 @@ class ApplicationInvitesService {
             properties: true,
             emergencyInfo: true,
             guarantorInformation: true,
+            declaration: true,
             residentialInfo: true,
             referenceForm: {
                 include: {
@@ -36,10 +37,7 @@ class ApplicationInvitesService {
             },
             employeeReference: true,
             guarantorAgreement: {
-                include: {
-                    documents: true,
-                    // guarantorEmployment: true
-                }
+                include: { documents: true }
             },
             createdBy: {
                 select: this.userInclusion

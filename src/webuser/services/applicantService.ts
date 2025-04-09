@@ -27,6 +27,7 @@ import { ApplicationInvite } from "../../landlord/validations/interfaces/applica
 
 import applicationServices from "../../services/application.services";
 import logsServices from "../../services/logs.services";
+import sendMail from "../../utils/emailer";
 
 class ApplicantService {
 
@@ -625,8 +626,8 @@ class ApplicantService {
     };
   };
 
-  approveApplication = async (tenantData: any) => {
-    return await userServices.createUser({ ...tenantData, role: userRoles.TENANT });
+  createTenantThroughApplication = async (tenantData: any) => {
+    return await userServices.createUser({ ...tenantData, role: userRoles.TENANT }, true);
   }
 
   getInvitedById = async (id: string) => {

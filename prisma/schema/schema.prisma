@@ -143,6 +143,7 @@ model tenants {
   tenantId                     String?                        @unique
   landlordId                   String
   tenantCode                   String?                        @unique
+  password                     String?
   // rentstatus String?
   rentstatus                   Int?
   leaseStartDate               DateTime?

@@ -85,6 +85,16 @@ class TenantService {
             include: this.inclusion
         });
     }
+    getCurrentTenantsGeneric = async () => {
+        // Get current tenants
+        return await prismaClient.tenants.findMany({
+            where: {
+                isCurrentLease: true,
+            },
+            include: this.inclusion
+        });
+    }
+
     getAllTenants = async (landlordId: string) => {
 
         return prismaClient.tenants.findMany({

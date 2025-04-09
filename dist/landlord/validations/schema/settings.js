@@ -8,7 +8,6 @@ const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const propsSettingsType = Object.values(client_1.PropsSettingType);
 const latePaymentFeeType = Object.values(client_1.LatePaymentFeeType);
-console.log(...propsSettingsType);
 exports.propApartmentSettingsSchema = joi_1.default.object({
     propertyId: joi_1.default.string().required(),
     apartmentId: joi_1.default.string().optional(),
@@ -27,7 +26,7 @@ exports.propApartmentSettingsSchema = joi_1.default.object({
 });
 exports.GlobalSettingsSchema = joi_1.default.object({
     percentageOrAmount: joi_1.default.number().required(),
-    type: joi_1.default.string().valid('SECURITY_DEPOSIT', 'RECURRING').required(),
+    type: joi_1.default.string().valid(...Object.keys(client_1.SettingType)).required(),
 });
 exports.propApartmentSettingsUpdateSchema = joi_1.default.object({
     propertyId: joi_1.default.string().optional(),

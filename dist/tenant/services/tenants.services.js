@@ -65,6 +65,15 @@ class TenantService {
                 include: this.inclusion
             });
         });
+        this.getCurrentTenantsGeneric = () => __awaiter(this, void 0, void 0, function* () {
+            // Get current tenants
+            return yield __1.prismaClient.tenants.findMany({
+                where: {
+                    isCurrentLease: true,
+                },
+                include: this.inclusion
+            });
+        });
         this.getAllTenants = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.tenants.findMany({
                 where: {

@@ -12,15 +12,16 @@ import NextOfKinService from "../services/nextkin.services"
 import ApplicantPersonalDetailsService from "../services/personaldetails.services"
 import WalletService from "./wallet.service";
 import { getCurrentCountryCurrency } from "../utils/helpers";
+import sendMail from "../utils/emailer";
 class UserService {
     protected inclusion;
 
     constructor() {
         this.inclusion = {
-            tenant: false,
-            landlords: false,
-            vendors: false,
-            profile: false
+            tenant: true,
+            landlords: true,
+            vendors: true,
+            profile: true
         };
     }
     // cm641qu2d00003wf057tudib7
@@ -41,7 +42,7 @@ class UserService {
         if (user?.landlords != null) this.inclusion.landlords = true;
         if (user?.vendors != null) this.inclusion.vendors = true;
         if (user?.profile) this.inclusion.profile = true;
-        console.log(user)
+        // console.log(user)
         return user
     }
     findUserByEmail = async (email: string) => {
@@ -143,8 +144,7 @@ class UserService {
             include: { profile: true } // Include profile if needed
         });
 
-        if (!user) {
-
+        if (!user && !landlordUploads) {
             // Create a new user if not found
             user = await prismaClient.users.create({
                 data: {
@@ -174,10 +174,6 @@ class UserService {
                 },
             });
         }
-
-
-
-
 
         const countryData = await getCurrentCountryCurrency()
         if (user && countryData.locationCurrency) {
@@ -223,10 +219,22 @@ class UserService {
                         tenantWebUserEmail: userData.tenantWebUserEmail,
                         propertyId: userData?.propertyId,
                         landlordId: userData?.landlordId,
-                        leaseStartDate: userData?.leaseStartDate,
+                        leaseStartDate: userData?.leaseStartDate || Date.now(),
                         leaseEndDate: userData?.leaseEndDate,
                     },
                 });
+                if (tenant && landlordUploads) {
+                    sendMail(
+                        user.email,
+                        "ACCOUNT CREATION",
+                        `<h3>Your account has been created successfully.</h3>
+                        <p>Dear ${user?.profle?.firstName},</p>
+                        <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
+                        <p>To get started, please login to your account using the credentials below:</p>
+                        <p>Username: ${tenant?.tenantCode}</p>
+                        <p>Thank you for choosing us. </p>
+                        <p>Best regards,</p>`);
+                }
                 if (tenant && !landlordUploads) {
                     // Update application with tenant info
                     await prismaClient.application.update({
@@ -365,7 +373,7 @@ class UserService {
             default:
                 break;
         }
-        return user;
+        return await this.getUserById(user.id);
     }
 
     updateUserInfo = async (id: string, userData: any) => {

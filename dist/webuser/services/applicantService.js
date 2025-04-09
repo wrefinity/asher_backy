@@ -524,8 +524,8 @@ class ApplicantService {
                 enquiries: yield logs_services_2.default.getLogCounts(landlordId, client_2.LogType.FEEDBACK),
             };
         });
-        this.approveApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {
-            return yield user_services_1.default.createUser(Object.assign(Object.assign({}, tenantData), { role: client_1.userRoles.TENANT }));
+        this.createTenantThroughApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {
+            return yield user_services_1.default.createUser(Object.assign(Object.assign({}, tenantData), { role: client_1.userRoles.TENANT }), true);
         });
         this.getInvitedById = (id) => __awaiter(this, void 0, void 0, function* () {
             if (!id) {

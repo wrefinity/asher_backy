@@ -20,7 +20,7 @@ class ApplicationLandlordRouter {
         this.router.get('/completed', ApplicationController.getApplicationsCompleted);
         this.router.get('/total', ApplicationController.getTotalApplication);
         this.router.patch('/proceed-pay/:applicationId', ApplicationController.makeApplicationPaymentRequest);
-        this.router.post('/approve/:applicationId', ApplicationController.approveApplication);
+        this.router.post('/create-tenant/:applicationId', ApplicationController.approveApplicationAndCreateTenant);
         this.router.patch('/decline/:applicationId', ApplicationController.declineApplication);
         this.router.get('/statistics', ApplicationController.getApplicationStatistics);
 

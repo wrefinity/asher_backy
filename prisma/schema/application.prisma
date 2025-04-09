@@ -14,6 +14,7 @@ enum ApplicationStatus {
   PAYMENT_COMPLETED
   PAYMENT_PARTIALLY_COMPLETED
   ACCEPTED
+  TENANT_CREATED
 }
 
 enum AnswersEnum {
@@ -43,6 +44,7 @@ enum InvitedResponse {
   SUBMITTED // for submitted applications
   DECLINED
   APPROVED
+  TENANT_CREATED
   AGREEMENTS
 }
 

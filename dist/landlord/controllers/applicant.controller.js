@@ -149,7 +149,7 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
-        this.approveApplication = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.approveApplicationAndCreateTenant = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c, _d;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
@@ -161,16 +161,20 @@ class ApplicationControls {
                     return res.status(400).json({ message: "property doesn't exist" });
                 // update application invite status to approve
                 yield application_services_1.default.updateInvite(application.applicationInviteId, { response: client_1.InvitedResponse.APPROVED });
-                const tenantWebUserEmail = application.user.email;
+                // TODO: update the application aaslo to completed
+                const tenantWebUserEmail = application === null || application === void 0 ? void 0 : application.user.email;
                 const userEmail = tenantWebUserEmail.toString().split('@')[0];
                 // get the current landlord email domain
                 const landlord = yield this.landlordService.getLandlordById(landlordId);
                 if (!landlord)
                     return res.status(403).json({ message: "login as a landlord" });
-                const email = `${userEmail}${landlord.emailDomains}`;
+                const landlordEmail = landlord.user.email.toString().trim().split('@')[0];
+                const email = `${userEmail}@${landlordEmail}.asher.co`;
                 // TODO: check if tenant has been a tenant for the current landlord before and just update the property
-                const tenant = yield applicantService_1.default.approveApplication(Object.assign(Object.assign({}, req.body), { email,
-                    tenantWebUserEmail, propertyId: application.propertiesId, applicationId, password: (_d = application === null || application === void 0 ? void 0 : application.personalDetails) === null || _d === void 0 ? void 0 : _d.firstName, landlordId }));
+                const tenant = yield applicantService_1.default.createTenantThroughApplication(Object.assign(Object.assign({}, req.body), { newEmail: email, email: tenantWebUserEmail, tenantWebUserEmail, propertyId: application.propertiesId, applicationId, password: (_d = application === null || application === void 0 ? void 0 : application.personalDetails) === null || _d === void 0 ? void 0 : _d.firstName, landlordId }));
+                if (!tenant)
+                    return res.status(400).json({ message: "tenant not created" });
+                yield applicantService_2.default.updateApplicationStatusStep(applicationId, client_2.ApplicationStatus.TENANT_CREATED);
                 return res.status(200).json({ tenant });
             }
             catch (error) {

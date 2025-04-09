@@ -57,6 +57,11 @@ class LandlordSettingsService {
         this.getAllGlobalSettings = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.settings.findMany({ where: { landlordId } });
         });
+        this.getLandlordGlobalSettingWithStatus = (landlordId, type) => __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.settings.findFirst({
+                where: Object.assign(Object.assign({}, (type ? { type } : {})), { landlordId })
+            });
+        });
         this.updateGlobalSetting = (id, data) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.settings.update({
                 where: { id },
