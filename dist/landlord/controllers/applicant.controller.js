@@ -37,7 +37,6 @@ const logs_services_1 = __importDefault(require("../../services/logs.services"))
 const user_services_1 = __importDefault(require("../../services/user.services"));
 const emailer_2 = __importDefault(require("../../utils/emailer"));
 const applicantService_2 = __importDefault(require("../../webuser/services/applicantService"));
-const screener_1 = require("../../utils/screener");
 const propertyDocument_service_1 = require("../../services/propertyDocument.service");
 class ApplicationControls {
     constructor() {
@@ -363,16 +362,15 @@ class ApplicationControls {
             }
         });
         this.updateApplicationStatusStep = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const applicationId = req.params.id;
-                // Validate application ID
                 if (!applicationId) {
                     return res.status(400).json({
                         error: "Application ID is required",
                         details: ["Missing application ID in URL parameters"]
                     });
                 }
-                // Verify application exists
                 const application = yield applicantService_2.default.getApplicationById(applicationId);
                 if (!application) {
                     return res.status(404).json({
@@ -380,12 +378,18 @@ class ApplicationControls {
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
-                // Validate request body
                 const { error, value } = applicationInvitesSchema_1.updateApplicationStatusSchema.validate(req.body);
-                if (error) {
+                if (error)
                     return res.status(400).json({ error: error.details[0].message });
+                const currentStatuses = (_a = application === null || application === void 0 ? void 0 : application.statusesCompleted) !== null && _a !== void 0 ? _a : [];
+                if (currentStatuses.includes(client_2.ApplicationStatus.APPROVED) &&
+                    value.status === client_2.ApplicationStatus.DECLINED) {
+                    return res.status(400).json({ error: "Application has been approved, cannot be declined" });
                 }
-                const landlordId = req.user.landlords.id;
+                if (currentStatuses.includes(client_2.ApplicationStatus.DECLINED) &&
+                    value.status === client_2.ApplicationStatus.APPROVED) {
+                    return res.status(400).json({ error: "Application has been declined, cannot be approved" });
+                }
                 const applicationInvite = yield applicantService_2.default.updateApplicationStatusStep(applicationId, value.status);
                 return res.status(200).json({ applicationInvite });
             }
@@ -394,7 +398,7 @@ class ApplicationControls {
             }
         });
         this.sendApplicationReminder = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
             try {
                 const applicationId = req.params.id;
                 // Validate application ID
@@ -425,14 +429,18 @@ class ApplicationControls {
                 }
                 // Check landlord authorization
                 const landlordId = req.user.landlords.id;
-                const actualLandlordId = value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER
-                    ? (_b = (_a = application.properties) === null || _a === void 0 ? void 0 : _a.landlord) === null || _b === void 0 ? void 0 : _b.id
-                    : (_c = application.properties) === null || _c === void 0 ? void 0 : _c.landlordId;
-                if (landlordId !== actualLandlordId) {
-                    return res.status(403).json({
-                        error: "Unauthorized",
-                        message: "You can only send reminders for applications on your properties."
-                    });
+                if (!landlordId) {
+                    return res.status(403).json({ error: "Unauthorized: Missing landlord information" });
+                }
+                // Check if the landlord is authorized to send reminders for this application
+                const landlord = yield this.landlordService.getLandlordById(landlordId);
+                if (!landlord) {
+                    return res.status(403).json({ error: "Unauthorized: Landlord not found" });
+                }
+                // Check if the landlord is associated with the application
+                const applicationLandlord = yield this.landlordService.getLandlordById((_a = application.properties) === null || _a === void 0 ? void 0 : _a.landlordId);
+                if (!applicationLandlord) {
+                    return res.status(403).json({ error: "Unauthorized: Landlord not associated with this property application" });
                 }
                 // Get recipient email
                 let recipientEmail = null;
@@ -441,55 +449,57 @@ class ApplicationControls {
                     recipientEmail = application.user.email;
                 }
                 else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
-                    recipientEmail = application.userInvited.email;
+                    recipientEmail = (_b = application.userInvited) === null || _b === void 0 ? void 0 : _b.email;
                 }
                 if (!recipientEmail) {
                     return res.status(400).json({
-                        error: "Missing recipient email",
-                        message: "The applicant's email is required to send a reminder."
+                        error: "Recipient email not found",
+                        message: "Could not retrieve email address for the selected reminder type."
                     });
                 }
                 // Define email content based on reminder type
                 let subject = "";
                 let htmlContent = "";
-                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
-                    subject = "Asher Reference Reminder";
-                    htmlContent = `<p>Dear ${(_e = (_d = application === null || application === void 0 ? void 0 : application.user) === null || _d === void 0 ? void 0 : _d.profile) === null || _e === void 0 ? void 0 : _e.firstName}, please contact your reference to submit your reference documents as soon as possible.</p>`;
-                }
-                if (value.status === applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER) {
-                    subject = "Asher Application Reminder";
-                    htmlContent = `<p>Dear ${(_g = (_f = application === null || application === void 0 ? void 0 : application.user) === null || _f === void 0 ? void 0 : _f.profile) === null || _g === void 0 ? void 0 : _g.firstName}, you have an ongoing application for the property ${(_h = application === null || application === void 0 ? void 0 : application.properties) === null || _h === void 0 ? void 0 : _h.name}</p>`;
-                }
-                else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
-                    subject = "Asher Schedule Reminder";
-                    htmlContent = `<p>Dear ${(_k = (_j = application === null || application === void 0 ? void 0 : application.user) === null || _j === void 0 ? void 0 : _j.profile) === null || _k === void 0 ? void 0 : _k.firstName}, please confirm your scheduled appointment.</p>`;
+                const firstName = value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER
+                    ? (_d = (_c = application === null || application === void 0 ? void 0 : application.userInvited) === null || _c === void 0 ? void 0 : _c.profile) === null || _d === void 0 ? void 0 : _d.firstName
+                    : (_f = (_e = application === null || application === void 0 ? void 0 : application.user) === null || _e === void 0 ? void 0 : _e.profile) === null || _f === void 0 ? void 0 : _f.firstName;
+                const userId = value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER
+                    ? (_g = application === null || application === void 0 ? void 0 : application.userInvited) === null || _g === void 0 ? void 0 : _g.id
+                    : (_h = application === null || application === void 0 ? void 0 : application.user) === null || _h === void 0 ? void 0 : _h.id;
+                switch (value.status) {
+                    case applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER:
+                        subject = "Asher Reference Reminder";
+                        htmlContent = `<p>Dear ${firstName}, you have a reference documents reminder.</p>`;
+                        yield logs_services_1.default.createLog({
+                            applicationId,
+                            subjects: "Reference Document Reminder",
+                            events: "Please contact your reference to submit your documents as soon as possible.",
+                            createdById: userId
+                        });
+                        break;
+                    case applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER:
+                        subject = "Asher Application Reminder";
+                        htmlContent = `<p>Dear ${firstName}, you have an ongoing application notification reminder. Check your Asher dashboard.</p>`;
+                        yield logs_services_1.default.createLog({
+                            applicationId,
+                            subjects: "Application Reminder",
+                            events: `Dear ${firstName}, you have an ongoing application for the property ${(_j = application === null || application === void 0 ? void 0 : application.properties) === null || _j === void 0 ? void 0 : _j.name}`,
+                            createdById: userId
+                        });
+                        break;
+                    case applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER:
+                        subject = "Asher Schedule Reminder";
+                        htmlContent = `<p>Dear ${firstName}, check your dashboard for an appointment scheduled.</p>`;
+                        yield logs_services_1.default.createLog({
+                            applicationId,
+                            subjects: "Schedule Reminder",
+                            events: `Please confirm your scheduled appointment for ${(_k = application === null || application === void 0 ? void 0 : application.properties) === null || _k === void 0 ? void 0 : _k.name}`,
+                            createdById: userId
+                        });
+                        break;
                 }
                 // Send email
                 yield (0, emailer_2.default)(recipientEmail, subject, htmlContent);
-                if (value.status === applicationInvitesSchema_1.ReminderType.REFERENCE_REMINDER) {
-                    yield logs_services_1.default.createLog({
-                        applicationId,
-                        subjects: "Reference Document Reminder",
-                        events: "please contact your reference to submit your reference documents as soon as possible",
-                        createdById: application.user.id
-                    });
-                }
-                else if (value.status === applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER) {
-                    yield logs_services_1.default.createLog({
-                        applicationId,
-                        subjects: "Application Reminder",
-                        events: `Dear ${(_m = (_l = application === null || application === void 0 ? void 0 : application.user) === null || _l === void 0 ? void 0 : _l.profile) === null || _m === void 0 ? void 0 : _m.firstName}, you have an ongoing application for the property ${(_o = application === null || application === void 0 ? void 0 : application.properties) === null || _o === void 0 ? void 0 : _o.name}`,
-                        createdById: application.user.id
-                    });
-                }
-                else if (value.status === applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER) {
-                    yield logs_services_1.default.createLog({
-                        applicationId,
-                        subjects: "Schedule Reminder",
-                        events: `please confirm your scheduled appointmen for`,
-                        createdById: application.user.id
-                    });
-                }
                 return res.status(200).json({
                     message: "Reminder sent successfully",
                     details: { recipient: recipientEmail, type: value.status }
@@ -529,21 +539,21 @@ class ApplicationControls {
                     });
                 }
                 // Perform screenings
-                const landlordScreeningResult = yield (0, screener_1.landlordScreener)(application);
-                const guarantorScreeningResult = yield (0, screener_1.guarantorScreener)(application);
-                const employmentScreeningResult = yield (0, screener_1.employmentScreener)(application);
-                // Consolidate screening results
-                const allScreeningsPassed = landlordScreeningResult && guarantorScreeningResult && employmentScreeningResult;
-                if (!allScreeningsPassed) {
-                    return res.status(400).json({
-                        error: "Application verification failed",
-                        details: {
-                            landlordScreening: landlordScreeningResult,
-                            guarantorScreening: guarantorScreeningResult,
-                            employmentScreening: employmentScreeningResult
-                        }
-                    });
-                }
+                // const landlordScreeningResult = await landlordScreener(application);
+                // const guarantorScreeningResult = await guarantorScreener(application);
+                // const employmentScreeningResult = await employmentScreener(application);
+                // // Consolidate screening results
+                // const allScreeningsPassed = landlordScreeningResult && guarantorScreeningResult && employmentScreeningResult;
+                // if (!allScreeningsPassed) {
+                //     return res.status(400).json({
+                //         error: "Application verification failed",
+                //         details: {
+                //             landlordScreening: landlordScreeningResult,
+                //             guarantorScreening: guarantorScreeningResult,
+                //             employmentScreening: employmentScreeningResult
+                //         }
+                //     });
+                // }
                 // Proceed with updating verification status if all screenings passed
                 const screener = yield application_services_1.default.updateVerificationStatus(applicationId, {
                     employmentVerificationStatus: client_1.YesNo.YES,

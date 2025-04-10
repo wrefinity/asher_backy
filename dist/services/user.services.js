@@ -27,6 +27,7 @@ const wallet_service_1 = __importDefault(require("./wallet.service"));
 const helpers_1 = require("../utils/helpers");
 const emailer_1 = __importDefault(require("../utils/emailer"));
 const propertyServices_1 = __importDefault(require("./propertyServices"));
+const applicantService_1 = __importDefault(require("../webuser/services/applicantService"));
 class UserService {
     constructor() {
         // cm641qu2d00003wf057tudib7
@@ -217,6 +218,8 @@ class UserService {
                 yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
                 //unlist the property
                 yield propertyServices_1.default.deletePropertyListing(userData === null || userData === void 0 ? void 0 : userData.propertyId);
+                yield applicantService_1.default.updateApplicationStatusStep(userData === null || userData === void 0 ? void 0 : userData.applicationId, client_1.ApplicationStatus.TENANT_CREATED);
+                yield applicantService_1.default.updateApplicationStatusStep(userData === null || userData === void 0 ? void 0 : userData.applicationId, client_1.ApplicationStatus.COMPLETED);
             }
             if (user && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.VENDOR) {
                 yield this.updateUserBasedOnRole(userData, user, client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.VENDOR);

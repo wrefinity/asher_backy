@@ -14,6 +14,7 @@ import WalletService from "./wallet.service";
 import { getCurrentCountryCurrency } from "../utils/helpers";
 import sendMail from "../utils/emailer";
 import propertyServices from "./propertyServices";
+import applicantService from "../webuser/services/applicantService";
 class UserService {
     protected inclusion;
 
@@ -229,6 +230,9 @@ class UserService {
             await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
             //unlist the property
             await propertyServices.deletePropertyListing(userData?.propertyId);
+
+            await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.TENANT_CREATED);
+            await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.COMPLETED);
 
         }
 

@@ -626,7 +626,7 @@ class ApplicantService {
     };
   };
 
-  
+
   getInvitedById = async (id: string) => {
     if (!id) {
       throw new Error("Invalid application invite ID");
@@ -636,6 +636,13 @@ class ApplicantService {
       include: {
         properties: {
           include: this.propsIncusion
+        },
+        userInvited: {
+          select: {
+            id: true,
+            email: true,
+            profile: true
+          }
         }
       }
     });

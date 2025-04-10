@@ -532,6 +532,13 @@ class ApplicantService {
                 include: {
                     properties: {
                         include: this.propsIncusion
+                    },
+                    userInvited: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: true
+                        }
                     }
                 }
             });

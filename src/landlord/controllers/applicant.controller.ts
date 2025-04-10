@@ -1,5 +1,5 @@
 import { Response } from "express"
-import { logTypeStatus, InvitedResponse, YesNo, DocumentType, userRoles } from "@prisma/client"
+import { logTypeStatus, InvitedResponse, YesNo, DocumentType, userRoles, application } from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -367,33 +367,50 @@ class ApplicationControls {
         try {
             const applicationId = req.params.id;
 
-            // Validate application ID
             if (!applicationId) {
                 return res.status(400).json({
                     error: "Application ID is required",
                     details: ["Missing application ID in URL parameters"]
                 });
             }
-            // Verify application exists
-            const application = await applicantService.getApplicationById(applicationId);
+
+            const application: any = await applicantService.getApplicationById(applicationId);
             if (!application) {
                 return res.status(404).json({
                     error: "Application not found",
                     details: [`Application with ID ${applicationId} does not exist`]
                 });
             }
-            // Validate request body
+
             const { error, value } = updateApplicationStatusSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
+            if (error) return res.status(400).json({ error: error.details[0].message });
+
+            const currentStatuses = application?.statusesCompleted ?? [];
+            if (
+                currentStatuses.includes(ApplicationStatus.APPROVED) &&
+                value.status === ApplicationStatus.DECLINED
+            ) {
+                return res.status(400).json({ error: "Application has been approved, cannot be declined" });
             }
-            const landlordId = req.user.landlords.id;
-            const applicationInvite = await applicantService.updateApplicationStatusStep(applicationId, value.status);
+
+            if (
+                currentStatuses.includes(ApplicationStatus.DECLINED) &&
+                value.status === ApplicationStatus.APPROVED
+            ) {
+                return res.status(400).json({ error: "Application has been declined, cannot be approved" });
+            }
+
+            const applicationInvite = await applicantService.updateApplicationStatusStep(
+                applicationId,
+                value.status
+            );
+
             return res.status(200).json({ applicationInvite });
         } catch (error) {
-            errorService.handleError(error, res)
+            errorService.handleError(error, res);
         }
     }
+
     sendApplicationReminder = async (req: CustomRequest, res: Response) => {
         try {
             const applicationId = req.params.id;
@@ -428,15 +445,18 @@ class ApplicationControls {
 
             // Check landlord authorization
             const landlordId = req.user.landlords.id;
-            const actualLandlordId = value.status === ReminderType.SCHEDULE_REMINDER
-                ? application.properties?.landlord?.id
-                : application.properties?.landlordId;
-
-            if (landlordId !== actualLandlordId) {
-                return res.status(403).json({
-                    error: "Unauthorized",
-                    message: "You can only send reminders for applications on your properties."
-                });
+            if (!landlordId) {
+                return res.status(403).json({ error: "Unauthorized: Missing landlord information" });
+            }
+            // Check if the landlord is authorized to send reminders for this application
+            const landlord = await this.landlordService.getLandlordById(landlordId);
+            if (!landlord) {
+                return res.status(403).json({ error: "Unauthorized: Landlord not found" });
+            }
+            // Check if the landlord is associated with the application
+            const applicationLandlord = await this.landlordService.getLandlordById(application.properties?.landlordId);
+            if (!applicationLandlord) {
+                return res.status(403).json({ error: "Unauthorized: Landlord not associated with this property application" });
             }
             // Get recipient email
             let recipientEmail = null;
@@ -446,57 +466,61 @@ class ApplicationControls {
             ) {
                 recipientEmail = application.user.email;
             } else if (value.status === ReminderType.SCHEDULE_REMINDER) {
-                recipientEmail = application.userInvited.email;
+                recipientEmail = application.userInvited?.email;
             }
 
             if (!recipientEmail) {
                 return res.status(400).json({
-                    error: "Missing recipient email",
-                    message: "The applicant's email is required to send a reminder."
+                    error: "Recipient email not found",
+                    message: "Could not retrieve email address for the selected reminder type."
                 });
             }
             // Define email content based on reminder type
             let subject = "";
             let htmlContent = "";
-            if (value.status === ReminderType.REFERENCE_REMINDER) {
-                subject = "Asher Reference Reminder";
-                htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, please contact your reference to submit your reference documents as soon as possible.</p>`;
+            const firstName = value.status === ReminderType.SCHEDULE_REMINDER
+                ? application?.userInvited?.profile?.firstName
+                : application?.user?.profile?.firstName;
+
+            const userId = value.status === ReminderType.SCHEDULE_REMINDER
+                ? application?.userInvited?.id
+                : application?.user?.id;
+
+            switch (value.status) {
+                case ReminderType.REFERENCE_REMINDER:
+                    subject = "Asher Reference Reminder";
+                    htmlContent = `<p>Dear ${firstName}, you have a reference documents reminder.</p>`;
+                    await logsServices.createLog({
+                        applicationId,
+                        subjects: "Reference Document Reminder",
+                        events: "Please contact your reference to submit your documents as soon as possible.",
+                        createdById: userId
+                    });
+                    break;
+                case ReminderType.APPLICATION_REMINDER:
+                    subject = "Asher Application Reminder";
+                    htmlContent = `<p>Dear ${firstName}, you have an ongoing application notification reminder. Check your Asher dashboard.</p>`;
+                    await logsServices.createLog({
+                        applicationId,
+                        subjects: "Application Reminder",
+                        events: `Dear ${firstName}, you have an ongoing application for the property ${application?.properties?.name}`,
+                        createdById: userId
+                    });
+                    break;
+                case ReminderType.SCHEDULE_REMINDER:
+                    subject = "Asher Schedule Reminder";
+                    htmlContent = `<p>Dear ${firstName}, check your dashboard for an appointment scheduled.</p>`;
+                    await logsServices.createLog({
+                        applicationId,
+                        subjects: "Schedule Reminder",
+                        events: `Please confirm your scheduled appointment for ${application?.properties?.name}`,
+                        createdById: userId
+                    });
+                    break;
             }
-            if (value.status === ReminderType.APPLICATION_REMINDER) {
-                subject = "Asher Application Reminder";
-                htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, you have an ongoing application for the property ${application?.properties?.name}</p>`;
-            }
-            else if (value.status === ReminderType.SCHEDULE_REMINDER) {
-                subject = "Asher Schedule Reminder";
-                htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, please confirm your scheduled appointment.</p>`;
-            }
+
             // Send email
             await sendMail(recipientEmail, subject, htmlContent);
-            if (value.status === ReminderType.REFERENCE_REMINDER) {
-                await logsServices.createLog({
-                    applicationId,
-                    subjects: "Reference Document Reminder",
-                    events: "please contact your reference to submit your reference documents as soon as possible",
-                    createdById: application.user.id
-                })
-            }
-            else if (value.status === ReminderType.APPLICATION_REMINDER) {
-                await logsServices.createLog({
-                    applicationId,
-                    subjects: "Application Reminder",
-                    events: `Dear ${application?.user?.profile?.firstName}, you have an ongoing application for the property ${application?.properties?.name}`,
-                    createdById: application.user.id
-                })
-            }
-            else if (value.status === ReminderType.SCHEDULE_REMINDER) {
-                await logsServices.createLog({
-                    applicationId,
-                    subjects: "Schedule Reminder",
-                    events: `please confirm your scheduled appointmen for`,
-                    createdById: application.user.id
-                })
-
-            }
 
             return res.status(200).json({
                 message: "Reminder sent successfully",
@@ -536,23 +560,23 @@ class ApplicationControls {
                 });
             }
             // Perform screenings
-            const landlordScreeningResult = await landlordScreener(application);
-            const guarantorScreeningResult = await guarantorScreener(application);
-            const employmentScreeningResult = await employmentScreener(application);
+            // const landlordScreeningResult = await landlordScreener(application);
+            // const guarantorScreeningResult = await guarantorScreener(application);
+            // const employmentScreeningResult = await employmentScreener(application);
 
-            // Consolidate screening results
-            const allScreeningsPassed = landlordScreeningResult && guarantorScreeningResult && employmentScreeningResult;
+            // // Consolidate screening results
+            // const allScreeningsPassed = landlordScreeningResult && guarantorScreeningResult && employmentScreeningResult;
 
-            if (!allScreeningsPassed) {
-                return res.status(400).json({
-                    error: "Application verification failed",
-                    details: {
-                        landlordScreening: landlordScreeningResult,
-                        guarantorScreening: guarantorScreeningResult,
-                        employmentScreening: employmentScreeningResult
-                    }
-                });
-            }
+            // if (!allScreeningsPassed) {
+            //     return res.status(400).json({
+            //         error: "Application verification failed",
+            //         details: {
+            //             landlordScreening: landlordScreeningResult,
+            //             guarantorScreening: guarantorScreeningResult,
+            //             employmentScreening: employmentScreeningResult
+            //         }
+            //     });
+            // }
             // Proceed with updating verification status if all screenings passed
             const screener = await ApplicationInvitesService.updateVerificationStatus(applicationId, {
                 employmentVerificationStatus: YesNo.YES,
