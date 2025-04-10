@@ -176,10 +176,17 @@ class UserService {
             include: { profile: true }
         });
 
-        // Create a new user if it doesn't exist and
-        // the landlord that is uploading the user account
+        // for normal account creations 
+        if(!landlordBulkUploads && !createdBy && !createTenantProfile){
+            user = await this.createNewUser(userData); 
+        }
+
+        // Create a new user by landlord during bulk upload
         if (!user && landlordBulkUploads && !createTenantProfile) {
             user = await this.createNewUser(userData, landlordBulkUploads);
+            const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id)
+            if (tenantExist) return tenantExist;
+
             const application = await this.completeApplicationProfile(userData, user.id, createdBy);
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
             const result = await this.updateUserBasedOnRole({ ...userData, applicationId: application?.id }, user, roleToUse);
@@ -199,11 +206,14 @@ class UserService {
             await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
         }
 
-        if (!user && !landlordBulkUploads && userData?.role === userRoles.TENANT && createTenantProfile) {
-            user = await this.createNewUser(userData, landlordBulkUploads);
+        // for web user for complete tenant account profile creation
+        if (user && !landlordBulkUploads && userData?.role === userRoles.TENANT && createTenantProfile) {
+            // user = await this.createNewUser(userData, landlordBulkUploads);
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
-            const result = await this.updateUserBasedOnRole(userData, user, roleToUse);
-            const tenantCode = result as any;
+            const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id)
+            if (tenantExist) return tenantExist;
+            const result = await this.updateUserBasedOnRole(userData, user, roleToUse) as any;
+
             sendMail(
                 user.email,
                 "ACCOUNT CREATION",
@@ -211,12 +221,15 @@ class UserService {
                     <p>Dear ${user?.profile?.firstName},</p>
                     <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
                     <p>To get started, please login to your account using the credentials below:</p>
-                    <p>Username: ${tenantCode}</p>
+                    <p>Username: ${result?.tenantCode}</p>
                     <p>Thank you for choosing us. </p>
                     <p>Best regards,</p>`
             );
             // make the property occupied
             await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
+            //unlist the property
+            await propertyServices.deletePropertyListing(userData?.propertyId);
+
         }
 
         if (user && userData?.role === userRoles.VENDOR) {
@@ -238,7 +251,7 @@ class UserService {
             await WalletService.getOrCreateWallet(user.id, countryData.locationCurrency);
         }
 
-        return user;
+        return this.getUserById(user.id);
     }
 
     updateUserInfo = async (id: string, userData: any) => {
@@ -514,6 +527,20 @@ class UserService {
         }
     };
 
+    tenantExistsForLandlord = async (landlordId: string, userId: string) => {
+        return await prismaClient.users.findFirst({
+            where: {
+                tenant: {
+                    userId,
+                    landlordId: landlordId,
+                },
+            },
+            include: {
+                tenant: true,
+                profile: true
+            }
+        })
+    }
 
     updateLandlordOrTenantOrVendorInfo = async (data: any, id: string, role: string) => {
 

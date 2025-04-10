@@ -126,7 +126,7 @@ class ApplicationControls {
             const application = await ApplicationService.getApplicationById(applicationId);
 
             // get the tenant web user email 
-            if (!application) return res.status(400).json({ message: "property doesn't exist" });
+            if (!application) return res.status(400).json({ message: "application doesn't exist" });
 
             // update application invite status to approve
             await ApplicationInvitesService.updateInvite(application.applicationInviteId, { response: InvitedResponse.APPROVED });

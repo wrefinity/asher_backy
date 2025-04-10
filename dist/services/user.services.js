@@ -174,10 +174,16 @@ class UserService {
                 where: { email: userData === null || userData === void 0 ? void 0 : userData.email },
                 include: { profile: true }
             });
-            // Create a new user if it doesn't exist and
-            // the landlord that is uploading the user account
+            // for normal account creations 
+            if (!landlordBulkUploads && !createdBy && !createTenantProfile) {
+                user = yield this.createNewUser(userData);
+            }
+            // Create a new user by landlord during bulk upload
             if (!user && landlordBulkUploads && !createTenantProfile) {
                 user = yield this.createNewUser(userData, landlordBulkUploads);
+                const tenantExist = yield this.tenantExistsForLandlord(userData === null || userData === void 0 ? void 0 : userData.landlordId, user === null || user === void 0 ? void 0 : user.id);
+                if (tenantExist)
+                    return tenantExist;
                 const application = yield this.completeApplicationProfile(userData, user.id, createdBy);
                 const roleToUse = user.role.includes(client_1.userRoles.TENANT) ? client_1.userRoles.TENANT : userData === null || userData === void 0 ? void 0 : userData.role;
                 const result = yield this.updateUserBasedOnRole(Object.assign(Object.assign({}, userData), { applicationId: application === null || application === void 0 ? void 0 : application.id }), user, roleToUse);
@@ -192,20 +198,25 @@ class UserService {
                 // make the property occupied
                 yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
             }
-            if (!user && !landlordBulkUploads && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.TENANT && createTenantProfile) {
-                user = yield this.createNewUser(userData, landlordBulkUploads);
+            // for web user for complete tenant account profile creation
+            if (user && !landlordBulkUploads && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.TENANT && createTenantProfile) {
+                // user = await this.createNewUser(userData, landlordBulkUploads);
                 const roleToUse = user.role.includes(client_1.userRoles.TENANT) ? client_1.userRoles.TENANT : userData === null || userData === void 0 ? void 0 : userData.role;
+                const tenantExist = yield this.tenantExistsForLandlord(userData === null || userData === void 0 ? void 0 : userData.landlordId, user === null || user === void 0 ? void 0 : user.id);
+                if (tenantExist)
+                    return tenantExist;
                 const result = yield this.updateUserBasedOnRole(userData, user, roleToUse);
-                const tenantCode = result;
                 (0, emailer_1.default)(user.email, "ACCOUNT CREATION", `<h3>Your account has been created successfully.</h3>
                     <p>Dear ${(_b = user === null || user === void 0 ? void 0 : user.profile) === null || _b === void 0 ? void 0 : _b.firstName},</p>
                     <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
                     <p>To get started, please login to your account using the credentials below:</p>
-                    <p>Username: ${tenantCode}</p>
+                    <p>Username: ${result === null || result === void 0 ? void 0 : result.tenantCode}</p>
                     <p>Thank you for choosing us. </p>
                     <p>Best regards,</p>`);
                 // make the property occupied
                 yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
+                //unlist the property
+                yield propertyServices_1.default.deletePropertyListing(userData === null || userData === void 0 ? void 0 : userData.propertyId);
             }
             if (user && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.VENDOR) {
                 yield this.updateUserBasedOnRole(userData, user, client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.VENDOR);
@@ -225,7 +236,7 @@ class UserService {
             if (user && (countryData === null || countryData === void 0 ? void 0 : countryData.locationCurrency)) {
                 yield wallet_service_1.default.getOrCreateWallet(user.id, countryData.locationCurrency);
             }
-            return user;
+            return this.getUserById(user.id);
         });
         this.updateUserInfo = (id, userData) => __awaiter(this, void 0, void 0, function* () {
             const updateData = Object.assign({}, userData);
@@ -480,6 +491,20 @@ class UserService {
                 default:
                     throw new Error(`Unsupported role: ${role}`);
             }
+        });
+        this.tenantExistsForLandlord = (landlordId, userId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.users.findFirst({
+                where: {
+                    tenant: {
+                        userId,
+                        landlordId: landlordId,
+                    },
+                },
+                include: {
+                    tenant: true,
+                    profile: true
+                }
+            });
         });
         this.updateLandlordOrTenantOrVendorInfo = (data, id, role) => __awaiter(this, void 0, void 0, function* () {
             let updated;

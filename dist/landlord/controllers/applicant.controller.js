@@ -158,7 +158,7 @@ class ApplicationControls {
                 const application = yield applicantService_1.default.getApplicationById(applicationId);
                 // get the tenant web user email 
                 if (!application)
-                    return res.status(400).json({ message: "property doesn't exist" });
+                    return res.status(400).json({ message: "application doesn't exist" });
                 // update application invite status to approve
                 yield application_services_1.default.updateInvite(application.applicationInviteId, { response: client_1.InvitedResponse.APPROVED });
                 // update the application also to completed
