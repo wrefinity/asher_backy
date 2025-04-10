@@ -9,7 +9,7 @@ import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
 import { parseDateFieldNew} from "../../utils/helpers";
-import { PropertySpecificationType, PropertyType } from "@prisma/client"
+import { PropertySpecificationType, PropertyType, PropsApartmentStatus } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 
@@ -193,7 +193,9 @@ class PropertyController {
             const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, value.propertyId);
             // scenario where property doesnot belong to landlord
             if (!checkOwnership) return res.status(400).json({ message: 'property does not exist under landlord' });
-
+            if(checkOwnership.availability === PropsApartmentStatus.OCCUPIED){
+                return res.status(400).json({ message: 'Property already occupied' }); 
+            }
             const listing = await PropertyServices.createPropertyListing(data);
             return res.status(201).json({ message: 'Property listing created', listing });
 

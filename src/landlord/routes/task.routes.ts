@@ -16,7 +16,6 @@ class TaskRouter {
         this.router.patch('/:taskId', taskController.updateTask)
         this.router.delete('/:taskId', taskController.deleteTask)
         this.router.get('/property/:propertyId', taskController.getAllTasksByProperty)
-
     }
 }
 

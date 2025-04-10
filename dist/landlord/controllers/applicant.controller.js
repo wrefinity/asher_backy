@@ -150,7 +150,7 @@ class ApplicationControls {
             }
         });
         this.approveApplicationAndCreateTenant = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c, _d;
+            var _a, _b, _c, _d, _e;
             try {
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const applicationId = (_c = req.params) === null || _c === void 0 ? void 0 : _c.applicationId;
@@ -171,7 +171,7 @@ class ApplicationControls {
                 const landlordEmail = landlord.user.email.toString().trim().split('@')[0];
                 const email = `${userEmail}@${landlordEmail}.asher.co`;
                 // TODO: check if tenant has been a tenant for the current landlord before and just update the property
-                const tenant = yield applicantService_1.default.createTenantThroughApplication(Object.assign(Object.assign({}, req.body), { newEmail: email, email: tenantWebUserEmail, tenantWebUserEmail, propertyId: application.propertiesId, applicationId, password: (_d = application === null || application === void 0 ? void 0 : application.personalDetails) === null || _d === void 0 ? void 0 : _d.firstName, landlordId }));
+                const tenant = yield yield user_services_1.default.createUser(Object.assign(Object.assign({}, req.body), { newEmail: email, email: tenantWebUserEmail, tenantWebUserEmail, propertyId: application.propertiesId, applicationId, role: client_1.userRoles.TENANT, password: (_d = application === null || application === void 0 ? void 0 : application.personalDetails) === null || _d === void 0 ? void 0 : _d.firstName, landlordId }), false, (_e = req.user) === null || _e === void 0 ? void 0 : _e.id, true);
                 if (!tenant)
                     return res.status(400).json({ message: "tenant not created" });
                 yield applicantService_2.default.updateApplicationStatusStep(applicationId, client_2.ApplicationStatus.TENANT_CREATED);

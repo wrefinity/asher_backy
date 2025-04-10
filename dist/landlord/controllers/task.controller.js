@@ -15,12 +15,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const taskSchema_1 = require("../validations/schema/taskSchema");
 const task_services_1 = __importDefault(require("../services/task.services"));
+const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 class TaskController {
     constructor() {
         this.createTask = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const { error, value } = yield taskSchema_1.taskSchema.validate(req.body);
+            const { error, value } = taskSchema_1.taskSchema.validate(req.body);
             if (error)
                 return res.status(400).json({ message: error.details[0].message });
+            // check for property existance
+            const propertyId = value === null || value === void 0 ? void 0 : value.propertyId;
+            const checkPropsExits = yield propertyServices_1.default.getPropertyById(propertyId);
+            if (!checkPropsExits)
+                return res.status(404).json({ message: "Property not found" });
+            // create task base on props
             try {
                 const task = yield task_services_1.default.createTask(value);
                 return res.status(201).json(task);
@@ -32,6 +39,9 @@ class TaskController {
         this.getAllTasks = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const propertyId = req.params.propertyId;
+                const checkPropsExits = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!checkPropsExits)
+                    return res.status(404).json({ message: "Property not found" });
                 const tasks = yield task_services_1.default.getAllTask(propertyId);
                 return res.status(200).json(tasks);
             }
@@ -52,11 +62,15 @@ class TaskController {
             }
         });
         this.updateTask = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            const { taskId } = req.params;
             const { error, value } = yield taskSchema_1.taskUpdateSchema.validate(req.body);
             if (error)
                 return res.status(400).json({ message: error.details[0].message });
             try {
-                const updatedTask = yield task_services_1.default.updateTask(req.params.taskId, value);
+                const task = yield task_services_1.default.getTaskById(taskId);
+                if (!task)
+                    return res.status(404).json({ message: "Task not found" });
+                const updatedTask = yield task_services_1.default.updateTask(taskId, value);
                 if (!updatedTask)
                     return res.status(404).json({ message: "Task not found" });
                 return res.status(200).json({ updatedTask });
@@ -79,9 +93,11 @@ class TaskController {
         this.getAllTasksByProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { propertyId } = req.params;
+                const checkPropsExits = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!checkPropsExits)
+                    return res.status(404).json({ message: "Property not found" });
                 const tasks = yield task_services_1.default.getAllTasksByProperty(propertyId);
-                if (tasks.length === 0)
-                    return res.status(404).json({ message: "No tasks found" });
+                // if (tasks.length === 0) return res.status(404).json({ message: "No tasks found" });
                 return res.status(200).json(tasks);
             }
             catch (error) {

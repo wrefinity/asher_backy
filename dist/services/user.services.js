@@ -26,6 +26,7 @@ const personaldetails_services_1 = __importDefault(require("../services/personal
 const wallet_service_1 = __importDefault(require("./wallet.service"));
 const helpers_1 = require("../utils/helpers");
 const emailer_1 = __importDefault(require("../utils/emailer"));
+const propertyServices_1 = __importDefault(require("./propertyServices"));
 class UserService {
     constructor() {
         // cm641qu2d00003wf057tudib7
@@ -136,237 +137,95 @@ class UserService {
             }
             return code;
         });
-        this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordUploads = false, createdBy = null) {
-            var _a, _b, _c, _d;
+        this.createNewUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordBulkUploads = false) {
+            var _a, _b, _c;
+            return yield __1.prismaClient.users.create({
+                data: {
+                    email: userData === null || userData === void 0 ? void 0 : userData.email,
+                    role: (userData === null || userData === void 0 ? void 0 : userData.role) ? [userData.role] : [client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.WEBUSER],
+                    isVerified: landlordBulkUploads ? true : false,
+                    password: this.hashPassword(userData === null || userData === void 0 ? void 0 : userData.password),
+                    profile: {
+                        create: {
+                            gender: userData === null || userData === void 0 ? void 0 : userData.gender,
+                            phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
+                            address: userData === null || userData === void 0 ? void 0 : userData.address,
+                            dateOfBirth: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
+                            fullname: `${userData === null || userData === void 0 ? void 0 : userData.lastName} ${userData === null || userData === void 0 ? void 0 : userData.firstName} ${(userData === null || userData === void 0 ? void 0 : userData.middleName) ? userData.middleName : ""}`.trim(),
+                            firstName: (_a = userData === null || userData === void 0 ? void 0 : userData.firstName) === null || _a === void 0 ? void 0 : _a.trim(),
+                            lastName: (_b = userData === null || userData === void 0 ? void 0 : userData.lastName) === null || _b === void 0 ? void 0 : _b.trim(),
+                            middleName: (_c = userData === null || userData === void 0 ? void 0 : userData.middleName) === null || _c === void 0 ? void 0 : _c.trim(),
+                            profileUrl: userData === null || userData === void 0 ? void 0 : userData.profileUrl,
+                            zip: userData === null || userData === void 0 ? void 0 : userData.zip,
+                            unit: userData === null || userData === void 0 ? void 0 : userData.unit,
+                            state: userData === null || userData === void 0 ? void 0 : userData.state,
+                            timeZone: userData === null || userData === void 0 ? void 0 : userData.timeZone,
+                            taxPayerId: userData === null || userData === void 0 ? void 0 : userData.taxPayerId,
+                            taxType: userData === null || userData === void 0 ? void 0 : userData.taxType,
+                        }
+                    }
+                },
+            });
+        });
+        this.createUser = (userData_1, ...args_1) => __awaiter(this, [userData_1, ...args_1], void 0, function* (userData, landlordBulkUploads = false, createdBy = null, createTenantProfile = false) {
+            var _a, _b;
             let user = null;
             user = yield __1.prismaClient.users.findUnique({
                 where: { email: userData === null || userData === void 0 ? void 0 : userData.email },
-                include: { profile: true } // Include profile if needed
+                include: { profile: true }
             });
-            if (!user && !landlordUploads) {
-                // Create a new user if not found
-                user = yield __1.prismaClient.users.create({
-                    data: {
-                        email: userData === null || userData === void 0 ? void 0 : userData.email,
-                        role: (userData === null || userData === void 0 ? void 0 : userData.role) ? [userData.role] : [client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.WEBUSER],
-                        isVerified: landlordUploads ? true : false,
-                        password: this.hashPassword(userData === null || userData === void 0 ? void 0 : userData.password),
-                        profile: {
-                            create: {
-                                gender: userData === null || userData === void 0 ? void 0 : userData.gender,
-                                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
-                                address: userData === null || userData === void 0 ? void 0 : userData.address,
-                                dateOfBirth: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
-                                fullname: `${userData === null || userData === void 0 ? void 0 : userData.lastName} ${userData === null || userData === void 0 ? void 0 : userData.firstName} ${(userData === null || userData === void 0 ? void 0 : userData.middleName) ? userData.middleName : ""}`.trim(),
-                                firstName: (_a = userData === null || userData === void 0 ? void 0 : userData.firstName) === null || _a === void 0 ? void 0 : _a.trim(),
-                                lastName: (_b = userData === null || userData === void 0 ? void 0 : userData.lastName) === null || _b === void 0 ? void 0 : _b.trim(),
-                                middleName: (_c = userData === null || userData === void 0 ? void 0 : userData.middleName) === null || _c === void 0 ? void 0 : _c.trim(),
-                                profileUrl: userData === null || userData === void 0 ? void 0 : userData.profileUrl,
-                                zip: userData === null || userData === void 0 ? void 0 : userData.zip,
-                                unit: userData === null || userData === void 0 ? void 0 : userData.unit,
-                                state: userData === null || userData === void 0 ? void 0 : userData.state,
-                                timeZone: userData === null || userData === void 0 ? void 0 : userData.timeZone,
-                                taxPayerId: userData === null || userData === void 0 ? void 0 : userData.taxPayerId,
-                                taxType: userData === null || userData === void 0 ? void 0 : userData.taxType,
-                            }
-                        }
-                    },
-                });
+            // Create a new user if it doesn't exist and
+            // the landlord that is uploading the user account
+            if (!user && landlordBulkUploads && !createTenantProfile) {
+                user = yield this.createNewUser(userData, landlordBulkUploads);
+                const application = yield this.completeApplicationProfile(userData, user.id, createdBy);
+                const roleToUse = user.role.includes(client_1.userRoles.TENANT) ? client_1.userRoles.TENANT : userData === null || userData === void 0 ? void 0 : userData.role;
+                const result = yield this.updateUserBasedOnRole(Object.assign(Object.assign({}, userData), { applicationId: application === null || application === void 0 ? void 0 : application.id }), user, roleToUse);
+                const tenant = result;
+                (0, emailer_1.default)(user.email, "ACCOUNT CREATION", `<h3>Your account has been created successfully.</h3>
+                    <p>Dear ${(_a = user === null || user === void 0 ? void 0 : user.profile) === null || _a === void 0 ? void 0 : _a.firstName},</p>
+                    <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
+                    <p>To get started, please login to your account using the credentials below:</p>
+                    <p>Username: ${tenant === null || tenant === void 0 ? void 0 : tenant.tenantCode}</p>
+                    <p>Thank you for choosing us. </p>
+                    <p>Best regards,</p>`);
+                // make the property occupied
+                yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
+            }
+            if (!user && !landlordBulkUploads && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.TENANT && createTenantProfile) {
+                user = yield this.createNewUser(userData, landlordBulkUploads);
+                const roleToUse = user.role.includes(client_1.userRoles.TENANT) ? client_1.userRoles.TENANT : userData === null || userData === void 0 ? void 0 : userData.role;
+                const result = yield this.updateUserBasedOnRole(userData, user, roleToUse);
+                const tenantCode = result;
+                (0, emailer_1.default)(user.email, "ACCOUNT CREATION", `<h3>Your account has been created successfully.</h3>
+                    <p>Dear ${(_b = user === null || user === void 0 ? void 0 : user.profile) === null || _b === void 0 ? void 0 : _b.firstName},</p>
+                    <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
+                    <p>To get started, please login to your account using the credentials below:</p>
+                    <p>Username: ${tenantCode}</p>
+                    <p>Thank you for choosing us. </p>
+                    <p>Best regards,</p>`);
+                // make the property occupied
+                yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
+            }
+            if (user && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.VENDOR) {
+                yield this.updateUserBasedOnRole(userData, user, client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.VENDOR);
+            }
+            if (user && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.LANDLORD) {
+                yield this.updateUserBasedOnRole(userData, user, client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.LANDLORD);
+            }
+            if (!user && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.VENDOR) {
+                user = yield this.createNewUser(userData, false);
+                yield this.updateUserBasedOnRole(userData, user, client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.VENDOR);
+            }
+            if (!user && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.LANDLORD) {
+                user = yield this.createNewUser({ userData }, false);
+                yield this.updateUserBasedOnRole(userData, user, client_1.userRoles === null || client_1.userRoles === void 0 ? void 0 : client_1.userRoles.LANDLORD);
             }
             const countryData = yield (0, helpers_1.getCurrentCountryCurrency)();
-            if (user && countryData.locationCurrency) {
-                yield wallet_service_1.default.getOrCreateWallet(user.id, countryData === null || countryData === void 0 ? void 0 : countryData.locationCurrency);
+            if (user && (countryData === null || countryData === void 0 ? void 0 : countryData.locationCurrency)) {
+                yield wallet_service_1.default.getOrCreateWallet(user.id, countryData.locationCurrency);
             }
-            // Based on the role, create the corresponding entry in the related schema
-            switch (userData === null || userData === void 0 ? void 0 : userData.role) {
-                case client_1.userRoles.LANDLORD:
-                    const landlordCode = yield this.generateUniqueLandlordCode();
-                    yield __1.prismaClient.landlords.create({
-                        data: {
-                            landlordCode,
-                            userId: user.id,
-                        },
-                    });
-                    break;
-                case client_1.userRoles.VENDOR:
-                    yield __1.prismaClient.vendors.create({
-                        data: {
-                            userId: user.id
-                        },
-                    });
-                    break;
-                case client_1.userRoles.TENANT:
-                    const landlord = yield __1.prismaClient.landlords.findUnique({ where: { id: userData.landlordId } });
-                    if (!landlord)
-                        throw new Error('Landlord not found');
-                    const property = yield __1.prismaClient.properties.findUnique({
-                        where: { id: userData.propertyId },
-                    });
-                    if (!property) {
-                        throw new Error('Property not found');
-                    }
-                    const tenantCode = yield this.generateUniqueTenantCode(landlord.landlordCode);
-                    const tenant = yield __1.prismaClient.tenants.create({
-                        data: {
-                            tenantCode,
-                            user: {
-                                connect: { id: user.id }
-                            },
-                            landlord: {
-                                connect: { id: landlord.id }
-                            },
-                            property: {
-                                connect: { id: property.id }
-                            },
-                            initialDeposit: userData.initialDeposit || 0,
-                            tenantWebUserEmail: userData.tenantWebUserEmail,
-                            leaseStartDate: (userData === null || userData === void 0 ? void 0 : userData.leaseStartDate) ? new Date(userData.leaseStartDate) : new Date(),
-                            leaseEndDate: (userData === null || userData === void 0 ? void 0 : userData.leaseEndDate) ? new Date(userData.leaseEndDate) : undefined,
-                            // password: this.hashPassword(userData?.password),
-                            application: userData.applicationId ? {
-                                connect: { id: userData.applicationId }
-                            } : undefined,
-                        },
-                    });
-                    if (tenant && landlordUploads) {
-                        (0, emailer_1.default)(user.email, "ACCOUNT CREATION", `<h3>Your account has been created successfully.</h3>
-                        <p>Dear ${(_d = user === null || user === void 0 ? void 0 : user.profle) === null || _d === void 0 ? void 0 : _d.firstName},</p>
-                        <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
-                        <p>To get started, please login to your account using the credentials below:</p>
-                        <p>Username: ${tenant === null || tenant === void 0 ? void 0 : tenant.tenantCode}</p>
-                        <p>Thank you for choosing us. </p>
-                        <p>Best regards,</p>`);
-                    }
-                    if (tenant && !landlordUploads) {
-                        // Update application with tenant info
-                        yield __1.prismaClient.application.update({
-                            where: { id: userData.applicationId },
-                            data: {
-                                status: client_1.ApplicationStatus.ACCEPTED,
-                                // tenantId: user.id,
-                            },
-                        });
-                    }
-                    if (tenant && landlordUploads) {
-                        // create the tenant personal information
-                        const personalDetails = yield personaldetails_services_1.default.upsertApplicantPersonalDetails({
-                            title: userData === null || userData === void 0 ? void 0 : userData.title,
-                            invited: userData === null || userData === void 0 ? void 0 : userData.invited,
-                            maritalStatus: userData === null || userData === void 0 ? void 0 : userData.maritalStatus,
-                            phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
-                            email: userData === null || userData === void 0 ? void 0 : userData.email,
-                            dob: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
-                            firstName: userData === null || userData === void 0 ? void 0 : userData.firstName,
-                            lastName: userData === null || userData === void 0 ? void 0 : userData.lastName,
-                            middleName: userData === null || userData === void 0 ? void 0 : userData.middleName,
-                            nationality: userData === null || userData === void 0 ? void 0 : userData.nationality,
-                            identificationType: userData === null || userData === void 0 ? void 0 : userData.identificationType,
-                            issuingAuthority: userData === null || userData === void 0 ? void 0 : userData.issuingAuthority,
-                            expiryDate: userData === null || userData === void 0 ? void 0 : userData.expiryDate,
-                            userId: user.id
-                        });
-                        // Create guarantorInformation if provided
-                        const guarantorInfo = yield guarantor_services_1.default.upsertGuarantorInfo({
-                            id: (userData === null || userData === void 0 ? void 0 : userData.guarantorId) || null, // Optional ID for update (if provided)
-                            fullName: (userData === null || userData === void 0 ? void 0 : userData.guarantorFullname) || '', // Default to empty string if not provided
-                            phoneNumber: (userData === null || userData === void 0 ? void 0 : userData.guarantorPhoneNumber) || '',
-                            email: (userData === null || userData === void 0 ? void 0 : userData.guarantorEmail) || '',
-                            address: (userData === null || userData === void 0 ? void 0 : userData.guarantorAddress) || '',
-                            relationship: (userData === null || userData === void 0 ? void 0 : userData.relationshipToGuarantor) || '',
-                            identificationType: (userData === null || userData === void 0 ? void 0 : userData.guarantorIdentificationType) || '',
-                            identificationNo: (userData === null || userData === void 0 ? void 0 : userData.guarantorIdentificationNo) || '',
-                            monthlyIncome: (userData === null || userData === void 0 ? void 0 : userData.guarantorMonthlyIncome) || null, // Default to null for nullable fields
-                            employerName: (userData === null || userData === void 0 ? void 0 : userData.guarantorEmployerName) || null,
-                            userId: user.id, // Ensure this is valid
-                        });
-                        // Create nextOfKin if provided
-                        yield nextkin_services_1.default.upsertNextOfKinInfo({
-                            lastName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinLastName,
-                            firstName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinFirstName,
-                            relationship: userData === null || userData === void 0 ? void 0 : userData.relationship,
-                            phoneNumber: userData === null || userData === void 0 ? void 0 : userData.nextOfKinPhoneNumber,
-                            email: userData === null || userData === void 0 ? void 0 : userData.nextOfKinEmail,
-                            middleName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinMiddleName,
-                            applicantPersonalDetailsId: personalDetails.id,
-                            userId: user.id
-                        });
-                        // employement information 
-                        const employmentInfo = yield employmentinfo_services_1.default.upsertEmploymentInfo({
-                            employmentStatus: userData === null || userData === void 0 ? void 0 : userData.employmentStatus,
-                            taxCredit: userData === null || userData === void 0 ? void 0 : userData.taxCredit,
-                            zipCode: userData === null || userData === void 0 ? void 0 : userData.employmentZipCode,
-                            address: userData === null || userData === void 0 ? void 0 : userData.employmentAddress,
-                            city: userData === null || userData === void 0 ? void 0 : userData.employmentCity,
-                            state: userData === null || userData === void 0 ? void 0 : userData.employmentState,
-                            country: userData === null || userData === void 0 ? void 0 : userData.employmentCountry,
-                            startDate: userData === null || userData === void 0 ? void 0 : userData.employmentStartDate,
-                            monthlyOrAnualIncome: userData === null || userData === void 0 ? void 0 : userData.monthlyOrAnualIncome,
-                            childBenefit: userData === null || userData === void 0 ? void 0 : userData.childBenefit,
-                            childMaintenance: userData === null || userData === void 0 ? void 0 : userData.childMaintenance,
-                            disabilityBenefit: userData === null || userData === void 0 ? void 0 : userData.disabilityBenefit,
-                            housingBenefit: userData === null || userData === void 0 ? void 0 : userData.housingBenefit,
-                            others: userData === null || userData === void 0 ? void 0 : userData.others,
-                            pension: userData === null || userData === void 0 ? void 0 : userData.pension,
-                            moreDetails: userData === null || userData === void 0 ? void 0 : userData.moreDetails,
-                            employerCompany: userData === null || userData === void 0 ? void 0 : userData.employerCompany,
-                            employerEmail: userData === null || userData === void 0 ? void 0 : userData.employerEmail,
-                            employerPhone: userData === null || userData === void 0 ? void 0 : userData.employerPhone,
-                            positionTitle: userData === null || userData === void 0 ? void 0 : userData.positionTitle,
-                            userId: user.id
-                        });
-                        // Create emergencyContact
-                        const emergencyInfo = yield emergencyinfo_services_1.default.upsertEmergencyContact({
-                            id: (userData === null || userData === void 0 ? void 0 : userData.emergencyInfoId) || null,
-                            fullname: (userData === null || userData === void 0 ? void 0 : userData.lastName) + " " + (userData === null || userData === void 0 ? void 0 : userData.firstName) + " " + ((userData === null || userData === void 0 ? void 0 : userData.middleName) ? " " + userData.middleName : ""),
-                            phoneNumber: userData === null || userData === void 0 ? void 0 : userData.emergencyPhoneNumber,
-                            email: userData === null || userData === void 0 ? void 0 : userData.emergencyEmail,
-                            address: userData === null || userData === void 0 ? void 0 : userData.emergencyAddress,
-                            userId: user.id
-                        });
-                        // refrees information
-                        const refreeInfo = yield referees_services_1.default.upsertRefereeInfo({
-                            id: (userData === null || userData === void 0 ? void 0 : userData.refereeId) || null,
-                            professionalReferenceName: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalReferenceName,
-                            personalReferenceName: userData === null || userData === void 0 ? void 0 : userData.refereePersonalReferenceName,
-                            personalEmail: userData === null || userData === void 0 ? void 0 : userData.refereePersonalEmail,
-                            professionalEmail: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalEmail,
-                            personalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereePersonalPhoneNumber,
-                            professionalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalPhoneNumber,
-                            personalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereePersonalRelationship,
-                            professionalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalRelationship,
-                            userId: user.id
-                        });
-                        // Update application with tenant info
-                        const application = yield __1.prismaClient.application.create({
-                            data: {
-                                status: client_1.ApplicationStatus.COMPLETED,
-                                userId: user.id,
-                                // tenantId: user.id,
-                                residentialId: null, // null because the current user is a tenant and reside in the linked property
-                                emergencyContactId: emergencyInfo.id,
-                                employmentInformationId: employmentInfo.id,
-                                guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
-                                applicantPersonalDetailsId: personalDetails.id,
-                                refereeId: refreeInfo.id,
-                                createdById: createdBy
-                            }
-                        });
-                        // fill the question 
-                        yield __1.prismaClient.applicationQuestions.create({
-                            data: {
-                                havePet: userData.havePet,
-                                youSmoke: userData.youSmoke,
-                                requireParking: userData.requireParking,
-                                haveOutstandingDebts: userData.haveOutstandingDebts,
-                                applicantId: application.id
-                            }
-                        });
-                    }
-                    break;
-                default:
-                    break;
-            }
-            return yield this.getUserById(user.id);
+            return user;
         });
         this.updateUserInfo = (id, userData) => __awaiter(this, void 0, void 0, function* () {
             const updateData = Object.assign({}, userData);
@@ -449,6 +308,178 @@ class UserService {
                     },
                 },
             });
+        });
+        this.completeApplicationProfile = (userData, userId, createdBy) => __awaiter(this, void 0, void 0, function* () {
+            // 1. Create personal details first (needed by NextOfKin)
+            const personalDetails = yield personaldetails_services_1.default.upsertApplicantPersonalDetails({
+                title: userData === null || userData === void 0 ? void 0 : userData.title,
+                invited: userData === null || userData === void 0 ? void 0 : userData.invited,
+                maritalStatus: userData === null || userData === void 0 ? void 0 : userData.maritalStatus,
+                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.phoneNumber,
+                email: userData === null || userData === void 0 ? void 0 : userData.email,
+                dob: userData === null || userData === void 0 ? void 0 : userData.dateOfBirth,
+                firstName: userData === null || userData === void 0 ? void 0 : userData.firstName,
+                lastName: userData === null || userData === void 0 ? void 0 : userData.lastName,
+                middleName: userData === null || userData === void 0 ? void 0 : userData.middleName,
+                nationality: userData === null || userData === void 0 ? void 0 : userData.nationality,
+                identificationType: userData === null || userData === void 0 ? void 0 : userData.identificationType,
+                issuingAuthority: userData === null || userData === void 0 ? void 0 : userData.issuingAuthority,
+                expiryDate: userData === null || userData === void 0 ? void 0 : userData.expiryDate,
+                userId
+            });
+            // 2. Run independent calls in parallel
+            const [guarantorInfo, employmentInfo, emergencyInfo, refreeInfo] = yield Promise.all([
+                guarantor_services_1.default.upsertGuarantorInfo({
+                    id: (userData === null || userData === void 0 ? void 0 : userData.guarantorId) || null,
+                    fullName: (userData === null || userData === void 0 ? void 0 : userData.guarantorFullname) || '',
+                    phoneNumber: (userData === null || userData === void 0 ? void 0 : userData.guarantorPhoneNumber) || '',
+                    email: (userData === null || userData === void 0 ? void 0 : userData.guarantorEmail) || '',
+                    address: (userData === null || userData === void 0 ? void 0 : userData.guarantorAddress) || '',
+                    relationship: (userData === null || userData === void 0 ? void 0 : userData.relationshipToGuarantor) || '',
+                    identificationType: (userData === null || userData === void 0 ? void 0 : userData.guarantorIdentificationType) || '',
+                    identificationNo: (userData === null || userData === void 0 ? void 0 : userData.guarantorIdentificationNo) || '',
+                    monthlyIncome: (userData === null || userData === void 0 ? void 0 : userData.guarantorMonthlyIncome) || null,
+                    employerName: (userData === null || userData === void 0 ? void 0 : userData.guarantorEmployerName) || null,
+                    userId
+                }),
+                employmentinfo_services_1.default.upsertEmploymentInfo({
+                    employmentStatus: userData === null || userData === void 0 ? void 0 : userData.employmentStatus,
+                    taxCredit: userData === null || userData === void 0 ? void 0 : userData.taxCredit,
+                    zipCode: userData === null || userData === void 0 ? void 0 : userData.employmentZipCode,
+                    address: userData === null || userData === void 0 ? void 0 : userData.employmentAddress,
+                    city: userData === null || userData === void 0 ? void 0 : userData.employmentCity,
+                    state: userData === null || userData === void 0 ? void 0 : userData.employmentState,
+                    country: userData === null || userData === void 0 ? void 0 : userData.employmentCountry,
+                    startDate: userData === null || userData === void 0 ? void 0 : userData.employmentStartDate,
+                    monthlyOrAnualIncome: userData === null || userData === void 0 ? void 0 : userData.monthlyOrAnualIncome,
+                    childBenefit: userData === null || userData === void 0 ? void 0 : userData.childBenefit,
+                    childMaintenance: userData === null || userData === void 0 ? void 0 : userData.childMaintenance,
+                    disabilityBenefit: userData === null || userData === void 0 ? void 0 : userData.disabilityBenefit,
+                    housingBenefit: userData === null || userData === void 0 ? void 0 : userData.housingBenefit,
+                    others: userData === null || userData === void 0 ? void 0 : userData.others,
+                    pension: userData === null || userData === void 0 ? void 0 : userData.pension,
+                    moreDetails: userData === null || userData === void 0 ? void 0 : userData.moreDetails,
+                    employerCompany: userData === null || userData === void 0 ? void 0 : userData.employerCompany,
+                    employerEmail: userData === null || userData === void 0 ? void 0 : userData.employerEmail,
+                    employerPhone: userData === null || userData === void 0 ? void 0 : userData.employerPhone,
+                    positionTitle: userData === null || userData === void 0 ? void 0 : userData.positionTitle,
+                    userId
+                }),
+                emergencyinfo_services_1.default.upsertEmergencyContact({
+                    id: (userData === null || userData === void 0 ? void 0 : userData.emergencyInfoId) || null,
+                    fullname: `${userData === null || userData === void 0 ? void 0 : userData.lastName} ${userData === null || userData === void 0 ? void 0 : userData.firstName}${(userData === null || userData === void 0 ? void 0 : userData.middleName) ? ' ' + userData.middleName : ''}`,
+                    phoneNumber: userData === null || userData === void 0 ? void 0 : userData.emergencyPhoneNumber,
+                    email: userData === null || userData === void 0 ? void 0 : userData.emergencyEmail,
+                    address: userData === null || userData === void 0 ? void 0 : userData.emergencyAddress,
+                    userId
+                }),
+                referees_services_1.default.upsertRefereeInfo({
+                    id: (userData === null || userData === void 0 ? void 0 : userData.refereeId) || null,
+                    professionalReferenceName: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalReferenceName,
+                    personalReferenceName: userData === null || userData === void 0 ? void 0 : userData.refereePersonalReferenceName,
+                    personalEmail: userData === null || userData === void 0 ? void 0 : userData.refereePersonalEmail,
+                    professionalEmail: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalEmail,
+                    personalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereePersonalPhoneNumber,
+                    professionalPhoneNumber: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalPhoneNumber,
+                    personalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereePersonalRelationship,
+                    professionalRelationship: userData === null || userData === void 0 ? void 0 : userData.refereeProfessionalRelationship,
+                    userId
+                })
+            ]);
+            // 3. Next of Kin (dependent on personalDetails)
+            yield nextkin_services_1.default.upsertNextOfKinInfo({
+                lastName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinLastName,
+                firstName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinFirstName,
+                relationship: userData === null || userData === void 0 ? void 0 : userData.relationship,
+                phoneNumber: userData === null || userData === void 0 ? void 0 : userData.nextOfKinPhoneNumber,
+                email: userData === null || userData === void 0 ? void 0 : userData.nextOfKinEmail,
+                middleName: userData === null || userData === void 0 ? void 0 : userData.nextOfKinMiddleName,
+                applicantPersonalDetailsId: personalDetails.id,
+                userId
+            });
+            // 4. Create application
+            const application = yield __1.prismaClient.application.create({
+                data: {
+                    status: client_1.ApplicationStatus.COMPLETED,
+                    userId,
+                    residentialId: null,
+                    emergencyContactId: emergencyInfo.id,
+                    employmentInformationId: employmentInfo.id,
+                    guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
+                    applicantPersonalDetailsId: personalDetails.id,
+                    refereeId: refreeInfo.id,
+                    createdById: createdBy
+                }
+            });
+            // 5. Application questions
+            yield __1.prismaClient.applicationQuestions.create({
+                data: {
+                    havePet: userData.havePet,
+                    youSmoke: userData.youSmoke,
+                    requireParking: userData.requireParking,
+                    haveOutstandingDebts: userData.haveOutstandingDebts,
+                    applicantId: application.id
+                }
+            });
+            return application;
+        });
+        this.updateUserBasedOnRole = (userData, user, role) => __awaiter(this, void 0, void 0, function* () {
+            switch (role) {
+                case client_1.userRoles.LANDLORD: {
+                    const landlordCode = yield this.generateUniqueLandlordCode();
+                    return yield __1.prismaClient.landlords.create({
+                        data: {
+                            landlordCode,
+                            userId: user.id,
+                        },
+                    });
+                }
+                case client_1.userRoles.VENDOR:
+                    return yield __1.prismaClient.vendors.create({
+                        data: {
+                            userId: user.id,
+                        },
+                    });
+                case client_1.userRoles.TENANT: {
+                    const landlord = yield __1.prismaClient.landlords.findUnique({
+                        where: { id: userData.landlordId },
+                    });
+                    if (!landlord)
+                        throw new Error('Landlord not found');
+                    const property = yield __1.prismaClient.properties.findUnique({
+                        where: { id: userData.propertyId },
+                    });
+                    if (!property)
+                        throw new Error('Property not found');
+                    const tenantCode = yield this.generateUniqueTenantCode(landlord.landlordCode);
+                    const tenant = yield __1.prismaClient.tenants.create({
+                        data: {
+                            tenantCode,
+                            user: {
+                                connect: { id: user.id },
+                            },
+                            landlord: {
+                                connect: { id: landlord.id },
+                            },
+                            property: {
+                                connect: { id: property.id },
+                            },
+                            initialDeposit: userData.initialDeposit || 0,
+                            tenantWebUserEmail: userData.tenantWebUserEmail,
+                            leaseStartDate: (userData === null || userData === void 0 ? void 0 : userData.leaseStartDate) ? new Date(userData.leaseStartDate) : new Date(),
+                            leaseEndDate: (userData === null || userData === void 0 ? void 0 : userData.leaseEndDate) ? new Date(userData.leaseEndDate) : undefined,
+                            application: userData.applicationId
+                                ? {
+                                    connect: { id: userData.applicationId },
+                                }
+                                : undefined,
+                        },
+                    });
+                    return tenant;
+                }
+                default:
+                    throw new Error(`Unsupported role: ${role}`);
+            }
         });
         this.updateLandlordOrTenantOrVendorInfo = (data, id, role) => __awaiter(this, void 0, void 0, function* () {
             let updated;

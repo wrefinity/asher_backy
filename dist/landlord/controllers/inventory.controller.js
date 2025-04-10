@@ -15,12 +15,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const inventory_services_1 = __importDefault(require("../services/inventory.services"));
 const inventorySchema_1 = require("../validations/schema/inventorySchema");
+const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 class InventoryController {
     constructor() {
         this.createInventory = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const { value, error } = yield inventorySchema_1.inventorySchema.validate(req.body);
             if (error)
                 return res.status(400).json({ message: error.details[0].message });
+            const propertyId = value === null || value === void 0 ? void 0 : value.propertyId;
+            const checkPropsExits = yield propertyServices_1.default.getPropertyById(propertyId);
+            if (!checkPropsExits)
+                return res.status(404).json({ message: "Property not found" });
             try {
                 const inventory = yield inventory_services_1.default.createInventory(value);
                 return res.status(201).json({ inventory });
@@ -80,9 +85,11 @@ class InventoryController {
         this.getAllInventorysByProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { propertyId } = req.params;
+                const checkPropsExits = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!checkPropsExits)
+                    return res.status(404).json({ message: "Property not found" });
                 const inventorys = yield inventory_services_1.default.getAllInventoriesByProperty(propertyId);
-                if (inventorys.length === 0)
-                    return res.status(404).json({ message: "No inventorys found" });
+                // if (inventorys.length === 0) return res.status(404).json({ message: "No inventorys found" });
                 return res.status(200).json({ inventorys });
             }
             catch (error) {

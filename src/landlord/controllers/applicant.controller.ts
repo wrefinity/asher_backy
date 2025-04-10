@@ -1,5 +1,5 @@
 import { Response } from "express"
-import { logTypeStatus, InvitedResponse, YesNo, DocumentType } from "@prisma/client"
+import { logTypeStatus, InvitedResponse, YesNo, DocumentType, userRoles } from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -137,24 +137,26 @@ class ApplicationControls {
             // get the current landlord email domain
             const landlord = await this.landlordService.getLandlordById(landlordId);
             if (!landlord) return res.status(403).json({ message: "login as a landlord" })
-            
+
             const landlordEmail = landlord.user.email.toString().trim().split('@')[0];
 
             const email = `${userEmail}@${landlordEmail}.asher.co`;
 
             // TODO: check if tenant has been a tenant for the current landlord before and just update the property
-            const tenant = await ApplicationService.createTenantThroughApplication({
+            const tenant = await await userServices.createUser({
                 ...req.body,
                 newEmail: email,
-                email:tenantWebUserEmail,
+                email: tenantWebUserEmail,
                 tenantWebUserEmail,
                 propertyId: application.propertiesId,
                 applicationId,
+                role: userRoles.TENANT,
                 password: application?.personalDetails?.firstName,
                 landlordId
-            });
+            }, false, req.user?.id, true);
 
-            if(! tenant) return res.status(400).json({ message: "tenant not created" })
+
+            if (!tenant) return res.status(400).json({ message: "tenant not created" })
             await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.TENANT_CREATED);
             return res.status(200).json({ tenant });
         } catch (error) {
@@ -459,11 +461,11 @@ class ApplicationControls {
             if (value.status === ReminderType.REFERENCE_REMINDER) {
                 subject = "Asher Reference Reminder";
                 htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, please contact your reference to submit your reference documents as soon as possible.</p>`;
-            } 
+            }
             if (value.status === ReminderType.APPLICATION_REMINDER) {
                 subject = "Asher Application Reminder";
                 htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, you have an ongoing application for the property ${application?.properties?.name}</p>`;
-            } 
+            }
             else if (value.status === ReminderType.SCHEDULE_REMINDER) {
                 subject = "Asher Schedule Reminder";
                 htmlContent = `<p>Dear ${application?.user?.profile?.firstName}, please confirm your scheduled appointment.</p>`;
@@ -477,7 +479,7 @@ class ApplicationControls {
                     events: "please contact your reference to submit your reference documents as soon as possible",
                     createdById: application.user.id
                 })
-            } 
+            }
             else if (value.status === ReminderType.APPLICATION_REMINDER) {
                 await logsServices.createLog({
                     applicationId,
@@ -485,7 +487,7 @@ class ApplicationControls {
                     events: `Dear ${application?.user?.profile?.firstName}, you have an ongoing application for the property ${application?.properties?.name}`,
                     createdById: application.user.id
                 })
-            } 
+            }
             else if (value.status === ReminderType.SCHEDULE_REMINDER) {
                 await logsServices.createLog({
                     applicationId,

@@ -2,7 +2,7 @@ import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles, ApplicationStatus, onlineStatus } from "@prisma/client";
+import { userRoles, ApplicationStatus, onlineStatus, PropsApartmentStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
@@ -13,6 +13,7 @@ import ApplicantPersonalDetailsService from "../services/personaldetails.service
 import WalletService from "./wallet.service";
 import { getCurrentCountryCurrency } from "../utils/helpers";
 import sendMail from "../utils/emailer";
+import propertyServices from "./propertyServices";
 class UserService {
     protected inclusion;
 
@@ -45,6 +46,7 @@ class UserService {
         // console.log(user)
         return user
     }
+
     findUserByEmail = async (email: string) => {
         // Find the user first to check if related entities exist
         const foundUser = await this.checkexistance({ email })
@@ -136,255 +138,107 @@ class UserService {
         return code;
     }
 
-    createUser = async (userData: any, landlordUploads: boolean = false, createdBy: string = null) => {
+    createNewUser = async (userData: any, landlordBulkUploads: boolean = false) => {
+        return await prismaClient.users.create({
+            data: {
+                email: userData?.email,
+                role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
+                isVerified: landlordBulkUploads ? true : false,
+                password: this.hashPassword(userData?.password),
+                profile: {
+                    create: {
+                        gender: userData?.gender,
+                        phoneNumber: userData?.phoneNumber,
+                        address: userData?.address,
+                        dateOfBirth: userData?.dateOfBirth,
+                        fullname: `${userData?.lastName} ${userData?.firstName} ${userData?.middleName ? userData.middleName : ""}`.trim(),
+                        firstName: userData?.firstName?.trim(),
+                        lastName: userData?.lastName?.trim(),
+                        middleName: userData?.middleName?.trim(),
+                        profileUrl: userData?.profileUrl,
+                        zip: userData?.zip,
+                        unit: userData?.unit,
+                        state: userData?.state,
+                        timeZone: userData?.timeZone,
+                        taxPayerId: userData?.taxPayerId,
+                        taxType: userData?.taxType,
+                    }
+                }
+            },
+        });
+    }
+
+    createUser = async (userData: any, landlordBulkUploads: boolean = false, createdBy: string = null, createTenantProfile: boolean = false) => {
         let user = null
 
         user = await prismaClient.users.findUnique({
             where: { email: userData?.email },
-            include: { profile: true } // Include profile if needed
+            include: { profile: true }
         });
 
-        if (!user && !landlordUploads) {
-            // Create a new user if not found
-            user = await prismaClient.users.create({
-                data: {
-                    email: userData?.email,
-                    role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
-                    isVerified: landlordUploads ? true : false,
-                    password: this.hashPassword(userData?.password),
-                    profile: {
-                        create: {
-                            gender: userData?.gender,
-                            phoneNumber: userData?.phoneNumber,
-                            address: userData?.address,
-                            dateOfBirth: userData?.dateOfBirth,
-                            fullname: `${userData?.lastName} ${userData?.firstName} ${userData?.middleName ? userData.middleName : ""}`.trim(),
-                            firstName: userData?.firstName?.trim(),
-                            lastName: userData?.lastName?.trim(),
-                            middleName: userData?.middleName?.trim(),
-                            profileUrl: userData?.profileUrl,
-                            zip: userData?.zip,
-                            unit: userData?.unit,
-                            state: userData?.state,
-                            timeZone: userData?.timeZone,
-                            taxPayerId: userData?.taxPayerId,
-                            taxType: userData?.taxType,
-                        }
-                    }
-                },
-            });
+        // Create a new user if it doesn't exist and
+        // the landlord that is uploading the user account
+        if (!user && landlordBulkUploads && !createTenantProfile) {
+            user = await this.createNewUser(userData, landlordBulkUploads);
+            const application = await this.completeApplicationProfile(userData, user.id, createdBy);
+            const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
+            const result = await this.updateUserBasedOnRole({ ...userData, applicationId: application?.id }, user, roleToUse);
+            const tenant = result as any;
+            sendMail(
+                user.email,
+                "ACCOUNT CREATION",
+                `<h3>Your account has been created successfully.</h3>
+                    <p>Dear ${user?.profile?.firstName},</p>
+                    <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
+                    <p>To get started, please login to your account using the credentials below:</p>
+                    <p>Username: ${tenant?.tenantCode}</p>
+                    <p>Thank you for choosing us. </p>
+                    <p>Best regards,</p>`
+            );
+            // make the property occupied
+            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
         }
 
-        const countryData = await getCurrentCountryCurrency()
-        if (user && countryData.locationCurrency) {
-            await WalletService.getOrCreateWallet(user.id, countryData?.locationCurrency)
+        if (!user && !landlordBulkUploads && userData?.role === userRoles.TENANT && createTenantProfile) {
+            user = await this.createNewUser(userData, landlordBulkUploads);
+            const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
+            const result = await this.updateUserBasedOnRole(userData, user, roleToUse);
+            const tenantCode = result as any;
+            sendMail(
+                user.email,
+                "ACCOUNT CREATION",
+                `<h3>Your account has been created successfully.</h3>
+                    <p>Dear ${user?.profile?.firstName},</p>
+                    <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
+                    <p>To get started, please login to your account using the credentials below:</p>
+                    <p>Username: ${tenantCode}</p>
+                    <p>Thank you for choosing us. </p>
+                    <p>Best regards,</p>`
+            );
+            // make the property occupied
+            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
         }
-        // Based on the role, create the corresponding entry in the related schema
-        switch (userData?.role) {
-            case userRoles.LANDLORD:
-                const landlordCode = await this.generateUniqueLandlordCode();
-                await prismaClient.landlords.create({
-                    data: {
-                        landlordCode,
-                        userId: user.id,
-                    },
-                });
-                break;
 
-            case userRoles.VENDOR:
-                await prismaClient.vendors.create({
-                    data: {
-                        userId: user.id
-                    },
-                });
-                break;
-            case userRoles.TENANT:
-                const landlord = await prismaClient.landlords.findUnique({ where: { id: userData.landlordId } });
-                if (!landlord) throw new Error('Landlord not found');
-
-                const property = await prismaClient.properties.findUnique({
-                    where: { id: userData.propertyId },
-                });
-
-                if (!property) {
-                    throw new Error('Property not found');
-                }
-
-                const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
-                const tenant = await prismaClient.tenants.create({
-                 
-                    data: {
-                        tenantCode,
-                        user: {
-                            connect: { id: user.id }
-                        },
-                        landlord: {
-                            connect: { id: landlord.id }
-                        },
-                        property: {
-                            connect: { id: property.id }
-                        },
-                        initialDeposit: userData.initialDeposit || 0,
-                        tenantWebUserEmail: userData.tenantWebUserEmail,
-                        leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
-                        leaseEndDate: userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined,
-                        // password: this.hashPassword(userData?.password),
-                        application: userData.applicationId ? {
-                            connect: { id: userData.applicationId }
-                        } : undefined,
-                    },
-                });
-                if (tenant && landlordUploads) {
-                    sendMail(
-                        user.email,
-                        "ACCOUNT CREATION",
-                        `<h3>Your account has been created successfully.</h3>
-                        <p>Dear ${user?.profle?.firstName},</p>
-                        <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
-                        <p>To get started, please login to your account using the credentials below:</p>
-                        <p>Username: ${tenant?.tenantCode}</p>
-                        <p>Thank you for choosing us. </p>
-                        <p>Best regards,</p>`);
-                }
-                if (tenant && !landlordUploads) {
-                    // Update application with tenant info
-                    await prismaClient.application.update({
-                        where: { id: userData.applicationId },
-                        data: {
-                            status: ApplicationStatus.ACCEPTED,
-                            // tenantId: user.id,
-                        },
-                    });
-                }
-                if (tenant && landlordUploads) {
-                    // create the tenant personal information
-                    const personalDetails = await ApplicantPersonalDetailsService.upsertApplicantPersonalDetails({
-                        title: userData?.title,
-                        invited: userData?.invited,
-                        maritalStatus: userData?.maritalStatus,
-                        phoneNumber: userData?.phoneNumber,
-                        email: userData?.email,
-                        dob: userData?.dateOfBirth,
-                        firstName: userData?.firstName,
-                        lastName: userData?.lastName,
-                        middleName: userData?.middleName,
-                        nationality: userData?.nationality,
-                        identificationType: userData?.identificationType,
-                        issuingAuthority: userData?.issuingAuthority,
-                        expiryDate: userData?.expiryDate,
-                        userId: user.id
-                    });
-
-
-                    // Create guarantorInformation if provided
-                    const guarantorInfo = await GuarantorService.upsertGuarantorInfo({
-                        id: userData?.guarantorId || null, // Optional ID for update (if provided)
-                        fullName: userData?.guarantorFullname || '', // Default to empty string if not provided
-                        phoneNumber: userData?.guarantorPhoneNumber || '',
-                        email: userData?.guarantorEmail || '',
-                        address: userData?.guarantorAddress || '',
-                        relationship: userData?.relationshipToGuarantor || '',
-                        identificationType: userData?.guarantorIdentificationType || '',
-                        identificationNo: userData?.guarantorIdentificationNo || '',
-                        monthlyIncome: userData?.guarantorMonthlyIncome || null, // Default to null for nullable fields
-                        employerName: userData?.guarantorEmployerName || null,
-                        userId: user.id, // Ensure this is valid
-                    });
-
-
-                    // Create nextOfKin if provided
-                    await NextOfKinService.upsertNextOfKinInfo({
-                        lastName: userData?.nextOfKinLastName,
-                        firstName: userData?.nextOfKinFirstName,
-                        relationship: userData?.relationship,
-                        phoneNumber: userData?.nextOfKinPhoneNumber,
-                        email: userData?.nextOfKinEmail,
-                        middleName: userData?.nextOfKinMiddleName,
-                        applicantPersonalDetailsId: personalDetails.id,
-                        userId: user.id
-                    });
-
-                    // employement information 
-                    const employmentInfo = await EmploymentService.upsertEmploymentInfo({
-                        employmentStatus: userData?.employmentStatus,
-                        taxCredit: userData?.taxCredit,
-                        zipCode: userData?.employmentZipCode,
-                        address: userData?.employmentAddress,
-                        city: userData?.employmentCity,
-                        state: userData?.employmentState,
-                        country: userData?.employmentCountry,
-                        startDate: userData?.employmentStartDate,
-                        monthlyOrAnualIncome: userData?.monthlyOrAnualIncome,
-                        childBenefit: userData?.childBenefit,
-                        childMaintenance: userData?.childMaintenance,
-                        disabilityBenefit: userData?.disabilityBenefit,
-                        housingBenefit: userData?.housingBenefit,
-                        others: userData?.others,
-                        pension: userData?.pension,
-                        moreDetails: userData?.moreDetails,
-                        employerCompany: userData?.employerCompany,
-                        employerEmail: userData?.employerEmail,
-                        employerPhone: userData?.employerPhone,
-                        positionTitle: userData?.positionTitle,
-                        userId: user.id
-                    });
-
-                    // Create emergencyContact
-                    const emergencyInfo = await EmergencyContactService.upsertEmergencyContact({
-                        id: userData?.emergencyInfoId || null,
-                        fullname: userData?.lastName + " " + userData?.firstName + " " + (userData?.middleName ? " " + userData.middleName : ""),
-                        phoneNumber: userData?.emergencyPhoneNumber,
-                        email: userData?.emergencyEmail,
-                        address: userData?.emergencyAddress,
-                        userId: user.id
-                    });
-                    // refrees information
-                    const refreeInfo = await RefereeService.upsertRefereeInfo({
-                        id: userData?.refereeId || null,
-                        professionalReferenceName: userData?.refereeProfessionalReferenceName,
-                        personalReferenceName: userData?.refereePersonalReferenceName,
-                        personalEmail: userData?.refereePersonalEmail,
-                        professionalEmail: userData?.refereeProfessionalEmail,
-                        personalPhoneNumber: userData?.refereePersonalPhoneNumber,
-                        professionalPhoneNumber: userData?.refereeProfessionalPhoneNumber,
-                        personalRelationship: userData?.refereePersonalRelationship,
-                        professionalRelationship: userData?.refereeProfessionalRelationship,
-                        userId: user.id
-                    });
-
-                    // Update application with tenant info
-                    const application = await prismaClient.application.create({
-                        data: {
-                            status: ApplicationStatus.COMPLETED,
-                            userId: user.id,
-                            // tenantId: user.id,
-                            residentialId: null, // null because the current user is a tenant and reside in the linked property
-                            emergencyContactId: emergencyInfo.id,
-                            employmentInformationId: employmentInfo.id,
-                            guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
-                            applicantPersonalDetailsId: personalDetails.id,
-                            refereeId: refreeInfo.id,
-                            createdById: createdBy
-                        }
-                    });
-
-                    // fill the question 
-                    await prismaClient.applicationQuestions.create({
-                        data: {
-                            havePet: userData.havePet,
-                            youSmoke: userData.youSmoke,
-                            requireParking: userData.requireParking,
-                            haveOutstandingDebts: userData.haveOutstandingDebts,
-                            applicantId: application.id
-                        }
-                    });
-                }
-                break;
-
-            default:
-                break;
+        if (user && userData?.role === userRoles.VENDOR) {
+            await this.updateUserBasedOnRole(userData, user, userRoles?.VENDOR);
         }
-        return await this.getUserById(user.id);
+        if (user && userData?.role === userRoles.LANDLORD) {
+            await this.updateUserBasedOnRole(userData, user, userRoles?.LANDLORD);
+        }
+        if (!user && userData?.role === userRoles.VENDOR) {
+            user = await this.createNewUser(userData, false);
+            await this.updateUserBasedOnRole(userData, user, userRoles?.VENDOR);
+        }
+        if (!user && userData?.role === userRoles.LANDLORD) {
+            user = await this.createNewUser({ userData }, false);
+            await this.updateUserBasedOnRole(userData, user, userRoles?.LANDLORD);
+        }
+        const countryData = await getCurrentCountryCurrency();
+        if (user && countryData?.locationCurrency) {
+            await WalletService.getOrCreateWallet(user.id, countryData.locationCurrency);
+        }
+
+        return user;
     }
 
     updateUserInfo = async (id: string, userData: any) => {
@@ -470,6 +324,196 @@ class UserService {
             },
         });
     }
+
+    completeApplicationProfile = async (userData: any, userId: string, createdBy: string) => {
+        // 1. Create personal details first (needed by NextOfKin)
+        const personalDetails = await ApplicantPersonalDetailsService.upsertApplicantPersonalDetails({
+            title: userData?.title,
+            invited: userData?.invited,
+            maritalStatus: userData?.maritalStatus,
+            phoneNumber: userData?.phoneNumber,
+            email: userData?.email,
+            dob: userData?.dateOfBirth,
+            firstName: userData?.firstName,
+            lastName: userData?.lastName,
+            middleName: userData?.middleName,
+            nationality: userData?.nationality,
+            identificationType: userData?.identificationType,
+            issuingAuthority: userData?.issuingAuthority,
+            expiryDate: userData?.expiryDate,
+            userId
+        });
+
+        // 2. Run independent calls in parallel
+        const [guarantorInfo, employmentInfo, emergencyInfo, refreeInfo] = await Promise.all([
+            GuarantorService.upsertGuarantorInfo({
+                id: userData?.guarantorId || null,
+                fullName: userData?.guarantorFullname || '',
+                phoneNumber: userData?.guarantorPhoneNumber || '',
+                email: userData?.guarantorEmail || '',
+                address: userData?.guarantorAddress || '',
+                relationship: userData?.relationshipToGuarantor || '',
+                identificationType: userData?.guarantorIdentificationType || '',
+                identificationNo: userData?.guarantorIdentificationNo || '',
+                monthlyIncome: userData?.guarantorMonthlyIncome || null,
+                employerName: userData?.guarantorEmployerName || null,
+                userId
+            }),
+
+            EmploymentService.upsertEmploymentInfo({
+                employmentStatus: userData?.employmentStatus,
+                taxCredit: userData?.taxCredit,
+                zipCode: userData?.employmentZipCode,
+                address: userData?.employmentAddress,
+                city: userData?.employmentCity,
+                state: userData?.employmentState,
+                country: userData?.employmentCountry,
+                startDate: userData?.employmentStartDate,
+                monthlyOrAnualIncome: userData?.monthlyOrAnualIncome,
+                childBenefit: userData?.childBenefit,
+                childMaintenance: userData?.childMaintenance,
+                disabilityBenefit: userData?.disabilityBenefit,
+                housingBenefit: userData?.housingBenefit,
+                others: userData?.others,
+                pension: userData?.pension,
+                moreDetails: userData?.moreDetails,
+                employerCompany: userData?.employerCompany,
+                employerEmail: userData?.employerEmail,
+                employerPhone: userData?.employerPhone,
+                positionTitle: userData?.positionTitle,
+                userId
+            }),
+
+            EmergencyContactService.upsertEmergencyContact({
+                id: userData?.emergencyInfoId || null,
+                fullname: `${userData?.lastName} ${userData?.firstName}${userData?.middleName ? ' ' + userData.middleName : ''}`,
+                phoneNumber: userData?.emergencyPhoneNumber,
+                email: userData?.emergencyEmail,
+                address: userData?.emergencyAddress,
+                userId
+            }),
+
+            RefereeService.upsertRefereeInfo({
+                id: userData?.refereeId || null,
+                professionalReferenceName: userData?.refereeProfessionalReferenceName,
+                personalReferenceName: userData?.refereePersonalReferenceName,
+                personalEmail: userData?.refereePersonalEmail,
+                professionalEmail: userData?.refereeProfessionalEmail,
+                personalPhoneNumber: userData?.refereePersonalPhoneNumber,
+                professionalPhoneNumber: userData?.refereeProfessionalPhoneNumber,
+                personalRelationship: userData?.refereePersonalRelationship,
+                professionalRelationship: userData?.refereeProfessionalRelationship,
+                userId
+            })
+        ]);
+
+        // 3. Next of Kin (dependent on personalDetails)
+        await NextOfKinService.upsertNextOfKinInfo({
+            lastName: userData?.nextOfKinLastName,
+            firstName: userData?.nextOfKinFirstName,
+            relationship: userData?.relationship,
+            phoneNumber: userData?.nextOfKinPhoneNumber,
+            email: userData?.nextOfKinEmail,
+            middleName: userData?.nextOfKinMiddleName,
+            applicantPersonalDetailsId: personalDetails.id,
+            userId
+        });
+
+        // 4. Create application
+        const application = await prismaClient.application.create({
+            data: {
+                status: ApplicationStatus.COMPLETED,
+                userId,
+                residentialId: null,
+                emergencyContactId: emergencyInfo.id,
+                employmentInformationId: employmentInfo.id,
+                guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
+                applicantPersonalDetailsId: personalDetails.id,
+                refereeId: refreeInfo.id,
+                createdById: createdBy
+            }
+        });
+
+        // 5. Application questions
+        await prismaClient.applicationQuestions.create({
+            data: {
+                havePet: userData.havePet,
+                youSmoke: userData.youSmoke,
+                requireParking: userData.requireParking,
+                haveOutstandingDebts: userData.haveOutstandingDebts,
+                applicantId: application.id
+            }
+        });
+        return application;
+    };
+
+
+    updateUserBasedOnRole = async (
+        userData: any,
+        user: any,
+        role: userRoles
+    ) => {
+        switch (role) {
+            case userRoles.LANDLORD: {
+                const landlordCode = await this.generateUniqueLandlordCode();
+                return await prismaClient.landlords.create({
+                    data: {
+                        landlordCode,
+                        userId: user.id,
+                    },
+                });
+            }
+
+            case userRoles.VENDOR:
+                return await prismaClient.vendors.create({
+                    data: {
+                        userId: user.id,
+                    },
+                });
+
+            case userRoles.TENANT: {
+                const landlord = await prismaClient.landlords.findUnique({
+                    where: { id: userData.landlordId },
+                });
+                if (!landlord) throw new Error('Landlord not found');
+
+                const property = await prismaClient.properties.findUnique({
+                    where: { id: userData.propertyId },
+                });
+                if (!property) throw new Error('Property not found');
+
+                const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
+                const tenant = await prismaClient.tenants.create({
+                    data: {
+                        tenantCode,
+                        user: {
+                            connect: { id: user.id },
+                        },
+                        landlord: {
+                            connect: { id: landlord.id },
+                        },
+                        property: {
+                            connect: { id: property.id },
+                        },
+                        initialDeposit: userData.initialDeposit || 0,
+                        tenantWebUserEmail: userData.tenantWebUserEmail,
+                        leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
+                        leaseEndDate: userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined,
+                        application: userData.applicationId
+                            ? {
+                                connect: { id: userData.applicationId },
+                            }
+                            : undefined,
+                    },
+                });
+                return tenant
+            }
+
+            default:
+                throw new Error(`Unsupported role: ${role}`);
+        }
+    };
+
 
     updateLandlordOrTenantOrVendorInfo = async (data: any, id: string, role: string) => {
 

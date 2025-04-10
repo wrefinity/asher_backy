@@ -43,24 +43,24 @@ class PropertyService {
 
     constructor() {
         this.landlordInclusion = {
-                include: {
-                    user: {
-                        select: {
-                            email: true,
-                            id: true,
-                            profile: {
-                                select: {
-                                    id: true,
-                                    fullname: true,
-                                    firstName: true,
-                                    lastName: true,
-                                    middleName: true,
-                                    profileUrl: true,
-                                },
+            include: {
+                user: {
+                    select: {
+                        email: true,
+                        id: true,
+                        profile: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                firstName: true,
+                                lastName: true,
+                                middleName: true,
+                                profileUrl: true,
                             },
                         },
                     },
                 },
+            },
         }
         this.propsInclusion = {
             propertyListingHistory: true,
@@ -311,7 +311,7 @@ class PropertyService {
             },
             include: {
                 property: {
-                    include:{
+                    include: {
                         ...this.propsInclusion
                     }
                 },
@@ -589,13 +589,14 @@ class PropertyService {
             data,
         });
     };
-    deletePropertyListing = async (propertyId:string) => {
+    deletePropertyListing = async (propertyId: string) => {
         const propListed = await this.getPropsListedById(propertyId);
         if (propListed) throw new Error(`The props with ID ${propertyId} have been listed`);
         return await prismaClient.propertyListingHistory.delete({
-            where:{propertyId}
+            where: { propertyId: propListed?.propertyId }
         });
     };
+
 
     getPropsListedById = async (propertyId: string) => {
         const propsListed = await prismaClient.propertyListingHistory.findFirst({
@@ -604,7 +605,7 @@ class PropertyService {
             },
             include: {
                 property: {
-                    include:{
+                    include: {
                         ...this.propsInclusion
                     }
                 },

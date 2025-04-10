@@ -376,7 +376,7 @@ class PropertyService {
             if (propListed)
                 throw new Error(`The props with ID ${propertyId} have been listed`);
             return yield __1.prismaClient.propertyListingHistory.delete({
-                where: { propertyId }
+                where: { propertyId: propListed === null || propListed === void 0 ? void 0 : propListed.propertyId }
             });
         });
         this.getPropsListedById = (propertyId) => __awaiter(this, void 0, void 0, function* () {

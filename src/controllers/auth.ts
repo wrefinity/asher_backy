@@ -161,7 +161,6 @@ class AuthControls {
         }
     };
 
-
     refreshToken = async (req: Request, res: Response) => {
         try {
             const { refreshToken } = req.body;

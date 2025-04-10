@@ -25,7 +25,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("../..");
 const client_1 = require("@prisma/client");
-const user_services_1 = __importDefault(require("../../services/user.services"));
 const emergencyinfo_services_1 = __importDefault(require("../../services/emergencyinfo.services"));
 const guarantor_services_1 = __importDefault(require("../../services/guarantor.services"));
 const referees_services_1 = __importDefault(require("../../services/referees.services"));
@@ -523,9 +522,6 @@ class ApplicantService {
                 total: yield this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
                 enquiries: yield logs_services_2.default.getLogCounts(landlordId, client_2.LogType.FEEDBACK),
             };
-        });
-        this.createTenantThroughApplication = (tenantData) => __awaiter(this, void 0, void 0, function* () {
-            return yield user_services_1.default.createUser(Object.assign(Object.assign({}, tenantData), { role: client_1.userRoles.TENANT }), true);
         });
         this.getInvitedById = (id) => __awaiter(this, void 0, void 0, function* () {
             if (!id) {

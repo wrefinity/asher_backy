@@ -626,10 +626,7 @@ class ApplicantService {
     };
   };
 
-  createTenantThroughApplication = async (tenantData: any) => {
-    return await userServices.createUser({ ...tenantData, role: userRoles.TENANT }, true);
-  }
-
+  
   getInvitedById = async (id: string) => {
     if (!id) {
       throw new Error("Invalid application invite ID");

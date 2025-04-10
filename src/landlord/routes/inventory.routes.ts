@@ -16,7 +16,6 @@ class InventoryRouter {
         this.router.patch('/:inventoryId', inventoryController.updateInventory)
         this.router.delete('/:inventoryId', inventoryController.deleteInventory)
         this.router.get('/property/:propertyId', inventoryController.getAllInventorysByProperty)
-
     }
 }
 

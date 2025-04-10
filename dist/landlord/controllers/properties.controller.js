@@ -216,6 +216,9 @@ class PropertyController {
                 // scenario where property doesnot belong to landlord
                 if (!checkOwnership)
                     return res.status(400).json({ message: 'property does not exist under landlord' });
+                if (checkOwnership.availability === client_1.PropsApartmentStatus.OCCUPIED) {
+                    return res.status(400).json({ message: 'Property already occupied' });
+                }
                 const listing = yield propertyServices_1.default.createPropertyListing(data);
                 return res.status(201).json({ message: 'Property listing created', listing });
             }
