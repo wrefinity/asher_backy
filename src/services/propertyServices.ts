@@ -305,7 +305,7 @@ class PropertyService {
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 isActive,
-                onListing:isActive,
+                onListing: isActive,
                 property: {
                     landlordId
                 }
@@ -590,28 +590,36 @@ class PropertyService {
             data,
         });
     };
+
     deletePropertyListing = async (propertyId: string) => {
-        const propListed = await this.getPropsListedById(propertyId);
-        if (!propListed) throw new Error(`The props with ID ${propertyId} have been listed`);
+        const lastListed = await this.getPropsListedById(propertyId);
+        if (!lastListed) {
+            throw new Error(`No listing history found for property ID ${propertyId}`);
+        }
+
         return await prismaClient.propertyListingHistory.update({
-            where: { propertyId: propListed?.propertyId },
+            where: { id: lastListed.id },
             data: {
                 onListing: false,
                 isActive: false,
-            }
+            },
         });
     };
 
     delistPropertyListing = async (propertyId: string) => {
-        const propListed = await this.getPropsListedById(propertyId);
-        if (!propListed) throw new Error(`The props with ID ${propertyId} have been listed`);
+        const lastListed = await this.getPropsListedById(propertyId);
+        if (!lastListed) {
+            throw new Error(`No listing history found for property ID ${propertyId}`);
+        }
+
         return await prismaClient.propertyListingHistory.update({
-            where: { propertyId: propListed?.propertyId },
-            data:{
-                onListing: false
-            }
+            where: { id: lastListed.id },
+            data: {
+                onListing: false,
+            },
         });
     };
+
 
     getPropsListedById = async (propertyId: string) => {
         const propsListed = await prismaClient.propertyListingHistory.findFirst({
@@ -625,7 +633,8 @@ class PropertyService {
                     }
                 },
                 apartment: true,
-            }
+            },
+            orderBy: { createdAt: "desc" }
         });
 
         return propsListed

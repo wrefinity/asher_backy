@@ -373,26 +373,28 @@ class PropertyService {
             });
         });
         this.deletePropertyListing = (propertyId) => __awaiter(this, void 0, void 0, function* () {
-            const propListed = yield this.getPropsListedById(propertyId);
-            if (!propListed)
-                throw new Error(`The props with ID ${propertyId} have been listed`);
+            const lastListed = yield this.getPropsListedById(propertyId);
+            if (!lastListed) {
+                throw new Error(`No listing history found for property ID ${propertyId}`);
+            }
             return yield __1.prismaClient.propertyListingHistory.update({
-                where: { propertyId: propListed === null || propListed === void 0 ? void 0 : propListed.propertyId },
+                where: { id: lastListed.id },
                 data: {
                     onListing: false,
                     isActive: false,
-                }
+                },
             });
         });
         this.delistPropertyListing = (propertyId) => __awaiter(this, void 0, void 0, function* () {
-            const propListed = yield this.getPropsListedById(propertyId);
-            if (!propListed)
-                throw new Error(`The props with ID ${propertyId} have been listed`);
+            const lastListed = yield this.getPropsListedById(propertyId);
+            if (!lastListed) {
+                throw new Error(`No listing history found for property ID ${propertyId}`);
+            }
             return yield __1.prismaClient.propertyListingHistory.update({
-                where: { propertyId: propListed === null || propListed === void 0 ? void 0 : propListed.propertyId },
+                where: { id: lastListed.id },
                 data: {
-                    onListing: false
-                }
+                    onListing: false,
+                },
             });
         });
         this.getPropsListedById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
@@ -405,7 +407,8 @@ class PropertyService {
                         include: Object.assign({}, this.propsInclusion)
                     },
                     apartment: true,
-                }
+                },
+                orderBy: { createdAt: "desc" }
             });
             return propsListed;
         });

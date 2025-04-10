@@ -35,5 +35,5 @@ exports.propApartmentSettingsUpdateSchema = joi_1.default.object({
     latePaymentFeeType: joi_1.default.string().valid('ONE_TIME', 'RECURRING').optional(),
 });
 exports.propAvailabiltySchema = joi_1.default.object({
-    availability: joi_1.default.string().valid('OCCUPIED', 'VACANT').required(),
+    availability: joi_1.default.string().valid(...Object.keys(client_1.PropsApartmentStatus)).required(),
 });

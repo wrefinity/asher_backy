@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import {PayableBy, PropsSettingType, LatePaymentFeeType, SettingType} from '@prisma/client';
+import {PayableBy, PropsSettingType, LatePaymentFeeType, SettingType, PropsApartmentStatus} from '@prisma/client';
 const propsSettingsType = Object.values(PropsSettingType);
 const latePaymentFeeType = Object.values(LatePaymentFeeType);
 
@@ -34,5 +34,5 @@ export const propApartmentSettingsUpdateSchema = Joi.object({
     latePaymentFeeType: Joi.string().valid('ONE_TIME', 'RECURRING').optional(),
 });
 export const propAvailabiltySchema = Joi.object({
-    availability: Joi.string().valid('OCCUPIED', 'VACANT').required(),
+    availability: Joi.string().valid(...Object.keys(PropsApartmentStatus)).required(),
 });
