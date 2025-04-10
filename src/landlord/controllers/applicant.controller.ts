@@ -551,7 +551,7 @@ class ApplicationControls {
             // Ensure required fields are not null
             if (!application.referenceForm || !application.guarantorAgreement || !application.employeeReference) {
                 return res.status(400).json({
-                    error: "Missing required verification data",
+                    error: "your reference form is not yet completed",
                     details: {
                         referenceForm: application.referenceForm ? "Provided" : "Missing",
                         guarantorAgreement: application.guarantorAgreement ? "Provided" : "Missing",
@@ -577,6 +577,7 @@ class ApplicationControls {
             //         }
             //     });
             // }
+
             // Proceed with updating verification status if all screenings passed
             const screener = await ApplicationInvitesService.updateVerificationStatus(applicationId, {
                 employmentVerificationStatus: YesNo.YES,
@@ -611,11 +612,25 @@ class ApplicationControls {
                     details: [`Application with ID ${applicationId} does not exist`]
                 });
             }
+            const actualLandlordId = application.properties?.landlordId;
+            if (req.user.landlords.id !== actualLandlordId) {
+                return res.status(403).json({
+                    error: "Unauthorized",
+                    message: "You can only send agreement forms for applications on your own properties."
+                });
+            }
+
 
             // Get recipient email
             const recipientEmail = application.user.email;
+            if (!recipientEmail) {
+                return res.status(400).json({
+                    error: "Missing recipient email",
+                    message: "The applicant's email is required to send the agreement form."
+                });
+            }
 
-            // Generate or fetch agreement form URL
+            // fetch agreement form URL
             // (Assuming it's hosted or already uploaded as a document of type AGREEMENT_DOC)
             const agreementDocument = await new PropertyDocumentService().getDocumentBaseOnLandlordAndStatus(req.user.landlords.id, DocumentType.AGREEMENT_DOC)
 
@@ -646,7 +661,7 @@ class ApplicationControls {
             await logsServices.createLog({
                 applicationId,
                 subjects: "Asher Agreement Letter",
-                events: `Kindly check your email address for an agreement letter for the application of the property named: ${application?.properties?.name}`,
+                events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
                 createdById: application.user.id
             })
 

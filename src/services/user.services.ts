@@ -178,8 +178,8 @@ class UserService {
         });
 
         // for normal account creations 
-        if(!landlordBulkUploads && !createdBy && !createTenantProfile){
-            user = await this.createNewUser(userData); 
+        if (!landlordBulkUploads && !createdBy && !createTenantProfile) {
+            user = await this.createNewUser(userData);
         }
 
         // Create a new user by landlord during bulk upload
@@ -523,6 +523,23 @@ class UserService {
                             : undefined,
                     },
                 });
+                if (tenant) {
+                    // Check if the role already exists
+                    const updatedRoles = user.role.includes(userRoles.TENANT)
+                        ? user.role
+                        : [...user.role, userRoles.TENANT];
+                    await prismaClient.users.update({
+                        where: { id: user.id },
+                        data: {
+                            role: updatedRoles,
+                            isVerified: true,
+                            tenant: {
+                                connect: { id: tenant.id }
+                            }
+                        }
+                    });
+                }
+
                 return tenant
             }
 
