@@ -209,6 +209,7 @@ class PropertyService {
             return yield __1.prismaClient.propertyListingHistory.findMany({
                 where: {
                     isActive,
+                    onListing: isActive,
                     property: {
                         landlordId
                     }
@@ -375,8 +376,23 @@ class PropertyService {
             const propListed = yield this.getPropsListedById(propertyId);
             if (!propListed)
                 throw new Error(`The props with ID ${propertyId} have been listed`);
-            return yield __1.prismaClient.propertyListingHistory.delete({
-                where: { propertyId: propListed === null || propListed === void 0 ? void 0 : propListed.propertyId }
+            return yield __1.prismaClient.propertyListingHistory.update({
+                where: { propertyId: propListed === null || propListed === void 0 ? void 0 : propListed.propertyId },
+                data: {
+                    onListing: false,
+                    isActive: false,
+                }
+            });
+        });
+        this.delistPropertyListing = (propertyId) => __awaiter(this, void 0, void 0, function* () {
+            const propListed = yield this.getPropsListedById(propertyId);
+            if (!propListed)
+                throw new Error(`The props with ID ${propertyId} have been listed`);
+            return yield __1.prismaClient.propertyListingHistory.update({
+                where: { propertyId: propListed === null || propListed === void 0 ? void 0 : propListed.propertyId },
+                data: {
+                    onListing: false
+                }
             });
         });
         this.getPropsListedById = (propertyId) => __awaiter(this, void 0, void 0, function* () {

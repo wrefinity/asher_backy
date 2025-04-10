@@ -121,7 +121,11 @@ class PropertyController {
             const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
             if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-            const properties = await PropertyServices.deleteProperty(landlordId, propertiesId);
+
+            if(landlordId !== propertyExist.landlordId){
+                return res.status(404).json({ message: "only lanlord that created the props can delist it" }) 
+            }
+            const properties = await PropertyServices.delistPropertyListing(propertiesId);
             if (!properties) return res.status(200).json({ message: "No Property listed yet" })
             return res.status(200).json(properties)
         } catch (error) {

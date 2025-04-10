@@ -489,6 +489,10 @@ class UserService {
                                 : undefined,
                         },
                     });
+                    if (tenant) {
+                        // Check if the role already exists else update
+                        yield this.updateUserRole(user.id, client_1.userRoles.TENANT);
+                    }
                     return tenant;
                 }
                 default:
@@ -528,6 +532,16 @@ class UserService {
                     break;
             }
             return updated;
+        });
+        this.updateUserRole = (userId, role) => __awaiter(this, void 0, void 0, function* () {
+            const user = yield __1.prismaClient.users.findUnique({ where: { id: userId } });
+            if (!user)
+                throw new Error('User not found');
+            const updatedRoles = user.role.includes(role) ? user.role : [...user.role, role];
+            return yield __1.prismaClient.users.update({
+                where: { id: userId },
+                data: { role: updatedRoles },
+            });
         });
         this.inclusion = {
             tenant: true,

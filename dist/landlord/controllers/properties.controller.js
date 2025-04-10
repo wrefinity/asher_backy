@@ -131,7 +131,10 @@ class PropertyController {
                     return res.status(404).json({ message: "property does not exists" });
                 if (!landlordId)
                     return res.status(404).json({ message: "Landlord not found" });
-                const properties = yield propertyServices_1.default.deleteProperty(landlordId, propertiesId);
+                if (landlordId !== propertyExist.landlordId) {
+                    return res.status(404).json({ message: "only lanlord that created the props can delist it" });
+                }
+                const properties = yield propertyServices_1.default.delistPropertyListing(propertiesId);
                 if (!properties)
                     return res.status(200).json({ message: "No Property listed yet" });
                 return res.status(200).json(properties);

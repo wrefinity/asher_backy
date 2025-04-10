@@ -305,6 +305,7 @@ class PropertyService {
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 isActive,
+                onListing:isActive,
                 property: {
                     landlordId
                 }
@@ -592,8 +593,23 @@ class PropertyService {
     deletePropertyListing = async (propertyId: string) => {
         const propListed = await this.getPropsListedById(propertyId);
         if (!propListed) throw new Error(`The props with ID ${propertyId} have been listed`);
-        return await prismaClient.propertyListingHistory.delete({
-            where: { propertyId: propListed?.propertyId }
+        return await prismaClient.propertyListingHistory.update({
+            where: { propertyId: propListed?.propertyId },
+            data: {
+                onListing: false,
+                isActive: false,
+            }
+        });
+    };
+
+    delistPropertyListing = async (propertyId: string) => {
+        const propListed = await this.getPropsListedById(propertyId);
+        if (!propListed) throw new Error(`The props with ID ${propertyId} have been listed`);
+        return await prismaClient.propertyListingHistory.update({
+            where: { propertyId: propListed?.propertyId },
+            data:{
+                onListing: false
+            }
         });
     };
 
