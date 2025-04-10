@@ -524,20 +524,8 @@ class UserService {
                     },
                 });
                 if (tenant) {
-                    // Check if the role already exists
-                    const updatedRoles = user.role.includes(userRoles.TENANT)
-                        ? user.role
-                        : [...user.role, userRoles.TENANT];
-                    await prismaClient.users.update({
-                        where: { id: user.id },
-                        data: {
-                            role: updatedRoles,
-                            isVerified: true,
-                            tenant: {
-                                connect: { id: tenant.id }
-                            }
-                        }
-                    });
+                    // Check if the role already exists else update
+                    await this.updateUserRole(user.id, userRoles.TENANT);
                 }
 
                 return tenant
@@ -586,6 +574,16 @@ class UserService {
                 break;
         }
         return updated;
+    }
+
+    updateUserRole = async (userId: string, role: userRoles) => {   
+        const user = await prismaClient.users.findUnique({ where: { id: userId } });
+        if (!user) throw new Error('User not found');
+        const updatedRoles = user.role.includes(role) ? user.role : [...user.role, role];
+        return await prismaClient.users.update({
+            where: { id: userId },
+            data: { role: updatedRoles },
+        });
     }
 }
 
