@@ -3,18 +3,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sServer = exports.userSockets = exports.prismaClient = void 0;
-const cookie_parser_1 = __importDefault(require("cookie-parser"));
+exports.serverInstance = exports.userSockets = exports.prismaClient = void 0;
 const express_1 = __importDefault(require("express"));
 const express_session_1 = __importDefault(require("express-session"));
-const secrets_1 = require("./secrets");
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
 const ws_1 = require("ws");
+const socket_io_1 = require("socket.io");
 const client_1 = require("@prisma/client");
+const secrets_1 = require("./secrets");
+// Import Routes
+const auth_1 = __importDefault(require("./routes/auth"));
 const applicant_1 = __importDefault(require("./routes/applicant"));
 const complaint_1 = __importDefault(require("./routes/complaint"));
-const auth_1 = __importDefault(require("./routes/auth"));
 const fileuploads_1 = __importDefault(require("./routes/fileuploads"));
 const category_1 = __importDefault(require("./routes/category"));
 const chats_1 = __importDefault(require("./routes/chats"));
@@ -31,82 +33,44 @@ const log_1 = __importDefault(require("./routes/log"));
 const transaction_1 = __importDefault(require("./routes/transaction"));
 const wallet_1 = __importDefault(require("./routes/wallet"));
 const users_1 = __importDefault(require("./routes/users"));
-// import paystackServices from "./services/paystack.services";
 const ads_routes_1 = __importDefault(require("./tenant/routes/ads.routes"));
 const community_post_routes_1 = __importDefault(require("./tenant/routes/community-post.routes"));
 const community_routes_1 = __importDefault(require("./tenant/routes/community.routes"));
 const index_1 = __importDefault(require("./tenant/routes/index"));
 const index_routes_1 = __importDefault(require("./landlord/routes/index.routes"));
-// import GeneratorRouter from './controllers/datagen';
 const bank_1 = __importDefault(require("./routes/bank"));
 const flutterWave_service_1 = __importDefault(require("./services/flutterWave.service"));
-exports.prismaClient = new client_1.PrismaClient({
-    log: ['query']
-});
-exports.userSockets = new Map();
+// WebSocket tracking
+exports.prismaClient = new client_1.PrismaClient({ log: ['query'] });
+exports.userSockets = new Map(); // for WSS (emails)
 class Server {
     constructor(port, secret) {
         this.app = (0, express_1.default)();
         this.port = port;
-        this.appSecret = secret;
-        // Create HTTP server and WebSocket server
+        // HTTP server + WebSocket server
         this.server = http_1.default.createServer(this.app);
-        this.wss = new ws_1.WebSocketServer({ server: this.server });
-        // connectDB();
-        this.configureMiddlewares();
+        this.io = new socket_io_1.Server(this.server, {
+            cors: {
+                origin: "*",
+                methods: ["GET", "POST"]
+            }
+        });
+        this.wss = new ws_1.WebSocketServer({ noServer: true });
+        this.configureMiddlewares(secret);
         this.configureRoutes();
-        this.configureWebSocket();
+        this.configureSocketIO();
+        this.configureWSS();
     }
-    configureMiddlewares() {
-        // middlewares here
-        this.app.use(express_1.default.json()); // for content-body parameters
+    configureMiddlewares(secret) {
+        this.app.use(express_1.default.json());
         this.app.use(express_1.default.urlencoded({ extended: true }));
+        this.app.use((0, cookie_parser_1.default)());
+        this.app.use((0, cors_1.default)());
         this.app.use((0, express_session_1.default)({
-            secret: this.appSecret,
+            secret,
             resave: false,
             saveUninitialized: false
         }));
-        this.app.use((0, cookie_parser_1.default)());
-        this.app.use((0, cors_1.default)());
-    }
-    configureWebSocket() {
-        this.wss.on("connection", (ws, req) => {
-            console.log("New WebSocket connection established");
-            ws.on("message", (message) => {
-                try {
-                    const data = JSON.parse(message.toString());
-                    if (typeof data === "object" && (data === null || data === void 0 ? void 0 : data.event) === "register" && (data === null || data === void 0 ? void 0 : data.receiverEmail)) {
-                        exports.userSockets.set(data === null || data === void 0 ? void 0 : data.receiverEmail, ws);
-                        console.log(`User ${data.receiverEmail} connected`);
-                    }
-                }
-                catch (error) {
-                    console.error("Invalid WebSocket message received:", message);
-                }
-            });
-            ws.on("close", () => {
-                for (const [recieverEmail, socket] of exports.userSockets.entries()) {
-                    if (socket === ws) {
-                        exports.userSockets.delete(recieverEmail);
-                        console.log(`User ${recieverEmail} disconnected`);
-                        break;
-                    }
-                }
-            });
-        });
-    }
-    sendToUser(email, event, data) {
-        const socket = exports.userSockets.get(email);
-        if (!socket) {
-            console.error(`No WebSocket connection found for user: ${email}`);
-            return;
-        }
-        if (socket.readyState !== ws_1.WebSocket.OPEN) {
-            console.error(`WebSocket for user ${email} is not open`);
-            return;
-        }
-        console.log(`Sending WebSocket message to: ${email}, Event: ${event}`);
-        socket.send(JSON.stringify({ event, data }));
     }
     configureRoutes() {
         // Add routes here
@@ -141,19 +105,76 @@ class Server {
         this.app.use("/api/banks/", bank_1.default);
         this.app.use("/api/complaints", complaint_1.default);
     }
-    start() {
-        this.server.listen(this.port, () => {
-            console.log(`Server running on port ${this.port}`);
+    // ✅ Socket.IO – Real-time chat messages
+    configureSocketIO() {
+        this.io.on("connection", (socket) => {
+            console.log("🔌 Chat client connected");
+            socket.on("join", ({ senderId }) => {
+                socket.join(senderId);
+                console.log(`User ${senderId} joined their personal chat room`);
+            });
+            socket.on("privateMessage", ({ senderId, receiverId, message }) => {
+                const payload = { senderId, message, timestamp: new Date() };
+                this.io.to(receiverId).emit("privateMessage", payload);
+                console.log(`📩 Message from ${senderId} to ${receiverId}`);
+            });
+            socket.on("disconnect", () => {
+                console.log("❌ Chat client disconnected");
+            });
         });
     }
-    broadcast(event, data) {
-        this.wss.clients.forEach(client => {
-            if (client.readyState === 1) {
-                client.send(JSON.stringify({ event, data }));
+    // ✅ WebSocket – In-house email
+    configureWSS() {
+        this.server.on("upgrade", (req, socket, head) => {
+            const pathname = req.url;
+            if (pathname === "/email") {
+                this.wss.handleUpgrade(req, socket, head, (ws) => {
+                    this.wss.emit("connection", ws, req);
+                });
             }
+        });
+        this.wss.on("connection", (ws, req) => {
+            console.log("📡 Email socket connected");
+            ws.on("message", (message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    if ((data === null || data === void 0 ? void 0 : data.event) === "register" && (data === null || data === void 0 ? void 0 : data.receiverEmail)) {
+                        exports.userSockets.set(data.receiverEmail, ws);
+                        console.log(`📬 Registered email socket for ${data.receiverEmail}`);
+                    }
+                }
+                catch (err) {
+                    console.error("❗Invalid email message format");
+                }
+            });
+            ws.on("close", () => {
+                for (const [email, socket] of exports.userSockets.entries()) {
+                    if (socket === ws) {
+                        exports.userSockets.delete(email);
+                        console.log(`📭 Email socket disconnected for ${email}`);
+                        break;
+                    }
+                }
+            });
+        });
+    }
+    sendToUserEmail(email, event, data) {
+        // frontend connects to ws://localhost:PORT/email
+        const socket = exports.userSockets.get(email);
+        if (!socket || socket.readyState !== ws_1.WebSocket.OPEN) {
+            console.error(`No active email socket for: ${email}`);
+            return;
+        }
+        socket.send(JSON.stringify({ event, data }));
+    }
+    start() {
+        this.server.listen(this.port, () => {
+            console.log(`🚀 Server running on http://localhost:${this.port}`);
+            console.log(`💬 Chat Socket.IO running on /socket.io`);
+            console.log(`📡 Email WebSocket running on /email`);
         });
     }
 }
-const sServer = new Server(Number(secrets_1.PORT), secrets_1.APP_SECRET);
-exports.sServer = sServer;
-sServer.start();
+const serverInstance = new Server(Number(secrets_1.PORT), secrets_1.APP_SECRET);
+exports.serverInstance = serverInstance;
+serverInstance.start();

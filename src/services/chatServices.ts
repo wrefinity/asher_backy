@@ -1,4 +1,4 @@
-import { prismaClient } from "..";
+import { prismaClient, serverInstance } from "..";
 
 interface UserSelection {
     id: boolean;
@@ -24,27 +24,47 @@ class ChatServices {
 
 
     createChatRoom = async (user1Id: string, user2Id: string) => {
+        const [userA, userB] = [user1Id, user2Id].sort();
+
+        // check if the room already exists
+        const existingRoom = await prismaClient.chatRoom.findFirst({
+            where: {
+                user1Id: userA,
+                user2Id: userB,
+            },
+        });
+
+        if (existingRoom) return existingRoom;
         return await prismaClient.chatRoom.create({
             data: {
-                user1Id,
-                user2Id,
+                user1Id: userA,
+                user2Id: userB,
             },
         });
     }
 
-
+    // getChatRooms = async (user1Id: string, user2Id: string) => {
+    //     // check if a conversation exist between the users
+    //     return await prismaClient.chatRoom.findFirst({
+    //         where: {
+    //             OR: [
+    //                 { user1Id: user1Id, user2Id: user2Id },
+    //                 { user1Id: user2Id, user2Id: user1Id },
+    //             ],
+    //         },
+    //     });
+    // }
 
     getChatRooms = async (user1Id: string, user2Id: string) => {
-        // check if a conversation exist between the users
+        const [userA, userB] = [user1Id, user2Id].sort();
         return await prismaClient.chatRoom.findFirst({
             where: {
-                OR: [
-                    { user1Id: user1Id, user2Id: user2Id },
-                    { user1Id: user2Id, user2Id: user1Id },
-                ],
+                user1Id: userA,
+                user2Id: userB,
             },
         });
-    }
+    };
+
 
 
     createRoomMessages = async (
@@ -52,12 +72,13 @@ class ChatServices {
         senderId: string,
         receiverId: string,
         chatRoomId: string,
-        images: string[],  // Image URLs
-        videos: string[],  // Video URLs
-        files: string[],   // Document URLs
-        audios: string[]   // Audio URLs
+        images: string[],
+        videos: string[],
+        files: string[],
+        audios: string[]
     ) => {
-        return await prismaClient.message.create({
+        // Save the message in DB
+        const message = await prismaClient.message.create({
             data: {
                 content,
                 senderId,
@@ -69,8 +90,29 @@ class ChatServices {
                 audios
             },
         });
+
+        // Real-time emit to the receiver using Socket.IO
+        const payload = {
+            id: message.id,
+            chatRoomId: message.chatRoomId,
+            content: message.content,
+            senderId: message.senderId,
+            receiverId: message.receiverId,
+            createdAt: message?.createdAt,
+            images: message?.images,
+            videos: message?.videos,
+            files: message?.files,
+            audios: message?.audios
+        };
+
+        // Emit message to both sender and receiver personal rooms
+        serverInstance.io.to(senderId).emit("privateMessage", payload);
+        serverInstance.io.to(receiverId).emit("privateMessage", payload);
+        console.log(`📤 Message sent from ${senderId} to ${receiverId}`);
+
+        return message;
     };
-    
+
 
     getChatRoomMessages = async (chatRoomId: string) => {
         return await prismaClient.message.findMany({

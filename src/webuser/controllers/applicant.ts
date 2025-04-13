@@ -698,6 +698,7 @@ class ApplicantControls {
     return res.status(200).json({ invite });
   }
 
+  // invites sections 
   getInvites = async (req: CustomRequest, res: Response) => {
     try {
       const userInvitedId = req.user?.id;
@@ -705,6 +706,7 @@ class ApplicantControls {
         pendingInvites,
         acceptInvites,
         otherInvites,
+        approvedinvites,
         awaitingFeedbackInvites
       ] = await Promise.all([
         ApplicantService.getInvite({
@@ -721,6 +723,10 @@ class ApplicantControls {
         }),
         ApplicantService.getInvite({
           userInvitedId,
+          response: [InvitedResponse.APPROVED]
+        }),
+        ApplicantService.getInvite({
+          userInvitedId,
           response: [InvitedResponse.AWAITING_FEEDBACK]
         })
       ]);
@@ -728,6 +734,7 @@ class ApplicantControls {
       return res.status(200).json({
         pendingInvites,
         acceptInvites,
+        approvedinvites,
         otherInvites,
         awaitingFeedbackInvites
       });

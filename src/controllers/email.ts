@@ -3,7 +3,7 @@ import EmailService from "../services/emailService";
 import { CustomRequest, EmailDataType } from "../utils/types";
 import { EmailSchema } from "../validations/schemas/chats.schema";
 import tenantService from "../services/tenant.service";
-import { sServer } from '../index'; // Import WebSocket-enabled server
+import { serverInstance } from '../index'; // Import WebSocket-enabled server
 import ErrorService from "../services/error.service";
 
 class EmailController {
@@ -38,9 +38,12 @@ class EmailController {
 
             // Create email
             const email = await EmailService.createEmail({ ...emailData, senderId: req.user?.id, receiverId: receiver.userId, attachment, senderEmail });
+            if (!email) {
+                return res.status(500).json({ message: "Failed to create email" });
+            }
+            // Notify the recipient in real-time
+            serverInstance.sendToUserEmail(email.receiverEmail, "newEmail", email);
 
-            // ** Send WebSocket notification only to the recipient**
-            sServer.sendToUser(value?.receiverEmail, "new_email", email);
 
             return res.status(201).json({ email });
 

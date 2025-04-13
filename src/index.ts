@@ -1,14 +1,17 @@
-import cookieParser from 'cookie-parser';
 import express, { Express } from "express";
 import session from "express-session";
-import { APP_SECRET, PORT } from "./secrets";
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import http from 'http';
 import { WebSocket, WebSocketServer } from "ws";
+import { Server as IOServer } from "socket.io";
 import { PrismaClient } from "@prisma/client";
+import { APP_SECRET, PORT } from "./secrets";
+
+// Import Routes
+import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/applicant";
 import ComplaintRoutes from "./routes/complaint";
-import AuthRouter from "./routes/auth";
 import FileUploads from './routes/fileuploads';
 import CategoryRouter from "./routes/category";
 import ChatRoomRouter from "./routes/chats";
@@ -25,110 +28,56 @@ import LogRouter from "./routes/log";
 import TransactionRouter from "./routes/transaction";
 import WalletRouter from "./routes/wallet";
 import UserRouter from "./routes/users";
-// import paystackServices from "./services/paystack.services";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
 import TenantRouter from "./tenant/routes/index";
-
 import LandlordRouter from './landlord/routes/index.routes';
-// import GeneratorRouter from './controllers/datagen';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
 
-
-export const prismaClient: PrismaClient = new PrismaClient(
-    {
-        log: ['query']
-    }
-);
-
-
-export const userSockets = new Map<string, WebSocket>();
-
+// WebSocket tracking
+export const prismaClient = new PrismaClient({ log: ['query'] });
+export const userSockets = new Map<string, WebSocket>(); // for WSS (emails)
 
 class Server {
     private app: Express;
     private port: number;
-    private appSecret: string;
     private server: http.Server;
+    public io: IOServer;
     private wss: WebSocketServer;
 
     constructor(port: number, secret: string) {
         this.app = express();
         this.port = port;
-        this.appSecret = secret;
 
-        // Create HTTP server and WebSocket server
+        // HTTP server + WebSocket server
         this.server = http.createServer(this.app);
-        this.wss = new WebSocketServer({ server: this.server });
+        this.io = new IOServer(this.server, {
+            cors: {
+                origin: "*",
+                methods: ["GET", "POST"]
+            }
+        });
+        this.wss = new WebSocketServer({ noServer: true });
 
-        // connectDB();
-        this.configureMiddlewares();
+        this.configureMiddlewares(secret);
         this.configureRoutes();
-        this.configureWebSocket();
+        this.configureSocketIO();
+        this.configureWSS();
     }
 
-    private configureMiddlewares() {
-        // middlewares here
-        this.app.use(express.json()); // for content-body parameters
+    private configureMiddlewares(secret: string) {
+        this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
+        this.app.use(cookieParser());
+        this.app.use(cors());
         this.app.use(session({
-            secret: this.appSecret,
+            secret,
             resave: false,
             saveUninitialized: false
         }));
-        this.app.use(cookieParser());
-        this.app.use(
-            cors()
-        );
     }
-
-    private configureWebSocket() {
-        this.wss.on("connection", (ws, req) => {
-            console.log("New WebSocket connection established");
-            ws.on("message", (message) => {
-                try {
-                    const data = JSON.parse(message.toString());
-                    if (typeof data === "object" && data?.event === "register" && data?.receiverEmail) {
-                        userSockets.set(data?.receiverEmail, ws as WebSocket);
-                        console.log(`User ${data.receiverEmail} connected`);
-                    }
-                } catch (error) {
-                    console.error("Invalid WebSocket message received:", message);
-                }
-            });
-    
-            ws.on("close", () => {
-                for (const [recieverEmail, socket] of userSockets.entries()) {
-                    if (socket === (ws as WebSocket)) {
-                        userSockets.delete(recieverEmail);
-                        console.log(`User ${recieverEmail} disconnected`);
-                        break;
-                    }
-                }
-            });
-        });
-    }
-
-
-    public sendToUser(email: string, event: string, data: any) {
-        const socket = userSockets.get(email);
-        
-        if (!socket) {
-            console.error(`No WebSocket connection found for user: ${email}`);
-            return;
-        }
-    
-        if (socket.readyState !== WebSocket.OPEN) {
-            console.error(`WebSocket for user ${email} is not open`);
-            return;
-        }
-    
-        console.log(`Sending WebSocket message to: ${email}, Event: ${event}`);
-        socket.send(JSON.stringify({ event, data }));
-    }
-    
 
     private configureRoutes() {
         // Add routes here
@@ -164,22 +113,84 @@ class Server {
         this.app.use("/api/complaints", ComplaintRoutes);
     }
 
-    public start() {
-        this.server.listen(this.port, () => { 
-            console.log(`Server running on port ${this.port}`);
+    // ✅ Socket.IO – Real-time chat messages
+    private configureSocketIO() {
+        this.io.on("connection", (socket) => {
+            console.log("🔌 Chat client connected");
+
+            socket.on("join", ({ senderId }) => {
+                socket.join(senderId);
+                console.log(`User ${senderId} joined their personal chat room`);
+            });
+
+            socket.on("privateMessage", ({ senderId, receiverId, message }) => {
+                const payload = { senderId, message, timestamp: new Date() };
+                this.io.to(receiverId).emit("privateMessage", payload);
+                console.log(`📩 Message from ${senderId} to ${receiverId}`);
+            });
+
+            socket.on("disconnect", () => {
+                console.log("❌ Chat client disconnected");
+            });
         });
     }
-    
-    public broadcast(event: string, data: any) {
-        this.wss.clients.forEach(client => {
-            if (client.readyState === 1) {
-                client.send(JSON.stringify({ event, data }));
+
+    // ✅ WebSocket – In-house email
+    private configureWSS() {
+        this.server.on("upgrade", (req, socket, head) => {
+            const pathname = req.url;
+            if (pathname === "/email") {
+                this.wss.handleUpgrade(req, socket, head, (ws) => {
+                    this.wss.emit("connection", ws, req);
+                });
             }
+        });
+
+        this.wss.on("connection", (ws, req) => {
+            console.log("📡 Email socket connected");
+            ws.on("message", (message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+
+                    if (data?.event === "register" && data?.receiverEmail) {
+                        userSockets.set(data.receiverEmail, ws);
+                        console.log(`📬 Registered email socket for ${data.receiverEmail}`);
+                    }
+                } catch (err) {
+                    console.error("❗Invalid email message format");
+                }
+            });
+            ws.on("close", () => {
+                for (const [email, socket] of userSockets.entries()) {
+                    if (socket === ws) {
+                        userSockets.delete(email);
+                        console.log(`📭 Email socket disconnected for ${email}`);
+                        break;
+                    }
+                }
+            });
+        });
+    }
+
+    public sendToUserEmail(email: string, event: string, data: any) {
+        // frontend connects to ws://localhost:PORT/email
+        const socket = userSockets.get(email);
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error(`No active email socket for: ${email}`);
+            return;
+        }
+        socket.send(JSON.stringify({ event, data }));
+    }
+
+    public start() {
+        this.server.listen(this.port, () => {
+            console.log(`🚀 Server running on http://localhost:${this.port}`);
+            console.log(`💬 Chat Socket.IO running on /socket.io`);
+            console.log(`📡 Email WebSocket running on /email`);
         });
     }
 }
 
-const sServer = new Server(Number(PORT), APP_SECRET);
-sServer.start();
-
-export { sServer };
+const serverInstance = new Server(Number(PORT), APP_SECRET);
+serverInstance.start();
+export { serverInstance };

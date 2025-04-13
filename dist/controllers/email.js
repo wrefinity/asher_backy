@@ -55,8 +55,11 @@ class EmailController {
                 const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls } = value, emailData = __rest(value, ["cloudinaryUrls", "cloudinaryVideoUrls", "cloudinaryDocumentUrls", "cloudinaryAudioUrls"]);
                 // Create email
                 const email = yield emailService_1.default.createEmail(Object.assign(Object.assign({}, emailData), { senderId: (_j = req.user) === null || _j === void 0 ? void 0 : _j.id, receiverId: receiver.userId, attachment, senderEmail }));
-                // ** Send WebSocket notification only to the recipient**
-                index_1.sServer.sendToUser(value === null || value === void 0 ? void 0 : value.receiverEmail, "new_email", email);
+                if (!email) {
+                    return res.status(500).json({ message: "Failed to create email" });
+                }
+                // Notify the recipient in real-time
+                index_1.serverInstance.sendToUserEmail(email.receiverEmail, "newEmail", email);
                 return res.status(201).json({ email });
             }
             catch (error) {

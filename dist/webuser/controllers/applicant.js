@@ -620,11 +620,12 @@ class ApplicantControls {
             const invite = yield applicantService_1.default.getInvitedById(id);
             return res.status(200).json({ invite });
         });
+        // invites sections 
         this.getInvites = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             try {
                 const userInvitedId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                const [pendingInvites, acceptInvites, otherInvites, awaitingFeedbackInvites] = yield Promise.all([
+                const [pendingInvites, acceptInvites, otherInvites, approvedinvites, awaitingFeedbackInvites] = yield Promise.all([
                     applicantService_1.default.getInvite({
                         userInvitedId,
                         response: [client_1.InvitedResponse.PENDING]
@@ -639,12 +640,17 @@ class ApplicantControls {
                     }),
                     applicantService_1.default.getInvite({
                         userInvitedId,
+                        response: [client_1.InvitedResponse.APPROVED]
+                    }),
+                    applicantService_1.default.getInvite({
+                        userInvitedId,
                         response: [client_1.InvitedResponse.AWAITING_FEEDBACK]
                     })
                 ]);
                 return res.status(200).json({
                     pendingInvites,
                     acceptInvites,
+                    approvedinvites,
                     otherInvites,
                     awaitingFeedbackInvites
                 });
