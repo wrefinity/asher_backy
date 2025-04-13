@@ -104,12 +104,10 @@ class ChatServices {
             files: message?.files,
             audios: message?.audios
         };
-
         // Emit message to both sender and receiver personal rooms
         serverInstance.io.to(senderId).emit("privateMessage", payload);
         serverInstance.io.to(receiverId).emit("privateMessage", payload);
         console.log(`📤 Message sent from ${senderId} to ${receiverId}`);
-
         return message;
     };
 

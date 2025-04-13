@@ -3,7 +3,7 @@ import EmailService from "../services/emailService";
 import { CustomRequest, EmailDataType } from "../utils/types";
 import { EmailSchema } from "../validations/schemas/chats.schema";
 import tenantService from "../services/tenant.service";
-import { serverInstance } from '../index'; // Import WebSocket-enabled server
+import { serverInstance } from '../index'; //
 import ErrorService from "../services/error.service";
 
 class EmailController {
