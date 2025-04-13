@@ -27,6 +27,7 @@ class TenantsLandlordRouter {
         this.router.get('/complaints/:tenantId', tenant_controller_1.default.getTenantComplaints);
         this.router.post('/violations', tenant_controller_1.default.createTenantViolation);
         this.router.get('/violations/:tenantId', tenant_controller_1.default.getTenantViolations);
+        this.router.get('/get/:tenantId', tenant_controller_1.default.getTenant);
     }
 }
 exports.default = new TenantsLandlordRouter().router;

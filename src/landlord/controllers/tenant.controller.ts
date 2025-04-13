@@ -212,8 +212,6 @@ class TenantControls {
             return res.status(500).json({ error: 'Server error occurred.', details: error.message });
         }
     };
-
-
     // tenants milestone section
     createTenantMileStones = async (req: CustomRequest, res: Response) => {
 
@@ -369,8 +367,22 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+    getTenant = async (req, res) => {
+        try {
+            const tenantId = req.params.tenantId;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId)
+            return res.status(201).json({
+                tenant
+            });
 
-
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
 }
 
 

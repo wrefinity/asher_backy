@@ -108,22 +108,67 @@ class TenantService {
         });
     }
 
-    getTenantByUserIdAndLandlordId = async (userId: string, landlordId: string) => {
+    // getTenantByUserIdAndLandlordId = async (userId: string, landlordId: string) => {
 
-        // Query the tenant based on the userId
+    //     // Query the tenant based on the userId
+    //     const tenant = await prismaClient.tenants.findFirst({
+    //         where: {
+    //             userId: userId, // Filtering by userId
+    //             property:{
+    //                 landlordId,
+    //             }
+    //         },
+    //         include: {
+    //             property: true, // Include related property data
+    //         },
+    //     });
+    //     return tenant
+    // }
+    getTenantByUserIdAndLandlordId = async (userId?: string, landlordId?: string, tenantId?:string) => {
         const tenant = await prismaClient.tenants.findFirst({
             where: {
-                userId: userId, // Filtering by userId
-                property:{
-                    landlordId,
-                }
+                userId,
+                // Conditionally include landlordId filter only when it exists
+                ...(landlordId && { property: { landlordId } }),
+                ...(tenantId && { id: tenantId }),
+                ...(userId && { userId })
             },
             include: {
-                property: true, // Include related property data
+                property: true,
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        isVerified: true,
+                        profile: true,
+                        applicantPersonalDetails: {
+                            include: {
+                                nextOfKin: true
+                            }
+                        },
+                        residentialInformation: {
+                            include: {
+                                prevAddresses: true
+                            }
+                        },
+                        guarantorInformation: true,
+                        emergencyContact: true,
+                        referees: true,
+                        EmploymentInformation: true,
+                    }
+                },
+                application: {
+                    include: {
+                        applicationQuestions: true,
+                        declaration: true
+                    }
+                }
             },
         });
-        return tenant
-    }
+
+        return tenant;
+    };
+
     // getApplicationRequests = async (landlordId: string) => {
 
     //     return await prismaClient.application.findMany({

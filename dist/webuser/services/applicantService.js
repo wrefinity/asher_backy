@@ -567,6 +567,7 @@ class ApplicantService {
             return yield __1.prismaClient.applicationInvites.findMany({
                 where: whereClause,
                 include: {
+                    enquires: true,
                     properties: {
                         include: this.propsIncusion,
                     },

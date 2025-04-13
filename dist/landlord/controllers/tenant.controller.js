@@ -338,6 +338,23 @@ class TenantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.getTenant = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const tenantId = req.params.tenantId;
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+                return res.status(201).json({
+                    tenant
+                });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.landlordService = new landlord_service_1.LandlordService();
     }
 }

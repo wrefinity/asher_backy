@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const emailService_1 = __importDefault(require("../services/emailService"));
 const chats_schema_1 = require("../validations/schemas/chats.schema");
 const tenant_service_1 = __importDefault(require("../services/tenant.service"));
-const index_1 = require("../index"); // Import WebSocket-enabled server
+const index_1 = require("../index"); //
 const error_service_1 = __importDefault(require("../services/error.service"));
 class EmailController {
     constructor() {

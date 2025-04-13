@@ -85,17 +85,54 @@ class TenantService {
                 include: this.inclusion,
             });
         });
-        this.getTenantByUserIdAndLandlordId = (userId, landlordId) => __awaiter(this, void 0, void 0, function* () {
-            // Query the tenant based on the userId
+        // getTenantByUserIdAndLandlordId = async (userId: string, landlordId: string) => {
+        //     // Query the tenant based on the userId
+        //     const tenant = await prismaClient.tenants.findFirst({
+        //         where: {
+        //             userId: userId, // Filtering by userId
+        //             property:{
+        //                 landlordId,
+        //             }
+        //         },
+        //         include: {
+        //             property: true, // Include related property data
+        //         },
+        //     });
+        //     return tenant
+        // }
+        this.getTenantByUserIdAndLandlordId = (userId, landlordId, tenantId) => __awaiter(this, void 0, void 0, function* () {
             const tenant = yield __1.prismaClient.tenants.findFirst({
-                where: {
-                    userId: userId, // Filtering by userId
-                    property: {
-                        landlordId,
-                    }
-                },
+                where: Object.assign(Object.assign(Object.assign({ userId }, (landlordId && { property: { landlordId } })), (tenantId && { id: tenantId })), (userId && { userId })),
                 include: {
-                    property: true, // Include related property data
+                    property: true,
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            isVerified: true,
+                            profile: true,
+                            applicantPersonalDetails: {
+                                include: {
+                                    nextOfKin: true
+                                }
+                            },
+                            residentialInformation: {
+                                include: {
+                                    prevAddresses: true
+                                }
+                            },
+                            guarantorInformation: true,
+                            emergencyContact: true,
+                            referees: true,
+                            EmploymentInformation: true,
+                        }
+                    },
+                    application: {
+                        include: {
+                            applicationQuestions: true,
+                            declaration: true
+                        }
+                    }
                 },
             });
             return tenant;
