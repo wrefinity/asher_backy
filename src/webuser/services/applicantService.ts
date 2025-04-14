@@ -89,7 +89,7 @@ class ApplicantService {
     employeeReference: true,
     referee: true,
     Log: true,
-    agreementDocumentUrl: true,
+    // agreementDocumentUrl: true,
   }
 
   updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {

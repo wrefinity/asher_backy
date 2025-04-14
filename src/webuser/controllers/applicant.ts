@@ -787,11 +787,11 @@ class ApplicantControls {
           details: [`Application with ID ${applicationId} does not exist`]
         });
       }
-      const actualLandlordId = application.properties?.landlordId;
-      if (req.user.landlords.id !== actualLandlordId) {
+      const actualIId = application.user?.id;
+      if (userId !== actualIId) {
         return res.status(403).json({
           error: "Unauthorized",
-          message: "You can only send agreement forms for applications on your own properties."
+          message: "You can only update agreement forms for applications you applied"
         });
       }
 
@@ -810,20 +810,17 @@ class ApplicantControls {
       delete value['cloudinaryAudioUrls']
       delete value['cloudinaryDocumentUrls']
 
-
-
       const agreement = await ApplicantService.updateAgreementDocs(applicationId, documentUrlModified)
       if (!agreement) {
         return res.status(400).json({ message: "Agreement letter not updated" });
       }
-
 
       // Build HTML content
       const htmlContent = `
         <div style="font-family: Arial, sans-serif;">
           <h2>Agreement Form Signed Notification</h2>
           <p>Hello,</p>
-          <p>Please find the mail inbox on agreement form signed by the applicant</p>
+          <p>Please find the mail inbox for the agreement form signed by the applicant</p>
           <p>Best regards,<br/>Asher</p>
         </div>
       `;
@@ -834,10 +831,9 @@ class ApplicantControls {
         receiverEmail: landlord.user.email,
         body: `kindly check your email inbox for the agreement form signed by the applicant`,
         attachment: [documentUrlModified],
-        subject: `Asher - ${application?.properties?.name} Agreement Form`,
+        subject: `Asher - ${application?.properties?.name} Agreement Form SignUp`,
         senderId: req.user.id,
         receiverId: application.user.id,
-
       })
 
       if (!mailBox) {
@@ -846,12 +842,11 @@ class ApplicantControls {
       // Send email
       await sendMail(landlord.user.email, `Asher - ${application?.properties?.name} Agreement Form`, htmlContent);
 
-
       await logsServices.createLog({
         applicationId,
         subjects: "Asher Agreement Letter SignUp",
         events: `agreement letter signed for the property: ${application?.properties?.name}`,
-        createdById: req.user.email
+        createdById: userId
       })
 
       await ApplicantService.updateApplicationStatusStep(

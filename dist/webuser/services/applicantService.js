@@ -95,7 +95,7 @@ class ApplicantService {
             employeeReference: true,
             referee: true,
             Log: true,
-            agreementDocumentUrl: true,
+            // agreementDocumentUrl: true,
         };
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
             yield __1.prismaClient.application.update({

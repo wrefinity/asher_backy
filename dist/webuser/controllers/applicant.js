@@ -721,11 +721,11 @@ class ApplicantControls {
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
-                const actualLandlordId = (_b = application.properties) === null || _b === void 0 ? void 0 : _b.landlordId;
-                if (req.user.landlords.id !== actualLandlordId) {
+                const actualIId = (_b = application.user) === null || _b === void 0 ? void 0 : _b.id;
+                if (userId !== actualIId) {
                     return res.status(403).json({
                         error: "Unauthorized",
-                        message: "You can only send agreement forms for applications on your own properties."
+                        message: "You can only update agreement forms for applications you applied"
                     });
                 }
                 // Get recipient email
@@ -751,7 +751,7 @@ class ApplicantControls {
         <div style="font-family: Arial, sans-serif;">
           <h2>Agreement Form Signed Notification</h2>
           <p>Hello,</p>
-          <p>Please find the mail inbox on agreement form signed by the applicant</p>
+          <p>Please find the mail inbox for the agreement form signed by the applicant</p>
           <p>Best regards,<br/>Asher</p>
         </div>
       `;
@@ -761,7 +761,7 @@ class ApplicantControls {
                     receiverEmail: landlord.user.email,
                     body: `kindly check your email inbox for the agreement form signed by the applicant`,
                     attachment: [documentUrlModified],
-                    subject: `Asher - ${(_d = application === null || application === void 0 ? void 0 : application.properties) === null || _d === void 0 ? void 0 : _d.name} Agreement Form`,
+                    subject: `Asher - ${(_d = application === null || application === void 0 ? void 0 : application.properties) === null || _d === void 0 ? void 0 : _d.name} Agreement Form SignUp`,
                     senderId: req.user.id,
                     receiverId: application.user.id,
                 });
@@ -774,7 +774,7 @@ class ApplicantControls {
                     applicationId,
                     subjects: "Asher Agreement Letter SignUp",
                     events: `agreement letter signed for the property: ${(_f = application === null || application === void 0 ? void 0 : application.properties) === null || _f === void 0 ? void 0 : _f.name}`,
-                    createdById: req.user.email
+                    createdById: userId
                 });
                 yield applicantService_1.default.updateApplicationStatusStep(applicationId, client_1.ApplicationStatus === null || client_1.ApplicationStatus === void 0 ? void 0 : client_1.ApplicationStatus.AGREEMENTS_SIGNED);
                 return res.status(200).json({
