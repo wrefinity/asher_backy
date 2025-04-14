@@ -37,3 +37,27 @@ export enum ReminderType {
 export const applicationReminderSchema = Joi.object({ 
   status: Joi.string().valid(...Object.values(ReminderType)).required(),
 });
+
+
+export const createAgreementDocSchema = Joi.object({
+  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+}).custom((value, helpers) => {
+  const hasDocuments = [
+    value.cloudinaryUrls,
+    value.cloudinaryAudioUrls,
+    value.cloudinaryVideoUrls,
+    value.cloudinaryDocumentUrls
+  ].some(arr => arr && arr.length > 0);
+
+  if (!hasDocuments) {
+    return helpers.error('any.required');
+  }
+
+  return value;
+}).messages({
+  'any.required': 'supply the agreement document',
+
+});

@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -17,11 +40,15 @@ const application_services_1 = __importDefault(require("../../services/applicati
 const propertyServices_1 = __importDefault(require("../../services/propertyServices"));
 const multerCloudinary_1 = require("../../middlewares/multerCloudinary");
 const schemas_1 = require("../schemas");
+const applicationInvitesSchema_1 = require("../../landlord/validations/schema/applicationInvitesSchema");
 const error_service_1 = __importDefault(require("../../services/error.service"));
 const client_1 = require("@prisma/client");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
-const applicationInvitesSchema_1 = require("../../landlord/validations/schema/applicationInvitesSchema");
-const emailer_1 = require("../../utils/emailer");
+const applicationInvitesSchema_2 = require("../../landlord/validations/schema/applicationInvitesSchema");
+const emailer_1 = __importStar(require("../../utils/emailer"));
+const logs_services_2 = __importDefault(require("../../services/logs.services"));
+const emailService_1 = __importDefault(require("../../services/emailService"));
+const landlord_service_1 = require("../../landlord/services/landlord.service");
 class ApplicantControls {
     constructor() {
         this.getBasicStats = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -660,11 +687,101 @@ class ApplicantControls {
                 const inviteExist = yield applicantService_1.default.getInvitedById(id);
                 if (!inviteExist)
                     return res.status(404).json({ message: "invitation doesn't exist" });
-                const { error, value } = applicationInvitesSchema_1.updateApplicationInviteSchema.validate(req.body);
+                const { error, value } = applicationInvitesSchema_2.updateApplicationInviteSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
                 const invite = yield applicantService_1.default.updateInvites(id, value);
                 return res.status(200).json({ invite });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.signAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d, _e, _f;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+            try {
+                const { error, value } = applicationInvitesSchema_1.createAgreementDocSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const applicationId = req.params.id;
+                // Validate application ID
+                if (!applicationId) {
+                    return res.status(400).json({
+                        error: "Application ID is required",
+                        details: ["Missing application ID in URL parameters"]
+                    });
+                }
+                // Fetch application
+                const application = yield applicantService_1.default.getApplicationById(applicationId);
+                if (!application) {
+                    return res.status(404).json({
+                        error: "Application not found",
+                        details: [`Application with ID ${applicationId} does not exist`]
+                    });
+                }
+                const actualLandlordId = (_b = application.properties) === null || _b === void 0 ? void 0 : _b.landlordId;
+                if (req.user.landlords.id !== actualLandlordId) {
+                    return res.status(403).json({
+                        error: "Unauthorized",
+                        message: "You can only send agreement forms for applications on your own properties."
+                    });
+                }
+                // Get recipient email
+                const landlordId = (_c = application.properties) === null || _c === void 0 ? void 0 : _c.landlordId;
+                const landlord = yield new landlord_service_1.LandlordService().getLandlordById(landlordId);
+                if (!landlord) {
+                    return res.status(400).json({
+                        error: "Landlord not found",
+                        message: "The landlord associated with this property is not found."
+                    });
+                }
+                const documentUrlModified = value.cloudinaryVideoUrls;
+                delete value['cloudinaryUrls'];
+                delete value['cloudinaryVideoUrls'];
+                delete value['cloudinaryAudioUrls'];
+                delete value['cloudinaryDocumentUrls'];
+                const agreement = yield applicantService_1.default.updateAgreementDocs(applicationId, documentUrlModified);
+                if (!agreement) {
+                    return res.status(400).json({ message: "Agreement letter not updated" });
+                }
+                // Build HTML content
+                const htmlContent = `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Agreement Form Signed Notification</h2>
+          <p>Hello,</p>
+          <p>Please find the mail inbox on agreement form signed by the applicant</p>
+          <p>Best regards,<br/>Asher</p>
+        </div>
+      `;
+                //send inhouse inbox
+                const mailBox = yield emailService_1.default.createEmail({
+                    senderEmail: req.user.email,
+                    receiverEmail: landlord.user.email,
+                    body: `kindly check your email inbox for the agreement form signed by the applicant`,
+                    attachment: [documentUrlModified],
+                    subject: `Asher - ${(_d = application === null || application === void 0 ? void 0 : application.properties) === null || _d === void 0 ? void 0 : _d.name} Agreement Form`,
+                    senderId: req.user.id,
+                    receiverId: application.user.id,
+                });
+                if (!mailBox) {
+                    return res.status(400).json({ message: "mail not sent" });
+                }
+                // Send email
+                yield (0, emailer_1.default)(landlord.user.email, `Asher - ${(_e = application === null || application === void 0 ? void 0 : application.properties) === null || _e === void 0 ? void 0 : _e.name} Agreement Form`, htmlContent);
+                yield logs_services_2.default.createLog({
+                    applicationId,
+                    subjects: "Asher Agreement Letter SignUp",
+                    events: `agreement letter signed for the property: ${(_f = application === null || application === void 0 ? void 0 : application.properties) === null || _f === void 0 ? void 0 : _f.name}`,
+                    createdById: req.user.email
+                });
+                yield applicantService_1.default.updateApplicationStatusStep(applicationId, client_1.ApplicationStatus === null || client_1.ApplicationStatus === void 0 ? void 0 : client_1.ApplicationStatus.AGREEMENTS_SIGNED);
+                return res.status(200).json({
+                    message: "Agreement letter sent successfully",
+                    recipient: landlord.user.email,
+                    agreementDocument: documentUrlModified
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

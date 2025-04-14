@@ -177,6 +177,9 @@ model application {
   employeeReference            EmployeeReferenceForm?
 
   users users[]
+  agreementDocumentUrl String[]  // Array to maintain version history
+  agreementVersion     Int      @default(1)
+  lastAgreementUpdate  DateTime?
 }
 
 model applicantPersonalDetails {

@@ -16,11 +16,15 @@ import {
   refreeSchema,
   declarationSchema
 } from '../schemas';
+import { createAgreementDocSchema } from "../../landlord/validations/schema/applicationInvitesSchema"
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
 import { updateApplicationInviteSchema } from '../../landlord/validations/schema/applicationInvitesSchema';
-import { sendApplicationCompletionEmails } from "../../utils/emailer"
+import sendMail, { sendApplicationCompletionEmails } from "../../utils/emailer"
+import logsServices from '../../services/logs.services';
+import emailService from '../../services/emailService';
+import { LandlordService } from '../../landlord/services/landlord.service';
 
 class ApplicantControls {
 
@@ -754,6 +758,114 @@ class ApplicantControls {
       ErrorService.handleError(error, res);
     }
   }
+
+  signAgreementForm = async (req: CustomRequest, res: Response) => {
+    const userId = req.user?.id;
+    try {
+
+      const { error, value } = createAgreementDocSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
+      }
+
+
+      const applicationId = req.params.id;
+
+      // Validate application ID
+      if (!applicationId) {
+        return res.status(400).json({
+          error: "Application ID is required",
+          details: ["Missing application ID in URL parameters"]
+        });
+      }
+
+      // Fetch application
+      const application = await ApplicantService.getApplicationById(applicationId);
+      if (!application) {
+        return res.status(404).json({
+          error: "Application not found",
+          details: [`Application with ID ${applicationId} does not exist`]
+        });
+      }
+      const actualLandlordId = application.properties?.landlordId;
+      if (req.user.landlords.id !== actualLandlordId) {
+        return res.status(403).json({
+          error: "Unauthorized",
+          message: "You can only send agreement forms for applications on your own properties."
+        });
+      }
+
+      // Get recipient email
+      const landlordId = application.properties?.landlordId;
+      const landlord = await new LandlordService().getLandlordById(landlordId);
+      if (!landlord) {
+        return res.status(400).json({
+          error: "Landlord not found",
+          message: "The landlord associated with this property is not found."
+        });
+      }
+      const documentUrlModified = value.cloudinaryVideoUrls;
+      delete value['cloudinaryUrls']
+      delete value['cloudinaryVideoUrls']
+      delete value['cloudinaryAudioUrls']
+      delete value['cloudinaryDocumentUrls']
+
+
+
+      const agreement = await ApplicantService.updateAgreementDocs(applicationId, documentUrlModified)
+      if (!agreement) {
+        return res.status(400).json({ message: "Agreement letter not updated" });
+      }
+
+
+      // Build HTML content
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Agreement Form Signed Notification</h2>
+          <p>Hello,</p>
+          <p>Please find the mail inbox on agreement form signed by the applicant</p>
+          <p>Best regards,<br/>Asher</p>
+        </div>
+      `;
+
+      //send inhouse inbox
+      const mailBox = await emailService.createEmail({
+        senderEmail: req.user.email,
+        receiverEmail: landlord.user.email,
+        body: `kindly check your email inbox for the agreement form signed by the applicant`,
+        attachment: [documentUrlModified],
+        subject: `Asher - ${application?.properties?.name} Agreement Form`,
+        senderId: req.user.id,
+        receiverId: application.user.id,
+
+      })
+
+      if (!mailBox) {
+        return res.status(400).json({ message: "mail not sent" })
+      }
+      // Send email
+      await sendMail(landlord.user.email, `Asher - ${application?.properties?.name} Agreement Form`, htmlContent);
+
+
+      await logsServices.createLog({
+        applicationId,
+        subjects: "Asher Agreement Letter SignUp",
+        events: `agreement letter signed for the property: ${application?.properties?.name}`,
+        createdById: req.user.email
+      })
+
+      await ApplicantService.updateApplicationStatusStep(
+        applicationId, ApplicationStatus?.AGREEMENTS_SIGNED)
+
+      return res.status(200).json({
+        message: "Agreement letter sent successfully",
+        recipient: landlord.user.email,
+        agreementDocument: documentUrlModified
+      });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
 }
 
 export default new ApplicantControls();

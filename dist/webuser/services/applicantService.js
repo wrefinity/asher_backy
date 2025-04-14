@@ -94,7 +94,8 @@ class ApplicantService {
             },
             employeeReference: true,
             referee: true,
-            Log: true
+            Log: true,
+            agreementDocumentUrl: true,
         };
         this.updateLastStepStop = (applicationId, lastStep) => __awaiter(this, void 0, void 0, function* () {
             yield __1.prismaClient.application.update({
@@ -581,6 +582,21 @@ class ApplicantService {
     updateInvites(id, updateData) {
         return __awaiter(this, void 0, void 0, function* () {
             return yield application_services_1.default.updateInvite(id, updateData);
+        });
+    }
+    updateAgreementDocs(applicationId, documentUrl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Update agreement document
+            return yield __1.prismaClient.application.update({
+                where: { id: applicationId },
+                data: {
+                    agreementDocumentUrl: {
+                        push: documentUrl
+                    },
+                    agreementVersion: { increment: 1 },
+                    lastAgreementUpdate: new Date(),
+                }
+            });
         });
     }
 }

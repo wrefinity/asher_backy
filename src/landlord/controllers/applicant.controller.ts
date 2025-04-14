@@ -7,7 +7,7 @@ import ApplicationInvitesService from '../../services/application.services';
 import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType } from "@prisma/client"
-import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, updateApplicationStatusSchema } from '../validations/schema/applicationInvitesSchema';
+import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, createAgreementDocSchema, updateApplicationStatusSchema } from '../validations/schema/applicationInvitesSchema';
 import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
@@ -16,6 +16,7 @@ import sendMail from "../../utils/emailer"
 import applicantService from "../../webuser/services/applicantService"
 import { landlordScreener, guarantorScreener, employmentScreener } from "../../utils/screener"
 import { PropertyDocumentService } from "../../services/propertyDocument.service"
+import emailService from "../../services/emailService"
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -587,13 +588,34 @@ class ApplicationControls {
                 guarantorVerificationStatus: YesNo.YES,
                 refereeVerificationStatus: YesNo.YES,
             });
+
+
             return res.status(200).json({ screener });
         } catch (error) {
             errorService.handleError(error, res);
         }
     };
-    sendAgreementForm = async (req: CustomRequest, res: Response) => {
+    getCurrentLandlordAgreementForm = async (req: CustomRequest, res: Response) => {
         try {
+            const agreementDocument = await new PropertyDocumentService().getManyDocumentBaseOnLandlord(req.user.landlords.id, DocumentType.AGREEMENT_DOC)
+            return res.status(200).json({ agreementDocument });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    sendAgreementForm = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        try {
+            if (!landlordId) {
+                return res.status(403).json({ error: 'kindly login' });
+            }
+            const { error, value } = createAgreementDocSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+
+
             const applicationId = req.params.id;
 
             // Validate application ID
@@ -620,7 +642,6 @@ class ApplicationControls {
                 });
             }
 
-
             // Get recipient email
             const recipientEmail = application.user.email;
             if (!recipientEmail) {
@@ -629,34 +650,41 @@ class ApplicationControls {
                     message: "The applicant's email is required to send the agreement form."
                 });
             }
+            const documentUrlModified = value.cloudinaryVideoUrls;
+            delete value['cloudinaryUrls']
+            delete value['cloudinaryVideoUrls']
+            delete value['cloudinaryAudioUrls']
+            delete value['cloudinaryDocumentUrls']
 
-            // fetch agreement form URL
-            // (Assuming it's hosted or already uploaded as a document of type AGREEMENT_DOC)
-            const agreementDocument = await new PropertyDocumentService().getDocumentBaseOnLandlordAndStatus(req.user.landlords.id, DocumentType.AGREEMENT_DOC)
-
-            if (!agreementDocument || !agreementDocument.documentUrl?.[0]) {
-                return res.status(404).json({
-                    error: "Agreement document not found, kindly upload one",
-                });
-            }
-
-            const agreementUrl = agreementDocument.documentUrl[0];
 
             // Build HTML content
             const htmlContent = `
             <div style="font-family: Arial, sans-serif;">
-              <h2>Agreement Form</h2>
+              <h2>Agreement Form Notification</h2>
               <p>Hello,</p>
-              <p>Please find the link below to access and complete your agreement form:</p>
-              <p><a href="${agreementUrl}" target="_blank">${agreementUrl}</a></p>
-              <p>If you have any questions, feel free to reply to this email.</p>
-              <br>
-              <p>Best regards,<br/>Your Team</p>
+              <p>Please find the mail inbox on agreement form in your asher mailing box</p>
+              <p>Best regards,<br/>Asher</p>
             </div>
           `;
 
+            //send inhouse inbox
+            const mailBox = await emailService.createEmail({
+                senderEmail: req.user.email,
+                receiverEmail: recipientEmail,
+                body: `Hello, please find and complete the agreement form below: ${documentUrlModified}`,
+                attachment: [documentUrlModified],
+                subject: `Asher - ${application?.properties?.name} Agreement Form`,
+                senderId: req.user.id,
+                receiverId: application.user.id,
+               
+            })
+
+            if (!mailBox) {
+                return res.status(400).json({ message: "mail not sent" })
+            }
             // Send email
             await sendMail(recipientEmail, `Asher - ${application?.properties?.name} Agreement Form`, htmlContent);
+
 
             await logsServices.createLog({
                 applicationId,
@@ -665,15 +693,100 @@ class ApplicationControls {
                 createdById: application.user.id
             })
 
+            await applicantService.updateAgreementDocs(applicationId, documentUrlModified)
+
             return res.status(200).json({
                 message: "Agreement form email sent successfully",
                 recipient: recipientEmail,
-                agreementDocument
+                agreementDocument:documentUrlModified
             });
         } catch (error) {
             errorService.handleError(error, res);
         }
     };
+    // sendAgreementForm = async (req: CustomRequest, res: Response) => {
+    //     try {
+    //         const applicationId = req.params.id;
+
+    //         // Validate application ID
+    //         if (!applicationId) {
+    //             return res.status(400).json({
+    //                 error: "Application ID is required",
+    //                 details: ["Missing application ID in URL parameters"]
+    //             });
+    //         }
+
+    //         // Fetch application
+    //         const application = await applicantService.getApplicationById(applicationId);
+    //         if (!application) {
+    //             return res.status(404).json({
+    //                 error: "Application not found",
+    //                 details: [`Application with ID ${applicationId} does not exist`]
+    //             });
+    //         }
+    //         const actualLandlordId = application.properties?.landlordId;
+    //         if (req.user.landlords.id !== actualLandlordId) {
+    //             return res.status(403).json({
+    //                 error: "Unauthorized",
+    //                 message: "You can only send agreement forms for applications on your own properties."
+    //             });
+    //         }
+
+    //         // Get recipient email
+    //         const recipientEmail = application.user.email;
+    //         if (!recipientEmail) {
+    //             return res.status(400).json({
+    //                 error: "Missing recipient email",
+    //                 message: "The applicant's email is required to send the agreement form."
+    //             });
+    //         }
+
+    //         // fetch agreement form URL
+    //         // (Assuming it's hosted or already uploaded as a document of type AGREEMENT_DOC)
+    //         const agreementDocument = await new PropertyDocumentService().getDocumentBaseOnLandlordAndStatus(req.user.landlords.id, DocumentType.AGREEMENT_DOC)
+
+    //         if (!agreementDocument || !agreementDocument.documentUrl?.[0]) {
+    //             return res.status(404).json({
+    //                 error: "Agreement document not found, kindly upload one",
+    //             });
+    //         }
+
+    //         const agreementUrl = agreementDocument.documentUrl[0];
+
+    //         // Build HTML content
+    //         const htmlContent = `
+    //         <div style="font-family: Arial, sans-serif;">
+    //           <h2>Agreement Form</h2>
+    //           <p>Hello,</p>
+    //           <p>Please find the link below to access and complete your agreement form:</p>
+    //           <p><a href="${agreementUrl}" target="_blank">${agreementUrl}</a></p>
+    //           <p>If you have any questions, feel free to reply to this email.</p>
+    //           <br>
+    //           <p>Best regards,<br/>Your Team</p>
+    //         </div>
+    //       `;
+
+    //         // Send email
+    //         await sendMail(recipientEmail, `Asher - ${application?.properties?.name} Agreement Form`, htmlContent);
+
+    //         await logsServices.createLog({
+    //             applicationId,
+    //             subjects: "Asher Agreement Letter",
+    //             events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
+    //             createdById: application.user.id
+    //         })
+
+    //         applicantService.updateAgreementDocs(applicationId,  agreementUrl)
+
+    //         return res.status(200).json({
+    //             message: "Agreement form email sent successfully",
+    //             recipient: recipientEmail,
+    //             agreementDocument
+    //         });
+    //     } catch (error) {
+    //         errorService.handleError(error, res);
+    //     }
+    // };
 
 
 }

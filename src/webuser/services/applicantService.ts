@@ -88,7 +88,8 @@ class ApplicantService {
     },
     employeeReference: true,
     referee: true,
-    Log: true
+    Log: true,
+    agreementDocumentUrl: true,
   }
 
   updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {
@@ -693,6 +694,19 @@ class ApplicantService {
 
   async updateInvites(id, updateData: ApplicationInvite) {
     return await applicationServices.updateInvite(id, updateData);
+  }
+  async updateAgreementDocs(applicationId,  documentUrl: any) {
+    // Update agreement document
+    return await prismaClient.application.update({
+      where: { id: applicationId },
+      data: {
+        agreementDocumentUrl: {
+          push: documentUrl
+        },
+        agreementVersion: { increment: 1 },
+        lastAgreementUpdate: new Date(),
+      }
+    });
   }
 }
 

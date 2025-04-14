@@ -22,7 +22,7 @@ const userSelect = {
 };
 
 export interface EmailIF {
-    id: string; // Unique identifier for the email
+    id?: string; // Unique identifier for the email
     senderEmail: string; // Email address of the sender (either user.email or tenant.tenantWebUserEmail)
     receiverEmail: string; // Email address of the receiver (either user.email or tenant.tenantWebUserEmail)
     subject?: string; // Subject of the email

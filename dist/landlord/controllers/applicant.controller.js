@@ -38,6 +38,7 @@ const user_services_1 = __importDefault(require("../../services/user.services"))
 const emailer_2 = __importDefault(require("../../utils/emailer"));
 const applicantService_2 = __importDefault(require("../../webuser/services/applicantService"));
 const propertyDocument_service_1 = require("../../services/propertyDocument.service");
+const emailService_1 = __importDefault(require("../../services/emailService"));
 class ApplicationControls {
     constructor() {
         this.getApplicationStatistics = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -569,9 +570,26 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
-        this.sendAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c, _d;
+        this.getCurrentLandlordAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
+                const agreementDocument = yield new propertyDocument_service_1.PropertyDocumentService().getManyDocumentBaseOnLandlord(req.user.landlords.id, client_1.DocumentType.AGREEMENT_DOC);
+                return res.status(200).json({ agreementDocument });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.sendAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d, _e, _f;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+            try {
+                if (!landlordId) {
+                    return res.status(403).json({ error: 'kindly login' });
+                }
+                const { error, value } = applicationInvitesSchema_1.createAgreementDocSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
                 const applicationId = req.params.id;
                 // Validate application ID
                 if (!applicationId) {
@@ -588,7 +606,7 @@ class ApplicationControls {
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
-                const actualLandlordId = (_a = application.properties) === null || _a === void 0 ? void 0 : _a.landlordId;
+                const actualLandlordId = (_c = application.properties) === null || _c === void 0 ? void 0 : _c.landlordId;
                 if (req.user.landlords.id !== actualLandlordId) {
                     return res.status(403).json({
                         error: "Unauthorized",
@@ -603,39 +621,46 @@ class ApplicationControls {
                         message: "The applicant's email is required to send the agreement form."
                     });
                 }
-                // fetch agreement form URL
-                // (Assuming it's hosted or already uploaded as a document of type AGREEMENT_DOC)
-                const agreementDocument = yield new propertyDocument_service_1.PropertyDocumentService().getDocumentBaseOnLandlordAndStatus(req.user.landlords.id, client_1.DocumentType.AGREEMENT_DOC);
-                if (!agreementDocument || !((_b = agreementDocument.documentUrl) === null || _b === void 0 ? void 0 : _b[0])) {
-                    return res.status(404).json({
-                        error: "Agreement document not found, kindly upload one",
-                    });
-                }
-                const agreementUrl = agreementDocument.documentUrl[0];
+                const documentUrlModified = value.cloudinaryVideoUrls;
+                delete value['cloudinaryUrls'];
+                delete value['cloudinaryVideoUrls'];
+                delete value['cloudinaryAudioUrls'];
+                delete value['cloudinaryDocumentUrls'];
                 // Build HTML content
                 const htmlContent = `
             <div style="font-family: Arial, sans-serif;">
-              <h2>Agreement Form</h2>
+              <h2>Agreement Form Notification</h2>
               <p>Hello,</p>
-              <p>Please find the link below to access and complete your agreement form:</p>
-              <p><a href="${agreementUrl}" target="_blank">${agreementUrl}</a></p>
-              <p>If you have any questions, feel free to reply to this email.</p>
-              <br>
-              <p>Best regards,<br/>Your Team</p>
+              <p>Please find the mail inbox on agreement form in your asher mailing box</p>
+              <p>Best regards,<br/>Asher</p>
             </div>
           `;
+                //send inhouse inbox
+                const mailBox = yield emailService_1.default.createEmail({
+                    senderEmail: req.user.email,
+                    receiverEmail: recipientEmail,
+                    body: `Hello, please find and complete the agreement form below: ${documentUrlModified}`,
+                    attachment: [documentUrlModified],
+                    subject: `Asher - ${(_d = application === null || application === void 0 ? void 0 : application.properties) === null || _d === void 0 ? void 0 : _d.name} Agreement Form`,
+                    senderId: req.user.id,
+                    receiverId: application.user.id,
+                });
+                if (!mailBox) {
+                    return res.status(400).json({ message: "mail not sent" });
+                }
                 // Send email
-                yield (0, emailer_2.default)(recipientEmail, `Asher - ${(_c = application === null || application === void 0 ? void 0 : application.properties) === null || _c === void 0 ? void 0 : _c.name} Agreement Form`, htmlContent);
+                yield (0, emailer_2.default)(recipientEmail, `Asher - ${(_e = application === null || application === void 0 ? void 0 : application.properties) === null || _e === void 0 ? void 0 : _e.name} Agreement Form`, htmlContent);
                 yield logs_services_1.default.createLog({
                     applicationId,
                     subjects: "Asher Agreement Letter",
-                    events: `Please check your email for the agreement letter regarding your application for the property: ${(_d = application === null || application === void 0 ? void 0 : application.properties) === null || _d === void 0 ? void 0 : _d.name}`,
+                    events: `Please check your email for the agreement letter regarding your application for the property: ${(_f = application === null || application === void 0 ? void 0 : application.properties) === null || _f === void 0 ? void 0 : _f.name}`,
                     createdById: application.user.id
                 });
+                yield applicantService_2.default.updateAgreementDocs(applicationId, documentUrlModified);
                 return res.status(200).json({
                     message: "Agreement form email sent successfully",
                     recipient: recipientEmail,
-                    agreementDocument
+                    agreementDocument: documentUrlModified
                 });
             }
             catch (error) {
