@@ -16,7 +16,7 @@ import {
   refreeSchema,
   declarationSchema
 } from '../schemas';
-import { createAgreementDocSchema } from "../../landlord/validations/schema/applicationInvitesSchema"
+import { createAgreementDocSchemaFuture } from "../../landlord/validations/schema/applicationInvitesSchema"
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
@@ -768,12 +768,10 @@ class ApplicantControls {
     const userId = req.user?.id;
     try {
 
-      const { error, value } = createAgreementDocSchema.validate(req.body);
+      const { error, value } = createAgreementDocSchemaFuture.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
-
-
       const applicationId = req.params.id;
 
       // Validate application ID
@@ -792,8 +790,8 @@ class ApplicantControls {
           details: [`Application with ID ${applicationId} does not exist`]
         });
       }
-      const actualIId = application.user?.id;
-      if (userId !== actualIId) {
+      const actualId = application.user?.id;
+      if (userId !== actualId) {
         return res.status(403).json({
           error: "Unauthorized",
           message: "You can only update agreement forms for applications you applied"
@@ -809,13 +807,21 @@ class ApplicantControls {
           message: "The landlord associated with this property is not found."
         });
       }
-      const documentUrlModified = value.cloudinaryVideoUrls;
-      delete value['cloudinaryUrls']
-      delete value['cloudinaryVideoUrls']
-      delete value['cloudinaryAudioUrls']
-      delete value['cloudinaryDocumentUrls']
+      // Combine all provided URLs into a single array
+      const documentUrlModified = [
+        ...(value.cloudinaryUrls || []),
+        ...(value.cloudinaryAudioUrls || []),
+        ...(value.cloudinaryVideoUrls || []),
+        ...(value.cloudinaryDocumentUrls || [])
+      ];
 
-      const agreement = await ApplicantService.updateAgreementDocs(applicationId, documentUrlModified)
+      // Clean up
+      delete value.cloudinaryUrls;
+      delete value.cloudinaryAudioUrls;
+      delete value.cloudinaryVideoUrls;
+      delete value.cloudinaryDocumentUrls;
+
+      const agreement = await ApplicantService.updateAgreementDocs(applicationId, documentUrlModified[0])
       if (!agreement) {
         return res.status(400).json({ message: "Agreement letter not updated" });
       }
@@ -835,7 +841,7 @@ class ApplicantControls {
         senderEmail: req.user.email,
         receiverEmail: landlord.user.email,
         body: `kindly check your email inbox for the agreement form signed by the applicant`,
-        attachment: [documentUrlModified],
+        attachment: documentUrlModified,
         subject: `Asher - ${application?.properties?.name} Agreement Form SignUp`,
         senderId: req.user.id,
         receiverId: application.user.id,

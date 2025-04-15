@@ -38,7 +38,6 @@ export const applicationReminderSchema = Joi.object({
   status: Joi.string().valid(...Object.values(ReminderType)).required(),
 });
 
-
 export const createAgreementDocSchema = Joi.object({
   documentUrls: Joi.string().uri().required()
 })

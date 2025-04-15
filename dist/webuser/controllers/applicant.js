@@ -706,7 +706,7 @@ class ApplicantControls {
             var _a, _b, _c, _d, _e, _f;
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             try {
-                const { error, value } = applicationInvitesSchema_1.createAgreementDocSchema.validate(req.body);
+                const { error, value } = applicationInvitesSchema_1.createAgreementDocSchemaFuture.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
@@ -726,8 +726,8 @@ class ApplicantControls {
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
-                const actualIId = (_b = application.user) === null || _b === void 0 ? void 0 : _b.id;
-                if (userId !== actualIId) {
+                const actualId = (_b = application.user) === null || _b === void 0 ? void 0 : _b.id;
+                if (userId !== actualId) {
                     return res.status(403).json({
                         error: "Unauthorized",
                         message: "You can only update agreement forms for applications you applied"
@@ -742,12 +742,19 @@ class ApplicantControls {
                         message: "The landlord associated with this property is not found."
                     });
                 }
-                const documentUrlModified = value.cloudinaryVideoUrls;
-                delete value['cloudinaryUrls'];
-                delete value['cloudinaryVideoUrls'];
-                delete value['cloudinaryAudioUrls'];
-                delete value['cloudinaryDocumentUrls'];
-                const agreement = yield applicantService_1.default.updateAgreementDocs(applicationId, documentUrlModified);
+                // Combine all provided URLs into a single array
+                const documentUrlModified = [
+                    ...(value.cloudinaryUrls || []),
+                    ...(value.cloudinaryAudioUrls || []),
+                    ...(value.cloudinaryVideoUrls || []),
+                    ...(value.cloudinaryDocumentUrls || [])
+                ];
+                // Clean up
+                delete value.cloudinaryUrls;
+                delete value.cloudinaryAudioUrls;
+                delete value.cloudinaryVideoUrls;
+                delete value.cloudinaryDocumentUrls;
+                const agreement = yield applicantService_1.default.updateAgreementDocs(applicationId, documentUrlModified[0]);
                 if (!agreement) {
                     return res.status(400).json({ message: "Agreement letter not updated" });
                 }
@@ -765,7 +772,7 @@ class ApplicantControls {
                     senderEmail: req.user.email,
                     receiverEmail: landlord.user.email,
                     body: `kindly check your email inbox for the agreement form signed by the applicant`,
-                    attachment: [documentUrlModified],
+                    attachment: documentUrlModified,
                     subject: `Asher - ${(_d = application === null || application === void 0 ? void 0 : application.properties) === null || _d === void 0 ? void 0 : _d.name} Agreement Form SignUp`,
                     senderId: req.user.id,
                     receiverId: application.user.id,
