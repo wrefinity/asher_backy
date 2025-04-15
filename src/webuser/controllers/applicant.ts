@@ -790,13 +790,13 @@ class ApplicantControls {
           details: [`Application with ID ${applicationId} does not exist`]
         });
       }
-      const actualId = application.user?.id;
-      if (userId !== actualId) {
-        return res.status(403).json({
-          error: "Unauthorized",
-          message: "You can only update agreement forms for applications you applied"
-        });
-      }
+      // const actualId = application.user?.id;
+      // if (userId !== actualId) {
+      //   return res.status(403).json({
+      //     error: "Unauthorized",
+      //     message: "You can only update agreement forms for applications you applied"
+      //   });
+      // }
 
       // Get recipient email
       const landlordId = application.properties?.landlordId;
