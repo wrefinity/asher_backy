@@ -25,6 +25,7 @@ import sendMail, { sendApplicationCompletionEmails } from "../../utils/emailer"
 import logsServices from '../../services/logs.services';
 import emailService from '../../services/emailService';
 import { LandlordService } from '../../landlord/services/landlord.service';
+import userServices from '../../services/user.services';
 
 class ApplicantControls {
 
@@ -790,13 +791,7 @@ class ApplicantControls {
           details: [`Application with ID ${applicationId} does not exist`]
         });
       }
-      // const actualId = application.user?.id;
-      // if (userId !== actualId) {
-      //   return res.status(403).json({
-      //     error: "Unauthorized",
-      //     message: "You can only update agreement forms for applications you applied"
-      //   });
-      // }
+   
 
       // Get recipient email
       const landlordId = application.properties?.landlordId;
@@ -805,6 +800,24 @@ class ApplicantControls {
         return res.status(400).json({
           error: "Landlord not found",
           message: "The landlord associated with this property is not found."
+        });
+      }
+      console.log("===========================")
+      console.log(userId)
+
+      const user = await userServices.getUserById(userId);
+      if (!user) {
+        return res.status(400).json({
+          error: "User not found",
+          message: "The user associated with this application is not found."
+        });
+      }
+
+      const actualId = application.user?.id;
+      if (user.id !== actualId) {
+        return res.status(403).json({
+          error: "Unauthorized",
+          message: "You can only update agreement forms for applications you applied"
         });
       }
       // Combine all provided URLs into a single array
@@ -838,7 +851,7 @@ class ApplicantControls {
 
       //send inhouse inbox
       const mailBox = await emailService.createEmail({
-        senderEmail: req.user.email,
+        senderEmail: user.email,
         receiverEmail: landlord.user.email,
         body: `kindly check your email inbox for the agreement form signed by the applicant`,
         attachment: documentUrlModified,
