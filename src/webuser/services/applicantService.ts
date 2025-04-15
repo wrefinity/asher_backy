@@ -665,11 +665,15 @@ class ApplicantService {
     });
   };
 
-  async getInvite(filters: { userInvitedId?: string; response?: InvitedResponse[] }) {
+  async getInvite(filters: { userInvitedId?: string; response?: InvitedResponse[] }, includeApplication = true) {
     const whereClause: Prisma.applicationInvitesWhereInput = {};
 
     if (filters.userInvitedId) {
       whereClause.userInvitedId = filters.userInvitedId;
+    }
+
+    if(!includeApplication){
+      whereClause.application = null;
     }
 
     if (filters.response) {
@@ -685,9 +689,12 @@ class ApplicantService {
         properties: {
           include: this.propsIncusion,
         },
-        application: {
-          include: this.applicationInclusion
-        }
+        // Conditionally include application based on parameter
+         ...(includeApplication && {
+          application: {
+            include: this.applicationInclusion
+          }
+        })
       },
     });
   }

@@ -88,11 +88,12 @@ class ApplicantControls {
                 }
                 const pendingApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.PENDING);
                 const completedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.COMPLETED);
+                const approvedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.APPROVED);
                 const declinedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.DECLINED);
                 const makePaymentApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.MAKEPAYMENT);
                 const acceptedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.ACCEPTED);
                 const submittedApplications = yield applicantService_1.default.getApplicationBasedOnStatus(userId, client_1.ApplicationStatus.SUBMITTED);
-                const invites = yield applicantService_1.default.getInvite({ userInvitedId: userId });
+                const invites = yield applicantService_1.default.getInvite({ userInvitedId: userId }, false);
                 // Define status groups
                 const activeStatuses = [
                     client_1.ApplicationStatus.PENDING,
@@ -102,7 +103,10 @@ class ApplicantControls {
                 ];
                 const completedStatuses = [
                     client_1.ApplicationStatus.COMPLETED,
-                    client_1.ApplicationStatus.DECLINED
+                    client_1.ApplicationStatus.DECLINED,
+                    client_1.ApplicationStatus.APPROVED,
+                    client_1.ApplicationStatus.AGREEMENTS,
+                    client_1.ApplicationStatus.AGREEMENTS_SIGNED,
                 ];
                 // Get grouped applications
                 const [activeApps, completedApps] = yield Promise.all([
@@ -119,7 +123,8 @@ class ApplicantControls {
                         submittedApplications,
                         activeApps,
                         completedApps,
-                        invites
+                        invites,
+                        approvedApplications
                     }
                 });
             }

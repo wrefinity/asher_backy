@@ -70,6 +70,7 @@ model users {
     applicationInvites       applicationInvites[]
 
     application application[] @relation("ApplicationUser")
+    Booking Booking[]
 }
 
 model UserLikedProperty {

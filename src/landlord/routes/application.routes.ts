@@ -36,7 +36,8 @@ class ApplicationLandlordRouter {
         this.router.get('/invites/feedbacks/all', ApplicationController.getFeedbacks);
 
         /// screening phase
-        this.router.post('/send-agreement-doc/:id',  upload.array('files'), uploadToCloudinary, ApplicationController.sendAgreementForm);
+        // this.router.post('/send-agreement-doc/:id',  upload.array('files'), uploadToCloudinary, ApplicationController.sendAgreementForm);
+        this.router.post('/send-agreement-doc/:id',  ApplicationController.sendAgreementForm);
         this.router.get('/get-agreement-doc',  ApplicationController.getCurrentLandlordAgreementForm);
         this.router.patch('/references/screening/:id', ApplicationController.updateApplicationVerificationStatus);
     }

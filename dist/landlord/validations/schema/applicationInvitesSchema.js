@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createAgreementDocSchema = exports.applicationReminderSchema = exports.ReminderType = exports.updateApplicationStatusSchema = exports.updateApplicationInviteSchema = exports.createApplicationInviteSchema = void 0;
+exports.createAgreementDocSchemaFuture = exports.createAgreementDocSchema = exports.applicationReminderSchema = exports.ReminderType = exports.updateApplicationStatusSchema = exports.updateApplicationInviteSchema = exports.createApplicationInviteSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 const client_1 = require("@prisma/client");
 const invitedResponseType = Object.values(client_1.InvitedResponse);
@@ -41,6 +41,9 @@ exports.applicationReminderSchema = joi_1.default.object({
     status: joi_1.default.string().valid(...Object.values(ReminderType)).required(),
 });
 exports.createAgreementDocSchema = joi_1.default.object({
+    documentUrls: joi_1.default.string().uri().required()
+});
+exports.createAgreementDocSchemaFuture = joi_1.default.object({
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string().uri()).optional(),

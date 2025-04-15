@@ -15,58 +15,67 @@ enum DocumentType {
   ADDITIONAL
   AGREEMENT_DOC
 }
+
 enum IdType {
   PASSPORT
   DRIVING_LICENSE
 }
 
-model propertyDocument {
-  id            String               @id @default(cuid())
-  documentName  String
-  documentUrl   String[]
-  size          String?
-  type          String?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-
-  // For ID documents
-  idType        IdType?
-  docType       DocumentType?
-
-  //            Relationship
-  agreement     GuarantorAgreement? @relation(fields: [agreementId], references: [id])
-  agreementId   String?
-
-  application   application?        @relation(fields: [applicationId], references: [id])
-  applicationId String?
-
-  apartmentsId  String?
-  apartments    apartments?         @relation(fields: [apartmentsId], references: [id])
-  propertyId    String?
-  properties    properties?         @relation(fields: [propertyId], references: [id])
-  uploadedBy    String?
-  users         users?              @relation(fields: [uploadedBy], references: [id])
+enum MediaType {
+  IMAGE
+  VIDEO
+  VIRTUAL_TOUR
 }
 
+model propertyDocument {
+  id           String   @id @default(cuid())
+  documentName String
+  documentUrl  String[]
+  size         String?
+  type         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-// model document {
-//   id           String               @id @default(cuid())
-//   documentName String
-//   documentUrl  String
-//   type         String?
-//   size         String?
-//   createdAt    DateTime             @default(now())
-//   updatedAt    DateTime             @updatedAt
+  // For ID documents
+  idType  IdType?
+  docType DocumentType?
 
-//   applicantId  String
-//   application  application         @relation(fields: [applicantId], references: [id])
+  //            Relationship
+  agreement   GuarantorAgreement? @relation(fields: [agreementId], references: [id])
+  agreementId String?
 
-//   userId       String?
-//   user         users?              @relation(fields: [userId], references: [id])
+  application   application? @relation(fields: [applicationId], references: [id])
+  applicationId String?
 
-//   // For ID documents
-//   idType       IdType?
-//   docType      DocumentType?
+  apartmentsId String?
+  apartments   apartments? @relation(fields: [apartmentsId], references: [id])
+  propertyId   String?
+  properties   properties? @relation(fields: [propertyId], references: [id])
+  uploadedBy   String?
+  users        users?      @relation(fields: [uploadedBy], references: [id])
+}
 
+model PropertyMediaFiles {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  url       String
+  caption   String?
+  isPrimary Boolean   @default(false)
+  fileType  String?
+  type      MediaType
 
-// }
+  // Separate foreign key fields for each relation type
+  imagePropertyId       String? @map("image_property_id")
+  videoPropertyId       String? @map("video_property_id")
+  virtualTourPropertyId String? @map("virtual_tour_property_id")
+
+  // Relations with explicit names and separate fields
+  imageProperty       properties? @relation("PropertyImages", fields: [imagePropertyId], references: [id])
+  videoProperty       properties? @relation("PropertyVideos", fields: [videoPropertyId], references: [id])
+  virtualTourProperty properties? @relation("PropertyVirtualTours", fields: [virtualTourPropertyId], references: [id])
+
+  @@index([imagePropertyId])
+  @@index([videoPropertyId])
+  @@index([virtualTourPropertyId])
+}

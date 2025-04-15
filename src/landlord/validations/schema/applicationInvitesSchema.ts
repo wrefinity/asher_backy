@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { InvitedResponse, ApplicationStatus, YesNo} from "@prisma/client"
+import { InvitedResponse, ApplicationStatus, YesNo } from "@prisma/client"
 const invitedResponseType = Object.values(InvitedResponse);
 const YesNoType = Object.values(YesNo);
 const ApplicationStatusType = Object.values(ApplicationStatus);
@@ -24,7 +24,7 @@ export const updateApplicationInviteSchema = Joi.object({
   applicationFee: Joi.string().valid(...YesNoType).optional(),
   response: Joi.string().valid(...invitedResponseType).optional(),
 });
-export const updateApplicationStatusSchema = Joi.object({ 
+export const updateApplicationStatusSchema = Joi.object({
   status: Joi.string().valid(...ApplicationStatusType).required(),
 });
 
@@ -34,12 +34,16 @@ export enum ReminderType {
   APPLICATION_REMINDER = "APPLICATION_REMINDER",
 }
 
-export const applicationReminderSchema = Joi.object({ 
+export const applicationReminderSchema = Joi.object({
   status: Joi.string().valid(...Object.values(ReminderType)).required(),
 });
 
 
 export const createAgreementDocSchema = Joi.object({
+  documentUrls: Joi.string().uri().required()
+})
+
+export const createAgreementDocSchemaFuture = Joi.object({
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),

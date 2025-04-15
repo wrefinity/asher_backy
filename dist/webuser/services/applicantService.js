@@ -554,11 +554,14 @@ class ApplicantService {
             });
         });
     }
-    getInvite(filters) {
-        return __awaiter(this, void 0, void 0, function* () {
+    getInvite(filters_1) {
+        return __awaiter(this, arguments, void 0, function* (filters, includeApplication = true) {
             const whereClause = {};
             if (filters.userInvitedId) {
                 whereClause.userInvitedId = filters.userInvitedId;
+            }
+            if (!includeApplication) {
+                whereClause.application = null;
             }
             if (filters.response) {
                 whereClause.response = {
@@ -567,15 +570,13 @@ class ApplicantService {
             }
             return yield __1.prismaClient.applicationInvites.findMany({
                 where: whereClause,
-                include: {
-                    enquires: true,
-                    properties: {
+                include: Object.assign({ enquires: true, properties: {
                         include: this.propsIncusion,
-                    },
+                    } }, (includeApplication && {
                     application: {
                         include: this.applicationInclusion
                     }
-                },
+                })),
             });
         });
     }

@@ -621,11 +621,7 @@ class ApplicationControls {
                         message: "The applicant's email is required to send the agreement form."
                     });
                 }
-                const documentUrlModified = value.cloudinaryVideoUrls;
-                delete value['cloudinaryUrls'];
-                delete value['cloudinaryVideoUrls'];
-                delete value['cloudinaryAudioUrls'];
-                delete value['cloudinaryDocumentUrls'];
+                const documentUrlModified = value.documentUrls;
                 // Build HTML content
                 const htmlContent = `
             <div style="font-family: Arial, sans-serif;">

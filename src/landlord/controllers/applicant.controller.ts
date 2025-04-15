@@ -615,7 +615,6 @@ class ApplicationControls {
                 return res.status(400).json({ error: error.details[0].message });
             }
 
-
             const applicationId = req.params.id;
 
             // Validate application ID
@@ -650,12 +649,7 @@ class ApplicationControls {
                     message: "The applicant's email is required to send the agreement form."
                 });
             }
-            const documentUrlModified = value.cloudinaryVideoUrls;
-            delete value['cloudinaryUrls']
-            delete value['cloudinaryVideoUrls']
-            delete value['cloudinaryAudioUrls']
-            delete value['cloudinaryDocumentUrls']
-
+            const documentUrlModified = value.documentUrls;
 
             // Build HTML content
             const htmlContent = `
@@ -676,7 +670,7 @@ class ApplicationControls {
                 subject: `Asher - ${application?.properties?.name} Agreement Form`,
                 senderId: req.user.id,
                 receiverId: application.user.id,
-               
+
             })
 
             if (!mailBox) {
@@ -698,7 +692,7 @@ class ApplicationControls {
             return res.status(200).json({
                 message: "Agreement form email sent successfully",
                 recipient: recipientEmail,
-                agreementDocument:documentUrlModified
+                agreementDocument: documentUrlModified
             });
         } catch (error) {
             errorService.handleError(error, res);

@@ -57,6 +57,46 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+    createProperties = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        try {
+            if (!landlordId) {
+                return res.status(403).json({ error: 'kindly login' });
+            }
+            const { error, value } = createPropertySchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+            const state = await stateServices.getStateByName(value?.state)
+
+
+            const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
+                landlordId,
+                value?.name,
+                state?.id,
+                value.city
+            );
+
+            if (existance) {
+                return res.status(400).json({ error: 'property exist for the state and city' });
+            }
+            const images = value.cloudinaryUrls;
+            const videourl = value.cloudinaryVideoUrls;
+
+            delete value['state']
+            delete value['cloudinaryUrls']
+            delete value['cloudinaryVideoUrls']
+            delete value['cloudinaryAudioUrls']
+            delete value['cloudinaryDocumentUrls']
+
+            const rentalFee = value.rentalFee || 0;
+            // const lateFee = rentalFee * 0.01;
+            const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, images, videourl, landlordId })
+            return res.status(201).json({ property })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
 
     showCaseRentals = async (req: CustomRequest, res: Response) => {
         try {

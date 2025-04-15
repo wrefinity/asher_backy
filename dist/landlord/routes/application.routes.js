@@ -6,8 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authorize_1 = require("../../middlewares/authorize");
 const applicant_controller_1 = __importDefault(require("../controllers/applicant.controller"));
-const multer_1 = __importDefault(require("../../configs/multer"));
-const multerCloudinary_1 = require("../../middlewares/multerCloudinary");
 class ApplicationLandlordRouter {
     constructor() {
         this.router = (0, express_1.Router)();
@@ -34,7 +32,8 @@ class ApplicationLandlordRouter {
         this.router.delete('/invites/:id', applicant_controller_1.default.deleteInvite);
         this.router.get('/invites/feedbacks/all', applicant_controller_1.default.getFeedbacks);
         /// screening phase
-        this.router.post('/send-agreement-doc/:id', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, applicant_controller_1.default.sendAgreementForm);
+        // this.router.post('/send-agreement-doc/:id',  upload.array('files'), uploadToCloudinary, ApplicationController.sendAgreementForm);
+        this.router.post('/send-agreement-doc/:id', applicant_controller_1.default.sendAgreementForm);
         this.router.get('/get-agreement-doc', applicant_controller_1.default.getCurrentLandlordAgreementForm);
         this.router.patch('/references/screening/:id', applicant_controller_1.default.updateApplicationVerificationStatus);
     }

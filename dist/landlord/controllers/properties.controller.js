@@ -57,6 +57,38 @@ class PropertyController {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.createProperties = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+            try {
+                if (!landlordId) {
+                    return res.status(403).json({ error: 'kindly login' });
+                }
+                const { error, value } = properties_schema_1.createPropertySchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ error: error.details[0].message });
+                }
+                const state = yield state_services_1.default.getStateByName(value === null || value === void 0 ? void 0 : value.state);
+                const existance = yield propertyServices_1.default.getUniquePropertiesBaseLandlordNameState(landlordId, value === null || value === void 0 ? void 0 : value.name, state === null || state === void 0 ? void 0 : state.id, value.city);
+                if (existance) {
+                    return res.status(400).json({ error: 'property exist for the state and city' });
+                }
+                const images = value.cloudinaryUrls;
+                const videourl = value.cloudinaryVideoUrls;
+                delete value['state'];
+                delete value['cloudinaryUrls'];
+                delete value['cloudinaryVideoUrls'];
+                delete value['cloudinaryAudioUrls'];
+                delete value['cloudinaryDocumentUrls'];
+                const rentalFee = value.rentalFee || 0;
+                // const lateFee = rentalFee * 0.01;
+                const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, images, videourl, landlordId }));
+                return res.status(201).json({ property });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.showCaseRentals = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             try {

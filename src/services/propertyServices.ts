@@ -1,7 +1,8 @@
+import { Prisma } from "@prisma/client";
 import { prismaClient } from "..";
-import { PropertyType, ShortletType, PropsSettingType } from "@prisma/client"
+import { PropertyType, ShortletType, MediaType, PropsSettingType } from "@prisma/client"
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings";
-import { ICreateProperty } from "../validations/interfaces/properties.interface";
+import { ICreateProperty, CreatePropertyIF } from "../validations/interfaces/properties.interface";
 import { PropsApartmentStatus } from "@prisma/client";
 
 interface PropertyFilters {
@@ -78,6 +79,187 @@ class PropertyService {
                 ...propertyData,
             }
         })
+    }
+
+    // Service Implementation
+    async createProperties(data: CreatePropertyIF) {
+        return prismaClient.$transaction(async (tx) => {
+            // Create main property
+            const property = await tx.properties.create({
+                data: {
+                    // Core Fields
+                    name: data.name,
+                    title: data.title,
+                    description: data.description,
+                    shortDescription: data.shortDescription,
+                    propertysize: data.propertysize,
+                    isDeleted: data.isDeleted ?? false,
+                    showCase: data.showCase ?? false,
+
+                    // Ownership
+                    landlordId: data.landlordId,
+                    agencyId: data.agencyId,
+
+                    // Market Values
+                    marketValue: data.marketValue,
+                    rentalFee: data.rentalFee,
+                    initialDeposit: data.initialDeposit,
+                    dueDate: data.dueDate,
+
+                    // Features
+                    noBedRoom: data.noBedRoom ?? 1,
+                    noKitchen: data.noKitchen ?? 1,
+                    noGarage: data.noGarage ?? 0,
+                    noBathRoom: data.noBathRoom ?? 1,
+                    noReceptionRooms: data.noReceptionRooms ?? 0,
+
+                    // Address
+                    city: data.city,
+                    stateId: data.stateId,
+                    country: data.country,
+                    zipcode: data.zipcode,
+                    location: data.location,
+                    longitude: data.longitude,
+                    latitude: data.latitude,
+
+                    // Pricing
+                    price: data.price,
+                    currency: data.currency ?? 'NGN',
+                    priceFrequency: data.priceFrequency,
+                    rentalPeriod: data.rentalPeriod,
+
+                    // Specifications
+                    specificationType: data.specificationType ?? 'RESIDENTIAL',
+                    availability: data.availability ?? 'VACANT',
+                    type: data.type ?? 'SINGLE_UNIT'
+                }
+            });
+
+            // Handle Specifications
+            if (data.specificationType === 'RESIDENTIAL' && data.residential) {
+                await tx.residentialProperty.create({
+                    data: {
+                        ...data.residential,
+                        amenityDistances: data.residential.amenityDistances as Prisma.InputJsonValue,
+                        property: {
+                            connect: { id: property.id }
+                        }
+                    }
+                });
+            }
+
+            if (data.specificationType === 'COMMERCIAL' && data.commercial) {
+                const {
+                    unitConfigurations,
+                    floorAvailability,
+                    ...restCommercialData
+                } = data.commercial;
+            
+                const commercial = await tx.commercialProperty.create({
+                    data: {
+                        ...restCommercialData,
+                        amenityDistances: data?.commercial?.amenityDistances as Prisma.InputJsonValue,
+                        property: {
+                            connect: { id: property.id }
+                        }
+                    }
+                });
+
+                // Handle Unit Configurations
+                if (data.unitConfigurations) {
+                    await tx.unitConfiguration.createMany({
+                        data: data.unitConfigurations.map(uc => ({
+                            ...uc,
+                            propertyId: property.id
+                        }))
+                    });
+                }
+            }
+            if (data.specificationType === 'SHORTLET' && data.shotlet) {
+                const { attractionDistances, ...restShotlet } = data.shotlet;
+                await tx.shotletProperty.create({
+                    data: {
+                        ...restShotlet,
+                        attractionDistances: attractionDistances as Prisma.InputJsonValue,
+                        property: {
+                            connect: { id: property.id }
+                        }
+                    }
+                });
+            }
+            // Handle Media
+            const mediaRecords = [];
+            if (data.images) {
+                mediaRecords.push(...data.images.map(url => ({
+                    url,
+                    type: 'IMAGE' as MediaType,
+                    imagePropertyId: property.id
+                })));
+            }
+            if (data.videos) {
+                mediaRecords.push(...data.videos.map(url => ({
+                    url,
+                    type: 'VIDEO' as MediaType,
+                    videoPropertyId: property.id
+                })));
+            }
+            if (data.virtualTours) {
+                mediaRecords.push(...data.virtualTours.map(url => ({
+                    url,
+                    type: 'VIRTUAL_TOUR' as MediaType,
+                    virtualTourPropertyId: property.id
+                })));
+            }
+
+            if (mediaRecords.length > 0) {
+                await tx.propertyMediaFiles.createMany({
+                    data: mediaRecords
+                });
+            }
+
+            // Handle Nearby Amenities
+            if (data.nearbyAmenities) {
+                await tx.nearbyAmenity.createMany({
+                    data: data.nearbyAmenities.map(na => ({
+                        name: na.name,
+                        distance: na.distance,
+                        propertyId: property.id
+                    }))
+                });
+            }
+
+            // Handle Shared Facilities
+            if (data.sharedFacilities) {
+                await tx.sharedFacilities.create({
+                    data: {
+                        ...data.sharedFacilities,
+                        propertyId: property.id
+                    }
+                });
+            }
+
+            // Create Listing History
+            await tx.propertyListingHistory.create({
+                data: {
+                    propertyId: property.id,
+                    onListing: true,
+                    type: 'LISTING_WEBSITE'
+                }
+            });
+
+            return prismaClient.properties.findUnique({
+                where: { id: property.id },
+                include: {
+                    residential: true,
+                    commercial: true,
+                    shotlet: true,
+                    videos: true,
+                    virtualTours: true,
+                    nearbyAmenities: true,
+                    sharedFacilities: true
+                }
+            });
+        });
     }
 
     getProperties = async () => {

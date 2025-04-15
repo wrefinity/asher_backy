@@ -60,11 +60,12 @@ class ApplicantControls {
       }
       const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
       const completedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.COMPLETED);
+      const approvedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.APPROVED);
       const declinedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.DECLINED);
       const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
       const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
       const submittedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.SUBMITTED);
-      const invites = await ApplicantService.getInvite({ userInvitedId: userId });
+      const invites = await ApplicantService.getInvite({ userInvitedId: userId }, false);
       // Define status groups
       const activeStatuses = [
         ApplicationStatus.PENDING,
@@ -75,7 +76,10 @@ class ApplicantControls {
 
       const completedStatuses = [
         ApplicationStatus.COMPLETED,
-        ApplicationStatus.DECLINED
+        ApplicationStatus.DECLINED,
+        ApplicationStatus.APPROVED,
+        ApplicationStatus.AGREEMENTS,
+        ApplicationStatus.AGREEMENTS_SIGNED,
       ];
 
       // Get grouped applications
@@ -94,7 +98,8 @@ class ApplicantControls {
           submittedApplications,
           activeApps,
           completedApps,
-          invites
+          invites,
+          approvedApplications
         }
       });
     } catch (error) {

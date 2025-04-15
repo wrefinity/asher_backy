@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const __1 = require("..");
 class PropertyService {
@@ -553,6 +564,152 @@ class PropertyService {
             UserLikedProperty: true,
             landlord: this.landlordInclusion
         };
+    }
+    // Service Implementation
+    createProperties(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return __1.prismaClient.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+                // Create main property
+                const property = yield tx.properties.create({
+                    data: {
+                        // Core Fields
+                        name: data.name,
+                        title: data.title,
+                        description: data.description,
+                        shortDescription: data.shortDescription,
+                        propertysize: data.propertysize,
+                        isDeleted: (_a = data.isDeleted) !== null && _a !== void 0 ? _a : false,
+                        showCase: (_b = data.showCase) !== null && _b !== void 0 ? _b : false,
+                        // Ownership
+                        landlordId: data.landlordId,
+                        agencyId: data.agencyId,
+                        // Market Values
+                        marketValue: data.marketValue,
+                        rentalFee: data.rentalFee,
+                        initialDeposit: data.initialDeposit,
+                        dueDate: data.dueDate,
+                        // Features
+                        noBedRoom: (_c = data.noBedRoom) !== null && _c !== void 0 ? _c : 1,
+                        noKitchen: (_d = data.noKitchen) !== null && _d !== void 0 ? _d : 1,
+                        noGarage: (_e = data.noGarage) !== null && _e !== void 0 ? _e : 0,
+                        noBathRoom: (_f = data.noBathRoom) !== null && _f !== void 0 ? _f : 1,
+                        noReceptionRooms: (_g = data.noReceptionRooms) !== null && _g !== void 0 ? _g : 0,
+                        // Address
+                        city: data.city,
+                        stateId: data.stateId,
+                        country: data.country,
+                        zipcode: data.zipcode,
+                        location: data.location,
+                        longitude: data.longitude,
+                        latitude: data.latitude,
+                        // Pricing
+                        price: data.price,
+                        currency: (_h = data.currency) !== null && _h !== void 0 ? _h : 'NGN',
+                        priceFrequency: data.priceFrequency,
+                        rentalPeriod: data.rentalPeriod,
+                        // Specifications
+                        specificationType: (_j = data.specificationType) !== null && _j !== void 0 ? _j : 'RESIDENTIAL',
+                        availability: (_k = data.availability) !== null && _k !== void 0 ? _k : 'VACANT',
+                        type: (_l = data.type) !== null && _l !== void 0 ? _l : 'SINGLE_UNIT'
+                    }
+                });
+                // Handle Specifications
+                if (data.specificationType === 'RESIDENTIAL' && data.residential) {
+                    yield tx.residentialProperty.create({
+                        data: Object.assign(Object.assign({}, data.residential), { amenityDistances: data.residential.amenityDistances, property: {
+                                connect: { id: property.id }
+                            } })
+                    });
+                }
+                if (data.specificationType === 'COMMERCIAL' && data.commercial) {
+                    const _o = data.commercial, { unitConfigurations, floorAvailability } = _o, restCommercialData = __rest(_o, ["unitConfigurations", "floorAvailability"]);
+                    const commercial = yield tx.commercialProperty.create({
+                        data: Object.assign(Object.assign({}, restCommercialData), { amenityDistances: (_m = data === null || data === void 0 ? void 0 : data.commercial) === null || _m === void 0 ? void 0 : _m.amenityDistances, property: {
+                                connect: { id: property.id }
+                            } })
+                    });
+                    // Handle Unit Configurations
+                    if (data.unitConfigurations) {
+                        yield tx.unitConfiguration.createMany({
+                            data: data.unitConfigurations.map(uc => (Object.assign(Object.assign({}, uc), { propertyId: property.id })))
+                        });
+                    }
+                }
+                if (data.specificationType === 'SHORTLET' && data.shotlet) {
+                    const _p = data.shotlet, { attractionDistances } = _p, restShotlet = __rest(_p, ["attractionDistances"]);
+                    yield tx.shotletProperty.create({
+                        data: Object.assign(Object.assign({}, restShotlet), { attractionDistances: attractionDistances, property: {
+                                connect: { id: property.id }
+                            } })
+                    });
+                }
+                // Handle Media
+                const mediaRecords = [];
+                if (data.images) {
+                    mediaRecords.push(...data.images.map(url => ({
+                        url,
+                        type: 'IMAGE',
+                        imagePropertyId: property.id
+                    })));
+                }
+                if (data.videos) {
+                    mediaRecords.push(...data.videos.map(url => ({
+                        url,
+                        type: 'VIDEO',
+                        videoPropertyId: property.id
+                    })));
+                }
+                if (data.virtualTours) {
+                    mediaRecords.push(...data.virtualTours.map(url => ({
+                        url,
+                        type: 'VIRTUAL_TOUR',
+                        virtualTourPropertyId: property.id
+                    })));
+                }
+                if (mediaRecords.length > 0) {
+                    yield tx.propertyMediaFiles.createMany({
+                        data: mediaRecords
+                    });
+                }
+                // Handle Nearby Amenities
+                if (data.nearbyAmenities) {
+                    yield tx.nearbyAmenity.createMany({
+                        data: data.nearbyAmenities.map(na => ({
+                            name: na.name,
+                            distance: na.distance,
+                            propertyId: property.id
+                        }))
+                    });
+                }
+                // Handle Shared Facilities
+                if (data.sharedFacilities) {
+                    yield tx.sharedFacilities.create({
+                        data: Object.assign(Object.assign({}, data.sharedFacilities), { propertyId: property.id })
+                    });
+                }
+                // Create Listing History
+                yield tx.propertyListingHistory.create({
+                    data: {
+                        propertyId: property.id,
+                        onListing: true,
+                        type: 'LISTING_WEBSITE'
+                    }
+                });
+                return __1.prismaClient.properties.findUnique({
+                    where: { id: property.id },
+                    include: {
+                        residential: true,
+                        commercial: true,
+                        shotlet: true,
+                        videos: true,
+                        virtualTours: true,
+                        nearbyAmenities: true,
+                        sharedFacilities: true
+                    }
+                });
+            }));
+        });
     }
 }
 exports.default = new PropertyService();
