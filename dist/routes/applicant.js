@@ -45,7 +45,7 @@ class ApplicantRoutes {
         this.router.post('/guarantor-reference/:id', guarantor_referenceform_controller_1.default.createGuarantorAgreement);
         this.router.post('/employee-reference/:id', employee_reference_controller_1.default.createEmployeeReference);
         this.router.get('/references/:id', landlord_referenceform_controller_1.default.getReferenceForm);
-        this.router.post('/sign/:id', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, applicant_1.default.signAgreementForm);
+        this.router.post('/sign/:id', this.authenticateService.authorize, multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, applicant_1.default.signAgreementForm);
     }
 }
 exports.default = new ApplicantRoutes().router;

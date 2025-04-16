@@ -89,6 +89,21 @@ export class PropertyDocumentService {
       },
     });
   };
+  getManyDocumentBaseOnTenant = async (
+    currentUserId: string,
+    docType?: DocumentType
+  ) => {
+    // Fetch documents linked to the tenant's application or uploaded by them
+    return await prismaClient.propertyDocument.findMany({
+      where: {
+        uploadedBy: currentUserId
+      },
+      include: {
+        application: true,
+        users: true,
+      },
+    })
+  };
   getDocumentLandlordAndStatuses = async (
     landlordId: string,
     docType?: DocumentType | null
@@ -105,10 +120,10 @@ export class PropertyDocumentService {
       },
       include: {
         users: {
-          select:{
-            email:true,
-            id:true,
-            profile:true,
+          select: {
+            email: true,
+            id: true,
+            profile: true,
           }
         },
         apartments: true,

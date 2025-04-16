@@ -37,6 +37,7 @@ const violations_1 = require("../../validations/schemas/violations");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const complaintServices_1 = __importDefault(require("../../services/complaintServices"));
 const violations_2 = __importDefault(require("../../services/violations"));
+const propertyDocument_service_1 = require("../../services/propertyDocument.service");
 const normalizePhoneNumber = (phone) => {
     if (!phone)
         return '';
@@ -349,6 +350,18 @@ class TenantControls {
                 const tenant = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
                 return res.status(201).json({
                     tenant
+                });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getterCurrentTenantsDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const userId = req.params.userId;
+                const documents = yield new propertyDocument_service_1.PropertyDocumentService().getManyDocumentBaseOnTenant(userId);
+                return res.status(201).json({
+                    documents
                 });
             }
             catch (error) {

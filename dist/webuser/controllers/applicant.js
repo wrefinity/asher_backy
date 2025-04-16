@@ -49,6 +49,7 @@ const emailer_1 = __importStar(require("../../utils/emailer"));
 const logs_services_2 = __importDefault(require("../../services/logs.services"));
 const emailService_1 = __importDefault(require("../../services/emailService"));
 const landlord_service_1 = require("../../landlord/services/landlord.service");
+const user_services_1 = __importDefault(require("../../services/user.services"));
 class ApplicantControls {
     constructor() {
         this.getBasicStats = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -705,12 +706,12 @@ class ApplicantControls {
         this.signAgreementForm = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c, _d, _e, _f;
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+            const applicationId = req.params.id;
             try {
                 const { error, value } = applicationInvitesSchema_1.createAgreementDocSchemaFuture.validate(req.body);
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
-                const applicationId = req.params.id;
                 // Validate application ID
                 if (!applicationId) {
                     return res.status(400).json({
@@ -726,20 +727,27 @@ class ApplicantControls {
                         details: [`Application with ID ${applicationId} does not exist`]
                     });
                 }
-                const actualId = (_b = application.user) === null || _b === void 0 ? void 0 : _b.id;
-                if (userId !== actualId) {
-                    return res.status(403).json({
-                        error: "Unauthorized",
-                        message: "You can only update agreement forms for applications you applied"
-                    });
-                }
                 // Get recipient email
-                const landlordId = (_c = application.properties) === null || _c === void 0 ? void 0 : _c.landlordId;
+                const landlordId = (_b = application.properties) === null || _b === void 0 ? void 0 : _b.landlordId;
                 const landlord = yield new landlord_service_1.LandlordService().getLandlordById(landlordId);
                 if (!landlord) {
                     return res.status(400).json({
                         error: "Landlord not found",
                         message: "The landlord associated with this property is not found."
+                    });
+                }
+                const user = yield user_services_1.default.getUserById(userId);
+                if (!user) {
+                    return res.status(400).json({
+                        error: "User not found",
+                        message: "The user associated with this application is not found."
+                    });
+                }
+                const actualId = (_c = application.user) === null || _c === void 0 ? void 0 : _c.id;
+                if (user.id !== actualId) {
+                    return res.status(403).json({
+                        error: "Unauthorized",
+                        message: "You can only update agreement forms for applications you applied"
                     });
                 }
                 // Combine all provided URLs into a single array
@@ -769,7 +777,7 @@ class ApplicantControls {
       `;
                 //send inhouse inbox
                 const mailBox = yield emailService_1.default.createEmail({
-                    senderEmail: req.user.email,
+                    senderEmail: user.email,
                     receiverEmail: landlord.user.email,
                     body: `kindly check your email inbox for the agreement form signed by the applicant`,
                     attachment: documentUrlModified,

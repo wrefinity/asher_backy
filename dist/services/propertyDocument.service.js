@@ -88,6 +88,18 @@ class PropertyDocumentService {
                 },
             });
         });
+        this.getManyDocumentBaseOnTenant = (currentUserId, docType) => __awaiter(this, void 0, void 0, function* () {
+            // Fetch documents linked to the tenant's application or uploaded by them
+            return yield __1.prismaClient.propertyDocument.findMany({
+                where: {
+                    uploadedBy: currentUserId
+                },
+                include: {
+                    application: true,
+                    users: true,
+                },
+            });
+        });
         this.getDocumentLandlordAndStatuses = (landlordId, docType) => __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.propertyDocument.findMany({
                 where: Object.assign(Object.assign({}, (docType !== undefined && { docType })), { users: {

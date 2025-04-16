@@ -17,6 +17,8 @@ import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
 import logsServices from '../../services/logs.services';
 import { LogType } from '@prisma/client';
+import property from '../../routes/property';
+import { PropertyDocumentService } from '../../services/propertyDocument.service';
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -383,6 +385,17 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+    getterCurrentTenantsDocument = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.params.userId;
+            const documents = await new PropertyDocumentService().getManyDocumentBaseOnTenant(userId);
+            return res.status(201).json({
+                documents
+            }); 
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
 }
 
 

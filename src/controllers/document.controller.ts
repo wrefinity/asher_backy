@@ -94,7 +94,7 @@ class DocumentController {
         } catch (error) {
             ErrorService.handleError(error, res);
         }
-    };
+    };  
 }
 
 export default new DocumentController(); 

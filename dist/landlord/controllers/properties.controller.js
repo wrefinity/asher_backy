@@ -354,7 +354,7 @@ class PropertyController {
                 }
                 // get listing
                 const activePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId);
-                const inActivePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId, false);
+                const inActivePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId, false, client_1.PropsApartmentStatus.OCCUPIED);
                 // Return the ative and inactive property listing
                 return res.status(200).json({ activePropsListing, inActivePropsListing });
             }

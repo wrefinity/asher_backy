@@ -153,7 +153,6 @@ class PropertyController {
         }
     }
 
-
     deleteLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
@@ -343,7 +342,7 @@ class PropertyController {
             }
             // get listing
             const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
-            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false);
+            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false,  PropsApartmentStatus.OCCUPIED);
 
             // Return the ative and inactive property listing
             return res.status(200).json({ activePropsListing, inActivePropsListing });

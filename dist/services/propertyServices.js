@@ -20,13 +20,30 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
 const __1 = require("..");
+const client_2 = require("@prisma/client");
 class PropertyService {
     constructor() {
         this.createProperty = (propertyData) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.create({
+            const created = yield __1.prismaClient.properties.create({
                 data: Object.assign({}, propertyData)
             });
+            // payApplicationFee: boolean;
+            // isShortlet: boolean;
+            // shortletDuration?: ShortletType;
+            // type: ListingType;
+            // propertyId?: string;
+            // apartmentId?: string;
+            if (created) {
+                this.createPropertyListing({
+                    propertyId: created === null || created === void 0 ? void 0 : created.id,
+                    isShortlet: created.specificationType == client_1.PropertySpecificationType.SHORTLET ? true : false,
+                    payApplicationFee: true,
+                    type: client_1.ListingType.LISTING_WEBSITE
+                });
+            }
+            return created;
         });
         this.getProperties = () => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findMany({
@@ -184,7 +201,7 @@ class PropertyService {
             return yield __1.prismaClient.properties.findMany({
                 where: {
                     landlordId,
-                    showCase: true
+                    // showCase: true
                 }
             });
         });
@@ -216,13 +233,14 @@ class PropertyService {
             });
         });
         // property listings
-        this.getActiveOrInactivePropsListing = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, isActive = true) {
+        this.getActiveOrInactivePropsListing = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, isActive = true, availability = client_2.PropsApartmentStatus.VACANT) {
             return yield __1.prismaClient.propertyListingHistory.findMany({
                 where: {
                     isActive,
                     onListing: isActive,
                     property: {
-                        landlordId
+                        landlordId,
+                        availability
                     }
                 },
                 include: {
@@ -233,11 +251,11 @@ class PropertyService {
                 }
             });
         });
-        this.countListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}) {
+        this.countListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}, availability = true) {
             const { landlordId, property, minSize, maxSize, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = filters;
             const { type, state, country, specificationType, isActive, rentalFee, maxBedRoom, minBedRoom, maxBathRoom, minBathRoom, maxRentalFee, minRentalFee, marketValue, noKitchen, minGarage, maxGarage } = property || {};
             return yield __1.prismaClient.propertyListingHistory.count({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
                         type: {
                             in: Array.isArray(type) ? type : [type]
                         }
@@ -250,7 +268,7 @@ class PropertyService {
                                 }
                             }
                         }
-                    })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (minRentalFee || maxRentalFee
+                    })), (availability && { availability: client_2.PropsApartmentStatus.VACANT })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (minRentalFee || maxRentalFee
                         ? {
                             rentalFee: {
                                 gte: minRentalFee !== null && minRentalFee !== void 0 ? minRentalFee : undefined,
@@ -296,19 +314,15 @@ class PropertyService {
                         : {})) }),
             });
         });
-        this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}, skip = 0, take = 10) {
+        this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}, skip = 0, take = 10, availability = true) {
             const { landlordId, property, minSize, maxSize, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = filters;
             const { type, state, country, specificationType, isActive, rentalFee, maxBedRoom, minBedRoom, maxBathRoom, minBathRoom, maxRentalFee, minRentalFee, marketValue, noKitchen, minGarage, maxGarage } = property || {};
-            // console.log("=================")
-            // console.log(property)
-            // console.log(filters)
-            // console.log("=================")
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
                         type: {
                             in: Array.isArray(type) ? type : [type]
                         }
-                    })), (specificationType && { specificationType })), (state && {
+                    })), (availability && { availability: client_2.PropsApartmentStatus.VACANT })), (specificationType && { specificationType })), (state && {
                         state: {
                             is: {
                                 name: state
@@ -583,7 +597,7 @@ class PropertyService {
                         showCase: (_b = data.showCase) !== null && _b !== void 0 ? _b : false,
                         // Ownership
                         landlordId: data.landlordId,
-                        agencyId: data.agencyId,
+                        agencyId: data === null || data === void 0 ? void 0 : data.agencyId,
                         // Market Values
                         marketValue: data.marketValue,
                         rentalFee: data.rentalFee,

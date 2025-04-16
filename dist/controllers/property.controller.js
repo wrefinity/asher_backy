@@ -153,11 +153,7 @@ class PropertyController {
                     return res.status(404).json({ message: "Landlord not found" });
                 }
                 // Fetch the filtered prop  erties
-                const properties = yield propertyServices_1.default.getActiveOrInactivePropsListing(String(landlordId));
-                // Check if properties are found
-                if (!properties || properties.length === 0) {
-                    return res.status(404).json({ message: "No properties listed by this landlord" });
-                }
+                const properties = yield propertyServices_1.default.getActiveOrInactivePropsListing(String(landlordId), true, client_1.PropsApartmentStatus.VACANT);
                 // Return the filtered properties
                 return res.status(200).json({ properties });
             }

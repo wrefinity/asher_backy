@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { ListingType, Prisma, PropertySpecificationType } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType, ShortletType, MediaType, PropsSettingType } from "@prisma/client"
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings";
@@ -74,11 +74,27 @@ class PropertyService {
         }
     }
     createProperty = async (propertyData: ICreateProperty) => {
-        return await prismaClient.properties.create({
+        const created = await prismaClient.properties.create({
             data: {
                 ...propertyData,
             }
         })
+        // payApplicationFee: boolean;
+        // isShortlet: boolean;
+        // shortletDuration?: ShortletType;
+        // type: ListingType;
+        // propertyId?: string;
+        // apartmentId?: string;
+        if (created) {
+            this.createPropertyListing({
+                propertyId: created?.id,
+                isShortlet: created.specificationType == PropertySpecificationType.SHORTLET ? true : false,
+                payApplicationFee: true,
+                type: ListingType.LISTING_WEBSITE
+            })
+        }
+
+        return created;
     }
 
     // Service Implementation
@@ -98,7 +114,7 @@ class PropertyService {
 
                     // Ownership
                     landlordId: data.landlordId,
-                    agencyId: data.agencyId,
+                    agencyId: data?.agencyId,
 
                     // Market Values
                     marketValue: data.marketValue,
@@ -154,7 +170,7 @@ class PropertyService {
                     floorAvailability,
                     ...restCommercialData
                 } = data.commercial;
-            
+
                 const commercial = await tx.commercialProperty.create({
                     data: {
                         ...restCommercialData,
@@ -447,7 +463,7 @@ class PropertyService {
         return await prismaClient.properties.findMany({
             where: {
                 landlordId,
-                showCase: true
+                // showCase: true
             }
         })
     }
@@ -483,13 +499,14 @@ class PropertyService {
         })
     }
     // property listings
-    getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true) => {
+    getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true, availability: PropsApartmentStatus = PropsApartmentStatus.VACANT) => {
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 isActive,
                 onListing: isActive,
                 property: {
-                    landlordId
+                    landlordId,
+                    availability
                 }
             },
             include: {
@@ -504,7 +521,7 @@ class PropertyService {
     }
 
 
-    countListedProperties = async (filters: PropertyFilters = {}) => {
+    countListedProperties = async (filters: PropertyFilters = {}, availability: boolean = true) => {
         const {
             landlordId,
             property,
@@ -560,6 +577,7 @@ class PropertyService {
                             }
                         }
                     }),
+                    ...(availability && { availability: PropsApartmentStatus.VACANT }),
                     ...(country && { country }),
                     ...(marketValue && { marketValue: Number(marketValue) }),
                     ...(rentalFee && { rentalFee: Number(rentalFee) }),
@@ -625,7 +643,7 @@ class PropertyService {
     };
 
 
-    getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10) => {
+    getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10, availability: boolean = true) => {
         const {
             landlordId,
             property,
@@ -658,11 +676,6 @@ class PropertyService {
             maxGarage
         } = property || {};
 
-        // console.log("=================")
-        // console.log(property)
-        // console.log(filters)
-        // console.log("=================")
-
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -675,6 +688,7 @@ class PropertyService {
                             in: Array.isArray(type) ? type : [type]
                         }
                     }),
+                    ...(availability && { availability: PropsApartmentStatus.VACANT }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
                         state: {
@@ -742,10 +756,6 @@ class PropertyService {
                             }))
                         }
                         : {}),
-
-
-
-
                 } as any,
             },
             include: {

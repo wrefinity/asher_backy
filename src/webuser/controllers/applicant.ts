@@ -767,14 +767,12 @@ class ApplicantControls {
 
   signAgreementForm = async (req: CustomRequest, res: Response) => {
     const userId = req.user?.id;
+    const applicationId = req.params.id;
     try {
-
       const { error, value } = createAgreementDocSchemaFuture.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
-      const applicationId = req.params.id;
-
       // Validate application ID
       if (!applicationId) {
         return res.status(400).json({
@@ -802,8 +800,6 @@ class ApplicantControls {
           message: "The landlord associated with this property is not found."
         });
       }
-      console.log("===========================")
-      console.log(userId)
 
       const user = await userServices.getUserById(userId);
       if (!user) {

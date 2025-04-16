@@ -6,7 +6,7 @@ import PropertyViewingService from "../services/propertyviewing.service";
 import { createPropertyViewingSchema, updatePropertyViewingSchema } from "../validations/schemas/properties.schema";
 import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
-import { LogType, logTypeStatus,PropertySpecificationType, PropertyType } from "@prisma/client"
+import { LogType, logTypeStatus,PropertySpecificationType, PropertyType, PropsApartmentStatus } from "@prisma/client"
 import { LandlordService } from "../landlord/services/landlord.service";
 
 
@@ -181,12 +181,8 @@ class PropertyController {
             }
 
             // Fetch the filtered prop  erties
-            const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId));
+            const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId), true, PropsApartmentStatus.VACANT);
 
-            // Check if properties are found
-            if (!properties || properties.length === 0) {
-                return res.status(404).json({ message: "No properties listed by this landlord" });
-            }
             // Return the filtered properties
             return res.status(200).json({ properties });
         } catch (err) {
