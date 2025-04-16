@@ -688,7 +688,8 @@ class ApplicationControls {
             })
 
             await applicantService.updateAgreementDocs(applicationId, documentUrlModified)
-
+            // Update the application with the agreement document URL
+            await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS);
             return res.status(200).json({
                 message: "Agreement form email sent successfully",
                 recipient: recipientEmail,
