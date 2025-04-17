@@ -91,3 +91,18 @@ export const parseDateFieldNew = (date: string, fieldName: string): string | nul
   }
   return formattedDate.toISOString();
 };
+
+export const getMimeTypeFromUrl = (url: string): string => {
+  const extension = url.split('.').pop()?.toLowerCase();
+  switch(extension) {
+    case 'pdf': return 'application/pdf';
+    case 'doc': return 'application/msword';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'xls': return 'application/vnd.ms-excel';
+    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'jpg': 
+    case 'jpeg': return 'image/jpeg';
+    case 'png': return 'image/png';
+    default: return 'application/octet-stream';
+  }
+};

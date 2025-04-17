@@ -653,6 +653,8 @@ class ApplicationControls {
                     createdById: application.user.id
                 });
                 yield applicantService_2.default.updateAgreementDocs(applicationId, documentUrlModified);
+                // Update the application with the agreement document URL
+                yield applicantService_2.default.updateApplicationStatusStep(applicationId, client_2.ApplicationStatus.AGREEMENTS);
                 return res.status(200).json({
                     message: "Agreement form email sent successfully",
                     recipient: recipientEmail,

@@ -27,7 +27,7 @@ class TenantsLandlordRouter {
          this.router.post('/violations', TenantLandlordController.createTenantViolation) 
          this.router.get('/violations/:tenantId', TenantLandlordController.getTenantViolations) 
          this.router.get('/get/:tenantId', TenantLandlordController.getTenant) 
-         this.router.get('/documents/:userId', TenantLandlordController.getterCurrentTenantsDocument) 
+         this.router.get('/documents/:tenantId', TenantLandlordController.getterCurrentTenantsDocument) 
     }
 }
 

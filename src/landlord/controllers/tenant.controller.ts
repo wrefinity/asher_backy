@@ -3,11 +3,12 @@ import moment from 'moment';
 import { Response } from "express"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
+import { getMimeTypeFromUrl } from "../../utils/helpers"
 import TenantService from "../../tenant/services/tenants.services"
 import { parseCSV, parseDateField } from '../../utils/filereader';
 import { parseDateFieldNew } from '../../utils/helpers';
 import UserServices from '../../services/user.services';
-import { userRoles } from '@prisma/client';
+import { userRoles, DocumentType } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantSchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
@@ -387,10 +388,45 @@ class TenantControls {
     }
     getterCurrentTenantsDocument = async (req: CustomRequest, res: Response) => {
         try {
-            const userId = req.params.userId;
-            const documents = await new PropertyDocumentService().getManyDocumentBaseOnTenant(userId);
+            const tenantId = req.params.tenantId;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const tenantWithApplication = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId)
+
+            if (!tenantWithApplication?.application) {
+                throw new Error("Tenant application not found");
+              }
+              
+              const application = tenantWithApplication.application;
+
+              // Serialize agreement documents from application.agreementDocumentUrl
+              const agreementDocuments = application.agreementDocumentUrl.map((url, index) => ({
+                id: `agreement-${application.id}-${index}`,
+                documentName: `Tenant Agreement v${application.agreementVersion - index}`,
+                documentUrl: [url], // Wrap in array to match propertyDocument structure
+                docType: DocumentType.AGREEMENT_DOC,
+                createdAt: application.lastAgreementUpdate || application.createdAt,
+                updatedAt: application.lastAgreementUpdate || application.updatedAt,
+                type: getMimeTypeFromUrl(url), // Adjust based on actual file type
+                size: null, // Add actual size if available
+              }));
+              
+              // Combine with other application documents
+              const allDocuments = [
+                ...agreementDocuments,
+                ...application.documents.map(doc => ({
+                  ...doc,
+                  documentUrl: doc.documentUrl,
+                  docType: doc.docType,
+                  createdAt: doc.createdAt,
+                  updatedAt: doc.updatedAt
+                }))
+              ];
+              // Response structure
             return res.status(201).json({
-                documents
+                documents: allDocuments
             }); 
         } catch (error) {
             errorService.handleError(error, res);

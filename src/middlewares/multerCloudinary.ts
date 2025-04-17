@@ -4,9 +4,6 @@ import cloudinary from "../configs/cloudinary";
 import { CustomRequest, CloudinaryFile } from "../utils/types";
 import { CLOUDINARY_FOLDER } from "../secrets";
 
-
-
-
 // Function to upload a file to Cloudinary
 export const uploadDocsCloudinary = async (file: Express.Multer.File) => {
     return new Promise((resolve, reject) => {
@@ -94,7 +91,6 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
         });
 
         await Promise.all(uploadPromises);
-
         // Attach URLs to the request body
         req.body.cloudinaryUrls = imageUrls;
         req.body.cloudinaryVideoUrls = videoUrls;
@@ -107,15 +103,3 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
         next(error);
     }
 };
-
-
-// {
-//     "offer": ["100"],
-//     "amount": 150,
-//     "description":"pipe breaks",
-//     "categoryId":"cm57schfs0000refzg0j13jpx",
-//     "subcategoryIds":["cm57swrez0002refzkdqv44x6"],
-//     "propertyId":"cm5s34u45000d5sxxeitn5rr2",
-//     "scheduleDate": "2025-01-15T14:00:00Z",
-//     "serviceId": "cm640cvp80001ko7zvhffhnq8"
-// }

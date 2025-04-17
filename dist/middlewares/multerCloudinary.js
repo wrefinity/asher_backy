@@ -106,13 +106,3 @@ const uploadToCloudinary = (req, res, next) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.uploadToCloudinary = uploadToCloudinary;
-// {
-//     "offer": ["100"],
-//     "amount": 150,
-//     "description":"pipe breaks",
-//     "categoryId":"cm57schfs0000refzg0j13jpx",
-//     "subcategoryIds":["cm57swrez0002refzkdqv44x6"],
-//     "propertyId":"cm5s34u45000d5sxxeitn5rr2",
-//     "scheduleDate": "2025-01-15T14:00:00Z",
-//     "serviceId": "cm640cvp80001ko7zvhffhnq8"
-// }

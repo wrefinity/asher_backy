@@ -160,7 +160,13 @@ class TenantService {
                 application: {
                     include: {
                         applicationQuestions: true,
-                        declaration: true
+                        declaration: true,
+                        documents: true,
+                        emergencyInfo: true,
+                        personalDetails:true,
+                        guarantorInformation: true,
+                        residentialInfo: true,
+                        referee: true,
                     }
                 }
             },

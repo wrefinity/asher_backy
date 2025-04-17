@@ -25,9 +25,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const error_service_1 = __importDefault(require("../../services/error.service"));
+const helpers_1 = require("../../utils/helpers");
 const tenants_services_1 = __importDefault(require("../../tenant/services/tenants.services"));
 const filereader_1 = require("../../utils/filereader");
-const helpers_1 = require("../../utils/helpers");
+const helpers_2 = require("../../utils/helpers");
 const user_services_1 = __importDefault(require("../../services/user.services"));
 const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../services/landlord.service");
@@ -37,7 +38,6 @@ const violations_1 = require("../../validations/schemas/violations");
 const logs_services_1 = __importDefault(require("../../services/logs.services"));
 const complaintServices_1 = __importDefault(require("../../services/complaintServices"));
 const violations_2 = __importDefault(require("../../services/violations"));
-const propertyDocument_service_1 = require("../../services/propertyDocument.service");
 const normalizePhoneNumber = (phone) => {
     if (!phone)
         return '';
@@ -146,7 +146,7 @@ class TenantControls {
                         for (const field of dateFields) {
                             try {
                                 if (row[field.key]) {
-                                    row[field.key] = (0, helpers_1.parseDateFieldNew)((_c = row[field.key]) === null || _c === void 0 ? void 0 : _c.toString(), field.label);
+                                    row[field.key] = (0, helpers_2.parseDateFieldNew)((_c = row[field.key]) === null || _c === void 0 ? void 0 : _c.toString(), field.label);
                                 }
                             }
                             catch (dateError) {
@@ -357,11 +357,37 @@ class TenantControls {
             }
         });
         this.getterCurrentTenantsDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
-                const userId = req.params.userId;
-                const documents = yield new propertyDocument_service_1.PropertyDocumentService().getManyDocumentBaseOnTenant(userId);
+                const tenantId = req.params.tenantId;
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                if (!landlordId) {
+                    return res.status(404).json({ error: 'kindly login as landlord' });
+                }
+                const tenantWithApplication = yield tenants_services_1.default.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+                if (!(tenantWithApplication === null || tenantWithApplication === void 0 ? void 0 : tenantWithApplication.application)) {
+                    throw new Error("Tenant application not found");
+                }
+                const application = tenantWithApplication.application;
+                // Serialize agreement documents from application.agreementDocumentUrl
+                const agreementDocuments = application.agreementDocumentUrl.map((url, index) => ({
+                    id: `agreement-${application.id}-${index}`,
+                    documentName: `Tenant Agreement v${application.agreementVersion - index}`,
+                    documentUrl: [url], // Wrap in array to match propertyDocument structure
+                    docType: client_1.DocumentType.AGREEMENT_DOC,
+                    createdAt: application.lastAgreementUpdate || application.createdAt,
+                    updatedAt: application.lastAgreementUpdate || application.updatedAt,
+                    type: (0, helpers_1.getMimeTypeFromUrl)(url), // Adjust based on actual file type
+                    size: null, // Add actual size if available
+                }));
+                // Combine with other application documents
+                const allDocuments = [
+                    ...agreementDocuments,
+                    ...application.documents.map(doc => (Object.assign(Object.assign({}, doc), { documentUrl: doc.documentUrl, docType: doc.docType, createdAt: doc.createdAt, updatedAt: doc.updatedAt })))
+                ];
+                // Response structure
                 return res.status(201).json({
-                    documents
+                    documents: allDocuments
                 });
             }
             catch (error) {

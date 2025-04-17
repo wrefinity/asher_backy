@@ -35,7 +35,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseDateFieldNew = exports.convertCurrency = exports.getCurrentCountryCurrency = exports.generateIDs = exports.generateOtp = exports.String = void 0;
+exports.getMimeTypeFromUrl = exports.parseDateFieldNew = exports.convertCurrency = exports.getCurrentCountryCurrency = exports.generateIDs = exports.generateOtp = exports.String = void 0;
 exports.setupArctic = setupArctic;
 exports.generateUniqueToken = generateUniqueToken;
 exports.getCommunityurl = getCommunityurl;
@@ -134,3 +134,19 @@ const parseDateFieldNew = (date, fieldName) => {
     return formattedDate.toISOString();
 };
 exports.parseDateFieldNew = parseDateFieldNew;
+const getMimeTypeFromUrl = (url) => {
+    var _a;
+    const extension = (_a = url.split('.').pop()) === null || _a === void 0 ? void 0 : _a.toLowerCase();
+    switch (extension) {
+        case 'pdf': return 'application/pdf';
+        case 'doc': return 'application/msword';
+        case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        case 'xls': return 'application/vnd.ms-excel';
+        case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        case 'jpg':
+        case 'jpeg': return 'image/jpeg';
+        case 'png': return 'image/png';
+        default: return 'application/octet-stream';
+    }
+};
+exports.getMimeTypeFromUrl = getMimeTypeFromUrl;
