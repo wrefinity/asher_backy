@@ -495,7 +495,8 @@ class ApplicationControls {
                         applicationId,
                         subjects: "Reference Document Reminder",
                         events: "Please contact your reference to submit your documents as soon as possible.",
-                        createdById: userId
+                        createdById: userId,
+                        type: LogType.EMAIL,
                     });
                     break;
                 case ReminderType.APPLICATION_REMINDER:
@@ -505,7 +506,8 @@ class ApplicationControls {
                         applicationId,
                         subjects: "Application Reminder",
                         events: `Dear ${firstName}, you have an ongoing application for the property ${application?.properties?.name}`,
-                        createdById: userId
+                        createdById: userId,
+                        type: LogType.EMAIL,
                     });
                     break;
                 case ReminderType.SCHEDULE_REMINDER:
@@ -515,7 +517,8 @@ class ApplicationControls {
                         applicationId,
                         subjects: "Schedule Reminder",
                         events: `Please confirm your scheduled appointment for ${application?.properties?.name}`,
-                        createdById: userId
+                        createdById: userId,
+                        type: LogType.EMAIL,
                     });
                     break;
             }
@@ -684,7 +687,8 @@ class ApplicationControls {
                 applicationId,
                 subjects: "Asher Agreement Letter",
                 events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
-                createdById: application.user.id
+                createdById: application.user.id,
+                type: LogType.EMAIL,
             })
 
             await applicantService.updateAgreementDocs(applicationId, documentUrlModified)

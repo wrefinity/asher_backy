@@ -23,18 +23,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const __1 = require("..");
 const client_2 = require("@prisma/client");
+// PropertyL
+const client_3 = require("@prisma/client");
 class PropertyService {
     constructor() {
         this.createProperty = (propertyData) => __awaiter(this, void 0, void 0, function* () {
             const created = yield __1.prismaClient.properties.create({
                 data: Object.assign({}, propertyData)
             });
-            // payApplicationFee: boolean;
-            // isShortlet: boolean;
-            // shortletDuration?: ShortletType;
-            // type: ListingType;
-            // propertyId?: string;
-            // apartmentId?: string;
             if (created) {
                 this.createPropertyListing({
                     propertyId: created === null || created === void 0 ? void 0 : created.id,
@@ -233,7 +229,7 @@ class PropertyService {
             });
         });
         // property listings
-        this.getActiveOrInactivePropsListing = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, isActive = true, availability = client_2.PropsApartmentStatus.VACANT) {
+        this.getActiveOrInactivePropsListing = (landlordId_1, ...args_1) => __awaiter(this, [landlordId_1, ...args_1], void 0, function* (landlordId, isActive = true, availability = client_3.PropsApartmentStatus.VACANT) {
             return yield __1.prismaClient.propertyListingHistory.findMany({
                 where: {
                     isActive,
@@ -268,7 +264,7 @@ class PropertyService {
                                 }
                             }
                         }
-                    })), (availability && { availability: client_2.PropsApartmentStatus.VACANT })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (minRentalFee || maxRentalFee
+                    })), (availability && { availability: client_3.PropsApartmentStatus.VACANT })), (country && { country })), (marketValue && { marketValue: Number(marketValue) })), (rentalFee && { rentalFee: Number(rentalFee) })), (minRentalFee || maxRentalFee
                         ? {
                             rentalFee: {
                                 gte: minRentalFee !== null && minRentalFee !== void 0 ? minRentalFee : undefined,
@@ -322,7 +318,7 @@ class PropertyService {
                         type: {
                             in: Array.isArray(type) ? type : [type]
                         }
-                    })), (availability && { availability: client_2.PropsApartmentStatus.VACANT })), (specificationType && { specificationType })), (state && {
+                    })), (availability && { availability: client_3.PropsApartmentStatus.VACANT })), (specificationType && { specificationType })), (state && {
                         state: {
                             is: {
                                 name: state
@@ -579,130 +575,129 @@ class PropertyService {
             landlord: this.landlordInclusion
         };
     }
-    // Service Implementation
-    createProperties(data) {
+    createPropertyFeature(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.propertyFeatures.createMany({
+                data,
+                skipDuplicates: true
+            });
+        });
+    }
+    getPropertyFeature() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.propertyFeatures.findMany();
+        });
+    }
+    getPropertyFeaturesByIds(featureIds) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!featureIds || featureIds.length === 0) {
+                return [];
+            }
+            const existingFeatures = yield __1.prismaClient.propertyFeatures.findMany({
+                where: {
+                    id: { in: featureIds },
+                },
+                select: { id: true },
+            });
+            const existingFeatureIds = existingFeatures.map((f) => f.id);
+            const missingFeatureIds = featureIds.filter((id) => !existingFeatureIds.includes(id));
+            if (missingFeatureIds.length > 0) {
+                throw new Error(`The following feature IDs do not exist: ${missingFeatureIds.join(", ")}`);
+            }
+            return existingFeatureIds;
+        });
+    }
+    ensurePropertyIsNotLinked(propertyId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const [residential, commercial, shortlet] = yield Promise.all([
+                __1.prismaClient.residentialProperty.findUnique({ where: { propertyId } }),
+                __1.prismaClient.commercialProperty.findUnique({ where: { propertyId } }),
+                __1.prismaClient.shortletProperty.findUnique({ where: { propertyId } }),
+            ]);
+            if (residential) {
+                throw new Error(`Property with ID ${propertyId} is already linked to a residential property.`);
+            }
+            if (commercial) {
+                throw new Error(`Property with ID ${propertyId} is already linked to a commercial property.`);
+            }
+            if (shortlet) {
+                throw new Error(`Property with ID ${propertyId} is already linked to a shortlet property.`);
+            }
+        });
+    }
+    createProperties(data, uploadedFiles, userId) {
         return __awaiter(this, void 0, void 0, function* () {
             return __1.prismaClient.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
-                // Create main property
+                const { specificationType, agencyId, landlordId, stateId, shortlet, residential, commercial } = data, rest = __rest(data, ["specificationType", "agencyId", "landlordId", "stateId", "shortlet", "residential", "commercial"]);
+                // Separate media by type
+                const images = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_2.MediaType.IMAGE);
+                const videos = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_2.MediaType.VIDEO);
+                const virtualTours = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_2.MediaType.VIRTUAL_TOUR);
+                const documents = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'DocTable');
+                // Step 1: Create the main property
                 const property = yield tx.properties.create({
-                    data: {
-                        // Core Fields
-                        name: data.name,
-                        title: data.title,
-                        description: data.description,
-                        shortDescription: data.shortDescription,
-                        propertysize: data.propertysize,
-                        isDeleted: (_a = data.isDeleted) !== null && _a !== void 0 ? _a : false,
-                        showCase: (_b = data.showCase) !== null && _b !== void 0 ? _b : false,
-                        // Ownership
-                        landlordId: data.landlordId,
-                        agencyId: data === null || data === void 0 ? void 0 : data.agencyId,
-                        // Market Values
-                        marketValue: data.marketValue,
-                        rentalFee: data.rentalFee,
-                        initialDeposit: data.initialDeposit,
-                        dueDate: data.dueDate,
-                        // Features
-                        noBedRoom: (_c = data.noBedRoom) !== null && _c !== void 0 ? _c : 1,
-                        noKitchen: (_d = data.noKitchen) !== null && _d !== void 0 ? _d : 1,
-                        noGarage: (_e = data.noGarage) !== null && _e !== void 0 ? _e : 0,
-                        noBathRoom: (_f = data.noBathRoom) !== null && _f !== void 0 ? _f : 1,
-                        noReceptionRooms: (_g = data.noReceptionRooms) !== null && _g !== void 0 ? _g : 0,
-                        // Address
-                        city: data.city,
-                        stateId: data.stateId,
-                        country: data.country,
-                        zipcode: data.zipcode,
-                        location: data.location,
-                        longitude: data.longitude,
-                        latitude: data.latitude,
-                        // Pricing
-                        price: data.price,
-                        currency: (_h = data.currency) !== null && _h !== void 0 ? _h : 'NGN',
-                        priceFrequency: data.priceFrequency,
-                        rentalPeriod: data.rentalPeriod,
-                        // Specifications
-                        specificationType: (_j = data.specificationType) !== null && _j !== void 0 ? _j : 'RESIDENTIAL',
-                        availability: (_k = data.availability) !== null && _k !== void 0 ? _k : 'VACANT',
-                        type: (_l = data.type) !== null && _l !== void 0 ? _l : 'SINGLE_UNIT'
-                    }
+                    data: Object.assign(Object.assign({}, rest), { specificationType, landlord: { connect: { id: landlordId } }, agency: agencyId ? { connect: { id: agencyId } } : undefined, state: { connect: { id: stateId } }, image: {
+                            create: images === null || images === void 0 ? void 0 : images.map(img => ({
+                                type: img.type,
+                                size: img.size,
+                                fileType: img.fileType,
+                                url: img.url,
+                                isPrimary: img.isPrimary,
+                                caption: img.caption,
+                            }))
+                        }, videos: {
+                            create: videos === null || videos === void 0 ? void 0 : videos.map(vid => ({
+                                type: vid.type,
+                                size: vid.size,
+                                fileType: vid.fileType,
+                                url: vid.url,
+                                isPrimary: vid.isPrimary,
+                                caption: vid.caption,
+                            }))
+                        }, virtualTours: {
+                            create: virtualTours === null || virtualTours === void 0 ? void 0 : virtualTours.map(vt => ({
+                                type: vt.type,
+                                size: vt.size,
+                                fileType: vt.fileType,
+                                url: vt.url,
+                                isPrimary: vt.isPrimary,
+                                caption: vt.caption,
+                            }))
+                        }, propertyDocument: {
+                            create: documents === null || documents === void 0 ? void 0 : documents.map(doc => ({
+                                documentName: doc === null || doc === void 0 ? void 0 : doc.documentName,
+                                documentUrl: doc === null || doc === void 0 ? void 0 : doc.documentUrl,
+                                size: doc === null || doc === void 0 ? void 0 : doc.size,
+                                type: doc === null || doc === void 0 ? void 0 : doc.type,
+                                idType: doc === null || doc === void 0 ? void 0 : doc.idType,
+                                docType: doc === null || doc === void 0 ? void 0 : doc.docType,
+                                users: {
+                                    connect: { id: userId }
+                                }
+                            }))
+                        } })
                 });
-                // Handle Specifications
-                if (data.specificationType === 'RESIDENTIAL' && data.residential) {
-                    yield tx.residentialProperty.create({
-                        data: Object.assign(Object.assign({}, data.residential), { amenityDistances: data.residential.amenityDistances, property: {
-                                connect: { id: property.id }
-                            } })
-                    });
+                if (!property) {
+                    throw new Error(`Failed to create property`);
                 }
-                if (data.specificationType === 'COMMERCIAL' && data.commercial) {
-                    const _o = data.commercial, { unitConfigurations, floorAvailability } = _o, restCommercialData = __rest(_o, ["unitConfigurations", "floorAvailability"]);
-                    const commercial = yield tx.commercialProperty.create({
-                        data: Object.assign(Object.assign({}, restCommercialData), { amenityDistances: (_m = data === null || data === void 0 ? void 0 : data.commercial) === null || _m === void 0 ? void 0 : _m.amenityDistances, property: {
-                                connect: { id: property.id }
-                            } })
-                    });
-                    // Handle Unit Configurations
-                    if (data.unitConfigurations) {
-                        yield tx.unitConfiguration.createMany({
-                            data: data.unitConfigurations.map(uc => (Object.assign(Object.assign({}, uc), { propertyId: property.id })))
-                        });
-                    }
+                console.log("=====================================================");
+                console.log("Property created:", property);
+                console.log("=====================================================");
+                // Step 2: Create associated specification
+                switch (specificationType) {
+                    case client_1.PropertySpecificationType.RESIDENTIAL:
+                        yield this.createResidentialProperty(property.id, residential, tx);
+                        break;
+                    case client_1.PropertySpecificationType.COMMERCIAL:
+                        yield this.createCommercialProperty(property.id, commercial, tx);
+                        break;
+                    case client_1.PropertySpecificationType.SHORTLET:
+                        yield this.createShortletProperty(property.id, shortlet, tx);
+                        break;
+                    default:
+                        throw new Error(`Unknown specification type: ${specificationType}`);
                 }
-                if (data.specificationType === 'SHORTLET' && data.shotlet) {
-                    const _p = data.shotlet, { attractionDistances } = _p, restShotlet = __rest(_p, ["attractionDistances"]);
-                    yield tx.shotletProperty.create({
-                        data: Object.assign(Object.assign({}, restShotlet), { attractionDistances: attractionDistances, property: {
-                                connect: { id: property.id }
-                            } })
-                    });
-                }
-                // Handle Media
-                const mediaRecords = [];
-                if (data.images) {
-                    mediaRecords.push(...data.images.map(url => ({
-                        url,
-                        type: 'IMAGE',
-                        imagePropertyId: property.id
-                    })));
-                }
-                if (data.videos) {
-                    mediaRecords.push(...data.videos.map(url => ({
-                        url,
-                        type: 'VIDEO',
-                        videoPropertyId: property.id
-                    })));
-                }
-                if (data.virtualTours) {
-                    mediaRecords.push(...data.virtualTours.map(url => ({
-                        url,
-                        type: 'VIRTUAL_TOUR',
-                        virtualTourPropertyId: property.id
-                    })));
-                }
-                if (mediaRecords.length > 0) {
-                    yield tx.propertyMediaFiles.createMany({
-                        data: mediaRecords
-                    });
-                }
-                // Handle Nearby Amenities
-                if (data.nearbyAmenities) {
-                    yield tx.nearbyAmenity.createMany({
-                        data: data.nearbyAmenities.map(na => ({
-                            name: na.name,
-                            distance: na.distance,
-                            propertyId: property.id
-                        }))
-                    });
-                }
-                // Handle Shared Facilities
-                if (data.sharedFacilities) {
-                    yield tx.sharedFacilities.create({
-                        data: Object.assign(Object.assign({}, data.sharedFacilities), { propertyId: property.id })
-                    });
-                }
-                // Create Listing History
+                // Step 3: Create Listing History
                 yield tx.propertyListingHistory.create({
                     data: {
                         propertyId: property.id,
@@ -710,19 +705,158 @@ class PropertyService {
                         type: 'LISTING_WEBSITE'
                     }
                 });
-                return __1.prismaClient.properties.findUnique({
+                // Step 4: Return full property with related entities
+                return tx.properties.findUnique({
                     where: { id: property.id },
                     include: {
                         residential: true,
                         commercial: true,
-                        shotlet: true,
+                        shortlet: true,
+                        image: true,
                         videos: true,
                         virtualTours: true,
-                        nearbyAmenities: true,
+                        propertyDocument: true,
                         sharedFacilities: true
                     }
                 });
-            }));
+            }), {
+                maxWait: 30000, // Maximum time to wait for transaction to start (10 seconds)
+                timeout: 30000 // Maximum time for transaction to complete (10 seconds)
+            });
+        });
+    }
+    createResidentialProperty(propertyId, data, tx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { keyFeatures: featureIds } = data, rest = __rest(data, ["keyFeatures"]);
+            // Step 1: Verify property exists
+            const property = yield tx.properties.findUnique({
+                where: { id: propertyId }
+            });
+            if (!property)
+                throw new Error(`Property ${propertyId} not found`);
+            // Step 2: Check if the key features exist
+            const keyFeatures = yield this.getPropertyFeaturesByIds(featureIds);
+            if (keyFeatures.length !== featureIds.length) {
+                throw new Error(`Some key features do not exist.`);
+            }
+            // Step 3: Ensure property is not already linked
+            yield this.ensurePropertyIsNotLinked(propertyId);
+            // Step 4: Proceed with creation
+            return yield tx.residentialProperty.create({
+                data: Object.assign(Object.assign({}, rest), { property: {
+                        connect: { id: propertyId },
+                    }, keyFeatures: {
+                        connect: keyFeatures.map((id) => ({ id })),
+                    } }),
+            });
+        });
+    }
+    createCommercialProperty(propertyId, data, tx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { keyFeatures: featureIds, securityFeatures: featureIdx } = data, rest = __rest(data, ["keyFeatures", "securityFeatures"]);
+            // Step 1: Verify property exists
+            const property = yield tx.properties.findUnique({
+                where: { id: propertyId }
+            });
+            if (!property)
+                throw new Error(`Property ${propertyId} not found`);
+            // Step 2: Check if the key features exist
+            const keyFeatures = yield this.getPropertyFeaturesByIds(featureIds);
+            if (keyFeatures.length !== featureIds.length) {
+                throw new Error(`Some key features do not exist.`);
+            }
+            const secFeatures = yield this.getPropertyFeaturesByIds(featureIdx);
+            if (secFeatures.length !== featureIdx.length) {
+                throw new Error(`Some security features do not exist.`);
+            }
+            // Step 3: Ensure property is not already linked
+            yield this.ensurePropertyIsNotLinked(propertyId);
+            // Step 4: Proceed with creation
+            return yield tx.commercialProperty.create({
+                data: Object.assign(Object.assign({}, rest), { property: {
+                        connect: { id: propertyId },
+                    }, keyFeatures: {
+                        connect: keyFeatures.map((id) => ({ id })),
+                    }, securityFeatures: {
+                        connect: secFeatures.map((id) => ({ id })),
+                    } }),
+            });
+        });
+    }
+    createShortletProperty(propertyId, data, tx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { safetyFeatures: featureIds } = data, rest = __rest(data, ["safetyFeatures"]);
+            // Step 1: Verify property exists
+            const property = yield tx.properties.findUnique({
+                where: { id: propertyId }
+            });
+            if (!property)
+                throw new Error(`Property ${propertyId} not found`);
+            // Step 2: Check if the key features exist
+            const keyFeatures = yield this.getPropertyFeaturesByIds(featureIds);
+            if (keyFeatures.length !== featureIds.length) {
+                throw new Error(`Some key features do not exist.`);
+            }
+            // Step 3: Ensure property is not already linked
+            yield this.ensurePropertyIsNotLinked(propertyId);
+            // Step 4: Proceed with creation
+            return yield tx.shortletProperty.create({
+                data: Object.assign(Object.assign({}, rest), { property: {
+                        connect: { id: propertyId },
+                    }, safetyFeatures: {
+                        connect: keyFeatures.map((id) => ({ id })),
+                    } }),
+            });
+        });
+    }
+    createBooking(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { shortletId } = data, rest = __rest(data, ["shortletId"]);
+            return yield __1.prismaClient.booking.create({
+                data: Object.assign(Object.assign({}, rest), { property: {
+                        connect: { id: shortletId }
+                    } }),
+            });
+        });
+    }
+    createSeasonalPricing(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { propertyId } = data, rest = __rest(data, ["propertyId"]);
+            return yield __1.prismaClient.seasonalPricing.create({
+                data: Object.assign(Object.assign({}, rest), { property: {
+                        connect: { id: propertyId }
+                    } }),
+            });
+        });
+    }
+    createUnavailableDate(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { shortletId } = data, rest = __rest(data, ["shortletId"]);
+            return yield __1.prismaClient.unavailableDate.create({
+                data: Object.assign(Object.assign({}, rest), { shortlet: {
+                        connect: { id: shortletId }
+                    } })
+            });
+        });
+    }
+    createAdditionalRule(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { shortletId } = data, rest = __rest(data, ["shortletId"]);
+            return yield __1.prismaClient.additionalRule.create({
+                data: Object.assign(Object.assign({}, rest), { shortlet: {
+                        connect: { id: shortletId }
+                    } }),
+            });
+        });
+    }
+    createHostLanguage(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { shortletId } = data, rest = __rest(data, ["shortletId"]);
+            return yield __1.prismaClient.hostLanguage.create({
+                data: Object.assign(Object.assign({}, rest), { shortlet: {
+                        connect: { id: shortletId }
+                    } }),
+            });
         });
     }
 }

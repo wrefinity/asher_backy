@@ -2,7 +2,7 @@ import fs from 'fs';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, propertySchema } from "../../validations/schemas/properties.schema"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
@@ -63,7 +63,7 @@ class PropertyController {
             if (!landlordId) {
                 return res.status(403).json({ error: 'kindly login' });
             }
-            const { error, value } = createPropertySchema.validate(req.body);
+            const { error, value } = propertySchema.validate(req.body, { abortEarly: false });
             if (error) {
                 return res.status(400).json({ error: error.details[0].message });
             }
@@ -80,18 +80,16 @@ class PropertyController {
             if (existance) {
                 return res.status(400).json({ error: 'property exist for the state and city' });
             }
-            const images = value.cloudinaryUrls;
-            const videourl = value.cloudinaryVideoUrls;
+            const {uploadedFiles, images, videourl} = value
 
-            delete value['state']
-            delete value['cloudinaryUrls']
-            delete value['cloudinaryVideoUrls']
-            delete value['cloudinaryAudioUrls']
-            delete value['cloudinaryDocumentUrls']
-
+            delete value['documentName']         
+            delete value['docType']         
+            delete value['idType']         
+            delete value['uploadedFiles']         
+   
             const rentalFee = value.rentalFee || 0;
             // const lateFee = rentalFee * 0.01;
-            const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, images, videourl, landlordId })
+            const property = await PropertyServices.createProperties({ ...value, stateId: state?.id, images, videourl, landlordId }, uploadedFiles, req.user?.id)
             return res.status(201).json({ property })
         } catch (error) {
             ErrorService.handleError(error, res)

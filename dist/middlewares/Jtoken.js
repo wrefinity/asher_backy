@@ -39,7 +39,7 @@ class Jtoken {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
                 // Generate access token (expires in 2 days)
-                jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "1h" }, (err, accessToken) => {
+                jsonwebtoken_1.default.sign(payload, this.secret, { expiresIn: "1d" }, (err, accessToken) => {
                     if (err) {
                         reject(err);
                     }
@@ -97,7 +97,7 @@ class Jtoken {
                 // Exclude sensitive fields and return user details
                 const { password: _ } = userDetails, user = __rest(userDetails, ["password"]);
                 // Generate a new access token (valid for 1 hour)
-                const newAccessToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, this.secret, { expiresIn: "1h" });
+                const newAccessToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, this.secret, { expiresIn: "1d" });
                 // Generate a new refresh token (valid for 7 days)
                 const newRefreshToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role, }, this.secret, { expiresIn: "7d" });
                 return { accessToken: newAccessToken, refreshToken: newRefreshToken, user };

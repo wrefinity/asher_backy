@@ -356,7 +356,7 @@ class TenantControls {
                 error_service_1.default.handleError(error, res);
             }
         });
-        this.getterCurrentTenantsDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.getterTenantsDocument = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             try {
                 const tenantId = req.params.tenantId;

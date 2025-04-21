@@ -101,7 +101,7 @@ class LogService {
                 include: this.inclusion
             });
         });
-        this.getCommunicationLog = (propertyId, userId, landlordId) => __awaiter(this, void 0, void 0, function* () {
+        this.getCommunicationLog = (propertyId, userId, landlordId, types) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.log.findMany({
                 where: {
                     propertyId: propertyId,
@@ -110,7 +110,7 @@ class LogService {
                         landlordId
                     },
                     type: {
-                        in: [client_1.LogType.EMAIL, client_1.LogType.MESSAGE]
+                        in: [client_1.LogType.EMAIL, client_1.LogType.MESSAGE, client_1.LogType.APPLICATION]
                     }
                 },
                 include: this.inclusion

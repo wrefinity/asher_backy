@@ -12,10 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadToCloudinary = exports.uploadDocsCloudinary = void 0;
+exports.handlePropertyUploads = exports.uploadToCloudinary = exports.uploadDocsCloudinary = void 0;
 const sharp_1 = __importDefault(require("sharp"));
 const cloudinary_1 = __importDefault(require("../configs/cloudinary"));
+const client_1 = require("@prisma/client");
 const secrets_1 = require("../secrets");
+const media_schema_1 = require("../validations/schemas/media.schema");
 // Function to upload a file to Cloudinary
 const uploadDocsCloudinary = (file) => __awaiter(void 0, void 0, void 0, function* () {
     return new Promise((resolve, reject) => {
@@ -106,3 +108,92 @@ const uploadToCloudinary = (req, res, next) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.uploadToCloudinary = uploadToCloudinary;
+// Example form data usage
+// formData.append("name", "My Property");
+// formData.append("location", "Lagos");
+// formData.append("documentName", "Passport");
+// formData.append("docType", "ID");
+// formData.append("idType", "PASSPORT");
+// formData.append("documentName", "Tax File");
+// formData.append("docType", "TAX_RETURN");
+// formData.append("idType", ""); // Leave blank if not ID
+// formData.append("files", file1);
+// formData.append("files", file2);
+const handlePropertyUploads = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log("=====================");
+    if (req.body.residential) {
+        req.body.residential = JSON.parse(req.body.residential);
+    }
+    if (req.body.commercial) {
+        req.body.commercial = JSON.parse(req.body.commercial);
+    }
+    if (req.body.shortlet) {
+        req.body.shortlet = JSON.parse(req.body.shortlet);
+    }
+    if (req.body.typeSpecific) {
+        req.body.typeSpecific = JSON.parse(req.body.typeSpecific);
+    }
+    console.log(req.body);
+    console.log("=====================");
+    try {
+        const files = Object.values(req.files || {}).flat();
+        if (!files.length)
+            return res.status(400).json({ error: "No files provided" });
+        // Normalize arrays from req.body
+        const documentNames = Array.isArray(req.body.documentName)
+            ? req.body.documentName
+            : [req.body.documentName];
+        const docTypes = Array.isArray(req.body.docType)
+            ? req.body.docType
+            : [req.body.docType];
+        const idTypes = Array.isArray(req.body.idType)
+            ? req.body.idType
+            : [req.body.idType];
+        const uploadedFiles = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const uploadResult = yield (0, exports.uploadDocsCloudinary)(file);
+            if (!uploadResult.secure_url) {
+                return res.status(500).json({ error: `Upload failed for file ${file.originalname}` });
+            }
+            const commonMeta = {
+                documentName: documentNames[i] || file.originalname,
+                docType: docTypes[i],
+                idType: idTypes[i],
+                type: file.mimetype,
+                size: `${file.size} bytes`,
+            };
+            // Check type and validate
+            if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
+                // MEDIA file
+                uploadedFiles.push({
+                    type: file.mimetype.startsWith("image/") ? client_1.MediaType.IMAGE : client_1.MediaType.VIDEO,
+                    url: uploadResult.secure_url,
+                    fileType: file.mimetype,
+                    identifier: "MediaTable",
+                    isPrimary: false,
+                    caption: documentNames[i] || "",
+                });
+            }
+            else {
+                // DOCUMENT file
+                const { error } = media_schema_1.MediaDocumentSchema.validate(commonMeta);
+                if (error) {
+                    return res.status(400).json({
+                        error: `Invalid document metadata for ${file.originalname}: ${error.message}`,
+                    });
+                }
+                uploadedFiles.push(Object.assign(Object.assign({}, commonMeta), { identifier: "DocTable", documentUrl: [uploadResult.secure_url] }));
+            }
+        }
+        // Attach to req for controller use
+        req.body.uploadedFiles = uploadedFiles;
+        console.log("Uploaded files:", uploadedFiles);
+        next();
+    }
+    catch (err) {
+        console.error("Upload middleware error:", err);
+        res.status(500).json({ error: "Failed to process uploads" });
+    }
+});
+exports.handlePropertyUploads = handlePropertyUploads;

@@ -475,7 +475,8 @@ class ApplicationControls {
                             applicationId,
                             subjects: "Reference Document Reminder",
                             events: "Please contact your reference to submit your documents as soon as possible.",
-                            createdById: userId
+                            createdById: userId,
+                            type: client_2.LogType.EMAIL,
                         });
                         break;
                     case applicationInvitesSchema_1.ReminderType.APPLICATION_REMINDER:
@@ -485,7 +486,8 @@ class ApplicationControls {
                             applicationId,
                             subjects: "Application Reminder",
                             events: `Dear ${firstName}, you have an ongoing application for the property ${(_j = application === null || application === void 0 ? void 0 : application.properties) === null || _j === void 0 ? void 0 : _j.name}`,
-                            createdById: userId
+                            createdById: userId,
+                            type: client_2.LogType.EMAIL,
                         });
                         break;
                     case applicationInvitesSchema_1.ReminderType.SCHEDULE_REMINDER:
@@ -495,7 +497,8 @@ class ApplicationControls {
                             applicationId,
                             subjects: "Schedule Reminder",
                             events: `Please confirm your scheduled appointment for ${(_k = application === null || application === void 0 ? void 0 : application.properties) === null || _k === void 0 ? void 0 : _k.name}`,
-                            createdById: userId
+                            createdById: userId,
+                            type: client_2.LogType.EMAIL,
                         });
                         break;
                 }
@@ -650,7 +653,8 @@ class ApplicationControls {
                     applicationId,
                     subjects: "Asher Agreement Letter",
                     events: `Please check your email for the agreement letter regarding your application for the property: ${(_f = application === null || application === void 0 ? void 0 : application.properties) === null || _f === void 0 ? void 0 : _f.name}`,
-                    createdById: application.user.id
+                    createdById: application.user.id,
+                    type: client_2.LogType.EMAIL,
                 });
                 yield applicantService_2.default.updateAgreementDocs(applicationId, documentUrlModified);
                 // Update the application with the agreement document URL

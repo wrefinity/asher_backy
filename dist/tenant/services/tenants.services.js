@@ -135,8 +135,16 @@ class TenantService {
                             emergencyInfo: true,
                             personalDetails: true,
                             guarantorInformation: true,
-                            residentialInfo: true,
+                            referenceForm: true,
+                            guarantorAgreement: true,
+                            employeeReference: true,
                             referee: true,
+                            residentialInfo: {
+                                include: {
+                                    prevAddresses: true,
+                                    user: true,
+                                },
+                            },
                         }
                     }
                 },

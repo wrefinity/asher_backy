@@ -7,6 +7,7 @@ exports.profileSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
 exports.profileSchema = joi_1.default.object({
     gender: joi_1.default.string().valid('Male', 'Female', 'Other'),
+    id: joi_1.default.string().optional(),
     phoneNumber: joi_1.default.string().pattern(/^[0-9]{10,15}$/).optional(),
     address: joi_1.default.string().optional(),
     dateOfBirth: joi_1.default.date().iso().optional(),

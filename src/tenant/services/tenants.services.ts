@@ -48,7 +48,6 @@ class TenantService {
                         },
                     },
                 },
-
                 landlord: true,
                 property: true,
                 apartments: true
@@ -124,7 +123,7 @@ class TenantService {
     //     });
     //     return tenant
     // }
-    getTenantByUserIdAndLandlordId = async (userId?: string, landlordId?: string, tenantId?:string) => {
+    getTenantByUserIdAndLandlordId = async (userId?: string, landlordId?: string, tenantId?: string) => {
         const tenant = await prismaClient.tenants.findFirst({
             where: {
                 userId,
@@ -163,10 +162,18 @@ class TenantService {
                         declaration: true,
                         documents: true,
                         emergencyInfo: true,
-                        personalDetails:true,
+                        personalDetails: true,
                         guarantorInformation: true,
-                        residentialInfo: true,
+                        referenceForm: true,
+                        guarantorAgreement: true,
+                        employeeReference: true,
                         referee: true,
+                        residentialInfo: {
+                            include: {
+                                prevAddresses: true,
+                                user: true,
+                            },
+                        },
                     }
                 }
             },

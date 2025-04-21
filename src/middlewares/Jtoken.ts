@@ -16,7 +16,7 @@ export class Jtoken {
     async createToken(payload: JWTPayload): Promise<{ accessToken: string; refreshToken: string }> {
         return new Promise((resolve, reject) => {
             // Generate access token (expires in 2 days)
-            jwt.sign(payload, this.secret, { expiresIn: "1h" }, (err, accessToken) => {
+            jwt.sign(payload, this.secret, { expiresIn: "1d" }, (err, accessToken) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -75,7 +75,7 @@ export class Jtoken {
             const newAccessToken = jwt.sign(
                 { id: user.id, role: user.role },
                 this.secret,
-                { expiresIn: "1h" }
+                { expiresIn: "1d" }
             );
 
             // Generate a new refresh token (valid for 7 days)

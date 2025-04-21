@@ -134,7 +134,7 @@ class LogService {
       include: this.inclusion
     });
   }
-  getCommunicationLog = async (propertyId: string, userId: string, landlordId: string) => {
+  getCommunicationLog = async (propertyId: string, userId: string, landlordId: string, types?: LogType[]) => {
     return await prismaClient.log.findMany({
       where: {
         propertyId: propertyId,
@@ -143,7 +143,7 @@ class LogService {
           landlordId
         },
         type: {
-          in: [LogType.EMAIL, LogType.MESSAGE]
+          in: [LogType.EMAIL, LogType.MESSAGE, LogType.APPLICATION]
         }
       },
       include: this.inclusion

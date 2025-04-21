@@ -1,4 +1,4 @@
-import { PropertyType, RoomDetail, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType, PropsApartmentStatus } from "@prisma/client"
+import { PropertyType, RoomDetail, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType, PropsApartmentStatus, MediaType, BookingStatus, PropertyFeatureType, ShortletProperty, ResidentialProperty, CommercialProperty } from "@prisma/client"
 
 export interface IPropertyDocument {
     id?: string;
@@ -13,13 +13,17 @@ export interface IPropertyDocument {
     idType?: IdType;
 }
 
+
+
+
+
 export interface ICreateProperty {
     name: string;
     description: string;
     propertysize?: number;
     landlordId: string;
     agencyId?: string;
-    yearBuilt?: Date;
+    yearBuilt?: number;
     city: string;
     stateId: string;
     country: string;
@@ -54,297 +58,71 @@ export interface PropertyViewingIF {
     updatedAt?: Date;
 }
 
+
 // TypeScript Interfaces
-export interface CreatePropertyIF {
-    // Core Property
-    name: string;
-    title: string;
-    description?: string;
-    shortDescription?: string;
-    propertysize?: number;
-    isDeleted?: boolean;
-    showCase?: boolean;
-    landlordId: string;
-    agencyId?: string;
-    
-    // Market Values
-    marketValue?: number;
-    rentalFee?: number;
-    initialDeposit?: number;
-    dueDate?: Date;
-  
-    // Features
-    noBedRoom?: number;
-    noKitchen?: number;
-    noGarage?: number;
-    noBathRoom?: number;
-    noReceptionRooms?: number;
-    totalArea?: string;
-    areaUnit?: string;
-    yearBuilt?: Date;
-    councilTaxBand?: string;
-    tenure?: string;
-    leaseYearsRemaining?: string;
-    groundRent?: string;
-    serviceCharge?: string;
-  
-    // Address
-    city: string;
-    stateId?: string;
-    country: string;
-    zipcode: string;
-    location?: string;
-    longitude?: number;
-    latitude?: number;
-  
-    // Media
-    images?: string[];
-    videos?: string[];
-    virtualTours?: string[];
-  
-    // Pricing
-    price?: string;
-    currency?: string;
-    priceFrequency?: PriceFrequency;
-    rentalPeriod?: string;
-  
-    // Specifications
-    specificationType?: PropertySpecificationType;
-    useTypeCategory?: string;
-    residential?: IResidentialProperty;
-    commercial?: ICommercialProperty;
-    shotlet?: IShotletProperty;
-  
-    // Additional Fields
-    amenities?: string[];
-    customFeatures?: string[];
-    nearbyAmenities?: INearbyAmenity[];
-    unitConfigurations?: IUnitConfiguration[];
-    sharedFacilities?: ISharedFacilities;
-    availability?: PropsApartmentStatus;
-    type?: PropertyType;
 
-    // Property Specific Details
-    hasLift?: boolean;
-    gardenType?: string;
-    gardenSize?: string;
-    parkingSpaces?: number;
-    garageType?: string;
-
-    // Contact & Additional Information
-    contactName?: string;
-    contactCompany?: string;
-    companyLogoUrl?: string;
-    viewingArrangements?: string;
-    keyFeatures?: string[];
-    customKeyFeatures?: string[];
-    additionalNotes?: string;
-
-    // Multi-unit properties
-    isMultiUnit?: boolean;
-    totalUnits?: number;
-    totalFloors?: number;
-    unitsPerFloor?: number;
-
-    // HMO specific
-    isHMO?: boolean;
-    hmoLicensed?: boolean;
-    hmoLicenseNumber?: string;
-    hmoLicenseExpiry?: string;
-    hmoMaxOccupants?: number;
-
-    // Room rental specific
-    isRoomRental?: boolean;
-    roomDetails?: RoomDetail[];
-
-    // Energy and Sustainability
-    epcRating?: string;
-    energyEfficiencyRating?: number;
-    environmentalImpactRating?: number;
-    heatingTypes?: string[];
-    glazingType?: string;
-}
-  
-  interface INearbyAmenity {
+interface INearbyAmenity {
     name: string;
     distance?: string;
-  }
-  
-  interface IUnitConfiguration {
-    unitType: string;
-    count: number;
-    bedrooms: number;
-    bathrooms: number;
-    price: string;
-  }
-  
-  interface ISharedFacilities {
-    kitchen?: boolean;
-    bathroom?: boolean;
-    livingRoom?: boolean;
-    garden?: boolean;
-    laundry?: boolean;
-    parking?: boolean;
-    other?: string;
-  }
-export interface IShotletProperty {
-    // Host Information
-    hostName: string;
-    hostPhotoUrl?: string;
-
-    // Property Details
-    bedrooms: number;
-    beds: number;
-    bathrooms: number;
-    maxGuests: number;
-    propertySize?: string;
-    sizeUnit?: AreaUnit;
-    floorLevel?: number;
-    totalFloors?: number;
-    renovationYear?: string;
-
-    // Amenities
-    amenities?: string[];
-    customAmenities?: string[];
-    nearbyAttractions?: string[];
-    customNearbyAttractions?: string[];
-    attractionDistances?: Record<string, unknown>;
-    safetyFeatures?: string[];
-    customSafetyFeatures?: string[];
-
-    // Availability & Pricing
-    minStayDays: number;
-    maxStayDays: number;
-    availableTo?: Date;
-    cleaningFee?: string;
-    securityDeposit?: string;
-    weeklyDiscount?: string;
-    monthlyDiscount?: string;
-    unavailableDates?: Date[];
-
-    // House Rules
-    checkInTime: string;
-    checkOutTime: string;
-    instantBooking?: boolean;
-    allowChildren?: boolean;
-    allowInfants?: boolean;
-    allowPets?: boolean;
-    allowSmoking?: boolean;
-    allowParties?: boolean;
-    quietHours?: boolean;
-    quietHoursStart?: string;
-    quietHoursEnd?: string;
-    additionalRules?: string[];
-
-    // Booking & Policies
-    cancellationPolicy: CancellationPolicy;
-    customCancellationPolicy?: string;
-    houseManual?: string;
-    checkInInstructions: string;
-    localRecommendations?: string;
-    emergencyContact: string;
-
-    // Amenity Flags
-    hasWifi?: boolean;
-    wifiSpeed?: string;
-    hasTV?: boolean;
-    hasKitchen?: boolean;
-    hasWasher?: boolean;
-    hasDryer?: boolean;
-    hasAirConditioning?: boolean;
-    hasHeating?: boolean;
-    hasWorkspace?: boolean;
-    hasPool?: boolean;
-    hasHotTub?: boolean;
-    hasFreeParking?: boolean;
-    hasGym?: boolean;
-    hasBreakfast?: boolean;
-    hasSelfCheckin?: boolean;
-    hasBalcony?: boolean;
-    hasGarden?: boolean;
-    hasBBQ?: boolean;
-    hasFireplace?: boolean;
-    hasBeachAccess?: boolean;
-    hasLakeAccess?: boolean;
-    hasMountainView?: boolean;
-    hasOceanView?: boolean;
-    hasCityView?: boolean;
 }
 
-export interface IResidentialProperty {
-    // Core Details
-    bedrooms: number;
-    bathrooms: number;
-    toilets?: number;
-    furnished?: boolean;
-    serviced?: boolean;
-    shared?: boolean;
 
-    // Features
-    features?: string[];
-    customFeatures?: string[];
+export interface CommercialPropertyUnit {
+    id: string;
+    unitType: string;
+    unitNumber?: string;
+    floorNumber: number;
+    area: string;
+    price: string;
+    available?: boolean;
+    description?: string;
+}
 
-    // Nearby Amenities
-    nearbyAmenities?: string[];
-    customNearbyAmenities?: string[];
-    amenityDistances?: Record<string, unknown>;
+export interface CommercialPropertyFloor {
+    id: string;
+    floorNumber: number;
+    area: string;
+    price: string;
+    available?: boolean;
+    partialFloor?: boolean;
+    description?: string;
+}
 
-    // Property Details
-    totalArea?: string;
-    areaUnit?: AreaUnit;
-    parkingSpaces?: number;
-    petPolicy?: string;
-    rentalTerms?: string;
-    securityDeposit?: string;
-    utilities?: string[];
-
-    // Additional Features
-    propertyCondition?: string;
-    balcony?: boolean;
-    garden?: boolean;
-    gym?: boolean;
-    pool?: boolean;
-    security?: boolean;
-
-    // Utilities
-    waterSupply?: string;
-    powerSupply?: string;
-    internetAvailable?: boolean;
-    internetSpeed?: string;
-    furnishingDetails?: string;
-    renovationYear?: string;
+export interface SuitableUse {
+    id: string;
+    name: string;
 }
 
 export interface ICommercialProperty {
-    // Core Details
+    id: string;
+    propertySubType: PropertyType;
+    typeSpecific?: Record<string, any>;
+    propertyId: string;
+
     totalArea: string;
     areaUnit: AreaUnit;
-    minLeaseTerm: string;
-    maxLeaseTerm?: string;
-    leaseTermUnit: LeaseTermUnit;
     businessRates?: string;
-    serviceCharge?: string;
+    serviceCharge?: number;
+    leaseTermUnit: LeaseTermUnit;
+    minimumLeaseTerm: number;
+    maximumLeaseTerm?: number;
+    securityDeposit: number;
+
     buildingClass?: BuildingClass;
     lastRefurbished?: string;
     floorNumber?: number;
     totalFloors?: number;
+    zoning?: string;
+    yearBuilt?: number;
+    totalRooms: number;
     parkingSpaces?: number;
+    floorLevel?: number;
+    availableFrom?: Date;
 
-    // Property Types
-    isOfficeSpace?: boolean;
-    isWarehouse?: boolean;
-    isHighRise?: boolean;
-    isMultiUnit?: boolean;
-    isRetail?: boolean;
-    isIndustrial?: boolean;
-
-    // Office Details
     workstations?: number;
     meetingRooms?: number;
-    hasReception?: boolean;
     officeLayout?: OfficeLayout;
 
-    // Warehouse Details
     clearHeight?: string;
     loadingDoorsCount?: number;
     powerSupply?: string;
@@ -353,33 +131,29 @@ export interface ICommercialProperty {
     hasYard?: boolean;
     yardDepth?: string;
 
-    // Features
-    features?: string[];
-    customFeatures?: string[];
-    nearbyAmenities?: string[];
-    customNearbyAmenities?: string[];
-    amenityDistances?: Record<string, unknown>;
+    nearbyAmenities: string[];
+    customNearbyAmenities: string[];
+    amenityDistances?: any;
 
-    // Energy
     epcRating?: string;
     energyEfficiencyRating?: number;
     environmentalImpactRating?: number;
-    heatingTypes?: string[];
-    coolingTypes?: string[];
+    heatingTypes: string[];
+    coolingTypes: string[];
     hasGreenCertification?: boolean;
     greenCertificationType?: string;
     greenCertificationLevel?: string;
 
-    // Security
-    securityFeatures?: string[];
+    totalUnits?: number;
+    // unitConfigurations: CommercialPropertyUnit[];
+    highRiseFloors?: number;
+    // floorAvailability: CommercialPropertyFloor[];
+    securityFeatures: string[];
 
-    // Key Features
-    keyFeatures?: string[];
-    customKeyFeatures?: string[];
+    keyFeatures: string[];
+    customKeyFeatures: string[];
 
-    // Additional Fields
     internetSpeed?: string;
-    hasElevator?: boolean;
     hasLoadingBay?: boolean;
     hasSprinklerSystem?: boolean;
     hasAlarmSystem?: boolean;
@@ -395,26 +169,319 @@ export interface ICommercialProperty {
     rentFreeOffered?: boolean;
     rentFreePeriod?: string;
 
-    // Relationships
-    unitConfigurations?: ICommercialPropertyUnit[];
-    floorAvailability?: ICommercialPropertyFloor[];
+    contactName?: string;
+    contactCompany?: string;
+    companyLogoUrl?: string;
+    viewingArrangements?: string;
+
+    elevator?: boolean;
+    hasReception?: boolean;
+    hasSecurity?: boolean;
+    hasConferenceRoom?: boolean;
+    hasCafeteria?: boolean;
+    hasGym?: boolean;
+    // suitableFor: SuitableUse[];
 }
 
-export interface ICommercialPropertyUnit {
+export interface IResidentialProperty {
+    id?: string;
+    propertyId: string;
+    propertySubType: PropertyType;
+    typeSpecific?: Record<string, any>;
+
+    bedrooms: number;
+    bathrooms: number;
+    toilets?: number;
+    halfBathrooms?: number;
+    furnished?: boolean;
+    parkingSpaces?: number;
+    yearBuilt?: number;
+    floorLevel?: number;
+    totalFloors?: number;
+    petsAllowed?: boolean;
+    availableFrom?: Date;
+    minimumStay?: number;
+    maximumStay?: number;
+    serviced?: boolean;
+    shared?: boolean;
+
+    features: string[];
+    customFeatures: string[];
+
+    nearbyAmenities: string[];
+    customNearbyAmenities: string[];
+    amenityDistances?: Record<string, number>;
+
+    totalArea?: string;
+    areaUnit?: AreaUnit;
+    petPolicy?: string;
+    rentalTerms?: string;
+    securityDeposit?: string;
+    utilities: string[];
+
+    propertyCondition?: string;
+    gym?: boolean;
+    pool?: boolean;
+    security?: boolean;
+    waterSupply?: string;
+    powerSupply?: string;
+    internetAvailable?: boolean;
+    internetSpeed?: string;
+    furnishingDetails?: string;
+    renovationYear?: string;
+
+    waterIncluded?: boolean;
+    electricityIncluded?: boolean;
+    internetIncluded?: boolean;
+    gasIncluded?: boolean;
+    cableIncluded?: boolean;
+
+    garden?: boolean;
+    balcony?: boolean;
+    patio?: boolean;
+    roofDeck?: boolean;
+    terrace?: boolean;
+
+    epcRating?: string;
+    energyEfficiencyRating?: number;
+    environmentalImpactRating?: number;
+    heatingTypes: string[];
+    coolingTypes: string[];
+    gazingTypes: string;
+
+    contactName?: string;
+    contactCompany?: string;
+    companyLogoUrl?: string;
+    viewingArrangements?: string;
+    keyFeatures: string[];
+    customKeyFeatures: string[];
+    additionalNotes?: string;
+}
+
+
+export interface IShortletProperty {
+    id: string;
+    propertyId: string;
+    propertySubType: PropertyType;
+    typeSpecific?: any;
+
+    bedrooms: number;
+    beds: number;
+    bathrooms: number;
+    maxGuests?: number;
+    propertySize?: string;
+    sizeUnit?: AreaUnit;
+    floorLevel?: number;
+    totalFloors?: number;
+    renovationYear?: string;
+    yearBuilt?: string;
+    furnished: boolean;
+
+    amenities: string[];
+    customAmenities: string[];
+    customNearbyAttractions: string[];
+    attractionDistances?: Record<string, number>;
+    safetyFeatures: string[];
+    customSafetyFeatures: string[];
+
+    minStayDays: number;
+    maxStayDays: number;
+    availableFrom?: Date;
+    availableTo?: Date;
+    basePrice: number;
+    cleaningFee?: number;
+    securityDeposit?: number;
+    weeklyDiscount?: number;
+    monthlyDiscount?: number;
+
+    checkInTime: string;
+    checkOutTime: string;
+    instantBooking: boolean;
+    allowChildren: boolean;
+    allowInfants: boolean;
+    allowPets: boolean;
+    allowSmoking: boolean;
+    allowParties: boolean;
+    quietHours: boolean;
+    quietHoursStart?: string;
+    quietHoursEnd?: string;
+
+    cancellationPolicy: CancellationPolicy;
+    customCancellationPolicy?: string;
+    houseManual?: string;
+    checkInInstructions: string;
+    localRecommendations?: string;
+    emergencyContact?: string;
+
+    hostName?: string;
+    hostPhotoUrl?: string;
+    responseRate?: number;
+    responseTime?: string;
+    isSuperhost: boolean;
+    joinedDate?: Date;
+
+    // bookings?: Booking[];
+    // seasonalPricing?: SeasonalPricing[];
+    // unavailableDates?: UnavailableDate[];
+    // additionalRules?: AdditionalRule[];
+    nearbyAttractions?: string[];
+    // hostLanguages?: HostLanguage[];
+}
+
+export interface Booking {
+    id?: string;
+    checkInDate: Date;
+    checkOutDate: Date;
+    guestCount: number;
+    totalPrice: string;
+    status: BookingStatus;
+    guestName: string;
+    guestEmail: string;
+    guestPhone?: string;
+    specialRequests?: string;
+    paymentStatus?: string;
+    paymentMethod?: string;
+    transactionReference?: string;
+    shortletId?: string;
+}
+
+export interface SeasonalPricing {
+    id?: string;
+    seasonName: string;
+    startDate: Date;
+    endDate: Date;
+    price: string;
+    propertyId: string;
+}
+
+export interface HostLanguage {
+    id: string;
+    language: string;
+}
+
+export interface AdditionalRule {
+    id?: string;
+    rule: string;
+    shortletId: string;
+}
+
+export interface UnavailableDate {
+    id?: string;
+    date: Date;
+    shortletId: string;
+}
+
+
+export interface ISharedFacilities {
+    kitchen: boolean;
+    bathroom: boolean;
+    livingRoom: boolean;
+    garden: boolean;
+    laundry: boolean;
+    parking: boolean;
+    other?: string;
+}
+
+export interface IUnitConfiguration {
     unitType: string;
-    unitNumber?: string;
-    floorNumber: number;
-    area: string;
+    count: number;
+    bedrooms: number;
+    bathrooms: number;
     price: string;
-    available?: boolean;
-    description?: string;
 }
 
-export interface ICommercialPropertyFloor {
-    floorNumber: number;
-    area: string;
+export interface IRoomDetail {
+    roomName: string;
+    roomSize: string;
+    ensuite?: boolean;
     price: string;
-    available?: boolean;
-    partialFloor?: boolean;
+    availability?: string;
+}
+
+export interface PropertyMediaFiles {
+    id?: string
+    url: string
+    caption?: string
+    isPrimary?: boolean
+    fileType?: string
+    type: MediaType
+}
+
+export interface PropertyDocument {
+    id?: string
+    documentName: string
+    documentUrl: string[]
+    size?: string
+    type?: string
+    idType?: IdType
+    docType?: DocumentType
+    agreementId?: string
+    applicationId?: string
+    apartmentsId?: string
+    propertyId?: string
+    uploadedBy?: string
+}
+export interface IProperty {
+    name: string;
+    title?: string;
     description?: string;
+    shortDescription?: string;
+    propertysize?: number;
+    isDeleted?: boolean;
+    showCase?: boolean;
+    landlordId?: string;
+    agencyId?: string;
+    marketValue?: number;
+    rentalFee?: number;
+    initialDeposit?: number;
+    dueDate?: Date;
+    noBedRoom?: number;
+    noKitchen?: number;
+    noGarage?: number;
+    noBathRoom?: number;
+    noReceptionRooms?: number;
+    totalArea?: string;
+    areaUnit?: AreaUnit;
+    yearBuilt?: number;
+    city: string;
+    stateId?: string;
+    country: string;
+    zipcode: string;
+    location?: string;
+    // images: string[];
+    // videourl: string[];
+    propertyDocument: PropertyDocument[]
+    image?: PropertyMediaFiles[]
+    videos?: PropertyMediaFiles[]
+    virtualTours?: PropertyMediaFiles[]
+
+    amenities: string[];
+    totalApartments?: number;
+    longitude?: number;
+    latitude?: number;
+    price?: string;
+    currency?: string;
+    priceFrequency?: PriceFrequency;
+    rentalPeriod?: string;
+    availability?: PropsApartmentStatus;
+    availableFrom?: Date;
+    type?: PropertyType;
+    typeSpecific?: object;
+    // settings?: any[];
+    specificationType?: PropertySpecificationType;
+    useTypeCategory?: string;
+    shortlet: ShortletProperty
+    residential: ResidentialProperty,
+    commercial: CommercialProperty
+    // sharedFacilities?: ISharedFacilities;
+    // roomDetails?: IRoomDetail[];
+    // UnitConfiguration?: IUnitConfiguration[];
+}
+
+
+export interface PropertyFeature {
+    id?: string
+    name: string
+    type: PropertyFeatureType
+    isDeleted?: boolean
 }

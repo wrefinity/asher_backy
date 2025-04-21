@@ -386,7 +386,7 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
-    getterCurrentTenantsDocument = async (req: CustomRequest, res: Response) => {
+    getterTenantsDocument = async (req: CustomRequest, res: Response) => {
         try {
             const tenantId = req.params.tenantId;
             const landlordId = req.user?.landlords?.id;

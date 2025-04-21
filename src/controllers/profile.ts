@@ -20,6 +20,7 @@ class ProfileControls {
             delete data['cloudinaryVideoUrls']
             delete data['cloudinaryDocumentUrls']
             delete data['cloudinaryAudioUrls']
+            delete data['id']
 
 
             // Update the user profile in the database

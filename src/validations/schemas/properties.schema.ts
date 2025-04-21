@@ -1,15 +1,20 @@
-import Joi from 'joi';
+import Joi, { object, valid } from 'joi';
 import {
   ListingType, PropertyType, PropertySpecificationType, ShortletType, DocumentType, IdType,
   PriceFrequency, PropsApartmentStatus,
   LeaseTermUnit, AreaUnit, BuildingClass,
   OfficeLayout, CancellationPolicy,
-  MediaType
+  MediaType,
+  BookingStatus,
+  PropertyFeatureType
 } from '@prisma/client';
 const propertyType = Object.values(PropertyType);
 const documentType = Object.values(DocumentType);
 const idType = Object.values(IdType);
 const propertySpecificationType = Object.values(PropertySpecificationType);
+// property listing schema
+const listingTypes = Object.values(ListingType);
+const shortletType = Object.values(ShortletType);
 
 export const createPropertySchema = Joi.object({
   name: Joi.string().required(),
@@ -38,7 +43,7 @@ export const createPropertySchema = Joi.object({
   currency: Joi.string().required(),
   zipcode: Joi.string().required(),
   location: Joi.string().optional(),
-  yearBuilt: Joi.date().optional(),
+  yearBuilt: Joi.number().integer().optional(),
   amenities: Joi.array().items(Joi.string()).optional(),
   totalApartments: Joi.number().integer().optional(),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
@@ -58,7 +63,7 @@ export const updatePropertySchema = Joi.object({
   isDeleted: Joi.boolean().optional(),
   landlordId: Joi.string().optional(),
   agencyId: Joi.string().optional(),
-  yearBuilt: Joi.date().iso().optional(),
+  yearBuilt: Joi.number().integer().optional(),
   createdAt: Joi.date().iso().optional(),
   city: Joi.string().optional(),
   state: Joi.string().optional(),
@@ -115,9 +120,58 @@ export const updatePropertyDocumentSchema = Joi.object({
   type: Joi.string().optional(),
 });
 
-// property listing schema
-const listingTypes = Object.values(ListingType);
-const shortletType = Object.values(ShortletType);
+
+
+export const featureSchema = Joi.object({
+  name: Joi.string().required().messages({
+    'string.empty': 'Feature name cannot be empty',
+    'any.required': 'Feature name is required'
+  }),
+  type: Joi.string().valid(...Object.values(PropertyFeatureType)).required()
+    .messages({
+      'any.only': `Type must be one of ${Object.values(PropertyFeatureType).join(', ')}`,
+      'any.required': 'Feature type is required'
+    })
+});
+
+export const createFeaturesSchema = Joi.array()
+  .items(featureSchema)
+  .min(1)
+  .required()
+  .messages({
+    'array.base': 'Input must be an array of features',
+    'array.min': 'At least one feature is required',
+    'any.required': 'Features array is required'
+  });
+
+const propertyMediaFilesSchema = Joi.object({
+  id: Joi.string().optional(),
+  url: Joi.string().uri().required(),
+  caption: Joi.string().optional(),
+  isPrimary: Joi.boolean().optional(),
+  fileType: Joi.string().optional(),
+  type: Joi.string()
+    .valid(...Object.values(MediaType))
+    .default(MediaType.IMAGE)
+    .required(),
+})
+
+const propertyDocumentSchema = Joi.object({
+  id: Joi.string().optional(),
+  documentName: Joi.string().required(),
+  documentUrl: Joi.array().items(Joi.string().uri()).required(),
+  size: Joi.string().optional(),
+  type: Joi.string().optional(),
+  idType: Joi.string().valid(...Object.values(IdType)).optional(),
+  docType: Joi.string().valid(...Object.values(DocumentType)).optional(),
+  agreementId: Joi.string().optional(),
+  applicationId: Joi.string().optional(),
+  apartmentsId: Joi.string().optional(),
+  propertyId: Joi.string().optional(),
+  uploadedBy: Joi.string().optional(),
+})
+
+
 
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
@@ -159,412 +213,554 @@ export const updatePropertyViewingSchema = Joi.object({
 });
 
 
-export const PropertyValidation = {
-  createProperty: Joi.object({
-    // Core Property Fields
-    name: Joi.string().required().max(255),
-    title: Joi.string().required().max(255),
-    description: Joi.string().optional().allow(''),
-    shortDescription: Joi.string().optional().max(500),
-    propertysize: Joi.number().optional().positive(),
-    showCase: Joi.boolean().default(false),
-
-    // Market Values
-    marketValue: Joi.number().precision(2).optional(),
-    rentalFee: Joi.number().precision(2).optional(),
-    initialDeposit: Joi.number().precision(2).optional(),
-    dueDate: Joi.date().optional(),
-
-    // Features
-    noBedRoom: Joi.number().integer().min(0).default(1),
-    noKitchen: Joi.number().integer().min(0).default(1),
-    noGarage: Joi.number().integer().min(0).default(0),
-    noBathRoom: Joi.number().integer().min(0).default(1),
-    noReceptionRooms: Joi.number().integer().min(0).default(0),
-    totalArea: Joi.string().optional(),
-    areaUnit: Joi.string().default('sq-ft'),
-    yearBuilt: Joi.date().optional(),
-    councilTaxBand: Joi.string().optional(),
-    tenure: Joi.string().default('freehold'),
-    leaseYearsRemaining: Joi.string().optional(),
-    groundRent: Joi.string().optional(),
-    serviceCharge: Joi.string().optional(),
-
-    // Address
-    city: Joi.string().required(),
-    // stateId: Joi.string().optional(),
-    country: Joi.string().required(),
-    zipcode: Joi.string().required(),
-    location: Joi.string().optional(),
-    longitude: Joi.number().precision(6).optional(),
-    latitude: Joi.number().precision(6).optional(),
-
-    // Media
-    images: Joi.array().items(Joi.string().uri()).optional(),
-    videos: Joi.array().items(Joi.string().uri()).optional(),
-    virtualTours: Joi.array().items(Joi.string().uri()).optional(),
-
-    // Pricing
-    price: Joi.string().required(),
-    currency: Joi.string().required().default('NGN'),
-    priceFrequency: Joi.valid(...Object.values(PriceFrequency)).optional(),
-    rentalPeriod: Joi.string().optional(),
-
-    // Availability
-    availability: Joi.valid(...Object.values(PropsApartmentStatus)).default('VACANT'),
-    availableFrom: Joi.date().optional(),
-    type: Joi.valid(...Object.values(PropertyType)).default('SINGLE_UNIT'),
-
-    // Specifications
-    specificationType: Joi.valid(...Object.values(PropertySpecificationType)).default('RESIDENTIAL'),
-
-    // Residential Specific
-    residential: Joi.object({
-      // Core Details
-      bedrooms: Joi.number().integer().min(1).required(),
-      bathrooms: Joi.number().precision(1).min(1).required(),
-      toilets: Joi.number().integer().min(0).optional(),
-      furnished: Joi.boolean().default(false),
-      serviced: Joi.boolean().default(false),
-      shared: Joi.boolean().default(false),
-
-      // Features
-      features: Joi.array().items(Joi.string()).optional(),
-      customFeatures: Joi.array().items(Joi.string()).optional(),
-
-      // Nearby Amenities
-      nearbyAmenities: Joi.array().items(Joi.string()).optional(),
-      customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
-      amenityDistances: Joi.object().optional(),
-
-      // Property Details
-      totalArea: Joi.string().optional(),
-      areaUnit: Joi.valid(...Object.values(AreaUnit)).optional(),
-      parkingSpaces: Joi.number().integer().min(0).optional(),
-      petPolicy: Joi.string().optional(),
-      rentalTerms: Joi.string().optional(),
-      securityDeposit: Joi.string().optional(),
-      utilities: Joi.array().items(Joi.string()).optional(),
-
-      // Additional Features
-      propertyCondition: Joi.string().optional(),
-      balcony: Joi.boolean().default(false),
-      garden: Joi.boolean().default(false),
-      gym: Joi.boolean().default(false),
-      pool: Joi.boolean().default(false),
-      security: Joi.boolean().default(false),
-
-      // Utilities
-      waterSupply: Joi.string().optional(),
-      powerSupply: Joi.string().optional(),
-      internetAvailable: Joi.boolean().default(false),
-      internetSpeed: Joi.string().optional(),
-      furnishingDetails: Joi.string().optional(),
-      renovationYear: Joi.string().optional()
-    }).when('specificationType', {
-      is: PropertySpecificationType.RESIDENTIAL,
-      then: Joi.required()
-    }),
-
-    // Commercial Specific
-    commercial: Joi.object({
-      // Core Details
-      totalArea: Joi.string().required(),
-      areaUnit: Joi.valid(...Object.values(AreaUnit)).required(),
-      minLeaseTerm: Joi.string().required(),
-      maxLeaseTerm: Joi.string().optional(),
-      leaseTermUnit: Joi.valid(...Object.values(LeaseTermUnit)).required(),
-      businessRates: Joi.string().optional(),
-      serviceCharge: Joi.string().optional(),
-      buildingClass: Joi.valid(...Object.values(BuildingClass)).optional(),
-      lastRefurbished: Joi.string().optional(),
-      floorNumber: Joi.number().integer().optional(),
-      totalFloors: Joi.number().integer().optional(),
-      parkingSpaces: Joi.number().integer().min(0).optional(),
-
-      // Property Types
-      isOfficeSpace: Joi.boolean().default(false),
-      isWarehouse: Joi.boolean().default(false),
-      isHighRise: Joi.boolean().default(false),
-      isMultiUnit: Joi.boolean().default(false),
-      isRetail: Joi.boolean().default(false),
-      isIndustrial: Joi.boolean().default(false),
-
-      // Office Details
-      workstations: Joi.number().integer().min(0).optional(),
-      meetingRooms: Joi.number().integer().min(0).optional(),
-      hasReception: Joi.boolean().default(false),
-      officeLayout: Joi.valid(...Object.values(OfficeLayout)).optional(),
-
-      // Warehouse Details
-      clearHeight: Joi.string().optional(),
-      loadingDoorsCount: Joi.number().integer().optional(),
-      powerSupply: Joi.string().optional(),
-      floorLoad: Joi.string().optional(),
-      columnSpacing: Joi.string().optional(),
-      hasYard: Joi.boolean().default(false),
-      yardDepth: Joi.string().optional(),
-
-      // Features
-      features: Joi.array().items(Joi.string()).optional(),
-      customFeatures: Joi.array().items(Joi.string()).optional(),
-      nearbyAmenities: Joi.array().items(Joi.string()).optional(),
-      customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
-      amenityDistances: Joi.object().optional(),
-
-      // Energy
-      epcRating: Joi.string().optional(),
-      energyEfficiencyRating: Joi.number().integer().optional(),
-      environmentalImpactRating: Joi.number().integer().optional(),
-      heatingTypes: Joi.array().items(Joi.string()).optional(),
-      coolingTypes: Joi.array().items(Joi.string()).optional(),
-      hasGreenCertification: Joi.boolean().default(false),
-      greenCertificationType: Joi.string().optional(),
-      greenCertificationLevel: Joi.string().optional(),
-
-      // Security Features
-      securityFeatures: Joi.array().items(Joi.string()).optional(),
-
-      // Key Features
-      keyFeatures: Joi.array().items(Joi.string()).optional(),
-      customKeyFeatures: Joi.array().items(Joi.string()).optional(),
-
-      // Additional Fields
-      internetSpeed: Joi.string().optional(),
-      hasElevator: Joi.boolean().default(false),
-      hasLoadingBay: Joi.boolean().default(false),
-      hasSprinklerSystem: Joi.boolean().default(false),
-      hasAlarmSystem: Joi.boolean().default(false),
-      hasCCTV: Joi.boolean().default(false),
-      has24HrAccess: Joi.boolean().default(false),
-      hasBackupGenerator: Joi.boolean().default(false),
-      fitOutIncluded: Joi.boolean().default(false),
-      fitOutDetails: Joi.string().optional(),
-      leaseTerm: Joi.string().optional(),
-      leaseTermNegotiable: Joi.boolean().default(true),
-      rentReviewPeriod: Joi.string().optional(),
-      breakClause: Joi.string().optional(),
-      rentFreeOffered: Joi.boolean().default(false),
-      rentFreePeriod: Joi.string().optional(),
-
-      // Unit Configurations
-      unitConfigurations: Joi.array().items(
-        Joi.object({
-          unitType: Joi.string().required(),
-          unitNumber: Joi.string().optional(),
-          floorNumber: Joi.number().integer().required(),
-          area: Joi.string().required(),
-          price: Joi.string().required(),
-          available: Joi.boolean().default(true),
-          description: Joi.string().optional()
-        })
-      ).optional(),
-
-      // Floor Configurations
-      floorAvailability: Joi.array().items(
-        Joi.object({
-          floorNumber: Joi.number().integer().required(),
-          area: Joi.string().required(),
-          price: Joi.string().required(),
-          available: Joi.boolean().default(true),
-          partialFloor: Joi.boolean().default(false),
-          description: Joi.string().optional()
-        })
-      ).optional(),
-
-      commercialPropertyUnit: Joi.object({
-        unitType: Joi.string().required(),
-        unitNumber: Joi.string().optional(),
-        floorNumber: Joi.number().integer().required(),
-        area: Joi.string().required(),
-        price: Joi.string().required(),
-        available: Joi.boolean().default(true),
-        description: Joi.string().optional()
-      }),
-
-      commercialPropertyFloor: Joi.object({
-        floorNumber: Joi.number().integer().required(),
-        area: Joi.string().required(),
-        price: Joi.string().required(),
-        available: Joi.boolean().default(true),
-        partialFloor: Joi.boolean().default(false),
-        description: Joi.string().optional()
-      })
-    }).when('specificationType', {
-      is: PropertySpecificationType.COMMERCIAL,
-      then: Joi.required()
-    }),
-
-    // Shotlet Specific
-    shotlet: Joi.object({
-      // Host Information
-      hostName: Joi.string().required(),
-      hostPhotoUrl: Joi.string().uri().optional(),
-
-      // Property Details
-      bedrooms: Joi.number().integer().min(1).required(),
-      beds: Joi.number().integer().min(1).required(),
-      bathrooms: Joi.number().precision(1).min(1).required(),
-      maxGuests: Joi.number().integer().min(1).required(),
-      propertySize: Joi.string().optional(),
-      sizeUnit: Joi.valid(...Object.values(AreaUnit)).optional(),
-      floorLevel: Joi.number().integer().optional(),
-      totalFloors: Joi.number().integer().optional(),
-      renovationYear: Joi.string().optional(),
-
-      // Amenities
-      amenities: Joi.array().items(Joi.string()).optional(),
-      customAmenities: Joi.array().items(Joi.string()).optional(),
-      nearbyAttractions: Joi.array().items(Joi.string()).optional(),
-      customNearbyAttractions: Joi.array().items(Joi.string()).optional(),
-      attractionDistances: Joi.object().optional(),
-      safetyFeatures: Joi.array().items(Joi.string()).optional(),
-      customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
-
-      // Availability & Pricing
-      minStayDays: Joi.number().integer().min(1).required(),
-      maxStayDays: Joi.number().integer().min(1).required(),
-      availableTo: Joi.date().optional(),
-      cleaningFee: Joi.string().optional(),
-      securityDeposit: Joi.string().optional(),
-      weeklyDiscount: Joi.string().optional(),
-      monthlyDiscount: Joi.string().optional(),
-      unavailableDates: Joi.array().items(Joi.date()).optional(),
-
-      // House Rules
-      checkInTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
-      checkOutTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
-      instantBooking: Joi.boolean().default(false),
-      allowChildren: Joi.boolean().default(true),
-      allowInfants: Joi.boolean().default(true),
-      allowPets: Joi.boolean().default(false),
-      allowSmoking: Joi.boolean().default(false),
-      allowParties: Joi.boolean().default(false),
-      quietHours: Joi.boolean().default(false),
-      quietHoursStart: Joi.string().pattern(/^\d{2}:\d{2}$/).optional(),
-      quietHoursEnd: Joi.string().pattern(/^\d{2}:\d{2}$/).optional(),
-      additionalRules: Joi.array().items(Joi.string()).optional(),
-
-      // Booking & Policies
-      cancellationPolicy: Joi.valid(...Object.values(CancellationPolicy)).required(),
-      customCancellationPolicy: Joi.string().optional(),
-      houseManual: Joi.string().optional(),
-      checkInInstructions: Joi.string().required(),
-      localRecommendations: Joi.string().optional(),
-      emergencyContact: Joi.string().required(),
-
-      // Amenity Flags
-      hasWifi: Joi.boolean().default(true),
-      wifiSpeed: Joi.string().optional(),
-      hasTV: Joi.boolean().default(false),
-      hasKitchen: Joi.boolean().default(true),
-      hasWasher: Joi.boolean().default(false),
-      hasDryer: Joi.boolean().default(false),
-      hasAirConditioning: Joi.boolean().default(false),
-      hasHeating: Joi.boolean().default(false),
-      hasWorkspace: Joi.boolean().default(false),
-      hasPool: Joi.boolean().default(false),
-      hasHotTub: Joi.boolean().default(false),
-      hasFreeParking: Joi.boolean().default(false),
-      hasGym: Joi.boolean().default(false),
-      hasBreakfast: Joi.boolean().default(false),
-      hasSelfCheckin: Joi.boolean().default(false),
-      hasBalcony: Joi.boolean().default(false),
-      hasGarden: Joi.boolean().default(false),
-      hasBBQ: Joi.boolean().default(false),
-      hasFireplace: Joi.boolean().default(false),
-      hasBeachAccess: Joi.boolean().default(false),
-      hasLakeAccess: Joi.boolean().default(false),
-      hasMountainView: Joi.boolean().default(false),
-      hasOceanView: Joi.boolean().default(false),
-      hasCityView: Joi.boolean().default(false)
-    }).when('specificationType', {
-      is: PropertySpecificationType.SHORTLET,
-      then: Joi.required()
-    }),
-
-    // Additional Fields
-    amenities: Joi.array().items(Joi.string()).optional(),
-    customFeatures: Joi.array().items(Joi.string()).optional(),
-    nearbyAmenities: Joi.array().items(
-      Joi.object({
-        name: Joi.string().required(),
-        distance: Joi.string().optional()
-      })
-    ).optional(),
-
-    // Unit Configurations
-    unitConfigurations: Joi.array().items(
-      Joi.object({
-        unitType: Joi.string().required(),
-        count: Joi.number().required(),
-        bedrooms: Joi.number().required(),
-        bathrooms: Joi.number().required(),
-        price: Joi.string().required()
-      })
-    ).optional(),
-
-    // Shared Facilities
-    sharedFacilities: Joi.object({
-      kitchen: Joi.boolean().default(false),
-      bathroom: Joi.boolean().default(false),
-      livingRoom: Joi.boolean().default(false),
-      garden: Joi.boolean().default(false),
-      laundry: Joi.boolean().default(false),
-      parking: Joi.boolean().default(false),
-      other: Joi.string().optional()
-    }).optional(),
 
 
-    // Property Specific Details
-    hasLift: Joi.boolean().default(false),
-    gardenType: Joi.string().optional(),
-    gardenSize: Joi.string().optional(),
-    parkingSpaces: Joi.number().integer().min(0).default(0),
-    garageType: Joi.string().optional(),
+export const residentialPropertySchema = Joi.object({
+  propertySubType: Joi.string().valid(...propertyType).required(),
+  typeSpecific: Joi.object().optional(),
 
-    // Contact & Additional Information
-    contactName: Joi.string().optional(),
-    contactCompany: Joi.string().optional(),
-    companyLogoUrl: Joi.string().uri().optional(),
-    viewingArrangements: Joi.string().optional(),
-    keyFeatures: Joi.array().items(Joi.string()).optional(),
-    customKeyFeatures: Joi.array().items(Joi.string()).optional(),
-    additionalNotes: Joi.string().optional(),
+  bedrooms: Joi.number().required(),
+  bathrooms: Joi.number().required(),
+  toilets: Joi.number().optional(),
+  halfBathrooms: Joi.number().optional(),
+  furnished: Joi.boolean().default(false),
+  parkingSpaces: Joi.number().default(0),
+  yearBuilt: Joi.number().optional(),
+  floorLevel: Joi.number().optional(),
+  totalFloors: Joi.number().optional(),
+  petsAllowed: Joi.boolean().default(false),
+  availableFrom: Joi.date().optional(),
+  minimumStay: Joi.number().optional(),
+  maximumStay: Joi.number().optional(),
+  serviced: Joi.boolean().default(false),
+  shared: Joi.boolean().default(false),
 
-    // Multi-unit properties
-    isMultiUnit: Joi.boolean().default(false),
-    totalUnits: Joi.number().integer().min(0).optional(),
-    totalFloors: Joi.number().integer().min(0).optional(),
-    unitsPerFloor: Joi.number().integer().min(0).optional(),
+  nearbyAmenities: Joi.array().items(Joi.string()).required(),
+  customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  amenityDistances: Joi.object().pattern(Joi.string(), Joi.number()).optional(),
 
-    // HMO specific
-    isHMO: Joi.boolean().default(false),
-    hmoLicensed: Joi.boolean().default(false),
-    hmoLicenseNumber: Joi.string().optional(),
-    hmoLicenseExpiry: Joi.string().optional(),
-    hmoMaxOccupants: Joi.number().integer().min(0).optional(),
+  totalArea: Joi.string().optional(),
+  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).optional(),
+  petPolicy: Joi.string().optional(),
+  rentalTerms: Joi.string().optional(),
+  securityDeposit: Joi.string().optional(),
+  utilities: Joi.array().items(Joi.string()).required(),
 
-    // Room rental specific
-    isRoomRental: Joi.boolean().default(false),
-    roomDetails: Joi.array().items(
-      Joi.object({
-        roomName: Joi.string().required(),
-        roomSize: Joi.string().optional(),
-        ensuite: Joi.boolean().default(false),
-        price: Joi.string().required(),
-        availability: Joi.valid(...Object.values(PropsApartmentStatus)).default('VACANT')
-      })
-    ).optional(),
-    // Energy and Sustainability
-    epcRating: Joi.string().optional(),
-    energyEfficiencyRating: Joi.number().integer().default(0),
-    environmentalImpactRating: Joi.number().integer().default(0),
-    heatingTypes: Joi.array().items(Joi.string()).optional(),
-    glazingType: Joi.string().optional(),
-  }).xor(PropertySpecificationType.RESIDENTIAL, PropertySpecificationType.COMMERCIAL, "SHORTLET")
-  .with('isMultiUnit', ['totalUnits', 'totalFloors'])
-  .with('isHMO', ['hmoLicensed'])
-  .with('isRoomRental', ['roomDetails'])
-};
+  propertyCondition: Joi.string().optional(),
+  gym: Joi.boolean().default(false),
+  pool: Joi.boolean().default(false),
+  security: Joi.boolean().default(false),
+  waterSupply: Joi.string().optional(),
+  powerSupply: Joi.string().optional(),
+  internetAvailable: Joi.boolean().default(false),
+  internetSpeed: Joi.string().optional(),
+  furnishingDetails: Joi.string().optional(),
+  renovationYear: Joi.string().optional(),
 
+  waterIncluded: Joi.boolean().default(false),
+  electricityIncluded: Joi.boolean().default(false),
+  internetIncluded: Joi.boolean().default(false),
+  gasIncluded: Joi.boolean().default(false),
+  cableIncluded: Joi.boolean().default(false),
+
+  garden: Joi.boolean().default(false),
+  balcony: Joi.boolean().default(false),
+  patio: Joi.boolean().default(false),
+  roofDeck: Joi.boolean().default(false),
+  terrace: Joi.boolean().default(false),
+
+  epcRating: Joi.string().optional(),
+  energyEfficiencyRating: Joi.number().optional(),
+  environmentalImpactRating: Joi.number().optional(),
+  heatingTypes: Joi.array().items(Joi.string()).required(),
+  coolingTypes: Joi.array().items(Joi.string()).required(),
+  gazingTypes: Joi.string().required(),
+
+  contactName: Joi.string().optional(),
+  contactCompany: Joi.string().optional(),
+  companyLogoUrl: Joi.string().uri().optional(),
+  viewingArrangements: Joi.string().optional(),
+  keyFeatures: Joi.array().items(Joi.string()).required(),
+  customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+  additionalNotes: Joi.string().optional(),
+});
+// 🔹 CommercialPropertyUnit Schema
+export const commercialPropertyUnitSchema = Joi.object({
+  id: Joi.string().required(),
+  unitType: Joi.string().required(),
+  unitNumber: Joi.string().optional(),
+  floorNumber: Joi.number().integer().required(),
+  area: Joi.string().required(),
+  price: Joi.string().required(),
+  available: Joi.boolean().default(true),
+  description: Joi.string().optional(),
+  propertyId: Joi.string().required(),
+});
+
+// 🔹 CommercialPropertyFloor Schema
+export const commercialPropertyFloorSchema = Joi.object({
+  id: Joi.string().required(),
+  floorNumber: Joi.number().integer().required(),
+  area: Joi.string().required(),
+  price: Joi.string().required(),
+  available: Joi.boolean().default(true),
+  partialFloor: Joi.boolean().default(false),
+  description: Joi.string().optional(),
+  propertyId: Joi.string().required(),
+});
+
+// 🔹 SuitableUse Schema
+export const suitableUseSchema = Joi.object({
+  id: Joi.string().required(),
+  name: Joi.string().required(),
+  commercialPropertyId: Joi.string().required(),
+});
+
+export const commercialPropertySchema = Joi.object({
+  propertySubType: Joi.string().required(),
+  typeSpecific: Joi.any().optional(),
+  totalArea: Joi.string().required(),
+  areaUnit: Joi.string().required(),
+  businessRates: Joi.string().optional(),
+  serviceCharge: Joi.number().optional(),
+  leaseTermUnit: Joi.string().required(),
+  minimumLeaseTerm: Joi.number().integer().required(),
+  maximumLeaseTerm: Joi.number().integer().optional(),
+  securityDeposit: Joi.number().required(),
+  buildingClass: Joi.string().optional(),
+  lastRefurbished: Joi.string().optional(),
+  floorNumber: Joi.number().integer().optional(),
+  totalFloors: Joi.number().integer().optional(),
+  zoning: Joi.string().optional(),
+  yearBuilt: Joi.number().integer().optional(),
+  totalRooms: Joi.number().integer().required(),
+  parkingSpaces: Joi.number().integer().default(0),
+  floorLevel: Joi.number().integer().optional(),
+  availableFrom: Joi.date().optional(),
+  workstations: Joi.number().integer().optional(),
+  meetingRooms: Joi.number().integer().optional(),
+  officeLayout: Joi.string().optional(),
+  clearHeight: Joi.string().optional(),
+  loadingDoorsCount: Joi.number().integer().optional(),
+  powerSupply: Joi.string().optional(),
+  floorLoad: Joi.string().optional(),
+  columnSpacing: Joi.string().optional(),
+  hasYard: Joi.boolean().default(false),
+  yardDepth: Joi.string().optional(),
+  // features: Joi.array().items(Joi.string()).required(),
+  // customFeatures: Joi.array().items(Joi.string()).optional(),
+  nearbyAmenities: Joi.array().items(Joi.string()).required(),
+  customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  amenityDistances: Joi.object().optional(),
+  epcRating: Joi.string().optional(),
+  energyEfficiencyRating: Joi.number().integer().optional(),
+  environmentalImpactRating: Joi.number().integer().optional(),
+  heatingTypes: Joi.array().items(Joi.string()).required(),
+  coolingTypes: Joi.array().items(Joi.string()).required(),
+  hasGreenCertification: Joi.boolean().default(false),
+  greenCertificationType: Joi.string().optional(),
+  greenCertificationLevel: Joi.string().optional(),
+  totalUnits: Joi.number().integer().optional(),
+  unitConfigurations: Joi.array().items(commercialPropertyUnitSchema).optional(),
+  highRiseFloors: Joi.number().integer().optional(),
+  floorAvailability: Joi.array().items(commercialPropertyFloorSchema).optional(),
+  securityFeatures: Joi.array().items(Joi.string()).required(),
+  keyFeatures: Joi.array().items(Joi.string()).required(),
+  customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+  internetSpeed: Joi.string().optional(),
+  hasLoadingBay: Joi.boolean().optional(),
+  hasSprinklerSystem: Joi.boolean().optional(),
+  hasAlarmSystem: Joi.boolean().optional(),
+  hasCCTV: Joi.boolean().optional(),
+  has24HrAccess: Joi.boolean().optional(),
+  hasBackupGenerator: Joi.boolean().optional(),
+  fitOutIncluded: Joi.boolean().optional(),
+  fitOutDetails: Joi.string().optional(),
+  leaseTerm: Joi.string().optional(),
+  leaseTermNegotiable: Joi.boolean().optional(),
+  rentReviewPeriod: Joi.string().optional(),
+  breakClause: Joi.string().optional(),
+  rentFreeOffered: Joi.boolean().optional(),
+  rentFreePeriod: Joi.string().optional(),
+  contactName: Joi.string().optional(),
+  contactCompany: Joi.string().optional(),
+  companyLogoUrl: Joi.string().optional(),
+  viewingArrangements: Joi.string().optional(),
+  elevator: Joi.boolean().optional(),
+  hasReception: Joi.boolean().optional(),
+  hasSecurity: Joi.boolean().optional(),
+  hasConferenceRoom: Joi.boolean().optional(),
+  hasCafeteria: Joi.boolean().optional(),
+  hasGym: Joi.boolean().optional(),
+  suitableFor: Joi.array().items(suitableUseSchema).optional()
+});
+
+
+
+// Nested Models
+export const bookingSchema = Joi.object({
+  checkInDate: Joi.date().required(),
+  checkOutDate: Joi.date().required(),
+  guestCount: Joi.number().required(),
+  totalPrice: Joi.string().required(),
+  status: Joi.string().valid(...Object.values(BookingStatus)).default(BookingStatus.PENDING),
+
+  guestName: Joi.string().required(),
+  guestEmail: Joi.string().email().required(),
+  guestPhone: Joi.string().optional(),
+  specialRequests: Joi.string().optional(),
+  paymentStatus: Joi.string().optional(),
+  paymentMethod: Joi.string().optional(),
+  transactionReference: Joi.string().optional(),
+
+  propertyId: Joi.string().required(),
+  userId: Joi.string().optional()
+});
+
+export const seasonalPricingSchema = Joi.object({
+  seasonName: Joi.string().required(),
+  startDate: Joi.date().required(),
+  endDate: Joi.date().required(),
+  price: Joi.string().required(),
+  propertyId: Joi.string().required()
+});
+
+export const unavailableDateSchema = Joi.object({
+  date: Joi.date().required(),
+  shortletId: Joi.string().required()
+});
+
+export const additionalRuleSchema = Joi.object({
+  rule: Joi.string().required(),
+  shortletId: Joi.string().required()
+});
+
+export const hostLanguageSchema = Joi.object({
+  language: Joi.string().required(),
+  shortletId: Joi.string().required()
+});
+
+//  Shortlet Property Schema
+export const shortletPropertySchema = Joi.object({
+  propertySubType: Joi.string().required(),
+  typeSpecific: Joi.object().optional(),
+  bedrooms: Joi.number().required(),
+  beds: Joi.number().required(),
+  bathrooms: Joi.number().required(),
+  maxGuests: Joi.number().optional(),
+  propertySize: Joi.string().optional(),
+  sizeUnit: Joi.string().optional(),
+  floorLevel: Joi.number().optional(),
+  totalFloors: Joi.number().optional(),
+  renovationYear: Joi.string().optional(),
+  yearBuilt: Joi.number().integer().optional(),
+  furnished: Joi.boolean().default(true),
+
+  amenities: Joi.array().items(Joi.string()).required(),
+  customAmenities: Joi.array().items(Joi.string()).optional(),
+  customNearbyAttractions: Joi.array().items(Joi.string()).optional(),
+  attractionDistances: Joi.object().optional(),
+  safetyFeatures: Joi.array().items(Joi.string()).required(),
+  customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
+
+  minStayDays: Joi.number().required(),
+  maxStayDays: Joi.number().required(),
+  availableFrom: Joi.date().optional(),
+  availableTo: Joi.date().optional(),
+  basePrice: Joi.number().required(),
+  cleaningFee: Joi.number().optional(),
+  securityDeposit: Joi.number().optional(),
+  weeklyDiscount: Joi.number().optional(),
+  monthlyDiscount: Joi.number().optional(),
+
+  checkInTime: Joi.string().required(),
+  checkOutTime: Joi.string().required(),
+  instantBooking: Joi.boolean().default(false),
+  allowChildren: Joi.boolean().default(true),
+  allowInfants: Joi.boolean().default(true),
+  allowPets: Joi.boolean().default(false),
+  allowSmoking: Joi.boolean().default(false),
+  allowParties: Joi.boolean().default(false),
+  quietHours: Joi.boolean().default(false),
+  quietHoursStart: Joi.string().optional(),
+  quietHoursEnd: Joi.string().optional(),
+
+  cancellationPolicy: Joi.string().valid(...Object.values(CancellationPolicy)).required(),
+  customCancellationPolicy: Joi.string().optional(),
+  houseManual: Joi.string().optional(),
+  checkInInstructions: Joi.string().required(),
+  localRecommendations: Joi.string().optional(),
+  emergencyContact: Joi.string().optional(),
+
+  hostName: Joi.string().optional(),
+  hostPhotoUrl: Joi.string().uri().optional(),
+  responseRate: Joi.number().optional(),
+  responseTime: Joi.string().optional(),
+  isSuperhost: Joi.boolean().default(false),
+  joinedDate: Joi.date().required(),
+
+  bookings: Joi.array().items(bookingSchema).optional(),
+  seasonalPricing: Joi.array().items(seasonalPricingSchema).optional(),
+  unavailableDates: Joi.array().items(unavailableDateSchema).optional(),
+  additionalRules: Joi.array().items(additionalRuleSchema).optional(),
+  nearbyAttractions: Joi.array().items(Joi.string()).optional(),
+  hostLanguages: Joi.array().items(hostLanguageSchema).optional()
+});
+
+
+// SharedFacilities Joi
+export const sharedFacilitiesSchema = Joi.object({
+  kitchen: Joi.boolean().default(false),
+  bathroom: Joi.boolean().default(false),
+  livingRoom: Joi.boolean().default(false),
+  garden: Joi.boolean().default(false),
+  laundry: Joi.boolean().default(false),
+  parking: Joi.boolean().default(false),
+  other: Joi.string().optional(),
+});
+
+// Unit Configuration Joi
+export const unitConfigurationSchema = Joi.object({
+  unitType: Joi.string().required(),
+  count: Joi.number().required(),
+  bedrooms: Joi.number().required(),
+  bathrooms: Joi.number().required(),
+  price: Joi.string().required(),
+});
+
+// Room Detail Joi
+export const roomDetailSchema = Joi.object({
+  roomName: Joi.string().required(),
+  roomSize: Joi.string().required(),
+  ensuite: Joi.boolean().default(false),
+  price: Joi.string().required(),
+  availability: Joi.string().valid(...Object.values(PropsApartmentStatus)).default(PropsApartmentStatus.VACANT),
+});
+
+// Main Property Schema
+export const propertySchema = Joi.object({
+  // media files attachement for middlewares
+  documentName: Joi.array().items(Joi.string()).optional(),
+  docType: Joi.array().items(Joi.string()).optional(),
+  idType: Joi.array().items(Joi.string()).optional(),
+  uploadedFiles:Joi.array().items(Joi.object()).optional(),
+
+  // main property information
+  name: Joi.string().required(),
+  title: Joi.string().optional(),
+  description: Joi.string().optional(),
+  shortDescription: Joi.string().optional(),
+  propertysize: Joi.number().optional(),
+  isDeleted: Joi.boolean().default(false),
+  showCase: Joi.boolean().default(false),
+
+
+  marketValue: Joi.number().precision(2).default(0.0),
+  rentalFee: Joi.number().precision(2).default(0.0),
+  initialDeposit: Joi.number().precision(2).default(0.0),
+  dueDate: Joi.date().optional(),
+
+  noBedRoom: Joi.number().default(0),
+  noKitchen: Joi.number().default(0),
+  noGarage: Joi.number().default(0),
+  noBathRoom: Joi.number().default(0),
+  noReceptionRooms: Joi.number().default(0),
+  totalArea: Joi.string().optional(),
+  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).required(),
+  yearBuilt: Joi.number().integer().optional(),
+
+  city: Joi.string().required(),
+  state: Joi.string().optional(),
+  country: Joi.string().required(),
+  zipcode: Joi.string().required(),
+  location: Joi.string().optional(),
+  locationId: Joi.string().optional(),
+
+  // images: Joi.array().items(Joi.string()).optional(),
+  // videourl: Joi.array().items(Joi.string()).optional(),
+  propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),
+  image: Joi.array().items(propertyMediaFilesSchema).optional(),
+  videos: Joi.array().items(propertyMediaFilesSchema).optional(),
+  virtualTours: Joi.array().items(propertyMediaFilesSchema).optional(),
+
+
+  amenities: Joi.array().items(Joi.string()).optional(),
+
+  totalApartments: Joi.number().optional(),
+  longitude: Joi.number().precision(6).optional(),
+  latitude: Joi.number().precision(6).optional(),
+
+  price: Joi.string().optional(),
+  currency: Joi.string().optional(),
+  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).required(),
+  rentalPeriod: Joi.string().optional(),
+
+  availability: Joi.string().valid(...Object.values(PropsApartmentStatus)).default(PropsApartmentStatus.VACANT).required(),
+  availableFrom: Joi.date().optional(),
+  type: Joi.string().valid(...Object.values(propertyType)).required(),
+  typeSpecific: Joi.alternatives().try(
+    Joi.object().unknown(),
+    Joi.string().custom((value, helpers) => {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed !== 'object' || parsed === null) {
+          return helpers.error('any.invalid');
+        }
+        return parsed;
+      } catch (e) {
+        return helpers.error('any.invalid');
+      }
+    })
+  ).optional(),
+  settings: Joi.array().items(Joi.object()).optional(),
+
+  specificationType: Joi.string().valid(...Object.values(PropertySpecificationType)).required(),
+  useTypeCategory: Joi.string().optional(),
+
+  sharedFacilities: sharedFacilitiesSchema.optional(),
+  roomDetails: Joi.array().items(roomDetailSchema).optional(),
+  UnitConfiguration: Joi.array().items(unitConfigurationSchema).optional(),
+
+  // Residential Conditional
+  residential: Joi.alternatives().conditional('specificationType', {
+    is: PropertySpecificationType.RESIDENTIAL,
+    then: residentialPropertySchema.required(),
+    otherwise: Joi.forbidden() // Ensures field is absent when not needed
+  }),
+
+  // Commercial Conditional
+  commercial: Joi.alternatives().conditional('specificationType', {
+    is: PropertySpecificationType.COMMERCIAL,
+    then: commercialPropertySchema.required(),
+    otherwise: Joi.forbidden()
+  }),
+
+  // Shortlet Conditional
+  shotlet: Joi.alternatives().conditional('specificationType', {
+    is: PropertySpecificationType.SHORTLET,
+    then: shortletPropertySchema.required(),
+    otherwise: Joi.forbidden()
+  }),
+});
+
+
+const propertyFeatureType = Object.values(PropertyFeatureType);
+export const propertyFeatureSchema = Joi.object({
+  name: Joi.string().required(),
+  type: Joi.string()
+    .valid(...propertyFeatureType) // Ensure this spreads an array of strings
+    .default(PropertyFeatureType.KEY)
+    .required(),
+});
+
+
+// {
+//   "propertySubType": "Office",
+//   "typeSpecific": {
+//     "officeType": "Class A",
+//     "layout": "Open-plan"
+//   },
+//   "propertyId": "PROP123456",
+//   "totalArea": "10000",
+//   "areaUnit": "sqft",
+//   "businessRates": "5000 GBP/year",
+//   "serviceCharge": 2000,
+//   "leaseTermUnit": "years",
+//   "minimumLeaseTerm": 3,
+//   "maximumLeaseTerm": 7,
+//   "securityDeposit": 10000,
+//   "buildingClass": "A",
+//   "lastRefurbished": "2023-06-01",
+//   "floorNumber": 5,
+//   "totalFloors": 10,
+//   "zoning": "Commercial",
+//   "yearBuilt": 2015,
+//   "totalRooms": 20,
+//   "parkingSpaces": 50,
+//   "floorLevel": 5,
+//   "availableFrom": "2025-05-01",
+//   "workstations": 100,
+//   "meetingRooms": 4,
+//   "officeLayout": "Open-plan with private offices",
+//   "clearHeight": "12 ft",
+//   "loadingDoorsCount": 2,
+//   "powerSupply": "Three-phase",
+//   "floorLoad": "100 psf",
+//   "columnSpacing": "30 ft",
+//   "hasYard": false,
+//   "yardDepth": null,
+//   "features": ["High-speed internet", "Modern HVAC", "Natural light"],
+//   "customFeatures": ["Rooftop terrace", "Bike storage"],
+//   "nearbyAmenities": ["Supermarkets", "Restaurants", "Public Transportation"],
+//   "customNearbyAmenities": ["Coffee shop", "Fitness center"],
+//   "amenityDistances": {
+//     "Supermarkets": "0.5 miles",
+//     "Restaurants": "0.2 miles",
+//     "Public Transportation": "0.1 miles"
+//   },
+//   "epcRating": "B",
+//   "energyEfficiencyRating": 85,
+//   "environmentalImpactRating": 90,
+//   "heatingTypes": ["Central heating", "Electric heating"],
+//   "coolingTypes": ["Central air conditioning", "VRF system"],
+//   "hasGreenCertification": true,
+//   "greenCertificationType": "LEED",
+//   "greenCertificationLevel": "Gold",
+//   "totalUnits": 10,
+
+//   "highRiseFloors": 10,
+//   "securityFeatures": ["cm9radrvt0001q5ew6ouliobd", "cm9radrvs0000q5ewg3dwz30x", "Access control"],
+//   "keyFeatures": ["cm9r722qs0000jkg69rzk2jor", "cm9r722qt0001jkg6ag5k5j5t"],
+//   "customKeyFeatures": ["Smart lighting", "Acoustic panels"],
+//   "internetSpeed": "1 Gbps",
+//   "hasLoadingBay": true,
+//   "hasSprinklerSystem": true,
+//   "hasAlarmSystem": true,
+//   "hasCCTV": true,
+//   "has24HrAccess": true,
+//   "hasBackupGenerator": true,
+//   "fitOutIncluded": true,
+//   "fitOutDetails": "Modern fit-out with furniture and cabling",
+//   "leaseTerm": "5 years",
+//   "leaseTermNegotiable": true,
+//   "rentReviewPeriod": "3 years",
+//   "breakClause": "2 years",
+//   "rentFreeOffered": true,
+//   "rentFreePeriod": "3 months",
+//   "contactName": "John Doe",
+//   "contactCompany": "Acme Realty",
+//   "companyLogoUrl": "https://example.com/logo.png",
+//   "viewingArrangements": "By appointment, contact John Doe",
+//   "elevator": true,
+//   "hasReception": true,
+//   "hasSecurity": true,
+//   "hasConferenceRoom": true,
+//   "hasCafeteria": true,
+//   "hasGym": false,
+// }
+
+//   "unitConfigurations": [
+//     {
+//       "unitNumber": "501",
+//       "area": "1000 sqft",
+//       "type": "Private office",
+//       "rent": 3000
+//     },
+//     {
+//       "unitNumber": "502",
+//       "area": "1200 sqft",
+//       "type": "Open-plan",
+//       "rent": 3500
+//     }
+//   ],
+
+//   "suitableFor": [
+//     {
+//       "use": "Office",
+//       "description": "Suitable for corporate offices"
+//     },
+//     {
+//       "use": "Co-working",
+//       "description": "Flexible spaces for startups"
+//     }
+//   ]

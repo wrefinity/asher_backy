@@ -3,16 +3,47 @@ import ErrorService from "../services/error.service";
 import PropertyServices from "../services/propertyServices";
 import MaintenanceServices from "../services/maintenance.service";
 import PropertyViewingService from "../services/propertyviewing.service";
-import { createPropertyViewingSchema, updatePropertyViewingSchema } from "../validations/schemas/properties.schema";
+import { createPropertyViewingSchema, updatePropertyViewingSchema, createFeaturesSchema } from "../validations/schemas/properties.schema";
 import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
-import { LogType, logTypeStatus,PropertySpecificationType, PropertyType, PropsApartmentStatus } from "@prisma/client"
+import { LogType, logTypeStatus, PropertyFeatureType, PropertySpecificationType, PropertyType, PropsApartmentStatus } from "@prisma/client"
 import { LandlordService } from "../landlord/services/landlord.service";
-
 
 class PropertyController {
     constructor() { }
-
+    createFeatures = async (req: CustomRequest, res: Response) => {
+        try {
+          // Validate input with Joi
+          const { error, value } = createFeaturesSchema.validate(req.body, {
+            abortEarly: false // Return all validation errors
+          });
+      
+          if (error) {
+            const errorDetails = error.details.map(detail => ({
+              message: detail.message,
+              path: detail.path
+            }));
+            return res.status(400).json({
+              message: 'Validation failed',
+              errors: errorDetails
+            });
+          }
+      
+          const createdFeatures = await PropertyServices.createPropertyFeature(value);
+          return res.status(201).json(createdFeatures);
+          
+        } catch (error) {
+          ErrorService.handleError(error, res);
+        }
+      }
+    getFeatures = async (req: CustomRequest, res: Response) => {
+        try {
+            const features = await PropertyServices.getPropertyFeature()
+            return res.status(200).json({ features })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    };
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
@@ -400,6 +431,7 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
 
 }
 

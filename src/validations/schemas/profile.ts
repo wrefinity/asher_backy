@@ -1,7 +1,8 @@
-import Joi from 'joi';
+import Joi, { optional } from 'joi';
 
 export const profileSchema = Joi.object({
   gender: Joi.string().valid('Male', 'Female', 'Other'),
+  id: Joi.string().optional(),
   phoneNumber: Joi.string().pattern(/^[0-9]{10,15}$/).optional(),
   address: Joi.string().optional(),
   dateOfBirth: Joi.date().iso().optional(),

@@ -58,13 +58,13 @@ class PropertyController {
             }
         });
         this.createProperties = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
             try {
                 if (!landlordId) {
                     return res.status(403).json({ error: 'kindly login' });
                 }
-                const { error, value } = properties_schema_1.createPropertySchema.validate(req.body);
+                const { error, value } = properties_schema_1.propertySchema.validate(req.body, { abortEarly: false });
                 if (error) {
                     return res.status(400).json({ error: error.details[0].message });
                 }
@@ -73,16 +73,14 @@ class PropertyController {
                 if (existance) {
                     return res.status(400).json({ error: 'property exist for the state and city' });
                 }
-                const images = value.cloudinaryUrls;
-                const videourl = value.cloudinaryVideoUrls;
-                delete value['state'];
-                delete value['cloudinaryUrls'];
-                delete value['cloudinaryVideoUrls'];
-                delete value['cloudinaryAudioUrls'];
-                delete value['cloudinaryDocumentUrls'];
+                const { uploadedFiles, images, videourl } = value;
+                delete value['documentName'];
+                delete value['docType'];
+                delete value['idType'];
+                delete value['uploadedFiles'];
                 const rentalFee = value.rentalFee || 0;
                 // const lateFee = rentalFee * 0.01;
-                const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, images, videourl, landlordId }));
+                const property = yield propertyServices_1.default.createProperties(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, images, videourl, landlordId }), uploadedFiles, (_c = req.user) === null || _c === void 0 ? void 0 : _c.id);
                 return res.status(201).json({ property });
             }
             catch (error) {

@@ -178,7 +178,6 @@ class ApplicantControls {
         return res.status(500).json({ error: 'Property ID is required.' });
       }
 
-      console.log(req.params)
       // Check if property exists
       const property = await PropertyServices.getPropertiesById(propertyId);
       if (!property) {
@@ -314,6 +313,7 @@ class ApplicantControls {
       ErrorService.handleError(error, res)
     }
   }
+  
   createOrUpdateAdditionInfo = async (req: CustomRequest, res: Response) => {
     try {
       const userId = String(req.user.id);
@@ -866,7 +866,8 @@ class ApplicantControls {
         applicationId,
         subjects: "Asher Agreement Letter SignUp",
         events: `agreement letter signed for the property: ${application?.properties?.name}`,
-        createdById: userId
+        createdById: userId,
+        type: LogType.EMAIL,
       })
 
       await ApplicantService.updateApplicationStatusStep(

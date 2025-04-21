@@ -1,7 +1,6 @@
 import { prismaClient } from "../..";
 import { Prisma } from "@prisma/client";
 import { ApplicationStatus, InvitedResponse, ApplicationSaveState, userRoles } from '@prisma/client';
-import userServices from "../../services/user.services";
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
 import RefereesServices from "../../services/referees.services";
@@ -24,10 +23,8 @@ import {
   DeclarationIF
 } from "../schemas/types"
 import { ApplicationInvite } from "../../landlord/validations/interfaces/applications";
-
 import applicationServices from "../../services/application.services";
 import logsServices from "../../services/logs.services";
-import sendMail from "../../utils/emailer";
 
 class ApplicantService {
 
@@ -424,7 +421,6 @@ class ApplicantService {
     return { ...docInfo, ...updatedApplication };
   };
 
-
   createOrUpdateResidentialInformation = async (data: ResidentialInformationIF) => {
     const { userId, applicationId, ...rest } = data;
     // Upsert residentialInformation with prevAddresses connected
@@ -441,6 +437,7 @@ class ApplicantService {
     });
     return { ...resInfo, ...updatedApplication };
   }
+
   createOrUpdateDeclaration = async (data: DeclarationIF) => {
     const { userId, id, applicationId, ...rest } = data;
     if (id) {
@@ -569,7 +566,6 @@ class ApplicantService {
       },
     });
   };
-
 
   getApplicationById = async (applicationId: string) => {
     return await prismaClient.application.findUnique({

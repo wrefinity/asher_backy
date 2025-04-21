@@ -14,6 +14,10 @@ enum DocumentType {
   INCOME_PROOF
   ADDITIONAL
   AGREEMENT_DOC
+  OTHER
+  FLOOR_PLAN
+  OWNERSHIP
+  INSURANCE
 }
 
 enum IdType {

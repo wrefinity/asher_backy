@@ -184,7 +184,6 @@ class ApplicantControls {
                 if (!propertyId) {
                     return res.status(500).json({ error: 'Property ID is required.' });
                 }
-                console.log(req.params);
                 // Check if property exists
                 const property = yield propertyServices_1.default.getPropertiesById(propertyId);
                 if (!property) {
@@ -794,7 +793,8 @@ class ApplicantControls {
                     applicationId,
                     subjects: "Asher Agreement Letter SignUp",
                     events: `agreement letter signed for the property: ${(_f = application === null || application === void 0 ? void 0 : application.properties) === null || _f === void 0 ? void 0 : _f.name}`,
-                    createdById: userId
+                    createdById: userId,
+                    type: client_1.LogType.EMAIL,
                 });
                 yield applicantService_1.default.updateApplicationStatusStep(applicationId, client_1.ApplicationStatus === null || client_1.ApplicationStatus === void 0 ? void 0 : client_1.ApplicationStatus.AGREEMENTS_SIGNED);
                 return res.status(200).json({

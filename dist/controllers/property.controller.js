@@ -22,6 +22,38 @@ const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../landlord/services/landlord.service");
 class PropertyController {
     constructor() {
+        this.createFeatures = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Validate input with Joi
+                const { error, value } = properties_schema_1.createFeaturesSchema.validate(req.body, {
+                    abortEarly: false // Return all validation errors
+                });
+                if (error) {
+                    const errorDetails = error.details.map(detail => ({
+                        message: detail.message,
+                        path: detail.path
+                    }));
+                    return res.status(400).json({
+                        message: 'Validation failed',
+                        errors: errorDetails
+                    });
+                }
+                const createdFeatures = yield propertyServices_1.default.createPropertyFeature(value);
+                return res.status(201).json(createdFeatures);
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getFeatures = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const features = yield propertyServices_1.default.getPropertyFeature();
+                return res.status(200).json({ features });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         // using filters base on property size, type and location
         this.getProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
