@@ -162,11 +162,17 @@ class TenantService {
                         declaration: true,
                         documents: true,
                         emergencyInfo: true,
-                        personalDetails: true,
+                        // personalDetails: true,
+                        personalDetails: {
+                            include: {
+                                nextOfKin: true,
+                            },
+                        },
                         guarantorInformation: true,
                         referenceForm: true,
                         guarantorAgreement: true,
                         employeeReference: true,
+
                         referee: true,
                         residentialInfo: {
                             include: {
