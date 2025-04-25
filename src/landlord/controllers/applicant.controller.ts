@@ -167,10 +167,8 @@ class ApplicationControls {
 
 
     createInvite = async (req: CustomRequest, res: Response) => {
-
         try {
             const enquiryId = req.params?.enquiryId;
-
             // check enquiryId,
             const enquire = await logsServices.getLogsById(enquiryId)
             if (!enquire) {
@@ -211,6 +209,50 @@ class ApplicationControls {
             `;
             await Emailer(tenantInfor.email, "Asher Rentals Invites", htmlContent)
             await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED })
+            return res.status(201).json({ invite });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    createInviteForExistingUser = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.params?.userId;
+            const { error, value } = createApplicationInviteSchema.validate(req.body);
+            if (error) return res.status(400).json({ error: error.details[0].message });
+            const invitedByLandordId = req.user?.landlords?.id;
+
+            const propertyId = value.propertyId;
+            const property = await propertyServices.getPropertyById(propertyId);
+            if (!property) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
+
+            const invite = await ApplicationInvitesService.createInvite({
+                ...value,
+                invitedByLandordId,
+                userInvitedId: userId,
+                // enquiryId,
+                responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING]
+            });
+           
+            const userExist = await userServices.getUserById(value.userInvitedId);
+            if (!userExist) {
+                return res.status(404).json({ message: 'user not found' });
+            }
+            // send message to the tenants
+            const tenantInfor = await TenantService.getUserInfoByTenantId(value.tenantId);
+            const htmlContent = `
+                <h2>Invitation for Property Viewing</h2>
+                <p>Hello,</p>
+                <p>You have been invited to a property viewing. Here are the details:</p>
+                <ul>
+                <li><strong>Scheduled Date:</strong> ${value?.scheduleDate ? value?.scheduleDate : "To be determined"}</li>
+                <li><strong>Status:</strong> PENDING</li>
+                </ul>
+                <p>Please respond to this invitation as soon as possible.</p>
+            `;
+            await Emailer(tenantInfor.email, "Asher Rentals Invites", htmlContent)
+            await logsServices.createLog({ status: logTypeStatus.INVITED, type: LogType.APPLICATION, events: "Application Invites", createdById: userId})
             return res.status(201).json({ invite });
         } catch (error) {
             errorService.handleError(error, res)

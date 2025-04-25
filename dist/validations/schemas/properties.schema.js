@@ -130,18 +130,15 @@ exports.createFeaturesSchema = joi_1.default.array()
 });
 exports.createPropertyListingSchema = joi_1.default.object({
     payApplicationFee: joi_1.default.boolean().required(),
-    isShortlet: joi_1.default.boolean().required(),
-    // shortletDuration: Joi.string().valid(...shortletType).default(ShortletType.MONTHLY).required(),
-    // type: Joi.string().valid(...listingTypes).default(ListingType.LISTING_WEBSITE).required(),
+    type: joi_1.default.string().valid(...listingTypes).required(),
     propertyId: joi_1.default.string().optional(),
-    apartmentId: joi_1.default.string().optional(),
     propertySubType: joi_1.default.string().valid(...propertyType).required(),
-    listAs: joi_1.default.string().valid(client_1.PropertySpecificationType).required(),
+    listAs: joi_1.default.string().valid(...Object.values(client_1.PropertySpecificationType)).required(),
     priceFrequency: joi_1.default.string().valid(...Object.values(client_1.PriceFrequency)).required(),
     price: joi_1.default.number().required(),
     securityDeposit: joi_1.default.number().required(),
-    minStayDays: joi_1.default.number().required(),
-    maxStayDays: joi_1.default.number().required(),
+    minStayDays: joi_1.default.number().optional(),
+    maxStayDays: joi_1.default.number().optional(),
     availableFrom: joi_1.default.date().iso().optional(),
     availableTo: joi_1.default.date().iso().optional(),
 });

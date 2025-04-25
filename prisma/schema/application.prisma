@@ -92,6 +92,7 @@ model applicationInvites {
   enquiryId          String?
 
   application application?
+  
 }
 
 model application {

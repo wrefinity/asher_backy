@@ -496,7 +496,9 @@ class PropertyService {
             minGarage,
             maxGarage
         } = property || {};
-
+        console.log("=============================")
+        console.log(landlordId)
+        console.log("=============================")
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -504,11 +506,11 @@ class PropertyService {
                 property: {
                     ...(landlordId && { landlordId }),
                     // Modified type filter
-                    ...(type && {
-                        type: {
-                            in: Array.isArray(type) ? type : [type]
-                        }
-                    }),
+                    // ...(type && {
+                    //     type: {
+                    //         in: Array.isArray(type) ? type : [type]
+                    //     }
+                    // }),
                     ...(availability && { availability: AvailabilityStatus.VACANT }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
@@ -826,9 +828,16 @@ class PropertyService {
         return prismaClient.$transaction(async (tx) => {
             const { agencyId, landlordId, stateId, keyFeatures, ...rest } = data;
 
-            // Step 2: Check if the key features exist
+            if (!landlordId || !stateId) {
+                throw new Error("Missing required fields: landlordId or stateId.");
+            }
+            if (!specificationType) {
+                throw new Error("Specification type is required.");
+            }
+
+            // Check if the key features exist
             const keyFeatureIds = await this.getPropertyFeaturesByIds(keyFeatures);
-            if (keyFeatureIds.length !== keyFeatureIds.length) {
+            if (keyFeatureIds.length !== keyFeatures.length) {
                 throw new Error(`Some key amentities features do not exist.`);
             }
 
@@ -838,7 +847,7 @@ class PropertyService {
             const virtualTours = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.VIRTUAL_TOUR);
             const documents = uploadedFiles?.filter(file => file?.identifier === 'DocTable');
 
-            // Step 1: Create the main property
+            // Create the main property
             const property = await tx.properties.create({
                 data: {
                     ...rest,
@@ -898,11 +907,7 @@ class PropertyService {
             if (!property) {
                 throw new Error(`Failed to create property`);
             }
-            console.log("=====================================================");
-            console.log("Property created:", property);
-            console.log("=====================================================");
-
-
+          
             // Step 2: Create associated specification
             switch (specificationType) {
                 case PropertySpecificationType.RESIDENTIAL:
@@ -1308,8 +1313,6 @@ class PropertyService {
             },
         });
     }
-
-
 }
 
 export default new PropertyService()

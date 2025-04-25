@@ -259,12 +259,11 @@ class PropertyService {
         this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}, skip = 0, take = 10, availability = true) {
             const { landlordId, property, minSize, maxSize, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = filters;
             const { type, state, country, specificationType, isActive, rentalFee, maxBedRoom, minBedRoom, maxBathRoom, minBathRoom, maxRentalFee, minRentalFee, marketValue, noKitchen, minGarage, maxGarage } = property || {};
+            console.log("=============================");
+            console.log(landlordId);
+            console.log("=============================");
             return yield __1.prismaClient.propertyListingHistory.findMany({
-                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (type && {
-                        type: {
-                            in: Array.isArray(type) ? type : [type]
-                        }
-                    })), (availability && { availability: client_3.AvailabilityStatus.VACANT })), (specificationType && { specificationType })), (state && {
+                where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (availability && { availability: client_3.AvailabilityStatus.VACANT })), (specificationType && { specificationType })), (state && {
                         state: {
                             is: {
                                 name: state
@@ -589,9 +588,15 @@ class PropertyService {
             const { shortlet, specificationType, residential, commercial } = specification;
             return __1.prismaClient.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                 const { agencyId, landlordId, stateId, keyFeatures } = data, rest = __rest(data, ["agencyId", "landlordId", "stateId", "keyFeatures"]);
-                // Step 2: Check if the key features exist
+                if (!landlordId || !stateId) {
+                    throw new Error("Missing required fields: landlordId or stateId.");
+                }
+                if (!specificationType) {
+                    throw new Error("Specification type is required.");
+                }
+                // Check if the key features exist
                 const keyFeatureIds = yield this.getPropertyFeaturesByIds(keyFeatures);
-                if (keyFeatureIds.length !== keyFeatureIds.length) {
+                if (keyFeatureIds.length !== keyFeatures.length) {
                     throw new Error(`Some key amentities features do not exist.`);
                 }
                 // Separate media by type
@@ -599,7 +604,7 @@ class PropertyService {
                 const videos = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_2.MediaType.VIDEO);
                 const virtualTours = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_2.MediaType.VIRTUAL_TOUR);
                 const documents = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'DocTable');
-                // Step 1: Create the main property
+                // Create the main property
                 const property = yield tx.properties.create({
                     data: Object.assign(Object.assign({}, rest), { keyFeatures: {
                             connect: keyFeatureIds.map((id) => ({ id })),
@@ -647,9 +652,6 @@ class PropertyService {
                 if (!property) {
                     throw new Error(`Failed to create property`);
                 }
-                console.log("=====================================================");
-                console.log("Property created:", property);
-                console.log("=====================================================");
                 // Step 2: Create associated specification
                 switch (specificationType) {
                     case client_1.PropertySpecificationType.RESIDENTIAL:

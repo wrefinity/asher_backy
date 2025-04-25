@@ -294,6 +294,87 @@ class ApplicationInvitesService {
             include: this.applicationInclusion
         });
     }
+    async createNewApplicationFromExisting(
+        applicationId: string,
+        inviteData: any,
+        applicationInviteId: string
+      ) {
+        // 1. Fetch original application and related data
+        const original = await prismaClient.application.findUnique({
+          where: { id: applicationId },
+          include: {
+            personalDetails: true,
+            residentialInfo: true,
+            emergencyInfo: true,
+            employmentInfo: true,
+            documents: true,
+          },
+        });
+      
+        if (!original || !original.personalDetails) {
+          throw new Error("Original application or personal details not found.");
+        }
+      
+        // 2. Create a new application
+        const newApp = await prismaClient.application.create({
+          data: {
+            leaseStartDate: inviteData.leaseStartDate,
+            leaseEndDate: inviteData.leaseEndDate,
+            propertyType: original.propertyType,
+            moveInDate: inviteData.moveInDate,
+            rentAmountPaid: inviteData.rentAmountPaid,
+            securityDeposit: inviteData.securityDeposit,
+            leaseTerm: inviteData.leaseTerm,
+            users: {
+                connect: {id: original.userId}
+            },
+            status: inviteData.status,
+            lastStep: original.lastStep,
+      
+            personalDetails: {
+              connect: { id: original.personalDetails.id },
+            },
+            residentialInfo: original.residentialInfo
+              ? { connect: { id: original.residentialInfo.id } }
+              : undefined,
+            emergencyInfo: original.emergencyInfo
+              ? { connect: { id: original.emergencyInfo.id } }
+              : undefined,
+            employmentInfo: original.employmentInfo
+              ? { connect: { id: original.employmentInfo.id } }
+              : undefined,
+            documents: {
+              createMany: {
+                data: original.documents.map((doc) => ({
+                documentUrl: doc?.documentUrl,
+                  idType: doc?.idType,
+                  docType: doc?.docType,
+                  size: doc?.size,
+                  type: doc?.type,
+                  documentName: doc?.documentName,
+                })),
+              },
+            },
+          },
+        });
+      
+        // Update the applicationInvite to link the new application
+        const updatedInvite = await prismaClient.applicationInvites.update({
+          where: { id: applicationInviteId },
+          data: {
+            application: { connect: { id: newApp.id } },
+            // propertiesId: inviteData.propertiesId,
+            // invitedByLandordId: inviteData.landlordId,
+            // tenantsId: inviteData.tenantId,
+            // userInvitedId: inviteData.userInvitedId,
+            // enquiryId: inviteData.enquiryId,
+          },
+        });
+      
+        return updatedInvite;
+      }
+      
+      
 }
 
 export default new ApplicationInvitesService();

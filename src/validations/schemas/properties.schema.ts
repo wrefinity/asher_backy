@@ -150,18 +150,16 @@ export const createFeaturesSchema = Joi.array()
 
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
-  isShortlet: Joi.boolean().required(),
-  // shortletDuration: Joi.string().valid(...shortletType).default(ShortletType.MONTHLY).required(),
-  // type: Joi.string().valid(...listingTypes).default(ListingType.LISTING_WEBSITE).required(),
+
+  type: Joi.string().valid(...listingTypes).required(),
   propertyId: Joi.string().optional(),
-  apartmentId: Joi.string().optional(),
   propertySubType: Joi.string().valid(...propertyType).required(),
-  listAs: Joi.string().valid(PropertySpecificationType).required(),
+  listAs: Joi.string().valid(...Object.values(PropertySpecificationType)).required(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).required(),
   price: Joi.number().required(),
   securityDeposit: Joi.number().required(),
-  minStayDays: Joi.number().required(),
-  maxStayDays: Joi.number().required(),
+  minStayDays: Joi.number().optional(),
+  maxStayDays: Joi.number().optional(),
   availableFrom: Joi.date().iso().optional(),
   availableTo: Joi.date().iso().optional(),
 });

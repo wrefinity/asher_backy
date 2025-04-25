@@ -32,11 +32,9 @@ export interface IGlobalSetting {
 
 export interface PropertyListingDTO {
     payApplicationFee: boolean;
-    isShortlet: boolean;
-    type?: ListingType;
+    type?: ListingType; //ENTIRE_PROPERTY
     listAs: PropertySpecificationType;
     propertyId?: string;
-    apartmentId?: string;
 
     propertySubType: PropertyType,
     priceFrequency: PriceFrequency,

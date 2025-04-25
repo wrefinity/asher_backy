@@ -296,5 +296,77 @@ class ApplicationInvitesService {
             });
         });
     }
+    createNewApplicationFromExisting(applicationId, inviteData, applicationInviteId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // 1. Fetch original application and related data
+            const original = yield __1.prismaClient.application.findUnique({
+                where: { id: applicationId },
+                include: {
+                    personalDetails: true,
+                    residentialInfo: true,
+                    emergencyInfo: true,
+                    employmentInfo: true,
+                    documents: true,
+                },
+            });
+            if (!original || !original.personalDetails) {
+                throw new Error("Original application or personal details not found.");
+            }
+            // 2. Create a new application
+            const newApp = yield __1.prismaClient.application.create({
+                data: {
+                    leaseStartDate: inviteData.leaseStartDate,
+                    leaseEndDate: inviteData.leaseEndDate,
+                    propertyType: original.propertyType,
+                    moveInDate: inviteData.moveInDate,
+                    rentAmountPaid: inviteData.rentAmountPaid,
+                    securityDeposit: inviteData.securityDeposit,
+                    leaseTerm: inviteData.leaseTerm,
+                    users: {
+                        connect: { id: original.userId }
+                    },
+                    status: inviteData.status,
+                    lastStep: original.lastStep,
+                    personalDetails: {
+                        connect: { id: original.personalDetails.id },
+                    },
+                    residentialInfo: original.residentialInfo
+                        ? { connect: { id: original.residentialInfo.id } }
+                        : undefined,
+                    emergencyInfo: original.emergencyInfo
+                        ? { connect: { id: original.emergencyInfo.id } }
+                        : undefined,
+                    employmentInfo: original.employmentInfo
+                        ? { connect: { id: original.employmentInfo.id } }
+                        : undefined,
+                    documents: {
+                        createMany: {
+                            data: original.documents.map((doc) => ({
+                                documentUrl: doc === null || doc === void 0 ? void 0 : doc.documentUrl,
+                                idType: doc === null || doc === void 0 ? void 0 : doc.idType,
+                                docType: doc === null || doc === void 0 ? void 0 : doc.docType,
+                                size: doc === null || doc === void 0 ? void 0 : doc.size,
+                                type: doc === null || doc === void 0 ? void 0 : doc.type,
+                                documentName: doc === null || doc === void 0 ? void 0 : doc.documentName,
+                            })),
+                        },
+                    },
+                },
+            });
+            // Update the applicationInvite to link the new application
+            const updatedInvite = yield __1.prismaClient.applicationInvites.update({
+                where: { id: applicationInviteId },
+                data: {
+                    application: { connect: { id: newApp.id } },
+                    // propertiesId: inviteData.propertiesId,
+                    // invitedByLandordId: inviteData.landlordId,
+                    // tenantsId: inviteData.tenantId,
+                    // userInvitedId: inviteData.userInvitedId,
+                    // enquiryId: inviteData.enquiryId,
+                },
+            });
+            return updatedInvite;
+        });
+    }
 }
 exports.default = new ApplicationInvitesService();

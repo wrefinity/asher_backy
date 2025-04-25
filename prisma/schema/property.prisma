@@ -198,9 +198,9 @@ model propertyListingHistory {
   listAs          PropertySpecificationType? @default(SHORTLET)
   propertySubType PropertyType?
 
-  price           String?
+  price           Decimal? @default(0.00) @db.Decimal(18, 2)
   priceFrequency  PriceFrequency?
-  securityDeposit String?
+  securityDeposit Decimal? @default(0.00) @db.Decimal(18, 2)
   minStayDays     Int?
   maxStayDays     Int?
   // time attributes

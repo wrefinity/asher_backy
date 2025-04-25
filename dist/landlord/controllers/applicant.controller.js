@@ -226,6 +226,46 @@ class ApplicationControls {
                 error_service_1.default.handleError(error, res);
             }
         });
+        this.createInviteForExistingUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c;
+            try {
+                const userId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.userId;
+                const { error, value } = applicationInvitesSchema_1.createApplicationInviteSchema.validate(req.body);
+                if (error)
+                    return res.status(400).json({ error: error.details[0].message });
+                const invitedByLandordId = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.landlords) === null || _c === void 0 ? void 0 : _c.id;
+                const propertyId = value.propertyId;
+                const property = yield propertyServices_1.default.getPropertyById(propertyId);
+                if (!property) {
+                    return res.status(404).json({ message: 'Property not found' });
+                }
+                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, userInvitedId: userId, 
+                    // enquiryId,
+                    responseStepsCompleted: value.response ? [value.response] : [client_1.InvitedResponse.PENDING] }));
+                const userExist = yield user_services_1.default.getUserById(value.userInvitedId);
+                if (!userExist) {
+                    return res.status(404).json({ message: 'user not found' });
+                }
+                // send message to the tenants
+                const tenantInfor = yield tenant_service_1.default.getUserInfoByTenantId(value.tenantId);
+                const htmlContent = `
+                <h2>Invitation for Property Viewing</h2>
+                <p>Hello,</p>
+                <p>You have been invited to a property viewing. Here are the details:</p>
+                <ul>
+                <li><strong>Scheduled Date:</strong> ${(value === null || value === void 0 ? void 0 : value.scheduleDate) ? value === null || value === void 0 ? void 0 : value.scheduleDate : "To be determined"}</li>
+                <li><strong>Status:</strong> PENDING</li>
+                </ul>
+                <p>Please respond to this invitation as soon as possible.</p>
+            `;
+                yield (0, emailer_1.default)(tenantInfor.email, "Asher Rentals Invites", htmlContent);
+                yield logs_services_1.default.createLog({ status: client_1.logTypeStatus.INVITED, type: client_2.LogType.APPLICATION, events: "Application Invites", createdById: userId });
+                return res.status(201).json({ invite });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
         this.getInvite = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const { id } = req.params;
