@@ -50,7 +50,7 @@ class SupportTenantService {
             }
             let ticketData = Object.assign(Object.assign({}, data), { supportTicketNumber: (0, helpers_1.generateIDs)('ASH-TNT'), status: data.status || 'open' });
             if (data.assignedTo === 'landlord') {
-                const landlordTicket = yield __1.prismaClient.lnadlordSupportTicket.create({
+                const landlordTicket = yield __1.prismaClient.landlordSupportTicket.create({
                     data: Object.assign(Object.assign({}, ticketData), { landlordId: tenant.landlordId })
                 });
                 // TODO: alert the landlord
@@ -106,13 +106,13 @@ class SupportTenantService {
             let notificationRecipient = null;
             if (data.assignedTo === 'landlord') {
                 if (ticketId) {
-                    assignedTicket = yield __1.prismaClient.lnadlordSupportTicket.update({
+                    assignedTicket = yield __1.prismaClient.landlordSupportTicket.update({
                         where: { id: ticketId },
                         data: ticketData,
                     });
                 }
                 else {
-                    assignedTicket = yield __1.prismaClient.lnadlordSupportTicket.create({
+                    assignedTicket = yield __1.prismaClient.landlordSupportTicket.create({
                         data: Object.assign(Object.assign({}, ticketData), { landlordId: tenant.landlordId }),
                     });
                 }

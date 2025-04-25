@@ -2,7 +2,6 @@ export interface MaintenanceWhitelistInput {
     categoryId?: string;
     subcategoryId: string;
     propertyId?: string;
-    apartmentId?: string;
 }
 
 export interface MaintenanceWhitelistOutput {
@@ -11,5 +10,4 @@ export interface MaintenanceWhitelistOutput {
     subcategoryId?: string;
     landlordId: string;
     propertyId: string;
-    apartmentId?: string;
 }

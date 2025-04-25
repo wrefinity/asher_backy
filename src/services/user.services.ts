@@ -2,7 +2,7 @@ import { prismaClient } from "..";
 import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles, ApplicationStatus, onlineStatus, PropsApartmentStatus } from "@prisma/client";
+import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus } from "@prisma/client";
 import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
@@ -204,7 +204,7 @@ class UserService {
                     <p>Best regards,</p>`
             );
             // make the property occupied
-            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
+            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
         }
 
         // for web user for complete tenant account profile creation
@@ -227,7 +227,7 @@ class UserService {
                     <p>Best regards,</p>`
             );
             // make the property occupied
-            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, PropsApartmentStatus.OCCUPIED);
+            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
             //unlist the property
             await propertyServices.deletePropertyListing(userData?.propertyId);
 

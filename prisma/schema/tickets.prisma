@@ -6,7 +6,7 @@ enum TicketStatus {
   CLOSED
 }
 
-model lnadlordSupportTicket {
+model landlordSupportTicket {
   id                  String       @id @default(cuid())
   landlordId          String
   landlord            landlords    @relation(fields: [landlordId], references: [id])

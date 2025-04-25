@@ -213,7 +213,6 @@ class MaintenanceService {
                     isActive,
                     subcategoryId: subcategoryId ? subcategoryId : undefined,
                     propertyId: propertyId ? propertyId : undefined,
-                    apartmentId: apartmentId ? apartmentId : undefined,
                 },
             });
         });

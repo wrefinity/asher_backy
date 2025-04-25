@@ -51,7 +51,6 @@ class TenantService {
                 },
                 include: {
                     user: true,
-                    apartments: true,
                 },
             });
             return tenants;

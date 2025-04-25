@@ -10,7 +10,6 @@ const landlord_controller_1 = __importDefault(require("../controllers/landlord.c
 const application_routes_1 = __importDefault(require("./application.routes"));
 const tenants_routes_1 = __importDefault(require("./tenants.routes"));
 const property_routes_1 = __importDefault(require("./property.routes"));
-const apartment_routes_1 = __importDefault(require("./apartment.routes"));
 const maintenance_routes_1 = __importDefault(require("./maintenance.routes"));
 const complaint_routes_1 = __importDefault(require("./complaint.routes"));
 const documents_route_1 = __importDefault(require("./documents.route"));
@@ -51,7 +50,6 @@ class LandlordRouter {
         // properties modules under landlord
         this.router.use('/properties', property_routes_1.default);
         // appartments
-        this.router.use('/apartments', apartment_routes_1.default);
         // tasks routes routes
         this.router.use("/tasks", task_routes_1.default);
         // inventory routes routes

@@ -49,7 +49,7 @@ model landlords {
   user                  users                   @relation(fields: [userId], references: [id])
   landlordCode          String?                 @unique
   tenants               tenants[]
-  lnadlordSupportTicket lnadlordSupportTicket[]
+  lnadlordSupportTicket landlordSupportTicket[]
   bills                 bills[]
   reviews               reviews[]
 
@@ -59,11 +59,11 @@ model landlords {
   maintenanceWhitelist maintenanceWhitelist[]
   stripeCustomerId     String?                @unique
 
-  Broadcast             Broadcast[]
-  globalSettings        Settings[]
-  propsApartmentSetting propApartmentSettings[]
-  applicationInvites    applicationInvites[]
-  emailDomains          String?                 @unique
+  Broadcast          Broadcast[]
+  globalSettings     Settings[]
+  propertySettings   propertySettings[]
+  applicationInvites applicationInvites[]
+  emailDomains       String?              @unique
 }
 
 model bankInfo {
@@ -139,35 +139,33 @@ model vendors {
 }
 
 model tenants {
-  id                           String                         @id @default(cuid())
-  tenantId                     String?                        @unique
-  landlordId                   String
-  tenantCode                   String?                        @unique
-  password                     String?
+  id                    String                 @id @default(cuid())
+  tenantId              String?                @unique
+  landlordId            String
+  tenantCode            String?                @unique
+  password              String?
   // rentstatus String?
-  rentstatus                   Int?
-  leaseStartDate               DateTime?
-  leaseEndDate                 DateTime?
-  isCurrentLease               Boolean                        @default(true)
-  initialDeposit               Decimal?                       @default(0.00) @db.Decimal(18, 2)
+  rentstatus            Int?
+  leaseStartDate        DateTime?
+  leaseEndDate          DateTime?
+  isCurrentLease        Boolean                @default(true)
+  initialDeposit        Decimal?               @default(0.00) @db.Decimal(18, 2)
   // isexisted                    Int?
-  dateOfFirstRent              DateTime?                      @default(now()) @db.Timestamptz(6)
-  apartmentOrFlatNumber        Int?
-  stripeCustomerId             String?                        @unique
+  dateOfFirstRent       DateTime?              @default(now()) @db.Timestamptz(6)
+  apartmentOrFlatNumber Int?
+  stripeCustomerId      String?                @unique
   // tenantwebUserEmail
-  tenantWebUserEmail           String?
+  tenantWebUserEmail    String?
   // relationships definitions
-  userId                       String
-  user                         users                          @relation(fields: [userId], references: [id])
-  landlord                     landlords                      @relation(fields: [landlordId], references: [id])
-  agentId                      String?
-  agent                        agents?                        @relation(fields: [agentId], references: [id])
-  propertyId                   String
-  property                     properties                     @relation(fields: [propertyId], references: [id])
-  history                      tenantPaymentHistory[]
-  appartmentTransactionHistory appartmentTransactionHistory[]
-  apartments                   apartments[]
-  tenantSupportTicket          tenantSupportTicket[]
+  userId                String
+  user                  users                  @relation(fields: [userId], references: [id])
+  landlord              landlords              @relation(fields: [landlordId], references: [id])
+  agentId               String?
+  agent                 agents?                @relation(fields: [agentId], references: [id])
+  propertyId            String
+  property              properties             @relation(fields: [propertyId], references: [id])
+  history               tenantPaymentHistory[]
+  tenantSupportTicket   tenantSupportTicket[]
 
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt

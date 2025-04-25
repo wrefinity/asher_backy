@@ -53,7 +53,6 @@ class TransactionService {
             paymentGateway: data.paymentGateway,
             stripePaymentIntentId: data.stripePaymentIntentId,
             property: data.propertyId ? { connect: { id: data.propertyId } } : undefined,
-            apartment: data.apartmentId ? { connect: { id: data.apartmentId } } : undefined,
             bill: data.billId ? { connect: { id: data.billId } } : undefined,
             currency: data.currency,
         };

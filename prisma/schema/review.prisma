@@ -16,8 +16,6 @@ model reviews {
   landlordId  String?
   property    properties? @relation(fields: [propertyId], references: [id])
   propertyId  String?
-  apartment   apartments? @relation(fields: [apartmentId], references: [id])
-  apartmentId String?
   user        users?      @relation(fields: [reviewById], references: [id])
   reviewById  String
   createdAt   DateTime    @default(now())

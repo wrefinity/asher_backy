@@ -152,7 +152,6 @@ class LandlordMaintenanceService {
                         categoryId: data.categoryId,
                         subcategoryId: data.subcategoryId,
                         propertyId: data.propertyId || null,
-                        apartmentId: data.apartmentId || null,
                         landlordId: landlordId,
                     },
                 });
@@ -174,7 +173,6 @@ class LandlordMaintenanceService {
                         category: true,
                         subcategory: true,
                         property: true,
-                        apartment: true,
                     },
                 });
                 return whitelist;
@@ -217,7 +215,6 @@ class LandlordMaintenanceService {
                         categoryId: data.categoryId,
                         subcategoryId: data.subcategoryId,
                         propertyId: data.propertyId,
-                        apartmentId: data.apartmentId,
                     },
                 });
                 return updatedWhitelist;

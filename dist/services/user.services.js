@@ -197,7 +197,7 @@ class UserService {
                     <p>Thank you for choosing us. </p>
                     <p>Best regards,</p>`);
                 // make the property occupied
-                yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
+                yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.AvailabilityStatus.OCCUPIED);
             }
             // for web user for complete tenant account profile creation
             if (user && !landlordBulkUploads && (userData === null || userData === void 0 ? void 0 : userData.role) === client_1.userRoles.TENANT && createTenantProfile) {
@@ -215,7 +215,7 @@ class UserService {
                     <p>Thank you for choosing us. </p>
                     <p>Best regards,</p>`);
                 // make the property occupied
-                yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.PropsApartmentStatus.OCCUPIED);
+                yield propertyServices_1.default.updateAvailabiltyStatus(userData === null || userData === void 0 ? void 0 : userData.landlordId, userData === null || userData === void 0 ? void 0 : userData.propertyId, client_1.AvailabilityStatus.OCCUPIED);
                 //unlist the property
                 yield propertyServices_1.default.deletePropertyListing(userData === null || userData === void 0 ? void 0 : userData.propertyId);
                 yield applicantService_1.default.updateApplicationStatusStep(userData === null || userData === void 0 ? void 0 : userData.applicationId, client_1.ApplicationStatus.TENANT_CREATED);

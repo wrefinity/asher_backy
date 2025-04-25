@@ -45,8 +45,7 @@ model maintenance {
   vendorId                  String?
   property                  properties?   @relation(fields: [propertyId], references: [id])
   propertyId                String?
-  apartment                 apartments?   @relation(fields: [apartmentId], references: [id])
-  apartmentId               String?
+
   category                  category      @relation(fields: [categoryId], references: [id])
   categoryId                String
   subcategories             subCategory[] @relation("SubCategoryMaintenance")
@@ -107,8 +106,6 @@ model maintenanceWhitelist {
   landlord      landlords    @relation(fields: [landlordId], references: [id])
   landlordId    String
   property      properties?  @relation(fields: [propertyId], references: [id])
-  propertyId    String?
-  apartment     apartments?  @relation(fields: [apartmentId], references: [id])
-  apartmentId   String?
+  propertyId    String? 
   isActive      Boolean      @default(true)
 }

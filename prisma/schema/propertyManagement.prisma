@@ -32,8 +32,7 @@ enum InventoryType {
   UNDER_MAINTANACE
 }
 
-//inventory accounts for the lists of items
-// for appartments within the inventory
+
 model inventoryManageMent {
   id           String        @id @default(cuid())
   itemName     String
@@ -43,9 +42,6 @@ model inventoryManageMent {
   itemLocation String
   propertyId   String?
   property     properties?    @relation(fields: [propertyId], references: [id])
-  apartmentId  String?
-  apartments   apartments?    @relation(fields: [apartmentId], references: [id])
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isDeleted   Boolean      @default(false)

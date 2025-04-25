@@ -5,7 +5,6 @@ import LandlordControl from "../controllers/landlord.controller";
 import ApplicationRouter from "./application.routes";
 import TenantsRouter from "./tenants.routes";
 import PropertyRouter from "./property.routes";
-import AppartmentRoute from "./apartment.routes";
 import MaintenanceRouter from "./maintenance.routes";
 import ComplaintRouterRouter from "./complaint.routes";
 import DocumentRouter from "./documents.route";
@@ -80,7 +79,6 @@ class LandlordRouter {
         // properties modules under landlord
         this.router.use('/properties', PropertyRouter);
         // appartments
-        this.router.use('/apartments', AppartmentRoute);
         // tasks routes routes
         this.router.use("/tasks", TaskRouter);
         // inventory routes routes
@@ -93,7 +91,6 @@ class LandlordRouter {
 
         //braodcast routes
         this.router.use('/broadcast', BroadcastRouter)
-
     }
 }
 

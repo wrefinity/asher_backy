@@ -82,8 +82,6 @@ model applicationInvites {
   // relation ship fields
   properties         properties? @relation(fields: [propertiesId], references: [id])
   propertiesId       String?
-  apartments         apartments? @relation(fields: [apartmentsId], references: [id])
-  apartmentsId       String?
   invitedByLandordId String?
   landlords          landlords?  @relation(fields: [invitedByLandordId], references: [id])
   tenants            tenants?    @relation(fields: [tenantsId], references: [id])

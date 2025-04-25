@@ -23,7 +23,6 @@ class PropertyDocumentService {
                 },
                 include: {
                     users: true,
-                    apartments: true,
                     properties: true,
                 }
             });
@@ -33,7 +32,6 @@ class PropertyDocumentService {
                 where: { id },
                 include: {
                     users: true,
-                    apartments: true,
                     properties: true,
                 }
             });
@@ -49,7 +47,6 @@ class PropertyDocumentService {
                 where: { id },
                 include: {
                     users: true,
-                    apartments: true,
                     properties: true,
                 }
             });
@@ -66,7 +63,6 @@ class PropertyDocumentService {
                 },
                 include: {
                     users: true,
-                    apartments: true,
                     properties: true,
                 },
             });
@@ -83,7 +79,6 @@ class PropertyDocumentService {
                 },
                 include: {
                     users: true,
-                    apartments: true,
                     properties: true,
                 },
             });
@@ -115,7 +110,6 @@ class PropertyDocumentService {
                             profile: true,
                         }
                     },
-                    apartments: true,
                     properties: true,
                     application: true
                 },

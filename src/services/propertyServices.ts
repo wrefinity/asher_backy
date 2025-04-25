@@ -1,9 +1,9 @@
-import { ListingType, PropertyFeatureType, Prisma, PropertySpecificationType } from "@prisma/client";
+import { ListingType, PropertyFeatureType, Prisma, PropertySpecificationType, PrismaClient } from "@prisma/client";
 import { prismaClient } from "..";
-import { PropertyType, ShortletType, MediaType, PropsSettingType } from "@prisma/client"
+import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 // PropertyL
-import { PropsApartmentStatus } from "@prisma/client";
-import { AdditionalRule, Booking, ICommercialProperty, IResidentialProperty, PropertyFeature, SeasonalPricing, IShortletProperty, UnavailableDate, ICreateProperty, IProperty, } from "../validations/interfaces/properties.interface";
+import { AvailabilityStatus } from "@prisma/client";
+import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, PropertyFeature, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 
 interface PropertyFilters {
@@ -42,8 +42,48 @@ class PropertyService {
 
     landlordInclusion: any
     propsInclusion: any
+    specificationInclusion: any
 
     constructor() {
+
+        this.specificationInclusion = {
+            include: {
+                residential: {
+                    include: {
+                        outdoorsSpacesFeatures: true,
+                        buildingAmenityFeatures: true,
+                        safetyFeatures: true,
+                        unitConfigurations: true,
+                        sharedFacilities: true,
+                        bills: true,
+                    }
+                },
+                commercial: {
+                    include: {
+                        floorAvailability: true,
+                        safetyFeatures: true,
+                        unitConfigurations: true,
+                        suitableFor: true,
+                        roomDetails: true,
+                        sharedFacilities: true,
+                    }
+                },
+                shortlet: {
+                    include: {
+                        outdoorsSpacesFeatures: true,
+                        buildingAmenityFeatures: true,
+                        safetyFeatures: true,
+                        bookings: true,
+                        seasonalPricing: true,
+                        unavailableDates: true,
+                        additionalRules: true,
+                        hostLanguages: true,
+                        roomDetails: true,
+                        sharedFacilities: true,
+                    }
+                },
+            }
+        }
         this.landlordInclusion = {
             include: {
                 user: {
@@ -66,31 +106,15 @@ class PropertyService {
         }
         this.propsInclusion = {
             propertyListingHistory: true,
-            apartments: true,
             state: true,
-            applicant: true,
+            application: true,
             reviews: true,
             UserLikedProperty: true,
-            landlord: this.landlordInclusion
+            landlord: this.landlordInclusion,
+            specification: this.specificationInclusion
         }
     }
-    createProperty = async (propertyData: ICreateProperty) => {
-        const created = await prismaClient.properties.create({
-            data: {
-                ...propertyData,
-            }
-        })
-        if (created) {
-            this.createPropertyListing({
-                propertyId: created?.id,
-                isShortlet: created.specificationType == PropertySpecificationType.SHORTLET ? true : false,
-                payApplicationFee: true,
-                type: ListingType.LISTING_WEBSITE
-            })
-        }
 
-        return created;
-    }
 
 
     getProperties = async () => {
@@ -114,9 +138,11 @@ class PropertyService {
         return await prismaClient.properties.findUnique({
             where: { id },
             include: {
-                apartments: true,
+
                 state: true,
-                applicant: true,
+                specification: this.specificationInclusion,
+                agency: true,
+                application: true,
                 reviews: true,
                 UserLikedProperty: true,
                 landlord: this.landlordInclusion,
@@ -139,7 +165,7 @@ class PropertyService {
             }
         });
     }
-    updateAvailabiltyStatus = async (landlordId: string, id: string, availability: PropsApartmentStatus) => {
+    updateAvailabiltyStatus = async (landlordId: string, id: string, availability: AvailabilityStatus) => {
         return await prismaClient.properties.update({
             where: { id, landlordId },
             data: { availability }
@@ -263,25 +289,6 @@ class PropertyService {
         }
     }
 
-    showCaseRentals = async (propertyId: string, landlordId: string) => {
-        return await prismaClient.properties.update({
-            where: {
-                landlordId,
-                id: propertyId,
-            },
-            data: {
-                showCase: true
-            }
-        })
-    }
-    getShowCasedRentals = async (landlordId: string) => {
-        return await prismaClient.properties.findMany({
-            where: {
-                landlordId,
-                // showCase: true
-            }
-        })
-    }
 
     checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 
@@ -306,7 +313,7 @@ class PropertyService {
     }
 
     getPropertyGlobalFees = async (landlordId: string, settingType: PropsSettingType) => {
-        return await prismaClient.propApartmentSettings.findFirst({
+        return await prismaClient.propertySettings.findFirst({
             where: {
                 landlordId,
                 settingType
@@ -314,7 +321,7 @@ class PropertyService {
         })
     }
     // property listings
-    getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true, availability: PropsApartmentStatus = PropsApartmentStatus.VACANT) => {
+    getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true, availability: AvailabilityStatus = AvailabilityStatus.VACANT) => {
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 isActive,
@@ -330,7 +337,6 @@ class PropertyService {
                         ...this.propsInclusion
                     }
                 },
-                apartment: true,
             }
         });
     }
@@ -392,47 +398,47 @@ class PropertyService {
                             }
                         }
                     }),
-                    ...(availability && { availability: PropsApartmentStatus.VACANT }),
+                    ...(availability && { availability: AvailabilityStatus.VACANT }),
                     ...(country && { country }),
                     ...(marketValue && { marketValue: Number(marketValue) }),
-                    ...(rentalFee && { rentalFee: Number(rentalFee) }),
+                    ...(rentalFee && { price: Number(rentalFee) }),
                     ...(minRentalFee || maxRentalFee
                         ? {
-                            rentalFee: {
+                            price: {
                                 gte: minRentalFee ?? undefined,
                                 lte: maxRentalFee ?? undefined,
                             },
                         }
                         : {}),
-                    ...(maxBedRoom || minBedRoom
-                        ? {
-                            noBedRoom: {
-                                gte: minBedRoom ?? undefined,
-                                lte: maxBedRoom ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(maxBathRoom || minBathRoom
-                        ? {
-                            noBathRoom: {
-                                gte: minBathRoom ?? undefined,
-                                lte: maxBathRoom ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(minGarage || maxGarage
-                        ? {
-                            noGarage: {
-                                gte: minGarage ?? undefined,
-                                lte: maxGarage ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(noKitchen && { noKitchen: Number(noKitchen) }),
+                    // ...(maxBedRoom || minBedRoom
+                    //     ? {
+                    //         noBedRoom: {
+                    //             gte: minBedRoom ?? undefined,
+                    //             lte: maxBedRoom ?? undefined,
+                    //         },
+                    //     }
+                    //     : {}),
+                    // ...(maxBathRoom || minBathRoom
+                    //     ? {
+                    //         noBathRoom: {
+                    //             gte: minBathRoom ?? undefined,
+                    //             lte: maxBathRoom ?? undefined,
+                    //         },
+                    //     }
+                    //     : {}),
+                    // ...(minGarage || maxGarage
+                    //     ? {
+                    //         noGarage: {
+                    //             gte: minGarage ?? undefined,
+                    //             lte: maxGarage ?? undefined,
+                    //         },
+                    //     }
+                    //     : {}),
+                    // ...(noKitchen && { noKitchen: Number(noKitchen) }),
                     ...(zipcode && { zipcode }),
-                    ...(isShortlet !== undefined && { isShortlet }),
+                    // ...(isShortlet !== undefined && { isShortlet }),
                     // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
-                    ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
+                    // ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
                     ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
                     ...(minSize || maxSize
                         ? {
@@ -503,7 +509,7 @@ class PropertyService {
                             in: Array.isArray(type) ? type : [type]
                         }
                     }),
-                    ...(availability && { availability: PropsApartmentStatus.VACANT }),
+                    ...(availability && { availability: AvailabilityStatus.VACANT }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
                         state: {
@@ -514,42 +520,42 @@ class PropertyService {
                     }),
                     ...(country && { country }),
                     ...(marketValue && { marketValue: Number(marketValue) }),
-                    ...(rentalFee && { rentalFee: Number(rentalFee) }),
+                    ...(rentalFee && { price: Number(rentalFee) }),
                     ...(minRentalFee || maxRentalFee
                         ? {
-                            rentalFee: {
+                            price: {
                                 gte: minRentalFee ?? undefined,
                                 lte: maxRentalFee ?? undefined,
                             },
                         }
                         : {}),
-                    ...(maxBedRoom || minBedRoom
-                        ? {
-                            noBedRoom: {
-                                gte: minBedRoom ?? undefined,
-                                lte: maxBedRoom ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(maxBathRoom || minBathRoom
-                        ? {
-                            noBathRoom: {
-                                gte: minBathRoom ?? undefined,
-                                lte: maxBathRoom ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(minGarage || maxGarage
-                        ? {
-                            noGarage: {
-                                gte: minGarage ?? undefined,
-                                lte: maxGarage ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(noKitchen && { noKitchen: Number(noKitchen) }),
+                    // ...(maxBedRoom || minBedRoom
+                    //     ? {
+                    //         noBedRoom: {
+                    //             gte: minBedRoom ?? undefined,
+                    //             lte: maxBedRoom ?? undefined,
+                    //         },
+                    //     }
+                    //     : {}),
+                    // ...(maxBathRoom || minBathRoom
+                    //     ? {
+                    //         noBathRoom: {
+                    //             gte: minBathRoom ?? undefined,
+                    //             lte: maxBathRoom ?? undefined,
+                    //         },
+                    //     }
+                    //     : {}),
+                    // ...(minGarage || maxGarage
+                    //     ? {
+                    //         noGarage: {
+                    //             gte: minGarage ?? undefined,
+                    //             lte: maxGarage ?? undefined,
+                    //         },
+                    //     }
+                    //     : {}),
+                    // ...(noKitchen && { noKitchen: Number(noKitchen) }),
                     ...(zipcode && { zipcode }),
-                    ...(isShortlet !== undefined && { isShortlet }),
+                    // ...(isShortlet !== undefined && { isShortlet }),
                     // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
                     ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
                     ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
@@ -576,21 +582,20 @@ class PropertyService {
             include: {
                 property: {
                     include: {
-                        apartments: true,
                         state: true,
-                        applicant: true,
+                        application: true,
                         reviews: true,
                         UserLikedProperty: true,
                         landlord: this.landlordInclusion,
+                        specification: this.specificationInclusion,
                     },
                 },
-                apartment: true,
             },
             skip,
             take,
         });
     };
-    createPropertyListing = async (data: PropertyListingDTO) => {
+    createPropertyListing = async (data: PropertyListingDTO | any) => {
         const propListed = await this.getPropsListedById(data.propertyId);
         if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
         return await prismaClient.propertyListingHistory.create({
@@ -638,8 +643,7 @@ class PropertyService {
                     include: {
                         ...this.propsInclusion
                     }
-                },
-                apartment: true,
+                }
             },
             orderBy: { createdAt: "desc" }
         });
@@ -647,7 +651,7 @@ class PropertyService {
         return propsListed
     }
     // to update property listings
-    updatePropertyListing = async (data: Partial<PropertyListingDTO>, propertyId: string, landlordId: string) => {
+    updatePropertyListing = async (data: Partial<PropertyListingDTO | any>, propertyId: string, landlordId: string) => {
         const propsListed = await this.getPropsListedById(propertyId);
         if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
         if (propsListed?.property?.landlordId !== landlordId) {
@@ -739,7 +743,7 @@ class PropertyService {
                         },
                     },
                 },
-                property: true
+                property: this.propsInclusion
             },
         });
     }
@@ -794,30 +798,39 @@ class PropertyService {
         return existingFeatureIds;
     }
 
-    async ensurePropertyIsNotLinked(propertyId: string): Promise<void> {
-        const [residential, commercial, shortlet] = await Promise.all([
-            prismaClient.residentialProperty.findUnique({ where: { propertyId } }),
-            prismaClient.commercialProperty.findUnique({ where: { propertyId } }),
-            prismaClient.shortletProperty.findUnique({ where: { propertyId } }),
-        ]);
 
-        if (residential) {
-            throw new Error(`Property with ID ${propertyId} is already linked to a residential property.`);
-        }
+    // async ensurePropertyIsNotLinked(propertyId: string): Promise<void> {
+    //     const [residential, commercial, shortlet] = await Promise.all([
+    //         prismaClient.residentialProperty.findUnique({ where: { propertyId } }),
+    //         prismaClient.commercialProperty.findUnique({ where: { propertyId } }),
+    //         prismaClient.shortletProperty.findUnique({ where: { propertyId } }),
+    //     ]);
 
-        if (commercial) {
-            throw new Error(`Property with ID ${propertyId} is already linked to a commercial property.`);
-        }
+    //     if (residential) {
+    //         throw new Error(`Property with ID ${propertyId} is already linked to a residential property.`);
+    //     }
 
-        if (shortlet) {
-            throw new Error(`Property with ID ${propertyId} is already linked to a shortlet property.`);
-        }
-    }
+    //     if (commercial) {
+    //         throw new Error(`Property with ID ${propertyId} is already linked to a commercial property.`);
+    //     }
+
+    //     if (shortlet) {
+    //         throw new Error(`Property with ID ${propertyId} is already linked to a shortlet property.`);
+    //     }
+    // }
 
 
-    async createProperties(data: IProperty, uploadedFiles?: any[], userId?: string) {
+    async createProperties(data: IBasePropertyDTO, specification: IPropertySpecificationDTO, uploadedFiles?: any[], userId?: string) {
+        const { shortlet, specificationType, residential, commercial } = specification;
+
         return prismaClient.$transaction(async (tx) => {
-            const { specificationType, agencyId, landlordId, stateId, shortlet, residential, commercial, ...rest } = data;
+            const { agencyId, landlordId, stateId, keyFeatures, ...rest } = data;
+
+            // Step 2: Check if the key features exist
+            const keyFeatureIds = await this.getPropertyFeaturesByIds(keyFeatures);
+            if (keyFeatureIds.length !== keyFeatureIds.length) {
+                throw new Error(`Some key amentities features do not exist.`);
+            }
 
             // Separate media by type
             const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
@@ -829,11 +842,14 @@ class PropertyService {
             const property = await tx.properties.create({
                 data: {
                     ...rest,
+                    keyFeatures: {
+                        connect: keyFeatureIds.map((id) => ({ id })),
+                    },
                     specificationType,
                     landlord: { connect: { id: landlordId } },
                     agency: agencyId ? { connect: { id: agencyId } } : undefined,
                     state: { connect: { id: stateId } },
-                    image: {
+                    images: {
                         create: images?.map(img => ({
                             type: img.type,
                             size: img.size,
@@ -886,29 +902,30 @@ class PropertyService {
             console.log("Property created:", property);
             console.log("=====================================================");
 
+
             // Step 2: Create associated specification
             switch (specificationType) {
                 case PropertySpecificationType.RESIDENTIAL:
-                    await this.createResidentialProperty(property.id, residential, tx);
+                    await this.createResidentialProperty(property.id, residential, tx, specification);
                     break;
                 case PropertySpecificationType.COMMERCIAL:
-                    await this.createCommercialProperty(property.id, commercial, tx);
+                    await this.createCommercialProperty(property.id, commercial, tx, specification);
                     break;
                 case PropertySpecificationType.SHORTLET:
-                    await this.createShortletProperty(property.id, shortlet, tx);
+                    await this.createShortletProperty(property.id, shortlet, tx, specification);
                     break;
                 default:
                     throw new Error(`Unknown specification type: ${specificationType}`);
             }
 
             // Step 3: Create Listing History
-            await tx.propertyListingHistory.create({
-                data: {
-                    propertyId: property.id,
-                    onListing: true,
-                    type: 'LISTING_WEBSITE'
-                }
-            });
+            // await tx.propertyListingHistory.create({
+            //     data: {
+            //         propertyId: property.id,
+            //         onListing: true,
+            //         type: 'LISTING_WEBSITE'
+            //     }
+            // });
 
 
 
@@ -916,14 +933,11 @@ class PropertyService {
             return tx.properties.findUnique({
                 where: { id: property.id },
                 include: {
-                    residential: true,
-                    commercial: true,
-                    shortlet: true,
-                    image: true,
+                    specification: this.specificationInclusion,
+                    images: true,
                     videos: true,
                     virtualTours: true,
                     propertyDocument: true,
-                    sharedFacilities: true
                 }
             });
         }, {
@@ -933,8 +947,17 @@ class PropertyService {
     }
 
 
-    async createResidentialProperty(propertyId: string, data: IResidentialProperty | any, tx) {
-        const { keyFeatures: featureIds, ...rest } = data;
+    async createResidentialProperty(propertyId: string, data: IResidentialDTO | any, tx: any, specification: IPropertySpecificationDTO) {
+        const {
+            outdoorsSpacesFeatures: outdoorFeatureIds,
+            safetyFeatures: safetyFeatureIdx,
+            bills,
+            buildingAmenityFeatures: buildingAmenityFeaturesIds,
+            roomDetails,
+            sharedFacilities,
+            unitConfiguration,
+            ...rest } = data;
+
 
         // Step 1: Verify property exists
         const property = await tx.properties.findUnique({
@@ -944,71 +967,196 @@ class PropertyService {
 
 
         // Step 2: Check if the key features exist
-        const keyFeatures = await this.getPropertyFeaturesByIds(featureIds);
-        if (keyFeatures.length !== featureIds.length) {
-            throw new Error(`Some key features do not exist.`);
+        const outdoorsFeatures = await this.getPropertyFeaturesByIds(outdoorFeatureIds);
+        if (outdoorsFeatures.length !== outdoorFeatureIds.length) {
+            throw new Error(`Some outdoors features do not exist.`);
+        }
+        // Check if the building amenity features exist
+        const BAFeaturesIds = await this.getPropertyFeaturesByIds(buildingAmenityFeaturesIds);
+        if (BAFeaturesIds.length !== buildingAmenityFeaturesIds.length) {
+            throw new Error(`Some building amentities features do not exist.`);
+        }
+        // Step 2: Check if the safety features exist
+        const safetyFeatureIds = await this.getPropertyFeaturesByIds(safetyFeatureIdx);
+        if (safetyFeatureIds.length !== safetyFeatureIdx.length) {
+            throw new Error(`Some safety amentities features do not exist.`);
         }
 
-        // Step 3: Ensure property is not already linked
-        await this.ensurePropertyIsNotLinked(propertyId);
+        console.log("============shared============")
+        console.log(outdoorsFeatures)
+        console.log("============shared============")
+
 
         // Step 4: Proceed with creation
-        return await tx.residentialProperty.create({
+        const residential = await tx.residentialProperty.create({
             data: {
                 ...rest,
-                property: {
-                    connect: { id: propertyId },
+                outdoorsSpacesFeatures: {
+                    connect: outdoorsFeatures?.length ? outdoorsFeatures.map((id) => ({ id })) : undefined
                 },
-                keyFeatures: {
-                    connect: keyFeatures.map((id) => ({ id })),
+                buildingAmenityFeatures: {
+                    connect: BAFeaturesIds?.length ? BAFeaturesIds?.map((id) => ({ id })) : undefined,
+                },
+                safetyFeatures: {
+                    connect: safetyFeatureIds?.length ? safetyFeatureIds?.map((id) => ({ id })) : undefined,
+                },
+                bills: {
+                    connect: bills?.length ? bills?.map((id) => ({ id })) : undefined,
+                },
+                roomDetails: {
+                    create: roomDetails?.map((room: any) => ({
+                        roomName: room.roomName,
+                        roomSize: room.roomSize,
+                        ensuite: room.ensuite,
+                        price: room.price,
+                    })) || [],
+                },
+                sharedFacilities: {
+                    create: {
+                        kitchen: sharedFacilities?.kitchen ?? false,
+                        bathroom: sharedFacilities?.bathroom ?? false,
+                        livingRoom: sharedFacilities?.livingRoom ?? false,
+                        garden: sharedFacilities?.garden ?? false,
+                        garage: sharedFacilities?.garage ?? false,
+                        laundry: sharedFacilities?.laundry ?? false,
+                        parking: sharedFacilities?.parking ?? false,
+                        other: sharedFacilities?.other || "",
+                    },
+                },
+                unitConfigurations: {
+                    create: unitConfiguration?.map((unit: any) => ({
+                        unitType: unit.unitType,
+                        unitNumber: unit.unitNumber,
+                        floorNumber: unit.floorNumber,
+                        count: unit.count,
+                        bedrooms: unit.bedrooms,
+                        bathrooms: unit.bathrooms,
+                        price: unit.price,
+                        area: unit.area,
+                        description: unit.description,
+                        availability: unit.availability,
+                    })) || [],
                 },
             },
         });
+        return await tx.propertySpecification.create({
+            data: {
+                property: {
+                    connect: { id: property.id }
+                },
+                specificationType: PropertySpecificationType.RESIDENTIAL,
+                residential: { connect: { id: residential.id } },
+                propertySubType: specification.propertySubType,
+                otherTypeSpecific: specification?.otherTypeSpecific
+            }
+        });
     }
 
-    async createCommercialProperty(propertyId: string, data: ICommercialProperty | any, tx) {
-        const { keyFeatures: featureIds, securityFeatures: featureIdx, ...rest } = data;
+    async createCommercialProperty(propertyId: string, data: ICommercialDTO | any, tx: any, specification: IPropertySpecificationDTO) {
+        const { safetyFeatures: safFeatureIdx, securityFeatures: secFeatureIdx, floorAvailability, roomDetails, unitConfiguration, suitableFor, sharedFacilities, ...rest } = data;
 
-        // Step 1: Verify property exists
         const property = await tx.properties.findUnique({
             where: { id: propertyId }
         });
         if (!property) throw new Error(`Property ${propertyId} not found`);
 
-
-        // Step 2: Check if the key features exist
-        const keyFeatures = await this.getPropertyFeaturesByIds(featureIds);
-        if (keyFeatures.length !== featureIds.length) {
-            throw new Error(`Some key features do not exist.`);
+        const safFeatures = await this.getPropertyFeaturesByIds(safFeatureIdx);
+        if (safFeatures.length !== safFeatureIdx.length) {
+            throw new Error(`Some safety features do not exist.`);
         }
-
-        const secFeatures = await this.getPropertyFeaturesByIds(featureIdx);
-        if (secFeatures.length !== featureIdx.length) {
+        const secFeatures = await this.getPropertyFeaturesByIds(secFeatureIdx);
+        if (secFeatures.length !== secFeatureIdx.length) {
             throw new Error(`Some security features do not exist.`);
         }
 
-        // Step 3: Ensure property is not already linked
-        await this.ensurePropertyIsNotLinked(propertyId);
-
-        // Step 4: Proceed with creation
-        return await tx.commercialProperty.create({
+        // Proceed with creation
+        const commercial = await tx.commercialProperty.create({
             data: {
                 ...rest,
-                property: {
-                    connect: { id: propertyId },
-                },
-                keyFeatures: {
-                    connect: keyFeatures.map((id) => ({ id })),
-                },
                 securityFeatures: {
-                    connect: secFeatures.map((id) => ({ id })),
+                    connect: secFeatures?.length ? secFeatures.map((id) => ({ id })) : undefined,
                 },
+                safetyFeatures: {
+                    connect: safFeatures?.length ? safFeatures.map((id) => ({ id })) : undefined,
+                },
+                floorAvailability: {
+                    create: floorAvailability?.map((floor: any) => ({
+                        floorNumber: floor.floorNumber,
+                        area: floor.area,
+                        price: floor.price,
+                        available: floor.available,
+                        partialFloor: floor.partialFloor,
+                        description: floor.description,
+                        amenities: {
+                            connect: floor?.amenities?.length ? floor?.amenities.map((id) => ({ id })) : undefined,
+                        }
+                    })) || [],
+                },
+                roomDetails: {
+                    create: roomDetails?.map((room: any) => ({
+                        roomName: room.roomName,
+                        roomSize: room.roomSize,
+                        ensuite: room.ensuite,
+                        price: room.price,
+                    })) || [],
+                },
+                sharedFacilities: {
+                    create: {
+                        kitchen: sharedFacilities?.kitchen ?? false,
+                        bathroom: sharedFacilities?.bathroom ?? false,
+                        livingRoom: sharedFacilities?.livingRoom ?? false,
+                        garden: sharedFacilities?.garden ?? false,
+                        garage: sharedFacilities?.garage ?? false,
+                        laundry: sharedFacilities?.laundry ?? false,
+                        parking: sharedFacilities?.parking ?? false,
+                        other: sharedFacilities?.other || "",
+                    },
+                },
+                suitableFor: {
+                    create: suitableFor?.map((name: any) => ({
+                        name: name
+                    })) || [],
+                },
+                unitConfigurations: {
+                    create: unitConfiguration?.map((unit: any) => ({
+                        unitType: unit.unitType,
+                        unitNumber: unit.unitNumber,
+                        floorNumber: unit.floorNumber,
+                        count: unit.count,
+                        bedrooms: unit.bedrooms,
+                        bathrooms: unit.bathrooms,
+                        price: unit.price,
+                        area: unit.area,
+                        description: unit.description,
+                        availability: unit.availability,
+                    })) || [],
+                },
+
             },
+        });
+
+        return await tx.propertySpecification.create({
+            data: {
+                property: {
+                    connect: { id: property.id }
+                },
+                specificationType: PropertySpecificationType.COMMERCIAL,
+                commercial: { connect: { id: commercial.id } },
+                propertySubType: specification.propertySubType,
+                otherTypeSpecific: specification?.otherTypeSpecific
+            }
         });
     }
 
-    async createShortletProperty(propertyId: string, data: IShortletProperty | any, tx) {
-        const { safetyFeatures: featureIds, ...rest } = data;
+    async createShortletProperty(propertyId: string, data: IShortletDTO | any, tx: any, specification: IPropertySpecificationDTO) {
+        const { 
+            safetyFeatures: safetyfeatureIds, 
+            buildingAmenityFeatures: BAFeatureIds,
+            outdoorsSpacesFeatures: ODFeaturesId,
+            hostLanguages, 
+            additionalRules, unavailableDates,
+            seasonalPricing,
+            sharedFacilities, roomDetails, ...rest } = data;
 
         // Step 1: Verify property exists
         const property = await tx.properties.findUnique({
@@ -1017,25 +1165,87 @@ class PropertyService {
         if (!property) throw new Error(`Property ${propertyId} not found`);
 
         // Step 2: Check if the key features exist
-        const keyFeatures = await this.getPropertyFeaturesByIds(featureIds);
-        if (keyFeatures.length !== featureIds.length) {
-            throw new Error(`Some key features do not exist.`);
+        const safkeyFeatures = await this.getPropertyFeaturesByIds(safetyfeatureIds);
+        if (safkeyFeatures.length !== safetyfeatureIds.length) {
+            throw new Error(`Some safety features do not exist.`);
+        }
+        const outDoorFeaturesIds = await this.getPropertyFeaturesByIds(ODFeaturesId);
+        if (outDoorFeaturesIds.length !== ODFeaturesId.length) {
+            throw new Error(`Some outdoor features do not exist.`);
+        }
+        const buildingAmenityFeatureIds = await this.getPropertyFeaturesByIds(BAFeatureIds);
+        if (buildingAmenityFeatureIds.length !== BAFeatureIds.length) {
+            throw new Error(`Some bulding features do not exist.`);
         }
 
-        // Step 3: Ensure property is not already linked
-        await this.ensurePropertyIsNotLinked(propertyId);
-
-        // Step 4: Proceed with creation
-        return await tx.shortletProperty.create({
+        // Proceed with creation
+        const shortlet = await tx.shortletProperty.create({
             data: {
                 ...rest,
-                property: {
-                    connect: { id: propertyId },
-                },
                 safetyFeatures: {
-                    connect: keyFeatures.map((id) => ({ id })),
+                    connect: safkeyFeatures?.length ? safkeyFeatures?.map((id) => ({ id })): undefined,
+                },
+                outdoorsSpacesFeatures: {
+                    connect: outDoorFeaturesIds?.length? outDoorFeaturesIds?.map((id) => ({ id })): undefined,
+                },
+                buildingAmenityFeatures: {
+                    connect: buildingAmenityFeatureIds?.length? buildingAmenityFeatureIds?.map((id) => ({ id })): undefined,
+                },
+                roomDetails: {
+                    create: roomDetails?.map((room: any) => ({
+                        roomName: room.roomName,
+                        roomSize: room.roomSize,
+                        ensuite: room.ensuite,
+                        price: room.price,
+                    })) || [],
+                },
+                seasonalPricing: {
+                    create: seasonalPricing?.map((season: any) => ({
+                        seasonName: season.seasonName,
+                        startDate: season.startDate,
+                        endDate: season.endDate,
+                        price: season.price,
+                    })) || [],
+                },
+                unavailableDates: {
+                    create: unavailableDates?.map((dt: any) => ({
+                        date: dt
+                    })) || [],
+                },
+                additionalRules: {
+                    create: additionalRules?.map((r: any) => ({
+                        rule: r
+                    })) || [],
+                },
+                hostLanguages: {
+                    create: hostLanguages?.map((lang: any) => ({
+                        language: lang
+                    })) || [],
+                },
+                sharedFacilities: {
+                    create: {
+                        kitchen: sharedFacilities?.kitchen ?? false,
+                        bathroom: sharedFacilities?.bathroom ?? false,
+                        livingRoom: sharedFacilities?.livingRoom ?? false,
+                        garden: sharedFacilities?.garden ?? false,
+                        garage: sharedFacilities?.garage ?? false,
+                        laundry: sharedFacilities?.laundry ?? false,
+                        parking: sharedFacilities?.parking ?? false,
+                        other: sharedFacilities?.other || "",
+                    },
                 },
             },
+        });
+        return await tx.propertySpecification.create({
+            data: {
+                property: {
+                    connect: { id: property.id }
+                },
+                specificationType: PropertySpecificationType.SHORTLET,
+                shortlet: { connect: { id: shortlet.id } },
+                propertySubType: specification.propertySubType,
+                otherTypeSpecific: specification?.otherTypeSpecific
+            }
         });
     }
 

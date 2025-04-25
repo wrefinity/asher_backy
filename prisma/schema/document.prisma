@@ -51,8 +51,6 @@ model propertyDocument {
   application   application? @relation(fields: [applicationId], references: [id])
   applicationId String?
 
-  apartmentsId String?
-  apartments   apartments? @relation(fields: [apartmentsId], references: [id])
   propertyId   String?
   properties   properties? @relation(fields: [propertyId], references: [id])
   uploadedBy   String?

@@ -26,10 +26,10 @@ class PropertyPerformaceService {
             properties.forEach(property => {
                 generateReportQueue.add({ propertyId: property.id }, { repeat: { cron: '0 0 * * *' } })
             })
-            const apartments = await prismaClient.apartments.findMany({ select: { id: true } })
-            apartments.forEach(apartment => {
-                generateReportQueue.add({ apartmentId: apartment.id }, { repeat: { cron: '0 0 * * *' } })
-            })
+            // const apartments = await prismaClient.apartments.findMany({ select: { id: true } })
+            // apartments.forEach(apartment => {
+            //     generateReportQueue.add({ apartmentId: apartment.id }, { repeat: { cron: '0 0 * * *' } })
+            // })
         } catch (error) {
             console.error("Error fetching property", error)
         }
@@ -60,7 +60,6 @@ class PropertyPerformaceService {
         const property = await prismaClient.properties.findUnique({
             where: { id: propertyId },
             select: {
-                totalApartments: true,
                 transactions: {
                     where: {
                         reference: {
@@ -75,14 +74,13 @@ class PropertyPerformaceService {
                 }
             }
         })
-        if (!property || property.totalApartments === 0) {
+        if (!property ) {
             return 0;
         }
 
         const occupiedApartments = property.transactions.length;
-        const totalApartments = property.totalApartments;
 
-        return (occupiedApartments / totalApartments) * 100;
+        return (occupiedApartments) * 100;
     }
 
     getNetOperatingIncome = async (propertyId: string) => {
@@ -188,7 +186,7 @@ class PropertyPerformaceService {
 
         const totalExpenses = await prismaClient.maintenance.aggregate({
             where: {
-                ...(isApartment ? { apartmentId: entityId } : { propertyId: entityId }),
+                ...(isApartment ? { propertyId: entityId } : { propertyId: entityId }),
             },
             _sum: { amount: true },
         });

@@ -13,7 +13,7 @@ const __1 = require("../..");
 class LandlordSettingsService {
     constructor() {
         this.createOrUpdate = (data) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.upsert({
+            return __1.prismaClient.propertySettings.upsert({
                 where: {
                     propertyId_settingType: {
                         propertyId: data.propertyId,
@@ -25,26 +25,26 @@ class LandlordSettingsService {
             });
         });
         this.getById = (id) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.findUnique({
+            return __1.prismaClient.propertySettings.findUnique({
                 where: { id },
             });
         });
         this.getAll = () => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.findMany();
+            return __1.prismaClient.propertySettings.findMany();
         });
         this.getLandlordPropsSetting = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.findMany({
+            return __1.prismaClient.propertySettings.findMany({
                 where: { landlordId }
             });
         });
         this.update = (id, data) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.update({
+            return __1.prismaClient.propertySettings.update({
                 where: { id },
                 data,
             });
         });
         this.delete = (id) => __awaiter(this, void 0, void 0, function* () {
-            return __1.prismaClient.propApartmentSettings.delete({
+            return __1.prismaClient.propertySettings.delete({
                 where: { id },
             });
         });

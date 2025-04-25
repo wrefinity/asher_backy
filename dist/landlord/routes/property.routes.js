@@ -40,7 +40,6 @@ class ApartmentLandlordRouter {
     }
     initializeRoutes() {
         // landlord properties
-        this.router.patch('/property/showcase/:propertyId', properties_controller_1.default.showCaseRentals);
         this.router.get('/property/rentals', properties_controller_1.default.categorizedPropsInRentals);
         this.router.post('/property/property-listing', properties_controller_1.default.createPropertyListing);
         this.router.delete('/property/property-unlisting/:propertyId', properties_controller_1.default.unListPropertyListing);
@@ -48,12 +47,11 @@ class ApartmentLandlordRouter {
         this.router.get('/property/property-listing/active-inactive', properties_controller_1.default.getActiveOrInactivePropsListing);
         this.router.patch('/property/property-listing/:propertyId', properties_controller_1.default.updatePropsListing);
         this.router.get('/property', properties_controller_1.default.getCurrentLandlordProperties);
-        this.router.post('/property', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, properties_controller_1.default.createProperty);
+        // this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.post('/create', multer_1.default.array("files"), multerCloudinary_1.handlePropertyUploads, properties_controller_1.default.createProperties);
         this.router.post('/upload', multer_1.uploadcsv.single("files"), properties_controller_1.default.bulkPropsUpload);
         this.router.delete('/property/:propertyId', properties_controller_1.default.deleteLandlordProperties);
         this.router.patch('/property/status/:propertyId', properties_controller_1.default.updatePropertyAvailability);
-        this.router.get('/property/showcased', properties_controller_1.default.getShowCasedRentals);
         this.router.get('/property/tenants/:propertyId', properties_controller_1.default.getTenantsForProperty);
         this.router.get('/property/without-tenants', properties_controller_1.default.getPropertiesWithoutTenants);
         //   settings 

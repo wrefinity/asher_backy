@@ -9,7 +9,7 @@ class TenantService {
                     profile: true,
                     nextOfKin: true,
                     residentialInformation: true,
-                    applicantion: {
+                    application: {
                         include: {
                             employmentInfo: true,
                             emergencyInfo: true,
@@ -49,8 +49,7 @@ class TenantService {
                     },
                 },
                 landlord: true,
-                property: true,
-                apartments: true
+                property: true
             },
         });
 
@@ -108,7 +107,6 @@ class TenantService {
     }
 
     // getTenantByUserIdAndLandlordId = async (userId: string, landlordId: string) => {
-
     //     // Query the tenant based on the userId
     //     const tenant = await prismaClient.tenants.findFirst({
     //         where: {

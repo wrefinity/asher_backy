@@ -50,7 +50,7 @@ class SupportTenantService {
 
         if (data.assignedTo === 'landlord') {
 
-            const landlordTicket = await prismaClient.lnadlordSupportTicket.create({
+            const landlordTicket = await prismaClient.landlordSupportTicket.create({
                 data: {
                     ...ticketData,
                     landlordId: tenant.landlordId,
@@ -124,12 +124,12 @@ class SupportTenantService {
 
         if (data.assignedTo === 'landlord') {
             if (ticketId) {
-                assignedTicket = await prismaClient.lnadlordSupportTicket.update({
+                assignedTicket = await prismaClient.landlordSupportTicket.update({
                     where: { id: ticketId },
                     data: ticketData,
                 });
             } else {
-                assignedTicket = await prismaClient.lnadlordSupportTicket.create({
+                assignedTicket = await prismaClient.landlordSupportTicket.create({
                     data: {
                         ...ticketData,
                         landlordId: tenant.landlordId,

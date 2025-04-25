@@ -59,15 +59,11 @@ model Transaction {
   stripePaymentIntentId       String?                        @unique
   propertyId                  String?
   property                    properties?                    @relation(fields: [propertyId], references: [id])
-  apartmentId                 String?
-  apartment                   apartments?                    @relation(fields: [apartmentId], references: [id])
   billId                      String?
   bill                        bills?                         @relation(fields: [billId], references: [id])
   createdAt                   DateTime                       @default(now())
   updatedAt                   DateTime                       @updatedAt
   currency                    String?
-  apartmentTransactionHistory appartmentTransactionHistory[]
-
   Ads Ads[]
 
   Log Log[] @relation("transactions")
@@ -84,26 +80,8 @@ model tenantPaymentHistory {
   // relationships feilds
   tenantId String?
   tenant   tenants? @relation(fields: [tenantId], references: [id])
-
-  apartmentsId String?
-  apartments   apartments? @relation(fields: [apartmentsId], references: [id])
 }
 
-model appartmentTransactionHistory {
-  id String @id @default(cuid())
-
-  rentDuration Int
-  amountPaid   Decimal
-
-  apartmentsId String?
-  apartments   apartments? @relation(fields: [apartmentsId], references: [id])
-
-  tenantId String
-  tenant   tenants @relation(fields: [tenantId], references: [id])
-
-  transactionId String?
-  transactions  Transaction? @relation(fields: [transactionId], references: [id])
-}
 
 enum PayableBy {
   LANDLORD
@@ -129,6 +107,8 @@ model bills {
   transactions  Transaction[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  ResidentialProperty ResidentialProperty[]
 }
 
 // New Subscription model

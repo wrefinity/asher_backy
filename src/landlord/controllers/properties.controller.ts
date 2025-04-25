@@ -2,14 +2,15 @@ import fs from 'fs';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, propertySchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, IBasePropertyDTOSchema } from "../../validations/schemas/properties.schema"
+import { IPropertySpecificationDTO } from "../../validations/interfaces/properties.interface"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
 import { parseDateFieldNew} from "../../utils/helpers";
-import { PropertySpecificationType, PropertyType, PropsApartmentStatus } from "@prisma/client"
+import { PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 
@@ -17,55 +18,16 @@ import stateServices from '../../services/state.services';
 class PropertyController {
     constructor() { }
 
-    createProperty = async (req: CustomRequest, res: Response) => {
-        const landlordId = req.user?.landlords?.id;
-        try {
-            if (!landlordId) {
-                return res.status(403).json({ error: 'kindly login' });
-            }
-            const { error, value } = createPropertySchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
-            }
-            const state = await stateServices.getStateByName(value?.state)
 
-
-            const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
-                landlordId,
-                value?.name,
-                state?.id,
-                value.city
-            );
-
-            if (existance) {
-                return res.status(400).json({ error: 'property exist for the state and city' });
-            }
-            const images = value.cloudinaryUrls;
-            const videourl = value.cloudinaryVideoUrls;
-
-            delete value['state']
-            delete value['cloudinaryUrls']
-            delete value['cloudinaryVideoUrls']
-            delete value['cloudinaryAudioUrls']
-            delete value['cloudinaryDocumentUrls']
-
-            const rentalFee = value.rentalFee || 0;
-            // const lateFee = rentalFee * 0.01;
-            const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, images, videourl, landlordId })
-            return res.status(201).json({ property })
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
     createProperties = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
         try {
             if (!landlordId) {
                 return res.status(403).json({ error: 'kindly login' });
             }
-            const { error, value } = propertySchema.validate(req.body, { abortEarly: false });
+            const { error, value } = IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
             if (error) {
-                return res.status(400).json({ error: error.details[0].message });
+                return res.status(400).json({ error: error.details});
             }
             const state = await stateServices.getStateByName(value?.state)
 
@@ -80,47 +42,37 @@ class PropertyController {
             if (existance) {
                 return res.status(400).json({ error: 'property exist for the state and city' });
             }
-            const {uploadedFiles, images, videourl} = value
+            const {
+                uploadedFiles,
+                specificationType,
+                propertySubType,
+                otherTypeSpecific, 
+                commercial,
+                shortlet,
+                residential, ...data
+            } = value
 
-            delete value['documentName']         
-            delete value['docType']         
-            delete value['idType']         
-            delete value['uploadedFiles']         
+            delete data['documentName']         
+            delete data['docType']         
+            delete data['idType']         
+            delete data['uploadedFiles']         
    
-            const rentalFee = value.rentalFee || 0;
+            const specification: IPropertySpecificationDTO  = {
+                propertySubType: propertySubType,
+                specificationType: specificationType,
+                otherTypeSpecific, 
+                commercial,
+                shortlet,
+                residential
+            }
             // const lateFee = rentalFee * 0.01;
-            const property = await PropertyServices.createProperties({ ...value, stateId: state?.id, images, videourl, landlordId }, uploadedFiles, req.user?.id)
+            const property = await PropertyServices.createProperties({ ...data, stateId: state?.id, landlordId },  specification, uploadedFiles, req.user?.id)
             return res.status(201).json({ property })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
     }
 
-    showCaseRentals = async (req: CustomRequest, res: Response) => {
-        try {
-            const landlordId = req.user?.landlords?.id;
-            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-
-            const propertyId = req.params.propertyId;
-            const property = await PropertyServices.showCaseRentals(propertyId, landlordId);
-            if (!property) return res.status(200).json({ message: "No Property found" })
-            return res.status(200).json({ property })
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
-    getShowCasedRentals = async (req: CustomRequest, res: Response) => {
-        try {
-            const landlordId = req.user?.landlords?.id;
-            if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-
-            const property = await PropertyServices.getShowCasedRentals(landlordId);
-            if (!property) return res.status(200).json({ message: "No Property found" })
-            return res.status(200).json({ property })
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
 
     getCurrentLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {
@@ -234,7 +186,7 @@ class PropertyController {
             const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, value.propertyId);
             // scenario where property doesnot belong to landlord
             if (!checkOwnership) return res.status(400).json({ message: 'property does not exist under landlord' });
-            if(checkOwnership.availability === PropsApartmentStatus.OCCUPIED){
+            if(checkOwnership.availability === AvailabilityStatus.OCCUPIED){
                 return res.status(400).json({ message: 'Property already occupied' }); 
             }
             const listing = await PropertyServices.createPropertyListing(data);
@@ -340,7 +292,7 @@ class PropertyController {
             }
             // get listing
             const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
-            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false,  PropsApartmentStatus.OCCUPIED);
+            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false,  AvailabilityStatus.OCCUPIED);
 
             // Return the ative and inactive property listing
             return res.status(200).json({ activePropsListing, inActivePropsListing });
@@ -475,9 +427,9 @@ class PropertyController {
 
                     delete value["state"]
 
-                    const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, landlordId });
+                    // const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, landlordId });
 
-                    uploaded.push(property);
+                    uploaded.push([]);
                 } catch (err) {
                     const existingError = uploadErrors.find(error => error.name === row.name);
                     if (existingError) {

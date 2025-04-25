@@ -7,7 +7,6 @@ const express_1 = require("express");
 const authorize_1 = require("../middlewares/authorize");
 const property_controller_1 = __importDefault(require("../controllers/property.controller"));
 const propertydoc_1 = __importDefault(require("./propertydoc"));
-const appartment_1 = __importDefault(require("./appartment"));
 class PropertyRouter {
     constructor() {
         this.router = (0, express_1.Router)();
@@ -19,7 +18,6 @@ class PropertyRouter {
         this.router.get("/property/features", this.authenticateService.authorize, property_controller_1.default.getFeatures);
         this.router.post("/property/enquire", this.authenticateService.authorize, property_controller_1.default.enquireProperty);
         this.router.use("/docs", propertydoc_1.default);
-        this.router.use("/apartments", appartment_1.default);
         this.router.get('/property', property_controller_1.default.getProperty);
         this.router.get('/property/landlord/:landlordId', property_controller_1.default.getPropertyListedByLandlord);
         this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, property_controller_1.default.createLikeProperty);
@@ -29,12 +27,7 @@ class PropertyRouter {
         this.router.get('/property/listing', property_controller_1.default.getListedProperties);
         this.router.get('/property/maintenance/:propertyId', property_controller_1.default.getPropsMaintenance);
         this.router.get('/property/vendors/:propertyId', property_controller_1.default.getVendorsServicesOnProps);
-        this.router.post("/property/viewings", this.authenticateService.authorize, property_controller_1.default.createViewing);
-        this.router.get("/property/viewings/:propertyId", this.authenticateService.authorize, property_controller_1.default.getAllPropsViewings);
-        this.router.get("/property/view/:id", this.authenticateService.authorize, property_controller_1.default.getViewingById);
-        this.router.patch("/property/viewings/:id", this.authenticateService.authorize, property_controller_1.default.updateViewing);
         this.router.patch("/property/view/:propertyId", this.authenticateService.authorize, property_controller_1.default.viewProperty);
-        this.router.delete("/viewings/:id", this.authenticateService.authorize, property_controller_1.default.deleteViewing);
     }
 }
 exports.default = new PropertyRouter().router;

@@ -17,7 +17,6 @@ class ApartmentLandlordRouter {
 
     private initializeRoutes() {
         // landlord properties
-        this.router.patch('/property/showcase/:propertyId', PropertyController.showCaseRentals)
         this.router.get('/property/rentals', PropertyController.categorizedPropsInRentals)
         this.router.post('/property/property-listing', PropertyController.createPropertyListing);
         this.router.delete('/property/property-unlisting/:propertyId', PropertyController.unListPropertyListing);
@@ -25,12 +24,11 @@ class ApartmentLandlordRouter {
         this.router.get('/property/property-listing/active-inactive', PropertyController.getActiveOrInactivePropsListing);
         this.router.patch('/property/property-listing/:propertyId', PropertyController.updatePropsListing);
         this.router.get('/property', PropertyController.getCurrentLandlordProperties)
-        this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
+        // this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.post('/create', upload.array("files"), handlePropertyUploads, PropertyController.createProperties)
         this.router.post('/upload', uploadcsv.single("files"), PropertyController.bulkPropsUpload)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
-        this.router.get('/property/showcased', PropertyController.getShowCasedRentals)
         this.router.get('/property/tenants/:propertyId', PropertyController.getTenantsForProperty)
         this.router.get('/property/without-tenants', PropertyController.getPropertiesWithoutTenants)
 

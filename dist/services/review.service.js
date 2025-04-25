@@ -84,7 +84,6 @@ class ReviewService {
                 where: {
                     OR: [
                         { propertyId: filter.propertyId },
-                        { apartmentId: filter.apartmentId },
                         { tenantId: filter.tenantId },
                         { landlordId: filter.landlordId },
                         { vendorId: filter.vendorId },
@@ -95,7 +94,6 @@ class ReviewService {
                     tenant: true,
                     vendor: true,
                     property: true,
-                    apartment: true,
                     user: {
                         include: {
                             profile: true

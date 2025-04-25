@@ -68,11 +68,6 @@ class DashboardService {
                     }),
                     __1.prismaClient.tenants.findUnique({
                         where: { userId: userId },
-                        include: {
-                            apartments: {
-                                take: 1
-                            }
-                        }
                     }),
                 ]);
                 // NOTE: THIS IS NOT VALID

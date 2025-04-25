@@ -5,7 +5,7 @@ import { IPropApartmentSettings, IGlobalSetting } from '../validations/interface
 class LandlordSettingsService {
 
     createOrUpdate = async (data: IPropApartmentSettings) => {
-        return prismaClient.propApartmentSettings.upsert({
+        return prismaClient.propertySettings.upsert({
             where: { 
                 propertyId_settingType: {
                     propertyId: data.propertyId,
@@ -22,29 +22,29 @@ class LandlordSettingsService {
     };
 
     getById = async (id: string) => {
-        return prismaClient.propApartmentSettings.findUnique({
+        return prismaClient.propertySettings.findUnique({
             where: { id },
         });
     }
 
     getAll = async () => {
-        return prismaClient.propApartmentSettings.findMany();
+        return prismaClient.propertySettings.findMany();
     }
     getLandlordPropsSetting = async (landlordId) => {
-        return prismaClient.propApartmentSettings.findMany({
+        return prismaClient.propertySettings.findMany({
             where:{landlordId}
         });
     }
 
     update = async (id: string, data: IPropApartmentSettings) => {
-        return prismaClient.propApartmentSettings.update({
+        return prismaClient.propertySettings.update({
             where: { id },
             data,
         });
     }
 
     delete = async (id: string) => {
-        return prismaClient.propApartmentSettings.delete({
+        return prismaClient.propertySettings.delete({
             where: { id },
         });
     }

@@ -184,10 +184,10 @@ class ApplicantControls {
         return res.status(404).json({ error: 'Property does not exist.' });
       }
 
-      const { landlordId, rentalFee } = property;
+      const { landlordId, price } = property;
 
       // Validate landlord ID and rental fee
-      if (!landlordId || !rentalFee) {
+      if (!landlordId || !price) {
         return res.status(400).json({ error: 'Invalid property data.' });
       }
 
@@ -203,7 +203,7 @@ class ApplicantControls {
       }
 
       // Calculate application fee
-      const applicationFee = Number(rentalFee) * Number(propsSettings.applicationFee);
+      const applicationFee = Number(price) * Number(propsSettings.applicationFee);
 
       return res.status(200).json({
         property,

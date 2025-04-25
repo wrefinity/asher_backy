@@ -2,11 +2,10 @@ import { Response } from "express";
 import ErrorService from "../services/error.service";
 import PropertyServices from "../services/propertyServices";
 import MaintenanceServices from "../services/maintenance.service";
-import PropertyViewingService from "../services/propertyviewing.service";
-import { createPropertyViewingSchema, updatePropertyViewingSchema, createFeaturesSchema } from "../validations/schemas/properties.schema";
+import { createFeaturesSchema } from "../validations/schemas/properties.schema";
 import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
-import { LogType, logTypeStatus, PropertyFeatureType, PropertySpecificationType, PropertyType, PropsApartmentStatus } from "@prisma/client"
+import { LogType, logTypeStatus, PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import { LandlordService } from "../landlord/services/landlord.service";
 
 class PropertyController {
@@ -212,7 +211,7 @@ class PropertyController {
             }
 
             // Fetch the filtered prop  erties
-            const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId), true, PropsApartmentStatus.VACANT);
+            const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId), true, AvailabilityStatus.VACANT);
 
             // Return the filtered properties
             return res.status(200).json({ properties });
@@ -367,71 +366,6 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
-    createViewing = async (req: CustomRequest, res: Response) => {
-        try {
-            const { error, value } = createPropertyViewingSchema.validate(req.body);
-            if (error) return res.status(400).json({ error: error.details[0].message });
-
-            const property = await PropertyServices.getPropertyById(value.propertyId);
-            if (!property) {
-                return res.status(404).json({ message: 'Property not found' });
-            }
-            const viewing = await PropertyViewingService.createViewing({ ...value, userId: req.user?.id });
-            res.status(201).json({ viewing });
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
-
-    getAllPropsViewings = async (req: CustomRequest, res: Response) => {
-        try {
-            const { propertyId } = req.params;
-            const property = await PropertyServices.getPropertyById(propertyId);
-            if (!property) {
-                return res.status(404).json({ message: 'Property not found' });
-            }
-            const viewings = await PropertyViewingService.getAllPropertyViewing(propertyId);
-            res.json(viewings);
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
-
-    getViewingById = async (req: CustomRequest, res: Response) => {
-        try {
-            const { id } = req.params;
-            const viewing = await PropertyViewingService.getViewingById(id);
-            if (!viewing) return res.status(404).json({ error: "Property viewing not found" });
-
-            res.json(viewing);
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
-
-    updateViewing = async (req: CustomRequest, res: Response) => {
-        try {
-            const { id } = req.params;
-            const { error } = updatePropertyViewingSchema.validate(req.body);
-            if (error) return res.status(400).json({ error: error.details[0].message });
-
-            const updatedViewing = await PropertyViewingService.updateViewing(id, req.body);
-            res.json({ updatedViewing });
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
-
-    deleteViewing = async (req: CustomRequest, res: Response) => {
-        try {
-            const { id } = req.params;
-            await PropertyViewingService.deleteViewing(id);
-            res.json({ message: "Property viewing deleted successfully" });
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-    }
-
 
 }
 

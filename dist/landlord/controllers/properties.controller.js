@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -25,38 +36,6 @@ const tenant_service_1 = __importDefault(require("../../services/tenant.service"
 const state_services_1 = __importDefault(require("../../services/state.services"));
 class PropertyController {
     constructor() {
-        this.createProperty = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
-            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-            try {
-                if (!landlordId) {
-                    return res.status(403).json({ error: 'kindly login' });
-                }
-                const { error, value } = properties_schema_1.createPropertySchema.validate(req.body);
-                if (error) {
-                    return res.status(400).json({ error: error.details[0].message });
-                }
-                const state = yield state_services_1.default.getStateByName(value === null || value === void 0 ? void 0 : value.state);
-                const existance = yield propertyServices_1.default.getUniquePropertiesBaseLandlordNameState(landlordId, value === null || value === void 0 ? void 0 : value.name, state === null || state === void 0 ? void 0 : state.id, value.city);
-                if (existance) {
-                    return res.status(400).json({ error: 'property exist for the state and city' });
-                }
-                const images = value.cloudinaryUrls;
-                const videourl = value.cloudinaryVideoUrls;
-                delete value['state'];
-                delete value['cloudinaryUrls'];
-                delete value['cloudinaryVideoUrls'];
-                delete value['cloudinaryAudioUrls'];
-                delete value['cloudinaryDocumentUrls'];
-                const rentalFee = value.rentalFee || 0;
-                // const lateFee = rentalFee * 0.01;
-                const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, images, videourl, landlordId }));
-                return res.status(201).json({ property });
-            }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
-            }
-        });
         this.createProperties = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c;
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
@@ -64,55 +43,31 @@ class PropertyController {
                 if (!landlordId) {
                     return res.status(403).json({ error: 'kindly login' });
                 }
-                const { error, value } = properties_schema_1.propertySchema.validate(req.body, { abortEarly: false });
+                const { error, value } = properties_schema_1.IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
                 if (error) {
-                    return res.status(400).json({ error: error.details[0].message });
+                    return res.status(400).json({ error: error.details });
                 }
                 const state = yield state_services_1.default.getStateByName(value === null || value === void 0 ? void 0 : value.state);
                 const existance = yield propertyServices_1.default.getUniquePropertiesBaseLandlordNameState(landlordId, value === null || value === void 0 ? void 0 : value.name, state === null || state === void 0 ? void 0 : state.id, value.city);
                 if (existance) {
                     return res.status(400).json({ error: 'property exist for the state and city' });
                 }
-                const { uploadedFiles, images, videourl } = value;
-                delete value['documentName'];
-                delete value['docType'];
-                delete value['idType'];
-                delete value['uploadedFiles'];
-                const rentalFee = value.rentalFee || 0;
+                const { uploadedFiles, specificationType, propertySubType, otherTypeSpecific, commercial, shortlet, residential } = value, data = __rest(value, ["uploadedFiles", "specificationType", "propertySubType", "otherTypeSpecific", "commercial", "shortlet", "residential"]);
+                delete data['documentName'];
+                delete data['docType'];
+                delete data['idType'];
+                delete data['uploadedFiles'];
+                const specification = {
+                    propertySubType: propertySubType,
+                    specificationType: specificationType,
+                    otherTypeSpecific,
+                    commercial,
+                    shortlet,
+                    residential
+                };
                 // const lateFee = rentalFee * 0.01;
-                const property = yield propertyServices_1.default.createProperties(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, images, videourl, landlordId }), uploadedFiles, (_c = req.user) === null || _c === void 0 ? void 0 : _c.id);
+                const property = yield propertyServices_1.default.createProperties(Object.assign(Object.assign({}, data), { stateId: state === null || state === void 0 ? void 0 : state.id, landlordId }), specification, uploadedFiles, (_c = req.user) === null || _c === void 0 ? void 0 : _c.id);
                 return res.status(201).json({ property });
-            }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
-            }
-        });
-        this.showCaseRentals = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
-            try {
-                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                if (!landlordId)
-                    return res.status(404).json({ message: "Landlord not found" });
-                const propertyId = req.params.propertyId;
-                const property = yield propertyServices_1.default.showCaseRentals(propertyId, landlordId);
-                if (!property)
-                    return res.status(200).json({ message: "No Property found" });
-                return res.status(200).json({ property });
-            }
-            catch (error) {
-                error_service_1.default.handleError(error, res);
-            }
-        });
-        this.getShowCasedRentals = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
-            try {
-                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-                if (!landlordId)
-                    return res.status(404).json({ message: "Landlord not found" });
-                const property = yield propertyServices_1.default.getShowCasedRentals(landlordId);
-                if (!property)
-                    return res.status(200).json({ message: "No Property found" });
-                return res.status(200).json({ property });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);
@@ -249,7 +204,7 @@ class PropertyController {
                 // scenario where property doesnot belong to landlord
                 if (!checkOwnership)
                     return res.status(400).json({ message: 'property does not exist under landlord' });
-                if (checkOwnership.availability === client_1.PropsApartmentStatus.OCCUPIED) {
+                if (checkOwnership.availability === client_1.AvailabilityStatus.OCCUPIED) {
                     return res.status(400).json({ message: 'Property already occupied' });
                 }
                 const listing = yield propertyServices_1.default.createPropertyListing(data);
@@ -352,7 +307,7 @@ class PropertyController {
                 }
                 // get listing
                 const activePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId);
-                const inActivePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId, false, client_1.PropsApartmentStatus.OCCUPIED);
+                const inActivePropsListing = yield propertyServices_1.default.getActiveOrInactivePropsListing(landlordId, false, client_1.AvailabilityStatus.OCCUPIED);
                 // Return the ative and inactive property listing
                 return res.status(200).json({ activePropsListing, inActivePropsListing });
             }
@@ -463,8 +418,8 @@ class PropertyController {
                             continue;
                         }
                         delete value["state"];
-                        const property = yield propertyServices_1.default.createProperty(Object.assign(Object.assign({}, value), { stateId: state === null || state === void 0 ? void 0 : state.id, landlordId }));
-                        uploaded.push(property);
+                        // const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, landlordId });
+                        uploaded.push([]);
                     }
                     catch (err) {
                         const existingError = uploadErrors.find(error => error.name === row.name);

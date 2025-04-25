@@ -32,8 +32,7 @@ class TenantService {
                         },
                     },
                     landlord: true,
-                    property: true,
-                    apartments: true
+                    property: true
                 },
             });
         });
@@ -133,7 +132,12 @@ class TenantService {
                             declaration: true,
                             documents: true,
                             emergencyInfo: true,
-                            personalDetails: true,
+                            // personalDetails: true,
+                            personalDetails: {
+                                include: {
+                                    nextOfKin: true,
+                                },
+                            },
                             guarantorInformation: true,
                             referenceForm: true,
                             guarantorAgreement: true,
@@ -157,7 +161,7 @@ class TenantService {
                     profile: true,
                     nextOfKin: true,
                     residentialInformation: true,
-                    applicantion: {
+                    application: {
                         include: {
                             employmentInfo: true,
                             emergencyInfo: true,
