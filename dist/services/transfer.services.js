@@ -109,7 +109,6 @@ class TransferService {
                         walletId: tenantWallet.id,
                         referenceId: `REF-${Date.now()}-${(0, crypto_1.randomBytes)(4).toString('hex')}`,
                         propertyId: tenant.propertyId,
-                        apartmentId: tenant.apartmentOrFlatNumber.toString(),
                     },
                 });
                 //create landlord transaction
@@ -120,7 +119,6 @@ class TransferService {
                     reference: data.billType,
                     walletId: landlordWallet.id,
                     propertyId: data === null || data === void 0 ? void 0 : data.propertyId,
-                    apartmentId: data === null || data === void 0 ? void 0 : data.apartmentId,
                     billId: data === null || data === void 0 ? void 0 : data.billId,
                 });
                 // TODO: Update the model for auto payment

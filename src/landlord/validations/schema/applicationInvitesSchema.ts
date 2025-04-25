@@ -9,7 +9,6 @@ export const createApplicationInviteSchema = Joi.object({
   response: Joi.string().valid(...invitedResponseType).default(InvitedResponse.PENDING).optional(),
   propertiesId: Joi.string().optional(),
   userInvitedId: Joi.string().required(),
-  apartmentsId: Joi.string().uuid().optional(),
   tenantId: Joi.string().uuid().optional()
 });
 

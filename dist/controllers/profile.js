@@ -63,6 +63,21 @@ class ProfileControls {
                 res.status(500).json({ message: error.message || 'Internal server error' });
             }
         });
+        this.addUserSearchPreference = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            try {
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+                const { error, value } = profile_1.userSearchPreferenceSchema.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ message: error.details[0].message });
+                }
+                const preference = yield profileServices_1.default.createUserSearchPreference(value, userId);
+                return res.status(200).json({ preference });
+            }
+            catch (error) {
+                return res.status(500).json({ message: error.message || 'Internal server error' });
+            }
+        });
     }
 }
 exports.default = new ProfileControls();

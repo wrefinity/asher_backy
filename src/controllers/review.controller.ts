@@ -19,7 +19,7 @@ class ReviewController {
             const { error, value } = createReviewSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
-            const { tenantId, vendorId, landlordId, propertyId, apartmentId } = value;
+            const { tenantId, vendorId, landlordId, propertyId } = value;
 
             // Check if the property exists
             if (propertyId) {
@@ -54,12 +54,12 @@ class ReviewController {
                 }
             }
             // Check which entity is being reviewed
-            if (!tenantId && !vendorId && !landlordId && !propertyId && !apartmentId) {
-                return res.status(400).json({ error: "Please provide either tenantId, vendorId, landlordId, propertyId, or apartmentId" });
+            if (!tenantId && !vendorId && !landlordId && !propertyId ) {
+                return res.status(400).json({ error: "Please provide either tenantId, vendorId, landlordId, propertyId" });
             }
             // Ensure only one of the IDs is provided
-            const ids = [tenantId, vendorId, landlordId, propertyId, apartmentId].filter(id => id !== undefined);
-            if (ids.length > 1) return res.status(400).json({ error: "You can only review one entity (tenant, vendor, landlord, propertyId or apartmentId) at a time." });
+            const ids = [tenantId, vendorId, landlordId, propertyId].filter(id => id !== undefined);
+            if (ids.length > 1) return res.status(400).json({ error: "You can only review one entity (tenant, vendor, landlord, propertyId or ) at a time." });
             const reviewById = req?.user?.id;
             const review = await ReviewService.createReview({ ...value, reviewById });
 

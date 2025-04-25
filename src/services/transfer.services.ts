@@ -105,7 +105,6 @@ class TransferService {
                   walletId: tenantWallet.id,
                   referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
                   propertyId: tenant.propertyId,
-                  apartmentId: tenant.apartmentOrFlatNumber.toString(),
                 } as Prisma.TransactionUncheckedCreateInput,
               });
               
@@ -118,7 +117,6 @@ class TransferService {
                 reference: data.billType,
                 walletId: landlordWallet.id,
                 propertyId: data?.propertyId,
-                apartmentId: data?.apartmentId,
                 billId: data?.billId,
             });
 

@@ -26,7 +26,7 @@ class ReviewController {
                 const { error, value } = review_schema_1.createReviewSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
-                const { tenantId, vendorId, landlordId, propertyId, apartmentId } = value;
+                const { tenantId, vendorId, landlordId, propertyId } = value;
                 // Check if the property exists
                 if (propertyId) {
                     const propertyExists = yield propertyServices_1.default.getPropertiesById(propertyId);
@@ -56,13 +56,13 @@ class ReviewController {
                     }
                 }
                 // Check which entity is being reviewed
-                if (!tenantId && !vendorId && !landlordId && !propertyId && !apartmentId) {
-                    return res.status(400).json({ error: "Please provide either tenantId, vendorId, landlordId, propertyId, or apartmentId" });
+                if (!tenantId && !vendorId && !landlordId && !propertyId) {
+                    return res.status(400).json({ error: "Please provide either tenantId, vendorId, landlordId, propertyId" });
                 }
                 // Ensure only one of the IDs is provided
-                const ids = [tenantId, vendorId, landlordId, propertyId, apartmentId].filter(id => id !== undefined);
+                const ids = [tenantId, vendorId, landlordId, propertyId].filter(id => id !== undefined);
                 if (ids.length > 1)
-                    return res.status(400).json({ error: "You can only review one entity (tenant, vendor, landlord, propertyId or apartmentId) at a time." });
+                    return res.status(400).json({ error: "You can only review one entity (tenant, vendor, landlord, propertyId or ) at a time." });
                 const reviewById = (_a = req === null || req === void 0 ? void 0 : req.user) === null || _a === void 0 ? void 0 : _a.id;
                 const review = yield review_service_1.default.createReview(Object.assign(Object.assign({}, value), { reviewById }));
                 return res.status(201).json(review);

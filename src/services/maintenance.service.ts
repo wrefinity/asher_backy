@@ -14,7 +14,6 @@ class MaintenanceService {
       landlord: true,
       vendor: true,
       property: true,
-      apartment: true,
       category: true,
       subcategories: true,
       services: true,
@@ -228,7 +227,7 @@ class MaintenanceService {
     return maintenance?.vendorId !== null;
   }
 
-  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, apartmentId?: string, isActive: boolean = true) => {
+  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string,  isActive: boolean = true) => {
     return await prismaClient.maintenanceWhitelist.findFirst({
       where: {
         landlordId,

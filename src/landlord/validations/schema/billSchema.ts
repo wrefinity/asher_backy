@@ -11,7 +11,6 @@ const billSchema = Joi.object({
     billFrequency: Joi.string().valid(...billFrequencyType).required(),
     dueDate: Joi.date().iso().required(),
     propertyId: Joi.string().optional(),
-    apartmentId: Joi.string().optional(),
     payableBy: Joi.string().valid(...payableByValues).default(PayableBy.LANDLORD).required(),
     // tenants bills should be optional
     tenantId: Joi.string().optional()
@@ -24,7 +23,6 @@ const billUpdateSchema = Joi.object({
     billFrequency: Joi.string().valid(...billFrequencyType).optional(),
     dueDate: Joi.date().iso().optional(),
     propertyId: Joi.string().optional(),
-    apartmentId: Joi.string().optional(),
     payableBy: Joi.string().valid(...payableByValues).default(PayableBy.LANDLORD).optional(),
     // tenants bills should be optional
     tenantId: Joi.string().optional()

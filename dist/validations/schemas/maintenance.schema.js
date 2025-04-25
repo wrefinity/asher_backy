@@ -11,7 +11,6 @@ exports.maintenanceSchema = joi_1.default.object({
     offer: joi_1.default.array().items(joi_1.default.string()).optional(),
     amount: joi_1.default.number().optional(),
     propertyId: joi_1.default.string().optional(),
-    apartmentId: joi_1.default.string().optional(),
     categoryId: joi_1.default.string().required(),
     vendorId: joi_1.default.string().optional(),
     subcategoryIds: joi_1.default.array().items(joi_1.default.string()).required(),
@@ -26,7 +25,6 @@ exports.maintenanceCancelSchema = joi_1.default.object({
 });
 exports.checkWhitelistedSchema = joi_1.default.object({
     propertyId: joi_1.default.string().optional(),
-    apartmentId: joi_1.default.string().optional(),
     categoryId: joi_1.default.string().required(),
     // subcategoryIds: Joi.array().items(Joi.string()).optional(),
     subcategoryId: joi_1.default.string().optional(),

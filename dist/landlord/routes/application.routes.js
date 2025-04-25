@@ -26,7 +26,7 @@ class ApplicationLandlordRouter {
         this.router.get('/leasing', applicant_controller_1.default.getEnquiredProps);
         this.router.patch('/leasing/reject/:enquireId', applicant_controller_1.default.updateEnquireToRejected);
         this.router.post('/invites/:enquiryId/enquire', applicant_controller_1.default.createInvite);
-        this.router.post('/existing-user-invites/:userId', applicant_controller_1.default.createInviteForExistingUser);
+        this.router.post('/existing-user-invites', applicant_controller_1.default.createInviteForExistingUser);
         this.router.get('/invites', applicant_controller_1.default.getInvites);
         this.router.get('/invites/:id', applicant_controller_1.default.getInvite);
         this.router.patch('/invites/:id/update', applicant_controller_1.default.updateInvite);

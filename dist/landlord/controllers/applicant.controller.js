@@ -227,27 +227,24 @@ class ApplicationControls {
             }
         });
         this.createInviteForExistingUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c;
+            var _a, _b;
             try {
-                const userId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.userId;
                 const { error, value } = applicationInvitesSchema_1.createApplicationInviteSchema.validate(req.body);
                 if (error)
                     return res.status(400).json({ error: error.details[0].message });
-                const invitedByLandordId = (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.landlords) === null || _c === void 0 ? void 0 : _c.id;
+                const invitedByLandordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const propertyId = value.propertyId;
                 const property = yield propertyServices_1.default.getPropertyById(propertyId);
                 if (!property) {
                     return res.status(404).json({ message: 'Property not found' });
                 }
-                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, userInvitedId: userId, 
-                    // enquiryId,
-                    responseStepsCompleted: value.response ? [value.response] : [client_1.InvitedResponse.PENDING] }));
                 const userExist = yield user_services_1.default.getUserById(value.userInvitedId);
                 if (!userExist) {
                     return res.status(404).json({ message: 'user not found' });
                 }
+                const enquire = yield logs_services_1.default.createLog({ status: client_1.logTypeStatus.INVITED, type: client_2.LogType.APPLICATION, events: "Application Invites", createdById: userExist === null || userExist === void 0 ? void 0 : userExist.id });
+                const invite = yield application_services_1.default.createInvite(Object.assign(Object.assign({}, value), { invitedByLandordId, userInvitedId: userExist === null || userExist === void 0 ? void 0 : userExist.id, enquiryId: enquire === null || enquire === void 0 ? void 0 : enquire.id, responseStepsCompleted: value.response ? [value.response] : [client_1.InvitedResponse.PENDING] }));
                 // send message to the tenants
-                const tenantInfor = yield tenant_service_1.default.getUserInfoByTenantId(value.tenantId);
                 const htmlContent = `
                 <h2>Invitation for Property Viewing</h2>
                 <p>Hello,</p>
@@ -258,8 +255,7 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-                yield (0, emailer_1.default)(tenantInfor.email, "Asher Rentals Invites", htmlContent);
-                yield logs_services_1.default.createLog({ status: client_1.logTypeStatus.INVITED, type: client_2.LogType.APPLICATION, events: "Application Invites", createdById: userId });
+                yield (0, emailer_1.default)(userExist === null || userExist === void 0 ? void 0 : userExist.email, "Asher Rentals Invites", htmlContent);
                 return res.status(201).json({ invite });
             }
             catch (error) {

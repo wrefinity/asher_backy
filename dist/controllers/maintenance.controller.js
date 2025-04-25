@@ -88,7 +88,7 @@ class MaintenanceController {
                 const checkPropertyExist = yield propertyServices_1.default.getPropertiesById(value.propertyId);
                 if (checkPropertyExist)
                     return res.status(400).json({ message: "propery doesnt exist" });
-                const isWhitelisted = yield maintenance_service_1.default.checkWhitelist(checkPropertyExist === null || checkPropertyExist === void 0 ? void 0 : checkPropertyExist.landlordId, value.categoryId, value.subcategoryId, value.propertyId, value.apartmentId);
+                const isWhitelisted = yield maintenance_service_1.default.checkWhitelist(checkPropertyExist === null || checkPropertyExist === void 0 ? void 0 : checkPropertyExist.landlordId, value.categoryId, value.subcategoryId, value.propertyId);
                 return res.status(200).json({
                     isWhitelisted
                 });
@@ -158,7 +158,7 @@ class MaintenanceController {
                     return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
                 }
                 // checking if the maitenance category is whitelisted by the landlord
-                const isWhitelisted = yield maintenance_service_1.default.checkWhitelist(landlordId, value.categoryId, value.subcategoryId, value.propertyId, value.apartmentId);
+                const isWhitelisted = yield maintenance_service_1.default.checkWhitelist(landlordId, value.categoryId, value.subcategoryId, value.propertyId);
                 // Determine if maintenance should be handled by the landlord
                 const handleByLandlord = landlordId || isWhitelisted;
                 // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;

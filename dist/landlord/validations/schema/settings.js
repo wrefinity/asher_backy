@@ -10,7 +10,6 @@ const propsSettingsType = Object.values(client_1.PropsSettingType);
 const latePaymentFeeType = Object.values(client_1.LatePaymentFeeType);
 exports.propApartmentSettingsSchema = joi_1.default.object({
     propertyId: joi_1.default.string().required(),
-    apartmentId: joi_1.default.string().optional(),
     lateFee: joi_1.default.number().min(0).precision(2).optional(),
     lateFeeFrequency: joi_1.default.string().valid(...latePaymentFeeType).optional(),
     lateFeePercentage: joi_1.default.number().optional(),
@@ -30,7 +29,6 @@ exports.GlobalSettingsSchema = joi_1.default.object({
 });
 exports.propApartmentSettingsUpdateSchema = joi_1.default.object({
     propertyId: joi_1.default.string().optional(),
-    apartmentId: joi_1.default.string().optional(),
     lateFee: joi_1.default.number().min(0).precision(2).optional(),
     latePaymentFeeType: joi_1.default.string().valid('ONE_TIME', 'RECURRING').optional(),
 });

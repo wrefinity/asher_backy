@@ -9,7 +9,6 @@ export interface MaintenanceIF {
   tenantId?: string;
   landlordId?: string;
   propertyId?: string;
-  apartmentId?: string;
   vendorId?: string;
   categoryId: string;
   subcategoryIds: string[];

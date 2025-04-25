@@ -205,7 +205,7 @@ class MaintenanceService {
             });
             return (maintenance === null || maintenance === void 0 ? void 0 : maintenance.vendorId) !== null;
         });
-        this.checkWhitelist = (landlordId_1, categoryId_1, subcategoryId_1, propertyId_1, apartmentId_1, ...args_1) => __awaiter(this, [landlordId_1, categoryId_1, subcategoryId_1, propertyId_1, apartmentId_1, ...args_1], void 0, function* (landlordId, categoryId, subcategoryId, propertyId, apartmentId, isActive = true) {
+        this.checkWhitelist = (landlordId_1, categoryId_1, subcategoryId_1, propertyId_1, ...args_1) => __awaiter(this, [landlordId_1, categoryId_1, subcategoryId_1, propertyId_1, ...args_1], void 0, function* (landlordId, categoryId, subcategoryId, propertyId, isActive = true) {
             return yield __1.prismaClient.maintenanceWhitelist.findFirst({
                 where: {
                     landlordId,
@@ -350,7 +350,6 @@ class MaintenanceService {
             landlord: true,
             vendor: true,
             property: true,
-            apartment: true,
             category: true,
             subcategories: true,
             services: true,

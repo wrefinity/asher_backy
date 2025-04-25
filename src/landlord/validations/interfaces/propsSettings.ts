@@ -4,7 +4,6 @@ export interface IPropApartmentSettings {
     id?: string;
     propertyId: string;
     landlordId?: string;
-    apartmentId?: string;
     // late fee
     lateFee?: number;
     lateFeeFrequency?: LatePaymentFeeType;

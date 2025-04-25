@@ -5,6 +5,5 @@ export interface ICreateReview {
     tenantId?: string;
     landlordId?: string;
     propertyId?: string;
-    apartmentId?: string;
     reviewById?: string;
 }

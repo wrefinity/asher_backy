@@ -90,7 +90,6 @@ export const createPropertyDocumentSchema = Joi.object({
   cloudinaryUrls: Joi.array().items(Joi.string()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string()).optional(),
   cloudinaryAudioUrls: Joi.array().items(Joi.string()).optional(),
-  apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
   size: Joi.string().required(),
   type: Joi.string().required(),
@@ -101,7 +100,6 @@ export const createPropertyDocumentSchema = Joi.object({
 
 export const documentUploadSchema = Joi.object({
   documentName: Joi.string().required(),
-  apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
   size: Joi.string().optional(),
   type: Joi.string().optional(),
@@ -112,7 +110,6 @@ export const documentUploadSchema = Joi.object({
 export const updatePropertyDocumentSchema = Joi.object({
   name: Joi.string().optional(),
   documentUrl: Joi.string().uri().optional(),
-  apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
   size: Joi.string().optional(),
   type: Joi.string().optional(),
@@ -131,6 +128,7 @@ export const featureSchema = Joi.object({
       'any.required': 'Feature type is required'
     })
 });
+
 
 export const createFeaturesSchema = Joi.array()
   .items(featureSchema)
@@ -167,7 +165,6 @@ export const updatePropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().optional(),
   type: Joi.string().valid(...listingTypes).default(ListingType.ENTIRE_PROPERTY).optional(),
   // propertyId: Joi.string().optional(),
-  apartmentId: Joi.string().optional(),
   isActive: Joi.boolean().optional(),
   onListing: Joi.boolean().optional()
 });
@@ -228,7 +225,6 @@ const propertyDocumentSchema = Joi.object({
   docType: Joi.string().valid(...Object.values(DocumentType)).optional(),
   agreementId: Joi.string().optional(),
   applicationId: Joi.string().optional(),
-  apartmentsId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
   uploadedBy: Joi.string().optional(),
 })

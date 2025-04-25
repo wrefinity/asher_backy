@@ -31,6 +31,38 @@ class ProfileService {
                 include: this.inclusion
             });
         });
+        this.activeSearchPreference = (userId) => __awaiter(this, void 0, void 0, function* () {
+            const activePreference = yield __1.prismaClient.userSearchPreference.findFirst({
+                where: {
+                    userId: userId,
+                    isActive: true,
+                },
+            });
+            return (activePreference === null || activePreference === void 0 ? void 0 : activePreference.types) || [];
+        });
+        this.createUserSearchPreference = (input, userId) => __awaiter(this, void 0, void 0, function* () {
+            const { description, types } = input;
+            // Deactivate all current active preferences
+            yield __1.prismaClient.userSearchPreference.updateMany({
+                where: {
+                    userId,
+                    isActive: true,
+                },
+                data: {
+                    isActive: false,
+                },
+            });
+            // Create new preference as active
+            const newPreference = yield __1.prismaClient.userSearchPreference.create({
+                data: {
+                    userId,
+                    description,
+                    types,
+                    isActive: true,
+                },
+            });
+            return newPreference;
+        });
         this.inclusion = {
             users: true
         };

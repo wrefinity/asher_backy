@@ -69,6 +69,13 @@ class TenantService {
             return yield __1.prismaClient.tenants.findMany({
                 where: {
                     isCurrentLease: true,
+                    user: {
+                        UserSearchPreference: {
+                            some: {
+                                isActive: true,
+                            },
+                        },
+                    },
                 },
                 include: this.inclusion
             });
@@ -158,6 +165,7 @@ class TenantService {
         this.inclusion = {
             user: {
                 include: {
+                    UserSearchPreference: true,
                     profile: true,
                     nextOfKin: true,
                     residentialInformation: true,
@@ -174,7 +182,6 @@ class TenantService {
             property: true,
             history: true,
             landlord: true,
-            apartments: true,
             tenantSupportTicket: true,
             // PropertyTransactions: true,
         };

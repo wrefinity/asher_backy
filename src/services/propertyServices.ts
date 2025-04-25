@@ -134,6 +134,32 @@ class PropertyService {
             }
         })
     }
+    getPropertyOnUserPreference = async (userPreferenceTypes: PropertyType[], landlordId:string) => {
+        return await prismaClient.properties.findMany({
+            where: {
+                availability: AvailabilityStatus.VACANT,
+                propertyListingHistory: {
+                    some: {
+                        isActive: true,
+                        onListing: true,
+                        propertySubType: {
+                            in: userPreferenceTypes,
+                        },
+                        property:{
+                            landlordId
+                        }
+                    },
+                },
+            },
+            include: {
+                propertyListingHistory: true,
+                state: true,
+                landlord: true,
+                images: true,
+            },
+        });
+    }
+    
     getPropertiesById = async (id: string) => {
         return await prismaClient.properties.findUnique({
             where: { id },
@@ -496,9 +522,6 @@ class PropertyService {
             minGarage,
             maxGarage
         } = property || {};
-        console.log("=============================")
-        console.log(landlordId)
-        console.log("=============================")
         return await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
@@ -907,7 +930,7 @@ class PropertyService {
             if (!property) {
                 throw new Error(`Failed to create property`);
             }
-          
+
             // Step 2: Create associated specification
             switch (specificationType) {
                 case PropertySpecificationType.RESIDENTIAL:
@@ -1154,11 +1177,11 @@ class PropertyService {
     }
 
     async createShortletProperty(propertyId: string, data: IShortletDTO | any, tx: any, specification: IPropertySpecificationDTO) {
-        const { 
-            safetyFeatures: safetyfeatureIds, 
+        const {
+            safetyFeatures: safetyfeatureIds,
             buildingAmenityFeatures: BAFeatureIds,
             outdoorsSpacesFeatures: ODFeaturesId,
-            hostLanguages, 
+            hostLanguages,
             additionalRules, unavailableDates,
             seasonalPricing,
             sharedFacilities, roomDetails, ...rest } = data;
@@ -1188,13 +1211,13 @@ class PropertyService {
             data: {
                 ...rest,
                 safetyFeatures: {
-                    connect: safkeyFeatures?.length ? safkeyFeatures?.map((id) => ({ id })): undefined,
+                    connect: safkeyFeatures?.length ? safkeyFeatures?.map((id) => ({ id })) : undefined,
                 },
                 outdoorsSpacesFeatures: {
-                    connect: outDoorFeaturesIds?.length? outDoorFeaturesIds?.map((id) => ({ id })): undefined,
+                    connect: outDoorFeaturesIds?.length ? outDoorFeaturesIds?.map((id) => ({ id })) : undefined,
                 },
                 buildingAmenityFeatures: {
-                    connect: buildingAmenityFeatureIds?.length? buildingAmenityFeatureIds?.map((id) => ({ id })): undefined,
+                    connect: buildingAmenityFeatureIds?.length ? buildingAmenityFeatureIds?.map((id) => ({ id })) : undefined,
                 },
                 roomDetails: {
                     create: roomDetails?.map((room: any) => ({

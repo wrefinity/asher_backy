@@ -21,7 +21,6 @@ export interface TransactionIF {
     paymentGateway?: PaymentGateway | null; // Assuming `PaymentGateway` is an enum or union type
     stripePaymentIntentId?: string | null;
     propertyId?: string | null;
-    apartmentId?: string | null;
     billId?: string | null;
     currency?: string | null;
 }
@@ -101,7 +100,6 @@ class TransactionService {
         paymentGateway?: PaymentGateway;
         stripePaymentIntentId?: string;
         propertyId?: string;
-        apartmentId?: string;
         billId?: string;
     }) => {
         return prismaClient.transaction.create({
@@ -212,7 +210,6 @@ class TransactionService {
         reference: TransactionReference;
         walletId: string;
         propertyId?: string;
-        apartmentId?: string;
         billId?: string;
     }) => {
         return prismaClient.transaction.create({

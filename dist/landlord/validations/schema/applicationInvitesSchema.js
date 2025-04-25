@@ -14,7 +14,6 @@ exports.createApplicationInviteSchema = joi_1.default.object({
     response: joi_1.default.string().valid(...invitedResponseType).default(client_1.InvitedResponse.PENDING).optional(),
     propertiesId: joi_1.default.string().optional(),
     userInvitedId: joi_1.default.string().required(),
-    apartmentsId: joi_1.default.string().uuid().optional(),
     tenantId: joi_1.default.string().uuid().optional()
 });
 exports.updateApplicationInviteSchema = joi_1.default.object({

@@ -3,8 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.profileSchema = void 0;
+exports.profileSchema = exports.userSearchPreferenceSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
+const client_1 = require("@prisma/client");
+exports.userSearchPreferenceSchema = joi_1.default.object({
+    types: joi_1.default.array().items(joi_1.default.string().valid(...Object.values(client_1.PropertyType))).min(1).required(),
+    description: joi_1.default.string().optional(),
+});
 exports.profileSchema = joi_1.default.object({
     gender: joi_1.default.string().valid('Male', 'Female', 'Other'),
     id: joi_1.default.string().optional(),

@@ -31,6 +31,7 @@ class ApartmentLandlordRouter {
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
         this.router.get('/property/tenants/:propertyId', PropertyController.getTenantsForProperty)
         this.router.get('/property/without-tenants', PropertyController.getPropertiesWithoutTenants)
+        this.router.get('/property/user-preferences/:userId', PropertyController.getPropertyBasedOnUserPreference)
 
         //   settings 
         this.router.post('/settings', SettingController.createPropApartmentSetting);

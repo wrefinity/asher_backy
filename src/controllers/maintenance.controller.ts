@@ -79,7 +79,6 @@ class MaintenanceController {
         value.categoryId,
         value.subcategoryId,
         value.propertyId,
-        value.apartmentId
       );
       return res.status(200).json({
         isWhitelisted
@@ -153,7 +152,6 @@ class MaintenanceController {
         value.categoryId,
         value.subcategoryId,
         value.propertyId,
-        value.apartmentId
       );
       // Determine if maintenance should be handled by the landlord
       const handleByLandlord = landlordId || isWhitelisted;

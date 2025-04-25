@@ -7,34 +7,36 @@ import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
 import { LogType, logTypeStatus, PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import { LandlordService } from "../landlord/services/landlord.service";
+import profileServices from "../services/profileServices";
+import userServices from "../services/user.services";
 
 class PropertyController {
     constructor() { }
     createFeatures = async (req: CustomRequest, res: Response) => {
         try {
-          // Validate input with Joi
-          const { error, value } = createFeaturesSchema.validate(req.body, {
-            abortEarly: false // Return all validation errors
-          });
-      
-          if (error) {
-            const errorDetails = error.details.map(detail => ({
-              message: detail.message,
-              path: detail.path
-            }));
-            return res.status(400).json({
-              message: 'Validation failed',
-              errors: errorDetails
+            // Validate input with Joi
+            const { error, value } = createFeaturesSchema.validate(req.body, {
+                abortEarly: false // Return all validation errors
             });
-          }
-      
-          const createdFeatures = await PropertyServices.createPropertyFeature(value);
-          return res.status(201).json(createdFeatures);
-          
+
+            if (error) {
+                const errorDetails = error.details.map(detail => ({
+                    message: detail.message,
+                    path: detail.path
+                }));
+                return res.status(400).json({
+                    message: 'Validation failed',
+                    errors: errorDetails
+                });
+            }
+
+            const createdFeatures = await PropertyServices.createPropertyFeature(value);
+            return res.status(201).json(createdFeatures);
+
         } catch (error) {
-          ErrorService.handleError(error, res);
+            ErrorService.handleError(error, res);
         }
-      }
+    }
     getFeatures = async (req: CustomRequest, res: Response) => {
         try {
             const features = await PropertyServices.getPropertyFeature()
@@ -43,6 +45,9 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     };
+
+   
+
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {

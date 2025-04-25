@@ -1,6 +1,6 @@
 import { Response } from "express";
 import ProfileServices from "../services/profileServices";
-import { profileSchema } from "../validations/schemas/profile"
+import { profileSchema, userSearchPreferenceSchema} from "../validations/schemas/profile"
 import { CustomRequest } from "../utils/types";
 
 
@@ -43,6 +43,23 @@ class ProfileControls {
             res.status(500).json({ message: error.message || 'Internal server error' });
         }
     }
+    addUserSearchPreference = async (req: CustomRequest, res: Response) => {
+        try {
+          const userId = req.user?.id;
+      
+          const { error, value } = userSearchPreferenceSchema.validate(req.body);
+          if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+          }
+      
+          const preference = await ProfileServices.createUserSearchPreference(value, userId);
+          return res.status(200).json({ preference });
+      
+        } catch (error) {
+          return res.status(500).json({ message: error.message || 'Internal server error' });
+        }
+      }
+      
 }
 
 export default new ProfileControls()

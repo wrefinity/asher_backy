@@ -7,7 +7,6 @@ export interface IPropertyDocument {
     documentUrl: string[];
     createdAt?: Date;
     updatedAt?: Date;
-    apartmentsId?: string;
     propertyId?: string;
     uploadedBy?: string;
     docType?: DocumentType;
@@ -184,7 +183,6 @@ export interface PropertyDocument {
     docType?: DocumentType
     agreementId?: string
     applicationId?: string
-    apartmentsId?: string
     propertyId?: string
     uploadedBy?: string
 }

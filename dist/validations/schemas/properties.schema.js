@@ -85,7 +85,6 @@ exports.createPropertyDocumentSchema = joi_1.default.object({
     cloudinaryUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryVideoUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
     cloudinaryAudioUrls: joi_1.default.array().items(joi_1.default.string()).optional(),
-    apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().required(),
     type: joi_1.default.string().required(),
@@ -94,7 +93,6 @@ exports.createPropertyDocumentSchema = joi_1.default.object({
 });
 exports.documentUploadSchema = joi_1.default.object({
     documentName: joi_1.default.string().required(),
-    apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().optional(),
     type: joi_1.default.string().optional(),
@@ -103,7 +101,6 @@ exports.documentUploadSchema = joi_1.default.object({
 exports.updatePropertyDocumentSchema = joi_1.default.object({
     name: joi_1.default.string().optional(),
     documentUrl: joi_1.default.string().uri().optional(),
-    apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     size: joi_1.default.string().optional(),
     type: joi_1.default.string().optional(),
@@ -146,7 +143,6 @@ exports.updatePropertyListingSchema = joi_1.default.object({
     payApplicationFee: joi_1.default.boolean().optional(),
     type: joi_1.default.string().valid(...listingTypes).default(client_1.ListingType.ENTIRE_PROPERTY).optional(),
     // propertyId: Joi.string().optional(),
-    apartmentId: joi_1.default.string().optional(),
     isActive: joi_1.default.boolean().optional(),
     onListing: joi_1.default.boolean().optional()
 });
@@ -189,7 +185,6 @@ const propertyDocumentSchema = joi_1.default.object({
     docType: joi_1.default.string().valid(...Object.values(client_1.DocumentType)).optional(),
     agreementId: joi_1.default.string().optional(),
     applicationId: joi_1.default.string().optional(),
-    apartmentsId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
     uploadedBy: joi_1.default.string().optional(),
 });

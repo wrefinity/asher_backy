@@ -49,9 +49,6 @@ class ReviewService {
             if (data === null || data === void 0 ? void 0 : data.propertyId) {
                 prismaData.propertyId = data === null || data === void 0 ? void 0 : data.propertyId;
             }
-            if (data.apartmentId) {
-                prismaData.apartmentId = data === null || data === void 0 ? void 0 : data.apartmentId;
-            }
             return yield __1.prismaClient.reviews.create({
                 data: prismaData,
             });
@@ -78,7 +75,7 @@ class ReviewService {
                 data: { isDeleted: true }
             });
         });
-        // Aggregate reviews based on propertyId, apartmentId, tenantId, landlordId, or vendorId
+        // Aggregate reviews based on propertyId , tenantId, landlordId, or vendorId
         this.aggregateReviews = (filter) => __awaiter(this, void 0, void 0, function* () {
             const reviews = yield __1.prismaClient.reviews.findMany({
                 where: {

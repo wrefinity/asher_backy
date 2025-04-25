@@ -6,7 +6,6 @@ export const maintenanceSchema = Joi.object({
   offer: Joi.array().items(Joi.string()).optional(),
   amount: Joi.number().optional(),
   propertyId: Joi.string().optional(),
-  apartmentId: Joi.string().optional(),
   categoryId: Joi.string().required(),
   vendorId: Joi.string().optional(),
   subcategoryIds: Joi.array().items(Joi.string()).required(),
@@ -23,7 +22,6 @@ export const maintenanceCancelSchema = Joi.object({
 
 export const checkWhitelistedSchema = Joi.object({
   propertyId: Joi.string().optional(),
-  apartmentId: Joi.string().optional(),
   categoryId: Joi.string().required(),
   // subcategoryIds: Joi.array().items(Joi.string()).optional(),
   subcategoryId: Joi.string().optional(),

@@ -36,7 +36,6 @@ class ApplicationInvitesService {
 
     private inviteInclude = {
         properties: true,
-        apartments: true,
         tenants: {
             include: { user: { select: this.userInclusion } },
         },

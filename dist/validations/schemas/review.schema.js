@@ -48,20 +48,14 @@ exports.createReviewSchema = joi_1.default.object({
         .messages({
         'string.base': 'Property ID must be a string',
     }),
-    apartmentId: joi_1.default.string()
-        .optional()
-        .allow(null, '')
-        .messages({
-        'string.base': 'Apartment ID must be a string',
-    }),
 })
-    .or('tenantId', 'vendorId', 'landlordId', 'propertyId', 'apartmentId') // Ensure at least one ID is present
+    .or('tenantId', 'vendorId', 'landlordId', 'propertyId') // Ensure at least one ID is present
     .messages({
-    'object.missing': 'Please provide either tenantId, vendorId, landlordId, propertyId or apartmentId',
+    'object.missing': 'Please provide either tenantId, vendorId, landlordId, propertyId ',
 })
-    .xor('tenantId', 'vendorId', 'landlordId', 'propertyId', 'apartmentId') // Ensure only one ID is provided
+    .xor('tenantId', 'vendorId', 'landlordId', 'propertyId') // Ensure only one ID is provided
     .messages({
-    'object.xor': 'You can only provide one of tenantId, vendorId, landlordId, propertyId or apartmentId',
+    'object.xor': 'You can only provide one of tenantId, vendorId, landlordId, propertyId',
 });
 exports.updateReviewSchema = joi_1.default.object({
     rating: joi_1.default.number()
@@ -104,11 +98,5 @@ exports.updateReviewSchema = joi_1.default.object({
         .allow(null, '')
         .messages({
         'string.base': 'Property ID must be a string',
-    }),
-    apartmentId: joi_1.default.string()
-        .optional()
-        .allow(null, '')
-        .messages({
-        'string.base': 'Apartment ID must be a string',
-    }),
+    })
 });

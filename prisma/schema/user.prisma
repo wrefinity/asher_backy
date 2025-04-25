@@ -15,7 +15,7 @@ model users {
     // user role definition default is webuser
     role userRoles[] @default([WEBUSER])
 
-    onlineStatus onlineStatus? @default(offline)
+    onlineStatus           onlineStatus?            @default(offline)
     // foreign key and relational fields 
     VerificationToken      VerificationToken[]
     tenant                 tenants?
@@ -69,7 +69,9 @@ model users {
     applicationInvites       applicationInvites[]
 
     application application[] @relation("ApplicationUser")
-    Booking Booking[]
+    Booking     Booking[]
+
+    UserSearchPreference UserSearchPreference[]
 }
 
 model UserLikedProperty {
@@ -81,4 +83,15 @@ model UserLikedProperty {
     likedAt    DateTime    @default(now())
 
     @@unique([userId, propertyId])
+}
+
+model UserSearchPreference {
+    id          String         @id @default(cuid())
+    description String?         @unique
+    userId      String         @unique
+    user        users          @relation(fields: [userId], references: [id])
+    types       PropertyType[]
+    isActive    Boolean        @default(true)
+    updatedAt   DateTime       @updatedAt
+    createdAt   DateTime       @default(now())
 }

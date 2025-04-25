@@ -6,7 +6,6 @@ const latePaymentFeeType = Object.values(LatePaymentFeeType);
 
 export const propApartmentSettingsSchema = Joi.object({
     propertyId: Joi.string().required(),
-    apartmentId: Joi.string().optional(),
     lateFee: Joi.number().min(0).precision(2).optional(),
     lateFeeFrequency: Joi.string().valid(...latePaymentFeeType).optional(),
     lateFeePercentage: Joi.number().optional(),
@@ -29,7 +28,6 @@ export const GlobalSettingsSchema = Joi.object({
 
 export const propApartmentSettingsUpdateSchema = Joi.object({
     propertyId: Joi.string().optional(),
-    apartmentId: Joi.string().optional(),
     lateFee: Joi.number().min(0).precision(2).optional(),
     latePaymentFeeType: Joi.string().valid('ONE_TIME', 'RECURRING').optional(),
 });

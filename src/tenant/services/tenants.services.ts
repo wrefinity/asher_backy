@@ -6,6 +6,7 @@ class TenantService {
         this.inclusion = {
             user: {
                 include: {
+                    UserSearchPreference: true,
                     profile: true,
                     nextOfKin: true,
                     residentialInformation: true,
@@ -22,7 +23,6 @@ class TenantService {
             property: true,
             history: true,
             landlord: true,
-            apartments: true,
             tenantSupportTicket: true,
             // PropertyTransactions: true,
         }
@@ -88,6 +88,13 @@ class TenantService {
         return await prismaClient.tenants.findMany({
             where: {
                 isCurrentLease: true,
+                user: {
+                    UserSearchPreference: {
+                      some: {
+                        isActive: true,
+                      },
+                    },
+                },
             },
             include: this.inclusion
         });

@@ -17,6 +17,7 @@ class ProfileRoutes {
     }
     initializeRoutes() {
         this.router.post('/update', multer_1.default.array('files'), multerCloudinary_1.uploadToCloudinary, profile_1.default.profileUpdate);
+        this.router.post('/search-preferences', profile_1.default.addUserSearchPreference);
         this.router.get('/', profile_1.default.getCurrentUserProfile);
     }
 }

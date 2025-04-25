@@ -33,13 +33,3 @@ class LandlordMaintenanceRoute {
 // cm57schfs0000refzg0j13jpx - categpory
 // cm57swrez0002refzkdqv44x6 - subcategory
 exports.default = new LandlordMaintenanceRoute().router;
-// {
-//     "offer":["100"],
-//     "propertyId": "cm1worljs0003uob6eysm7d3y",
-//     "description":"pipe breaks",
-//     "apartmentId":"clyxgodw70003nuzgt3pkeojg",
-//     "categoryId":"cm1l43ogj000013h90b6uy9st",
-//     "subcategoryIds":["cm1jpxvzx0001zmipgdyhykza"],
-//     "serviceId":"cm1jq290m0001urs2zqm95735",
-//     "scheduleDate": "2024-11-15T00:00:00Z"
-//   }

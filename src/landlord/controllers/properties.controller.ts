@@ -13,6 +13,8 @@ import { parseDateFieldNew} from "../../utils/helpers";
 import { PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
+import profileServices from '../../services/profileServices';
+import userServices from '../../services/user.services';
 
 
 class PropertyController {
@@ -84,6 +86,27 @@ class PropertyController {
         } catch (error) {
             ErrorService.handleError(error, res)
         }
+    }
+    getPropertyBasedOnUserPreference = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            const userId = req.params.userId;
+            // validate user existence
+            const userExist = await userServices.findAUserById(userId);
+
+            if (!userExist) {
+                return res.status(400).json({message: "user doesnt exist"}); 
+            }
+            const preferences = await profileServices.activeSearchPreference(userId);
+            if(preferences.length <= 0){
+                return res.status(400).json({message: "user have not set active search preference"});
+            }
+            const properties = await PropertyServices.getPropertyOnUserPreference(preferences, landlordId);
+            return res.status(201).json({properties});
+
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        } 
     }
 
     categorizedPropsInRentals = async (req: CustomRequest, res: Response) => {

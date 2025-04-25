@@ -19,7 +19,6 @@ class TransactionSchema {
             reference: joi_1.default.string().valid(...Object.values(client_1.TransactionReference)).optional(),
             propertyId: joi_1.default.string().optional(),
             billId: joi_1.default.string().optional(),
-            apartmentId: joi_1.default.string().optional(),
             walletId: joi_1.default.string().optional(),
             amount: joi_1.default.number().required(),
             currency: joi_1.default.string().optional(),

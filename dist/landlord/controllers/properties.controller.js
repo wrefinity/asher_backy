@@ -34,6 +34,8 @@ const helpers_1 = require("../../utils/helpers");
 const client_1 = require("@prisma/client");
 const tenant_service_1 = __importDefault(require("../../services/tenant.service"));
 const state_services_1 = __importDefault(require("../../services/state.services"));
+const profileServices_1 = __importDefault(require("../../services/profileServices"));
+const user_services_1 = __importDefault(require("../../services/user.services"));
 class PropertyController {
     constructor() {
         this.createProperties = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -82,6 +84,27 @@ class PropertyController {
                 const propertiesGrouped = yield propertyServices_1.default.aggregatePropertiesByState(landlordId);
                 const propertiesUnGrouped = yield propertyServices_1.default.getPropertiesByLandlord(landlordId);
                 return res.status(200).json({ propertiesGrouped, propertiesUnGrouped });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getPropertyBasedOnUserPreference = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+                const userId = req.params.userId;
+                // validate user existence
+                const userExist = yield user_services_1.default.findAUserById(userId);
+                if (!userExist) {
+                    return res.status(400).json({ message: "user doesnt exist" });
+                }
+                const preferences = yield profileServices_1.default.activeSearchPreference(userId);
+                if (preferences.length <= 0) {
+                    return res.status(400).json({ message: "user have not set active search preference" });
+                }
+                const properties = yield propertyServices_1.default.getPropertyOnUserPreference(preferences, landlordId);
+                return res.status(201).json({ properties });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

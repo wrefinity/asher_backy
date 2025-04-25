@@ -49,9 +49,7 @@ class ReviewService {
             prismaData.propertyId = data?.propertyId;
         }
 
-        if (data.apartmentId) {
-            prismaData.apartmentId = data?.apartmentId;
-        }
+     
 
         return await prismaClient.reviews.create({
             data: prismaData,
@@ -83,8 +81,8 @@ class ReviewService {
             data: { isDeleted: true }
         });
     }
-    // Aggregate reviews based on propertyId, apartmentId, tenantId, landlordId, or vendorId
-    aggregateReviews = async (filter: { propertyId?: string, apartmentId?: string, tenantId?: string, landlordId?: string, vendorId?: string }) => {
+    // Aggregate reviews based on propertyId , tenantId, landlordId, or vendorId
+    aggregateReviews = async (filter: { propertyId?: string, tenantId?: string, landlordId?: string, vendorId?: string }) => {
 
         const reviews = await prismaClient.reviews.findMany({
             where: {

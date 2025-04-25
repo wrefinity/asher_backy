@@ -39,6 +39,31 @@ class PropertyService {
                 include: Object.assign({}, this.propsInclusion)
             });
         });
+        this.getPropertyOnUserPreference = (userPreferenceTypes, landlordId) => __awaiter(this, void 0, void 0, function* () {
+            return yield __1.prismaClient.properties.findMany({
+                where: {
+                    availability: client_3.AvailabilityStatus.VACANT,
+                    propertyListingHistory: {
+                        some: {
+                            isActive: true,
+                            onListing: true,
+                            propertySubType: {
+                                in: userPreferenceTypes,
+                            },
+                            property: {
+                                landlordId
+                            }
+                        },
+                    },
+                },
+                include: {
+                    propertyListingHistory: true,
+                    state: true,
+                    landlord: true,
+                    images: true,
+                },
+            });
+        });
         this.getPropertiesById = (id) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findUnique({
                 where: { id },
@@ -259,9 +284,6 @@ class PropertyService {
         this.getAllListedProperties = (...args_1) => __awaiter(this, [...args_1], void 0, function* (filters = {}, skip = 0, take = 10, availability = true) {
             const { landlordId, property, minSize, maxSize, isShortlet, dueDate, yearBuilt, zipcode, amenities, mustHaves } = filters;
             const { type, state, country, specificationType, isActive, rentalFee, maxBedRoom, minBedRoom, maxBathRoom, minBathRoom, maxRentalFee, minRentalFee, marketValue, noKitchen, minGarage, maxGarage } = property || {};
-            console.log("=============================");
-            console.log(landlordId);
-            console.log("=============================");
             return yield __1.prismaClient.propertyListingHistory.findMany({
                 where: Object.assign(Object.assign(Object.assign({}, (isActive !== undefined && { isActive })), (isActive !== undefined && { onListing: isActive })), { property: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (landlordId && { landlordId })), (availability && { availability: client_3.AvailabilityStatus.VACANT })), (specificationType && { specificationType })), (state && {
                         state: {

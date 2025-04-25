@@ -1,4 +1,10 @@
-import Joi, { optional } from 'joi';
+import Joi from 'joi';
+import { PropertyType } from '@prisma/client';
+
+export const userSearchPreferenceSchema = Joi.object({
+  types: Joi.array().items(Joi.string().valid(...Object.values(PropertyType))).min(1).required(),
+  description: Joi.string().optional(),
+});
 
 export const profileSchema = Joi.object({
   gender: Joi.string().valid('Male', 'Female', 'Other'),

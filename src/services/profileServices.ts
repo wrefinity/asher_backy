@@ -1,37 +1,79 @@
 
 import { prismaClient } from "..";
 import { ProfileIF } from "../validations/interfaces/profile.interface";
+import { PropertyType } from ".prisma/client";
 
+interface CreateUserPreferenceInput {
+  description: string;
+  types: PropertyType[];
+}
 
 class ProfileService {
 
-    protected inclusion;
-    constructor() {
-        this.inclusion = {
-            users: true
+  protected inclusion;
+  constructor() {
+    this.inclusion = {
+      users: true
+    }
+  }
+
+  findAUserProfileById = async (userId: string) => {
+    return await prismaClient.profile.findFirst({ where: { id: userId }, include: this.inclusion })
+  }
+  findUserProfileByUserId = async (userId: string) => {
+    return await prismaClient.profile.findFirst({
+      where: {
+        users: {
+          id: userId
         }
-    }
+      }
+    });
+  }
 
-    findAUserProfileById = async (userId: string) => {
-        return await prismaClient.profile.findFirst({ where: { id: userId }, include: this.inclusion })
-    }
-    findUserProfileByUserId = async (userId: string) => {
-        return await prismaClient.profile.findFirst({
-            where: {
-                users: {
-                    id: userId
-                }
-            }
-        });
-    }
+  updateUserProfile = async (id: string, profileData: Partial<ProfileIF>) => {
+    return await prismaClient.profile.update({
+      where: { id },
+      data: profileData,
+      include: this.inclusion
+    });
+  }
+  activeSearchPreference = async (userId: string) => {
+    const activePreference = await prismaClient.userSearchPreference.findFirst({
+      where: {
+        userId: userId,
+        isActive: true,
+      },
+    });
+    return activePreference?.types || [];
+  }
 
-    updateUserProfile = async (id: string, profileData: Partial<ProfileIF>) => {
-        return await prismaClient.profile.update({
-            where: { id },
-            data: profileData,
-            include: this.inclusion
-        });
-    }
+  createUserSearchPreference = async (input: CreateUserPreferenceInput, userId: string) => {
+    const { description, types } = input;
+
+    // Deactivate all current active preferences
+    await prismaClient.userSearchPreference.updateMany({
+      where: {
+        userId,
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    // Create new preference as active
+    const newPreference = await prismaClient.userSearchPreference.create({
+      data: {
+        userId,
+        description,
+        types,
+        isActive: true,
+      },
+    });
+
+    return newPreference;
+  }
+
 
 }
 
