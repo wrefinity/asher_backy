@@ -344,7 +344,7 @@ model properties {
   viewingArrangements String?
 
   // Property features
-  keyFeatures           propertyFeatures[]
+  keyFeatures           String[]
   customKeyFeatures     String[]
   // Nearby amenities
   nearbyAmenities       String[] // JSON array of amenity IDs
@@ -414,6 +414,8 @@ model UnitConfiguration {
   ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
   residentialPropertyId String?
   CommercialProperty    CommercialProperty[]
+
+  Booking Booking[]
 }
 
 model RoomDetail {
@@ -429,6 +431,8 @@ model RoomDetail {
   commercialPropertyId  String?
   ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
   shortletPropertyId    String?
+
+  Booking Booking[]
 }
 
 // Residential Property specific fields - Done
@@ -463,7 +467,7 @@ model ResidentialProperty {
   gardenSize             String?
   houseStyle             String?
   numberOfStories        String?
-  outdoorsSpacesFeatures propertyFeatures[] @relation("ResidentialOutdoorsSpaceFeatures")
+  outdoorsSpacesFeatures String[] 
 
   // shared room and hmo specifics
   roomDetails           RoomDetail[]
@@ -484,8 +488,8 @@ model ResidentialProperty {
   totalFloors             Int?
   unitPerFloors           Int?
   totalUnits              Int?
-  buildingAmenityFeatures propertyFeatures[]  @relation("ResidentialBuildingAmenityFeatures")
-  safetyFeatures          propertyFeatures[]  @relation("ResidentialSafetyFeatures")
+  buildingAmenityFeatures String[]  
+  safetyFeatures          String[]
   customSafetyFeatures    String[]
 
   // Energy and Sustainability
@@ -538,7 +542,7 @@ model CommercialProperty {
   floorAvailability CommercialPropertyFloor[]
 
   // Warehouse Details
-  securityFeatures  propertyFeatures[] @relation("SecurityFeatures")
+  securityFeatures  String[]
   clearHeight       String?
   loadingDoorsCount Int?
   powerSupply       String?
@@ -547,7 +551,7 @@ model CommercialProperty {
   hasYard           Boolean            @default(false)
   yardDepth         String?
 
-  safetyFeatures            propertyFeatures[] @relation("safetyFeatures")
+  safetyFeatures            String[]
   customSafetyFeatures      String[]
   // Energy and Sustainability
   epcRating                 String?
@@ -594,13 +598,12 @@ model ShortletProperty {
   // house type specifics 
   lotSize                 Int?
   garageSpaces            Int?
-  outdoorsSpacesFeatures  propertyFeatures[] @relation("ShortletOutdoorsSpaceFeatures")
+  outdoorsSpacesFeatures  String[]
   // apartment specifics
   buildingName            String?
   unitNumber              Int?
-  buildingAmenityFeatures propertyFeatures[] @relation("ShortletBuildingAmenityFeatures")
-  safetyFeatures          propertyFeatures[] @relation("ShortletSafetyFeatures")
-
+  buildingAmenityFeatures String[]
+  safetyFeatures          String[]
   customSafetyFeatures String[]
 
   // Property Details
@@ -685,7 +688,7 @@ model CommercialPropertyFloor {
   available    Boolean            @default(true)
   partialFloor Boolean            @default(false)
   description  String?
-  amenities    propertyFeatures[] @relation("BuildingFeatures")
+  amenities    String[]
   // Relationships
   propertyId   String
   property     CommercialProperty @relation(fields: [propertyId], references: [id])
@@ -728,6 +731,15 @@ model Booking {
   property   ShortletProperty @relation(fields: [propertyId], references: [id])
   userId     String?
   user       users?           @relation(fields: [userId], references: [id])
+
+  unitConfigurationId String?
+  unitConfiguration   UnitConfiguration?     @relation(fields: [unitConfigurationId], references: [id], onDelete: Cascade)
+
+  roomDetailId        String?
+  roomDetail          RoomDetail?            @relation(fields: [roomDetailId], references: [id], onDelete: Cascade)
+
+  cancellationPolicy CancellationPolicy? @default(FLEXIBLE)
+  isRefundable       Refundability       @default(YES)
 }
 
 model propertySettings {
@@ -763,22 +775,22 @@ model propertySettings {
   @@unique([propertyId, settingType])
 }
 
-model propertyFeatures {
-  id         String              @id @default(cuid())
-  name       String
-  type       PropertyFeatureType @default(KEY)
-  isDeleted  Boolean             @default(false)
-  properties properties[]
+// model propertyFeatures {
+//   id         String              @id @default(cuid())
+//   name       String
+//   type       PropertyFeatureType @default(KEY)
+//   isDeleted  Boolean             @default(false)
+//   properties properties[]
 
-  CommercialPropertySecurityFeatures CommercialProperty[]      @relation("SecurityFeatures")
-  CommercialSafetyProperty           CommercialProperty[]      @relation("safetyFeatures")
-  CommercialPropertyFloor            CommercialPropertyFloor[] @relation("BuildingFeatures")
+//   CommercialPropertySecurityFeatures CommercialProperty[]      @relation("SecurityFeatures")
+//   CommercialSafetyProperty           CommercialProperty[]      @relation("safetyFeatures")
+//   CommercialPropertyFloor            CommercialPropertyFloor[] @relation("BuildingFeatures")
 
-  ResidentialOutDoorProperty  ResidentialProperty[] @relation("ResidentialOutdoorsSpaceFeatures")
-  ResidentialBuildingProperty ResidentialProperty[] @relation("ResidentialBuildingAmenityFeatures")
-  ResidentialSafetyProperty   ResidentialProperty[] @relation("ResidentialSafetyFeatures")
+//   ResidentialOutDoorProperty  ResidentialProperty[] @relation("ResidentialOutdoorsSpaceFeatures")
+//   ResidentialBuildingProperty ResidentialProperty[] @relation("ResidentialBuildingAmenityFeatures")
+//   ResidentialSafetyProperty   ResidentialProperty[] @relation("ResidentialSafetyFeatures")
 
-  ShortletOutletProperty   ShortletProperty[] @relation("ShortletOutdoorsSpaceFeatures")
-  ShortletBuildingProperty ShortletProperty[] @relation("ShortletBuildingAmenityFeatures")
-  ShortletSafetyProperty   ShortletProperty[] @relation("ShortletSafetyFeatures")
-}
+//   ShortletOutletProperty   ShortletProperty[] @relation("ShortletOutdoorsSpaceFeatures")
+//   ShortletBuildingProperty ShortletProperty[] @relation("ShortletBuildingAmenityFeatures")
+//   ShortletSafetyProperty   ShortletProperty[] @relation("ShortletSafetyFeatures")
+// }

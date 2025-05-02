@@ -113,7 +113,7 @@ class Server {
         this.app.use("/api/complaints", ComplaintRoutes);
     }
 
-    // ✅ Socket.IO – Real-time chat messages
+    // Socket.IO – Real-time chat messages
     private configureSocketIO() {
         this.io.on("connection", (socket) => {
             console.log("🔌 Chat client connected");
@@ -135,7 +135,7 @@ class Server {
         });
     }
 
-    // ✅ WebSocket – In-house email
+    // WebSocket – In-house email
     private configureWSS() {
         this.server.on("upgrade", (req, socket, head) => {
             const pathname = req.url;

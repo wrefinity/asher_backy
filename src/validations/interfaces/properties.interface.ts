@@ -1,5 +1,5 @@
-import { PropertyType,PropertyStatus, propertyFeatures, TensureType, AvailabilityStatus, Currency, VatStatus, RoomDetail, GarageType, GlazingType, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType, 
-    MediaType, BookingStatus, PropertyFeatureType, ShortletProperty, ResidentialProperty, CommercialProperty, bills } from "@prisma/client"
+import { PropertyType,PropertyStatus, TensureType, AvailabilityStatus, Currency, VatStatus, RoomDetail, GarageType, GlazingType, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType, 
+    MediaType, BookingStatus, ShortletProperty, ResidentialProperty, CommercialProperty, bills } from "@prisma/client"
 
 export interface IPropertyDocument {
     id?: string;
@@ -45,10 +45,6 @@ export interface ICreateProperty {
     specificationType?: PropertySpecificationType;
 }
 
-
-
-
-// TypeScript Interfaces
 
 interface INearbyAmenity {
     name: string;
@@ -470,12 +466,12 @@ export interface IShortletDTO {
     additionalRules?: string[];
 }
 
-export interface PropertyFeature {
-    id?: string
-    name: string
-    type: PropertyFeatureType
-    isDeleted?: boolean
-}
+// export interface PropertyFeature {
+//     id?: string
+//     name: string
+//     type: PropertyFeatureType
+//     isDeleted?: boolean
+// }
 
 
 

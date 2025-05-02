@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
 import PropertyController from "../controllers/property.controller";
 import PropertDocumentRouter from "./propertydoc"
+import BookingRouter from "./booking"
 import propertyController from "../controllers/property.controller";
 class PropertyRouter {
     public router: Router;
@@ -14,10 +15,11 @@ class PropertyRouter {
     }
 
     private initializeRoutes() {
-        this.router.post("/property/features",  this.authenticateService.authorize, PropertyController.createFeatures);
-        this.router.get("/property/features",  this.authenticateService.authorize, PropertyController.getFeatures);
+    //     this.router.post("/property/features",  this.authenticateService.authorize, PropertyController.createFeatures);
+    //     this.router.get("/property/features",  this.authenticateService.authorize, PropertyController.getFeatures);
         this.router.post("/property/enquire",  this.authenticateService.authorize, PropertyController.enquireProperty);
         this.router.use("/docs", PropertDocumentRouter);
+        this.router.use("/bookings", BookingRouter);
         this.router.get('/property', PropertyController.getProperty)
         this.router.get('/property/landlord/:landlordId', PropertyController.getPropertyListedByLandlord)
         this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, PropertyController.createLikeProperty)

@@ -1,10 +1,10 @@
-import { ListingType, PropertyFeatureType, Prisma, PropertySpecificationType, PrismaClient } from "@prisma/client";
+import { PropertySpecificationType } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
-// PropertyL
 import { AvailabilityStatus } from "@prisma/client";
-import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, PropertyFeature, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
+import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
+import { spec } from "node:test/reporters";
 
 interface PropertyFilters {
     landlordId?: string;
@@ -50,9 +50,6 @@ class PropertyService {
             include: {
                 residential: {
                     include: {
-                        outdoorsSpacesFeatures: true,
-                        buildingAmenityFeatures: true,
-                        safetyFeatures: true,
                         unitConfigurations: true,
                         sharedFacilities: true,
                         bills: true,
@@ -61,7 +58,6 @@ class PropertyService {
                 commercial: {
                     include: {
                         floorAvailability: true,
-                        safetyFeatures: true,
                         unitConfigurations: true,
                         suitableFor: true,
                         roomDetails: true,
@@ -70,9 +66,6 @@ class PropertyService {
                 },
                 shortlet: {
                     include: {
-                        outdoorsSpacesFeatures: true,
-                        buildingAmenityFeatures: true,
-                        safetyFeatures: true,
                         bookings: true,
                         seasonalPricing: true,
                         unavailableDates: true,
@@ -134,7 +127,7 @@ class PropertyService {
             }
         })
     }
-    getPropertyOnUserPreference = async (userPreferenceTypes: PropertyType[], landlordId:string) => {
+    getPropertyOnUserPreference = async (userPreferenceTypes: PropertyType[], landlordId: string) => {
         return await prismaClient.properties.findMany({
             where: {
                 availability: AvailabilityStatus.VACANT,
@@ -145,7 +138,7 @@ class PropertyService {
                         propertySubType: {
                             in: userPreferenceTypes,
                         },
-                        property:{
+                        property: {
                             landlordId
                         }
                     },
@@ -159,7 +152,7 @@ class PropertyService {
             },
         });
     }
-    
+
     getPropertiesById = async (id: string) => {
         return await prismaClient.properties.findUnique({
             where: { id },
@@ -791,37 +784,37 @@ class PropertyService {
         });
     }
 
-    async createPropertyFeature(data: PropertyFeature[] | any) {
-        return await prismaClient.propertyFeatures.createMany({
-            data,
-            skipDuplicates: true
-        });
-    }
-    async getPropertyFeature() {
-        return await prismaClient.propertyFeatures.findMany();
-    }
-    async getPropertyFeaturesByIds(featureIds: string[]): Promise<string[]> {
-        if (!featureIds || featureIds.length === 0) {
-            return [];
-        }
+    // async createPropertyFeature(data: PropertyFeature[] | any) {
+    //     return await prismaClient.propertyFeatures.createMany({
+    //         data,
+    //         skipDuplicates: true
+    //     });
+    // }
+    // async getPropertyFeature() {
+    //     return await prismaClient.propertyFeatures.findMany();
+    // }
+    // async getPropertyFeaturesByIds(featureIds: string[]): Promise<string[]> {
+    //     if (!featureIds || featureIds.length === 0) {
+    //         return [];
+    //     }
 
-        const existingFeatures = await prismaClient.propertyFeatures.findMany({
-            where: {
-                id: { in: featureIds },
-            },
-            select: { id: true },
-        });
+    //     const existingFeatures = await prismaClient.propertyFeatures.findMany({
+    //         where: {
+    //             id: { in: featureIds },
+    //         },
+    //         select: { id: true },
+    //     });
 
-        const existingFeatureIds = existingFeatures.map((f) => f.id);
+    //     const existingFeatureIds = existingFeatures.map((f) => f.id);
 
-        const missingFeatureIds = featureIds.filter((id) => !existingFeatureIds.includes(id));
+    //     const missingFeatureIds = featureIds.filter((id) => !existingFeatureIds.includes(id));
 
-        if (missingFeatureIds.length > 0) {
-            throw new Error(`The following feature IDs do not exist: ${missingFeatureIds.join(", ")}`);
-        }
+    //     if (missingFeatureIds.length > 0) {
+    //         throw new Error(`The following feature IDs do not exist: ${missingFeatureIds.join(", ")}`);
+    //     }
 
-        return existingFeatureIds;
-    }
+    //     return existingFeatureIds;
+    // }
 
 
     // async ensurePropertyIsNotLinked(propertyId: string): Promise<void> {
@@ -858,11 +851,6 @@ class PropertyService {
                 throw new Error("Specification type is required.");
             }
 
-            // Check if the key features exist
-            const keyFeatureIds = await this.getPropertyFeaturesByIds(keyFeatures);
-            if (keyFeatureIds.length !== keyFeatures.length) {
-                throw new Error(`Some key amentities features do not exist.`);
-            }
 
             // Separate media by type
             const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
@@ -874,9 +862,7 @@ class PropertyService {
             const property = await tx.properties.create({
                 data: {
                     ...rest,
-                    keyFeatures: {
-                        connect: keyFeatureIds.map((id) => ({ id })),
-                    },
+                    keyFeatures: { set: keyFeatures },
                     specificationType,
                     landlord: { connect: { id: landlordId } },
                     agency: agencyId ? { connect: { id: agencyId } } : undefined,
@@ -977,57 +963,28 @@ class PropertyService {
 
     async createResidentialProperty(propertyId: string, data: IResidentialDTO | any, tx: any, specification: IPropertySpecificationDTO) {
         const {
-            outdoorsSpacesFeatures: outdoorFeatureIds,
-            safetyFeatures: safetyFeatureIdx,
+            outdoorsSpacesFeature,
+            safetyFeatures,
             bills,
-            buildingAmenityFeatures: buildingAmenityFeaturesIds,
+            buildingAmenityFeatures,
             roomDetails,
             sharedFacilities,
             unitConfiguration,
             ...rest } = data;
 
-
-        // Step 1: Verify property exists
+        // Verify property exists
         const property = await tx.properties.findUnique({
             where: { id: propertyId }
         });
         if (!property) throw new Error(`Property ${propertyId} not found`);
 
-
-        // Step 2: Check if the key features exist
-        const outdoorsFeatures = await this.getPropertyFeaturesByIds(outdoorFeatureIds);
-        if (outdoorsFeatures.length !== outdoorFeatureIds.length) {
-            throw new Error(`Some outdoors features do not exist.`);
-        }
-        // Check if the building amenity features exist
-        const BAFeaturesIds = await this.getPropertyFeaturesByIds(buildingAmenityFeaturesIds);
-        if (BAFeaturesIds.length !== buildingAmenityFeaturesIds.length) {
-            throw new Error(`Some building amentities features do not exist.`);
-        }
-        // Step 2: Check if the safety features exist
-        const safetyFeatureIds = await this.getPropertyFeaturesByIds(safetyFeatureIdx);
-        if (safetyFeatureIds.length !== safetyFeatureIdx.length) {
-            throw new Error(`Some safety amentities features do not exist.`);
-        }
-
-        console.log("============shared============")
-        console.log(outdoorsFeatures)
-        console.log("============shared============")
-
-
-        // Step 4: Proceed with creation
+        // Proceed with creation
         const residential = await tx.residentialProperty.create({
             data: {
                 ...rest,
-                outdoorsSpacesFeatures: {
-                    connect: outdoorsFeatures?.length ? outdoorsFeatures.map((id) => ({ id })) : undefined
-                },
-                buildingAmenityFeatures: {
-                    connect: BAFeaturesIds?.length ? BAFeaturesIds?.map((id) => ({ id })) : undefined,
-                },
-                safetyFeatures: {
-                    connect: safetyFeatureIds?.length ? safetyFeatureIds?.map((id) => ({ id })) : undefined,
-                },
+                outdoorsSpacesFeatures: outdoorsSpacesFeature ? { set: outdoorsSpacesFeature } : undefined,
+                buildingAmenityFeatures: buildingAmenityFeatures ? { set: buildingAmenityFeatures } : undefined,
+                safetyFeatures: safetyFeatures ? { set: safetyFeatures } : undefined,
                 bills: {
                     connect: bills?.length ? bills?.map((id) => ({ id })) : undefined,
                 },
@@ -1081,32 +1038,45 @@ class PropertyService {
     }
 
     async createCommercialProperty(propertyId: string, data: ICommercialDTO | any, tx: any, specification: IPropertySpecificationDTO) {
-        const { safetyFeatures: safFeatureIdx, securityFeatures: secFeatureIdx, floorAvailability, roomDetails, unitConfiguration, suitableFor, sharedFacilities, ...rest } = data;
+        const {
+            safetyFeatures = [],
+            coolingTypes = [],
+            heatingTypes = [],
+            customSafetyFeatures = [],
+            securityFeatures = [],
+            otherSharedFacilities = [],
+            floorAvailability,
+            roomDetails,
+            unitConfiguration,
+            suitableFor,
+            sharedFacilities,
+            ...rest
+        } = data;
 
         const property = await tx.properties.findUnique({
             where: { id: propertyId }
         });
         if (!property) throw new Error(`Property ${propertyId} not found`);
 
-        const safFeatures = await this.getPropertyFeaturesByIds(safFeatureIdx);
-        if (safFeatures.length !== safFeatureIdx.length) {
-            throw new Error(`Some safety features do not exist.`);
-        }
-        const secFeatures = await this.getPropertyFeaturesByIds(secFeatureIdx);
-        if (secFeatures.length !== secFeatureIdx.length) {
-            throw new Error(`Some security features do not exist.`);
-        }
-
         // Proceed with creation
         const commercial = await tx.commercialProperty.create({
             data: {
                 ...rest,
-                securityFeatures: {
-                    connect: secFeatures?.length ? secFeatures.map((id) => ({ id })) : undefined,
-                },
-                safetyFeatures: {
-                    connect: safFeatures?.length ? safFeatures.map((id) => ({ id })) : undefined,
-                },
+                // property: { connect: { id: propertyId } }, // Ensure connection to parent property
+
+
+                // All array fields with set operations
+                securityFeatures: securityFeatures ? { set: securityFeatures } : undefined,
+                safetyFeatures: safetyFeatures ? { set: safetyFeatures } : undefined,
+                customSafetyFeatures: customSafetyFeatures ? { set: customSafetyFeatures } : undefined,
+                coolingTypes: coolingTypes ? { set: coolingTypes } : undefined,
+                heatingTypes: heatingTypes ? { set: heatingTypes } : undefined,
+                otherSharedFacilities: otherSharedFacilities ? { set: otherSharedFacilities } : undefined,
+
+                // Required fields from your model
+                leaseTermUnit: rest.leaseTermUnit || "YEARS",
+                minimumLeaseTerm: rest.minimumLeaseTerm || 12,
+                // Nested creates
                 floorAvailability: {
                     create: floorAvailability?.map((floor: any) => ({
                         floorNumber: floor.floorNumber,
@@ -1115,19 +1085,19 @@ class PropertyService {
                         available: floor.available,
                         partialFloor: floor.partialFloor,
                         description: floor.description,
-                        amenities: {
-                            connect: floor?.amenities?.length ? floor?.amenities.map((id) => ({ id })) : undefined,
-                        }
-                    })) || [],
+                        amenities: floor?.amenities ? { set: securityFeatures } : undefined,
+                    })) || []
                 },
+
                 roomDetails: {
                     create: roomDetails?.map((room: any) => ({
                         roomName: room.roomName,
                         roomSize: room.roomSize,
                         ensuite: room.ensuite,
                         price: room.price,
-                    })) || [],
+                    })) || []
                 },
+
                 sharedFacilities: {
                     create: {
                         kitchen: sharedFacilities?.kitchen ?? false,
@@ -1138,13 +1108,13 @@ class PropertyService {
                         laundry: sharedFacilities?.laundry ?? false,
                         parking: sharedFacilities?.parking ?? false,
                         other: sharedFacilities?.other || "",
-                    },
+                    }
                 },
+
                 suitableFor: {
-                    create: suitableFor?.map((name: any) => ({
-                        name: name
-                    })) || [],
+                    create: suitableFor?.map((name: string) => ({ name })) || []
                 },
+
                 unitConfigurations: {
                     create: unitConfiguration?.map((unit: any) => ({
                         unitType: unit.unitType,
@@ -1157,30 +1127,19 @@ class PropertyService {
                         area: unit.area,
                         description: unit.description,
                         availability: unit.availability,
-                    })) || [],
-                },
-
-            },
-        });
-
-        return await tx.propertySpecification.create({
-            data: {
-                property: {
-                    connect: { id: property.id }
-                },
-                specificationType: PropertySpecificationType.COMMERCIAL,
-                commercial: { connect: { id: commercial.id } },
-                propertySubType: specification.propertySubType,
-                otherTypeSpecific: specification?.otherTypeSpecific
+                    })) || []
+                }
             }
         });
+
+        return commercial;
     }
 
     async createShortletProperty(propertyId: string, data: IShortletDTO | any, tx: any, specification: IPropertySpecificationDTO) {
         const {
-            safetyFeatures: safetyfeatureIds,
-            buildingAmenityFeatures: BAFeatureIds,
-            outdoorsSpacesFeatures: ODFeaturesId,
+            safetyFeatures,
+            buildingAmenityFeatures,
+            outdoorsSpacesFeatures,
             hostLanguages,
             additionalRules, unavailableDates,
             seasonalPricing,
@@ -1192,33 +1151,14 @@ class PropertyService {
         });
         if (!property) throw new Error(`Property ${propertyId} not found`);
 
-        // Step 2: Check if the key features exist
-        const safkeyFeatures = await this.getPropertyFeaturesByIds(safetyfeatureIds);
-        if (safkeyFeatures.length !== safetyfeatureIds.length) {
-            throw new Error(`Some safety features do not exist.`);
-        }
-        const outDoorFeaturesIds = await this.getPropertyFeaturesByIds(ODFeaturesId);
-        if (outDoorFeaturesIds.length !== ODFeaturesId.length) {
-            throw new Error(`Some outdoor features do not exist.`);
-        }
-        const buildingAmenityFeatureIds = await this.getPropertyFeaturesByIds(BAFeatureIds);
-        if (buildingAmenityFeatureIds.length !== BAFeatureIds.length) {
-            throw new Error(`Some bulding features do not exist.`);
-        }
 
         // Proceed with creation
         const shortlet = await tx.shortletProperty.create({
             data: {
                 ...rest,
-                safetyFeatures: {
-                    connect: safkeyFeatures?.length ? safkeyFeatures?.map((id) => ({ id })) : undefined,
-                },
-                outdoorsSpacesFeatures: {
-                    connect: outDoorFeaturesIds?.length ? outDoorFeaturesIds?.map((id) => ({ id })) : undefined,
-                },
-                buildingAmenityFeatures: {
-                    connect: buildingAmenityFeatureIds?.length ? buildingAmenityFeatureIds?.map((id) => ({ id })) : undefined,
-                },
+                safetyFeatures: safetyFeatures ? { set: safetyFeatures } : undefined,
+                outdoorsSpacesFeatures: outdoorsSpacesFeatures ? { set: outdoorsSpacesFeatures } : undefined,
+                buildingAmenityFeatures: buildingAmenityFeatures ? { set: buildingAmenityFeatures } : undefined,
                 roomDetails: {
                     create: roomDetails?.map((room: any) => ({
                         roomName: room.roomName,
@@ -1273,6 +1213,150 @@ class PropertyService {
                 shortlet: { connect: { id: shortlet.id } },
                 propertySubType: specification.propertySubType,
                 otherTypeSpecific: specification?.otherTypeSpecific
+            }
+        });
+    }
+
+    async switchPropertyType(data: IBasePropertyDTO, specification: IPropertySpecificationDTO, propertyId?: string) {
+        return prismaClient.$transaction(async (tx) => {
+            // Verify property exists and get current active specification
+            const property = await tx.properties.findUnique({
+                where: { id: propertyId },
+                include: {
+                    specification: {
+                        // where: { isActive: true },
+                        include: {
+                            commercial: true,
+                            residential: true,
+                            shortlet: true
+                        }
+                    }
+                }
+            });
+
+            if (!property) {
+                throw new Error("Property not found");
+            }
+
+            // Deactivate current active specification if exists
+            if (property.specification?.length) {
+                await tx.propertySpecification.updateMany({
+                    where: { propertyId: property?.id },
+                    //   where: { id: property.specification[0].id },
+                    data: { isActive: false }
+                });
+            }
+
+            // Create or reuse specification based on target type
+            switch (data.specificationType) {
+                case PropertySpecificationType.COMMERCIAL:
+                    return this.handleCommercialSwitch(tx, specification.commercial, propertyId, property.specification?.[0], );
+                case PropertySpecificationType.RESIDENTIAL:
+                    return this.handleResidentialSwitch(tx, specification.residential, propertyId, property.specification?.[0]);
+                case PropertySpecificationType.SHORTLET:
+                    return this.handleShortletSwitch(tx, specification.shortlet, propertyId, property.specification?.[0]);
+                default:
+                    throw new Error("Invalid property type");
+            }
+        });
+    }
+
+    private async handleCommercialSwitch(tx: any, request: ICommercialDTO | any, propertyId: string, currentSpec?: any) {
+        const { ...commercialData}= request;
+
+        // Reuse existing commercial spec if available, otherwise create new
+        const commercial = currentSpec?.commercial
+            ? await tx.commercialProperty.create({
+                data: {
+                    ...currentSpec.commercial,
+                    id: undefined, // Let Prisma generate new ID
+                    ...commercialData,
+                    securityFeatures: { set:  currentSpec.commercial.securityFeatures || commercialData.securityFeatures },
+                }
+            })
+            : await tx.commercialProperty.create({
+                data: {
+                    ...commercialData,
+                    securityFeatures: { set: commercialData.securityFeatures || [] },
+                }
+            });
+
+        return this.updatePropertySpecification(tx, propertyId, "COMMERCIAL", commercial.id);
+    }
+
+    private async handleResidentialSwitch(tx: any, request: IResidentialDTO, propertyId: string, currentSpec?: any) {
+        const {...residentialData} = request;
+
+        const residential = currentSpec?.residential
+            ? await tx.residentialProperty.create({
+                data: {
+                    ...currentSpec.residential,
+                    id: undefined,
+                    ...residentialData,
+                    safetyFeatures: { set: residentialData.safetyFeatures || currentSpec.residential.safetyFeatures },
+                }
+            })
+            : await tx.residentialProperty.create({
+                data: {
+                    ...residentialData,
+                    safetyFeatures: { set: residentialData.safetyFeatures || [] },
+                }
+            });
+
+        return this.updatePropertySpecification(tx, propertyId, PropertySpecificationType.RESIDENTIAL, residential.id);
+    }
+
+    private async handleShortletSwitch(tx: any, request: IShortletDTO | any, propertyId: string, currentSpec?: any) {
+        const {...shortletData} = request;
+
+        const shortlet = currentSpec?.shortlet
+            ? await tx.shortletProperty.create({
+                data: {
+                    ...currentSpec.shortlet,
+                    id: undefined,
+                    ...shortletData,
+                    safetyFeatures: { set: shortletData.safetyFeatures || currentSpec.shortlet.safetyFeatures },
+                }
+            })
+            : await tx.shortletProperty.create({
+                data: {
+                    ...shortletData,
+                    safetyFeatures: { set: shortletData.safetyFeatures || [] },
+                }
+            });
+
+        return this.updatePropertySpecification(tx, propertyId, PropertySpecificationType.SHORTLET, shortlet.id);
+    }
+
+    updatePropertySpecification = async (
+        tx: any,
+        propertyId: string,
+        specType: PropertySpecificationType,
+        specId: string
+    ) => {
+        return tx.properties.update({
+            where: { id: propertyId },
+            data: {
+                specificationType: specType,
+                specification: {
+                    create: {
+                        specificationType: specType,
+                        isActive: true,
+                        ...(specType === PropertySpecificationType.COMMERCIAL && { commercial: { connect: { id: specId } } }),
+                        ...(specType === PropertySpecificationType.RESIDENTIAL && { residential: { connect: { id: specId } } }),
+                        ...(specType === PropertySpecificationType.SHORTLET && { shortlet: { connect: { id: specId } } }),
+                    }
+                }
+            },
+            include: {
+                specification: {
+                    where: { isActive: true },
+                    include: {
+                        commercial: specType === PropertySpecificationType.COMMERCIAL,
+                        residential: specType === PropertySpecificationType.RESIDENTIAL,
+                        shortlet: specType === PropertySpecificationType.SHORTLET
+                    }
+                }
             }
         });
     }
@@ -1334,6 +1418,32 @@ class PropertyService {
                     connect: { id: shortletId }
                 },
             },
+        });
+    }
+
+    getPropertySpecificationHistory = async (propertyId: string) => {
+        return prismaClient.propertySpecification.findMany({
+            where: { propertyId },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                commercial: true,
+                residential: true,
+                shortlet: true
+            }
+        });
+    }
+
+    getActiveSpecification = async (propertyId: string) => {
+        return prismaClient.propertySpecification.findFirst({
+            where: {
+                propertyId,
+                isActive: true
+            },
+            include: {
+                commercial: true,
+                residential: true,
+                shortlet: true
+            }
         });
     }
 }

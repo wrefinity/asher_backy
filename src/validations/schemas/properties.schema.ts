@@ -5,7 +5,7 @@ import {
   OfficeLayout, CancellationPolicy, Currency, VatStatus, LeaseTermUnit, GlazingType,
   MediaType, TensureType,
   BookingStatus,
-  PropertyFeatureType
+  
 } from '@prisma/client';
 const propertyType = Object.values(PropertyType);
 const documentType = Object.values(DocumentType);
@@ -117,28 +117,28 @@ export const updatePropertyDocumentSchema = Joi.object({
 
 
 
-export const featureSchema = Joi.object({
-  name: Joi.string().required().messages({
-    'string.empty': 'Feature name cannot be empty',
-    'any.required': 'Feature name is required'
-  }),
-  type: Joi.string().valid(...Object.values(PropertyFeatureType)).required()
-    .messages({
-      'any.only': `Type must be one of ${Object.values(PropertyFeatureType).join(', ')}`,
-      'any.required': 'Feature type is required'
-    })
-});
+// export const featureSchema = Joi.object({
+//   name: Joi.string().required().messages({
+//     'string.empty': 'Feature name cannot be empty',
+//     'any.required': 'Feature name is required'
+//   }),
+//   type: Joi.string().valid(...Object.values(PropertyFeatureType)).required()
+//     .messages({
+//       'any.only': `Type must be one of ${Object.values(PropertyFeatureType).join(', ')}`,
+//       'any.required': 'Feature type is required'
+//     })
+// });
 
 
-export const createFeaturesSchema = Joi.array()
-  .items(featureSchema)
-  .min(1)
-  .required()
-  .messages({
-    'array.base': 'Input must be an array of features',
-    'array.min': 'At least one feature is required',
-    'any.required': 'Features array is required'
-  });
+// export const createFeaturesSchema = Joi.array()
+//   .items(featureSchema)
+//   .min(1)
+//   .required()
+//   .messages({
+//     'array.base': 'Input must be an array of features',
+//     'array.min': 'At least one feature is required',
+//     'any.required': 'Features array is required'
+//   });
 
 
 
@@ -331,14 +331,14 @@ export const suitableUseSchema = Joi.object({
   commercialPropertyId: Joi.string().optional(),
 });
 
-const propertyFeatureType = Object.values(PropertyFeatureType);
-export const propertyFeatureSchema = Joi.object({
-  name: Joi.string().required(),
-  type: Joi.string()
-    .valid(...propertyFeatureType)
-    .default(PropertyFeatureType.KEY)
-    .required(),
-});
+// const propertyFeatureType = Object.values(PropertyFeatureType);
+// export const propertyFeatureSchema = Joi.object({
+//   name: Joi.string().required(),
+//   type: Joi.string()
+//     .valid(...propertyFeatureType)
+//     .default(PropertyFeatureType.KEY)
+//     .required(),
+// });
 
 
 
