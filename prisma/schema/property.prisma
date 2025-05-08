@@ -352,6 +352,8 @@ model properties {
   amenityDistances      Json? // JSON object mapping amenity ID to distance
 
   @@unique([landlordId, name, stateId, city])
+  inspection inspection[]
+  TenantLeaseBreach TenantLeaseBreach[]
 }
 
 model PropertySpecification {
@@ -416,6 +418,7 @@ model UnitConfiguration {
   CommercialProperty    CommercialProperty[]
 
   Booking Booking[]
+  violation violation[]
 }
 
 model RoomDetail {

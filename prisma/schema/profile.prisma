@@ -23,3 +23,10 @@ model profile {
     // relations fields 
     users users?
 }
+enum RiskLevel {
+  EXCELLENT  // 850-950
+  GOOD       // 700-849
+  FAIR       // 550-699
+  POOR       // 400-549
+  CRITICAL   // 0-399
+}

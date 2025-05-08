@@ -14,7 +14,6 @@ class CreditScoreService {
     private readonly MIN_SCORE = 100
 
     constructor() {
-
     }
 
     async calculateCreditScore(userId: string): Promise<CreditScoreType> {

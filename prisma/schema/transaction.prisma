@@ -1,7 +1,3 @@
-// enum TransactionType {
-//   EXPENSE
-//   REVENUE
-// }
 enum TransactionReference {
   FUND_WALLET
   WITHDRAWAL
@@ -41,32 +37,36 @@ enum PaymentFrequency {
   WEEKLY
   MONTHLY
   YEARLY
+  QUARTERLY
+  ANNUALLY
+  PER_SQFT
 }
 
 model Transaction {
-  id                          String                         @id @default(cuid())
-  description                 String?
-  amount                      Decimal                        @db.Decimal(18, 2)
-  userId                      String                        
-  user                        users                          @relation(fields: [userId], references: [id])
-  walletId                    String?
-  wallet                      wallet?                        @relation(fields: [walletId], references: [id])
-  type                        TransactionType
-  reference                   TransactionReference
-  status                      TransactionStatus
-  referenceId                 String
-  paymentGateway              PaymentGateway?
-  stripePaymentIntentId       String?                        @unique
-  propertyId                  String?
-  property                    properties?                    @relation(fields: [propertyId], references: [id])
-  billId                      String?
-  bill                        bills?                         @relation(fields: [billId], references: [id])
-  createdAt                   DateTime                       @default(now())
-  updatedAt                   DateTime                       @updatedAt
-  currency                    String?
-  Ads Ads[]
-
-  Log Log[] @relation("transactions")
+  id                        String               @id @default(cuid())
+  description               String?
+  amount                    Decimal              @db.Decimal(18, 2)
+  userId                    String
+  user                      users                @relation(fields: [userId], references: [id])
+  walletId                  String?
+  wallet                    wallet?              @relation(fields: [walletId], references: [id])
+  type                      TransactionType
+  reference                 TransactionReference
+  status                    TransactionStatus
+  referenceId               String
+  paymentGateway            PaymentGateway?
+  stripePaymentIntentId     String?              @unique
+  propertyId                String?
+  property                  properties?          @relation(fields: [propertyId], references: [id])
+  billId                    String?
+  bill                      bills?               @relation(fields: [billId], references: [id])
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  currency                  String?
+  isDue                     Boolean?             @default(false)
+  Ads                       Ads[]
+  securityDepositPercentage Int?
+  Log                       Log[]                @relation("transactions")
 }
 
 model tenantPaymentHistory {
@@ -82,7 +82,6 @@ model tenantPaymentHistory {
   tenant   tenants? @relation(fields: [tenantId], references: [id])
 }
 
-
 enum PayableBy {
   LANDLORD
   TENANT
@@ -97,13 +96,13 @@ model bills {
   amount        Decimal          @db.Decimal(18, 2)
   billFrequency PaymentFrequency
   dueDate       DateTime
-  payableBy     PayableBy?        @default(LANDLORD)
+  payableBy     PayableBy?       @default(LANDLORD)
   propertyId    String?
-  property      properties?       @relation(fields: [propertyId], references: [id])
-  landlordId    String?           
-  landlord      landlords?        @relation(fields: [landlordId], references: [id])
+  property      properties?      @relation(fields: [propertyId], references: [id])
+  landlordId    String?
+  landlord      landlords?       @relation(fields: [landlordId], references: [id])
   tenantId      String?
-  tenant        tenants?          @relation(fields: [tenantId], references: [id])
+  tenant        tenants?         @relation(fields: [tenantId], references: [id])
   transactions  Transaction[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt

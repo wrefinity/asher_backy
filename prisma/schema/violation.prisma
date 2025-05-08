@@ -1,23 +1,93 @@
 enum SeverityLevel {
-    LOW // Low severity
-    MODERATE // Moderate severity
-    SEVERE // Severe severity
-    CRITICAL // Critical severity
-    EXTREME // Extreme severity
+  LOW // Low severity
+  MODERATE // Moderate severity
+  SEVERE // Severe severity
+  CRITICAL // Critical severity
+  EXTREME // Extreme severity
+}
+
+enum NoticeType {
+  LEASE_EVICTION
+  PAY_OR_OUT
+  OTHER
+}
+
+enum DeliveryMethod {
+  IN_PERSON
+  CERTIFIED_MAIL
+  PROPERTY_POSTING
+  EMAIL
+  PROCESS_SERVER
+}
+
+enum ViolationStatus {
+  PENDING
 }
 
 model violation {
-    id            String         @id @default(cuid()) // Unique ID for the violation entry
-    actionTaken   String?
-    description   String // Description of the violation
-    severityLevel SeverityLevel? @default(LOW) // Default value should be just the enum value (MODERATE)
-    createdAt     DateTime       @default(now()) // Timestamp when violation was created
-    updatedAt     DateTime       @updatedAt // Timestamp when violation was last updated
-    propertyId    String? // Foreign key for the property (optional)
-    property      properties?    @relation("violations", fields: [propertyId], references: [id]) // Property relation
-    tenantId      String? // Foreign key for the tenant
-    tenant        tenants?       @relation("tenant", fields: [tenantId], references: [id]) // Tenant relation
-    createdById   String? // Foreign key for the user (optional)
-    user          users?         @relation("users", fields: [createdById], references: [id]) // User relation
-    isDeleted     Boolean        @default(false)
+  id                  String             @id @default(cuid()) // Unique ID for the violation entry
+  actionTaken         String?
+  noticeType          NoticeType?
+  deliveryMethod      DeliveryMethod?
+  description         String // Description of the violation
+  severityLevel       SeverityLevel?     @default(LOW) // Default value should be just the enum value (MODERATE)
+  propertyId          String? // Foreign key for the property (optional)
+  property            properties?        @relation("violations", fields: [propertyId], references: [id]) // Property relation
+  tenantId            String? // Foreign key for the tenant
+  tenant              tenants?           @relation("tenant", fields: [tenantId], references: [id]) // Tenant relation
+  createdById         String? // Foreign key for the user (optional)
+  unit                UnitConfiguration? @relation(fields: [unitId], references: [id])
+  unitId              String?
+  user                users?             @relation("users", fields: [createdById], references: [id]) // User relation
+  isDeleted           Boolean            @default(false)
+  dueDate             DateTime?
+  createdAt           DateTime           @default(now()) // Timestamp when violation was created
+  updatedAt           DateTime           @updatedAt // Timestamp when violation was last updated
+}
+model TenantLeaseBreach {
+  id             String          @id @default(cuid())
+  tenantId       String
+  tenant         tenants         @relation(fields: [tenantId], references: [id])
+  propertyId     String
+  property       properties      @relation(fields: [propertyId], references: [id])
+  breachType     LeaseBreachType
+  description    String
+  date           DateTime        @default(now())
+  resolved       Boolean         @default(false)
+  repeatOffense  Boolean         @default(false)
+  resolutionDate DateTime?
+  penaltyAmount  Decimal?        @db.Decimal(10, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([tenantId, propertyId])
+}
+
+enum LeaseBreachType {
+  // Severe breaches
+  SUBLETTING
+  ILLEGAL_ACTIVITY
+  UNAUTHORIZED_BUSINESS
+
+  // Significant breaches
+  UNAUTHORIZED_OCCUPANT
+  PROPERTY_DAMAGE
+  SMOKING_VIOLATION
+
+  // Moderate breaches
+  NOISE_VIOLATION
+  PARKING_VIOLATION
+  TRASH_VIOLATION
+
+  // Common minor breaches
+  UNAUTHORIZED_PET
+  LATE_PAYMENT
+  GUEST_VIOLATION
+
+  // Technical breaches
+  INSURANCE_LAPSE
+  MAINTENANCE_NEGLECT
+
+  // Other
+  OTHER
 }

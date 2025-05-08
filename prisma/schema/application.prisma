@@ -333,6 +333,9 @@ model EmploymentInformation {
   positionTitle        String?
   application          application[]
 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   userId String?
   user   users?  @relation(fields: [userId], references: [id])
 }

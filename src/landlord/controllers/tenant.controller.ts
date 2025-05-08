@@ -20,6 +20,7 @@ import logsServices from '../../services/logs.services';
 import { LogType } from '@prisma/client';
 import property from '../../routes/property';
 import { PropertyDocumentService } from '../../services/propertyDocument.service';
+import PerformanceCalculator from '../../services/PerformanceCalculator';
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -273,6 +274,28 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+    
+    getTenantPerformance = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord' });
+            }
+            const tenantId = req.params.tenantId;
+            const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
+
+            if (!tenant?.propertyId)
+                return res.status(404).json({ error: `tenant with the id :  ${tenantId} is not connected to a property` });
+
+            const performance = await PerformanceCalculator.calculateOverallScore (
+                tenant?.userId
+            );
+            return res.status(200).json({ performance });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+
     getTenantComplaints = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
@@ -299,6 +322,7 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+
     getTenantCommunicationLogs = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;

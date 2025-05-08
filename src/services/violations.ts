@@ -1,33 +1,37 @@
 import { prismaClient } from "..";
-import { SeverityLevel } from "@prisma/client";
+import { SeverityLevel, NoticeType, DeliveryMethod } from "@prisma/client";
 
 
-export interface ViolationIF{
+export interface ViolationIF {
   description: string;       // Description of the violation (required)
   severityLevel?: SeverityLevel; // Severity of the violation (optional, defaults to MODERATE)
   actionTaken?: string;      // Action taken (optional)
-  tenantId: string;    
-  propertyId?: string;   
+  tenantId: string;
+  noticeType?: NoticeType;
+  deliveryMethod?: DeliveryMethod;
+  propertyId?: string;
   createdById: string;
+  unitId?: string
+  dueDate?: Date
 }
 
 
 class ViolationService {
-  getTenantViolation =  async (landlordUserId: string)=>{
+  getTenantViolation = async (landlordUserId: string) => {
     return await prismaClient.violation.findMany({
-      where:{
+      where: {
         createdById: landlordUserId,
-        isDeleted:false
+        isDeleted: false
       }
     });
   }
 
-  getViolationById = async (id: string)=>{
+  getViolationById = async (id: string) => {
     return await prismaClient.violation.findUnique({ where: { id } });
   }
-  getViolationTenantId = async (tenantId: string) =>{
-    return await prismaClient.violation.findMany({ 
-      where: { tenantId } 
+  getViolationTenantId = async (tenantId: string) => {
+    return await prismaClient.violation.findMany({
+      where: { tenantId }
     });
   }
 
@@ -35,19 +39,35 @@ class ViolationService {
     return await prismaClient.violation.create({
       data: {
         description: data.description,
-        severityLevel: data.severityLevel || SeverityLevel.LOW,  
+        noticeType: data.noticeType,
+        deliveryMethod: data.deliveryMethod,
+        severityLevel: data.severityLevel || SeverityLevel.LOW,
         actionTaken: data.actionTaken,
-        tenantId: data.tenantId,
-        propertyId: data.propertyId,
+        tenant: {
+          connect: {
+            id: data.tenantId
+          }
+        },
+        dueDate: data.dueDate,
+        property: {
+          connect: {
+            id: data.propertyId,
+          }
+        },
+        unit: {
+          connect: {
+            id: data.unitId
+          }
+        }
       },
     });
   }
 
 
-  public async deleteViolation(id: string){
-    return await prismaClient.violation.update({ 
-        where: { id },
-        data: {isDeleted:true},
+  public async deleteViolation(id: string) {
+    return await prismaClient.violation.update({
+      where: { id },
+      data: { isDeleted: true },
     });
   }
 }

@@ -181,6 +181,8 @@ model tenants {
 
   @@unique([userId, propertyId])
   @@unique([userId])
+  inspection inspection[]
+  TenantLeaseBreach TenantLeaseBreach[]
 }
 
 // user information definition 
@@ -193,6 +195,8 @@ enum userRoles {
   AGENT
   ADMIN
 }
+
+
 
 model creditScore {
   id          String   @id @default(cuid())
@@ -224,3 +228,5 @@ model status {
   isDeleted Boolean @default(false)
   // maintenances maintenance[]
 }
+
+
