@@ -13,6 +13,7 @@ const property_routes_1 = __importDefault(require("./property.routes"));
 const maintenance_routes_1 = __importDefault(require("./maintenance.routes"));
 const complaint_routes_1 = __importDefault(require("./complaint.routes"));
 const documents_route_1 = __importDefault(require("./documents.route"));
+const inspection_routes_1 = __importDefault(require("./inspection.routes"));
 const task_routes_1 = __importDefault(require("./task.routes"));
 const inventory_routes_1 = __importDefault(require("./inventory.routes"));
 const bill_routes_1 = __importDefault(require("./bill.routes"));
@@ -58,8 +59,10 @@ class LandlordRouter {
         this.router.use("/bills", bill_routes_1.default);
         this.router.use("/transactions", landlord_transaction_routes_1.default);
         this.router.use("/finance", finance_routes_1.default);
-        //braodcast routes
+        //broadcast routes
         this.router.use('/broadcast', broadcast_routes_1.default);
+        // inspections
+        this.router.use('/inspections', inspection_routes_1.default);
     }
 }
 exports.default = new LandlordRouter().router;

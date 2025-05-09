@@ -210,10 +210,6 @@ export const commercialPropertyUnitSchema = Joi.object({
 
 
 
-
-
-
-
 /// ========== new work
 const propertyDocumentSchema = Joi.object({
   id: Joi.string().optional(),

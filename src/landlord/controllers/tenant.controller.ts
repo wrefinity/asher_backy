@@ -1,5 +1,4 @@
 import fs from 'fs';
-import moment from 'moment';
 import { Response } from "express"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
@@ -16,10 +15,6 @@ import { ViolationSchema } from '../../validations/schemas/violations';
 import LogsServices from '../../services/logs.services';
 import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
-import logsServices from '../../services/logs.services';
-import { LogType } from '@prisma/client';
-import property from '../../routes/property';
-import { PropertyDocumentService } from '../../services/propertyDocument.service';
 import PerformanceCalculator from '../../services/PerformanceCalculator';
 
 

@@ -8,6 +8,7 @@ import PropertyRouter from "./property.routes";
 import MaintenanceRouter from "./maintenance.routes";
 import ComplaintRouterRouter from "./complaint.routes";
 import DocumentRouter from "./documents.route";
+import InspectionRouter from "./inspection.routes";
 
 import TaskRouter from './task.routes';
 import InventoryRouter from './inventory.routes';
@@ -89,8 +90,10 @@ class LandlordRouter {
         this.router.use("/transactions", LandlordTransactionRouter);
         this.router.use("/finance", FinanceRouter);
 
-        //braodcast routes
+        //broadcast routes
         this.router.use('/broadcast', BroadcastRouter)
+        // inspections
+        this.router.use('/inspections', InspectionRouter)
     }
 }
 
