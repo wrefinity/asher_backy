@@ -304,7 +304,7 @@ model properties {
   maintenanceWhitelist maintenanceWhitelist[]
 
   // Pricing, transaction, and budget
-  currency       Currency        @default(NGN)
+  currency       Currency?        @default(NGN)
   priceFrequency PriceFrequency?
   rentalPeriod   String?
   transactions   Transaction[]
@@ -444,9 +444,9 @@ model ResidentialProperty {
 
   status          PropertyStatus @default(FOR_RENT)
   // Residential specific details
-  bedrooms        Int
-  bathrooms       Int
-  receiptionRooms Int
+  bedrooms        Int?
+  bathrooms       Int?
+  receiptionRooms Int?
   toilets         Int?
 
   tenure         TensureType?
@@ -623,11 +623,11 @@ model ShortletProperty {
   furnished      Boolean   @default(true)
 
   // Availability && Pricing
-  minStayDays     Int
+  minStayDays     Int?
   maxStayDays     Int?
   availableFrom   DateTime?
   availableTo     DateTime?
-  basePrice       Float // per night
+  basePrice       Float? // per night
   cleaningFee     Float?
   weeklyDiscount  Float? // percentage
   monthlyDiscount Float? // percentage
@@ -648,7 +648,7 @@ model ShortletProperty {
   cancellationPolicy       CancellationPolicy?
   customCancellationPolicy String?
   houseManual              String?
-  checkInInstructions      String
+  checkInInstructions      String?
   localRecommendations     String?
   emergencyContact         String?
 

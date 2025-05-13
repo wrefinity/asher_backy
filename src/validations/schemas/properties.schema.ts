@@ -217,8 +217,14 @@ const propertyDocumentSchema = Joi.object({
   documentUrl: Joi.array().items(Joi.string().uri()).required(),
   size: Joi.string().optional(),
   type: Joi.string().optional(),
-  idType: Joi.string().valid(...Object.values(IdType)).optional(),
-  docType: Joi.string().valid(...Object.values(DocumentType)).optional(),
+  idType: Joi.string().valid(...Object.values(IdType)).messages({
+    'any.only': `IdType type must be one of: ${Object.values(IdType).join(',')}`,
+    'string.base': 'IdType type must be a string'
+  }).optional(),
+  docType: Joi.string().valid(...Object.values(DocumentType)).messages({
+    'any.only': `DocumentType type must be one of: ${Object.values(DocumentType).join(',')}`,
+    'string.base': 'DocumentType type must be a string'
+  }).optional(),
   agreementId: Joi.string().optional(),
   applicationId: Joi.string().optional(),
   propertyId: Joi.string().optional(),
@@ -233,7 +239,10 @@ export const commercialPropertyFloorSchema = Joi.object({
   available: Joi.boolean(),
   partialFloor: Joi.boolean(),
   description: Joi.string().allow('', null),
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus.VACANT)).optional(),
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus.VACANT)).messages({
+    'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
+    'string.base': 'AvailabilityStatus type must be a string'
+  }).optional(),
   amenities: Joi.array().items(Joi.string()).optional(),
 });
 const propertyMediaFilesSchema = Joi.object({
@@ -245,6 +254,10 @@ const propertyMediaFilesSchema = Joi.object({
   type: Joi.string()
     .valid(...Object.values(MediaType))
     .default(MediaType.IMAGE)
+    .messages({
+      'any.only': `MediaType type must be one of: ${Object.values(MediaType).join(',')}`,
+      'string.base': 'MediaType type must be a string'
+    })
     .required(),
 })
 
@@ -259,7 +272,10 @@ export const unitConfigurationSchema = Joi.object({
   price: Joi.string().required(),
   area: Joi.string(),
   description: Joi.string().optional(),
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).optional(),
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
+    'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
+    'string.base': 'AvailabilityStatus type must be a string'
+  }).optional(),
 });
 
 // Room Detail Joi
@@ -268,7 +284,10 @@ export const roomDetailSchema = Joi.object({
   roomSize: Joi.string().required(),
   ensuite: Joi.boolean().default(false),
   price: Joi.string().required(),
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).default(AvailabilityStatus.VACANT),
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
+    'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
+    'string.base': 'AvailabilityStatus type must be a string'
+  }).default(AvailabilityStatus.VACANT),
 });
 
 // SharedFacilities Joi
@@ -288,7 +307,10 @@ export const bookingSchema = Joi.object({
   checkOutDate: Joi.date().required(),
   guestCount: Joi.number().required(),
   totalPrice: Joi.string().required(),
-  status: Joi.string().valid(...Object.values(BookingStatus)).default(BookingStatus.PENDING),
+  status: Joi.string().valid(...Object.values(BookingStatus)).messages({
+    'any.only': `BookingStatus type must be one of: ${Object.values(BookingStatus).join(',')}`,
+    'string.base': 'BookingStatus type must be a string'
+  }).default(BookingStatus.PENDING),
 
   guestName: Joi.string().required(),
   guestEmail: Joi.string().email().required(),
@@ -356,12 +378,15 @@ export const shortletPropertySchema = Joi.object({
   customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
 
   // Property Details
-  bedrooms: Joi.number().integer().required(),
+  bedrooms: Joi.number().integer().optional(),
   beds: Joi.number().integer().optional(),
-  bathrooms: Joi.number().required(),
+  bathrooms: Joi.number().optional(),
   maxGuests: Joi.number().integer().optional(),
   propertySize: Joi.string().optional(),
-  sizeUnit: Joi.string().valid(...Object.values(AreaUnit)).optional(),
+  sizeUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
+    'any.only': `sizeUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,
+    'string.base': 'sizeUnit type must be a string'
+  }).optional(),
   floorLevel: Joi.number().integer().optional(),
   totalFloors: Joi.number().integer().optional(),
   renovationYear: Joi.string().optional(),
@@ -369,11 +394,11 @@ export const shortletPropertySchema = Joi.object({
   furnished: Joi.boolean().default(true),
 
   // Availability && Pricing
-  minStayDays: Joi.number().integer().required(),
+  minStayDays: Joi.number().integer().optional(),
   maxStayDays: Joi.number().integer().optional(),
   availableFrom: Joi.date().optional(),
   availableTo: Joi.date().optional(),
-  basePrice: Joi.number().required(),
+  basePrice: Joi.number().optional(),
   cleaningFee: Joi.number().optional(),
   weeklyDiscount: Joi.number().optional(),
   monthlyDiscount: Joi.number().optional(),
@@ -392,10 +417,13 @@ export const shortletPropertySchema = Joi.object({
   quietHoursEnd: Joi.string().optional(),
 
   // Booking & Policies
-  cancellationPolicy: Joi.string().valid(...Object.values(CancellationPolicy)).optional(),
+  cancellationPolicy: Joi.string().valid(...Object.values(CancellationPolicy)).messages({
+    'any.only': `CancellationPolicy type must be one of: ${Object.values(CancellationPolicy).join(',')}`,
+    'string.base': 'CancellationPolicy type must be a string'
+  }).optional(),
   customCancellationPolicy: Joi.string().optional(),
   houseManual: Joi.string().optional(),
-  checkInInstructions: Joi.string().required(),
+  checkInInstructions: Joi.string().optional(),
   localRecommendations: Joi.string().optional(),
   emergencyContact: Joi.string().optional(),
 
@@ -431,22 +459,34 @@ export const shortletPropertySchema = Joi.object({
 });
 
 export const residentialPropertySchema = Joi.object({
-  status: Joi.string().valid(...Object.values(PropertyStatus)).default(PropertyStatus.FOR_RENT),
-  bedrooms: Joi.number().required(),
-  bathrooms: Joi.number().required(),
-  receiptionRooms: Joi.number().required(),
+  status: Joi.string().valid(...Object.values(PropertyStatus)).messages({
+    'any.only': `Property Status type must be one of: ${Object.values(PropertyStatus).join(',')}`,
+    'string.base': 'PropertyStatus type must be a string'
+  }).default(PropertyStatus.FOR_RENT),
+  bedrooms: Joi.number().optional(),
+  bathrooms: Joi.number().optional(),
+  receiptionRooms: Joi.number().optional(),
   toilets: Joi.number().optional(),
-  tenure: Joi.string().valid(...Object.values(TensureType)).optional(),
+  tenure: Joi.string().valid(...Object.values(TensureType)).messages({
+    'any.only': `Tensure type must be one of: ${Object.values(TensureType).join(',')}`,
+    'string.base': 'Tensure type must be a string'
+  }).optional(),
   furnished: Joi.boolean().optional(),
   renovationYear: Joi.string().optional(),
   councilTaxBand: Joi.string().optional(),
   parkingSpaces: Joi.number().default(0),
-  garageType: Joi.string().valid(...Object.values(GarageType)).optional(),
+  garageType: Joi.string().valid(...Object.values(GarageType)).messages({
+    'any.only': `Garage type must be one of: ${Object.values(GarageType).join(',')}`,
+    'string.base': 'Garage type must be a string'
+  }).optional(),
   yearBuilt: Joi.number().optional(),
   floorLevel: Joi.number().optional(),
 
   totalArea: Joi.string().optional(),
-  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).optional(),
+  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
+    'any.only': `areaUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,
+    'string.base': 'areaUnit type must be a string'
+  }).optional(),
   petPolicy: Joi.string().optional(),
   rentalTerms: Joi.string().optional(),
   utilities: Joi.array().items(Joi.string()).optional(),
@@ -485,7 +525,10 @@ export const residentialPropertySchema = Joi.object({
   environmentalImpactRating: Joi.number().optional(),
   heatingTypes: Joi.array().items(Joi.string()),
   coolingTypes: Joi.array().items(Joi.string()),
-  glazingTypes: Joi.string().valid(...Object.values(GlazingType)).optional(),
+  glazingTypes: Joi.string().valid(...Object.values(GlazingType)).messages({
+    'any.only': `Glazing type must be one of: ${Object.values(GlazingType).join(',')}`,
+    'string.base': 'Glazing type must be a string'
+  }).optional(),
 
   additionalNotes: Joi.string().optional(),
   bills: Joi.array().items(Joi.string().uuid()).optional(),
@@ -496,15 +539,24 @@ export const residentialPropertySchema = Joi.object({
 
 export const commercialPropertySchema = Joi.object({
   totalArea: Joi.string().required(),
-  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).required(),
+  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
+    'any.only': `areaUnit type must be one of: ${Object.values(LeaseTermUnit).join(',')}`,
+    'string.base': 'areaUnit type must be a string'
+  }).required(),
   businessRates: Joi.string().optional(),
   serviceCharge: Joi.number().optional(),
 
-  leaseTermUnit: Joi.string().valid(...Object.values(LeaseTermUnit)).required(),
+  leaseTermUnit: Joi.string().valid(...Object.values(LeaseTermUnit)).messages({
+    'any.only': `LeaseTermUnit type must be one of: ${Object.values(LeaseTermUnit).join(',')}`,
+    'string.base': 'LeaseTermUnit type must be a string'
+  }).required(),
   minimumLeaseTerm: Joi.number().required(),
   maximumLeaseTerm: Joi.number().optional(),
 
-  buildingClass: Joi.string().valid(...Object.values(BuildingClass)).optional(),
+  buildingClass: Joi.string().valid(...Object.values(BuildingClass)).messages({
+    'any.only': `buildingClass type must be one of: ${Object.values(BuildingClass).join(',')}`,
+    'string.base': 'buildingClass type must be a string'
+  }).optional(),
   lastRefurbished: Joi.string().optional(),
   totalFloors: Joi.number().optional(),
   zoning: Joi.string().optional(),
@@ -532,7 +584,7 @@ export const commercialPropertySchema = Joi.object({
   yardDepth: Joi.string().optional(),
 
   safetyFeatures: Joi.array().items(Joi.string()),
-  customSafetyFeatures: Joi.array().items(Joi.string()),
+  customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
 
   epcRating: Joi.string().optional(),
   energyEfficiencyRating: Joi.number().optional(),
@@ -582,7 +634,10 @@ export const IBasePropertyDTOSchema = Joi.object({
   description: Joi.string().optional(),
   shortDescription: Joi.string().optional(),
   propertySize: Joi.number().optional(),
-  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).optional(),
+  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
+    'any.only': `AreaUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,
+    'string.base': 'AreaUnit type must be a string'
+  }).optional(),
   yearBuilt: Joi.number().optional(),
   city: Joi.string().required(),
   state: Joi.string().required(),
@@ -593,25 +648,35 @@ export const IBasePropertyDTOSchema = Joi.object({
   latitude: Joi.number().optional(),
   longitude: Joi.number().optional(),
 
-  currency: Joi.string().valid(...Object.values(Currency)).required(),
+  currency: Joi.string().valid(...Object.values(Currency)).optional(),
   marketValue: Joi.number().optional(),
   price: Joi.number().required(),
   securityDeposit: Joi.number().optional(),
   initialDeposit: Joi.number().optional(),
-  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).optional(),
+  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
+    'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
+    'string.base': 'priceFrequency type must be a string'
+  }).optional(),
   rentalPeriod: Joi.string().required(),
-  specificationType: Joi.string().valid(...Object.values(PropertySpecificationType)).required(),
+  specificationType: Joi.string().valid(...Object.values(PropertySpecificationType)).messages({
+    'any.required': 'specificationType type is required',
+    'any.only': `specificationType type must be one of: ${Object.values(PropertySpecificationType).join(',')}`,
+    'string.base': 'specification type must be a string'
+  }).required(),
 
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).optional(),
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
+    'any.only': `availability type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
+    'string.base': 'availability type must be a string'
+  }).optional(),
   businessRateVerified: Joi.boolean().optional(),
   postalCodeVerified: Joi.boolean().optional(),
   landRegistryNumber: Joi.string().optional(),
   vatStatus: Joi.string().valid(...Object.values(VatStatus)).optional(),
 
   keyFeatures: Joi.array().items(Joi.string()).required(),
-  customKeyFeatures: Joi.array().items(Joi.string()).required(),
-  nearbyAmenities: Joi.array().items(Joi.string()).required(),
-  customNearbyAmenities: Joi.array().items(Joi.string()).required(),
+  customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+  nearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
   amenityDistances: Joi.object().pattern(Joi.string(), Joi.number()).optional(),
 
   contactName: Joi.string().optional(),
@@ -623,8 +688,12 @@ export const IBasePropertyDTOSchema = Joi.object({
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
   videos: Joi.array().items(propertyMediaFilesSchema).optional(),
   virtualTours: Joi.array().items(propertyMediaFilesSchema).optional(),
-
-  propertySubType: Joi.string().valid(...Object.values(propertyType)).required(),
+  
+  propertySubType: Joi.string().valid(...Object.values(propertyType)).messages({
+    'any.required': 'Property type is required',
+    'any.only': `Property type must be one of: ${propertyType.join(',')}`,
+    'string.base': 'Property type must be a string'
+  }).required(),
   otherTypeSpecific: Joi.alternatives().try(
     Joi.object().unknown(),
     Joi.string().custom((value, helpers) => {

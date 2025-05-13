@@ -181,8 +181,14 @@ const propertyDocumentSchema = joi_1.default.object({
     documentUrl: joi_1.default.array().items(joi_1.default.string().uri()).required(),
     size: joi_1.default.string().optional(),
     type: joi_1.default.string().optional(),
-    idType: joi_1.default.string().valid(...Object.values(client_1.IdType)).optional(),
-    docType: joi_1.default.string().valid(...Object.values(client_1.DocumentType)).optional(),
+    idType: joi_1.default.string().valid(...Object.values(client_1.IdType)).messages({
+        'any.only': `IdType type must be one of: ${Object.values(client_1.IdType).join(',')}`,
+        'string.base': 'IdType type must be a string'
+    }).optional(),
+    docType: joi_1.default.string().valid(...Object.values(client_1.DocumentType)).messages({
+        'any.only': `DocumentType type must be one of: ${Object.values(client_1.DocumentType).join(',')}`,
+        'string.base': 'DocumentType type must be a string'
+    }).optional(),
     agreementId: joi_1.default.string().optional(),
     applicationId: joi_1.default.string().optional(),
     propertyId: joi_1.default.string().optional(),
@@ -195,7 +201,10 @@ exports.commercialPropertyFloorSchema = joi_1.default.object({
     available: joi_1.default.boolean(),
     partialFloor: joi_1.default.boolean(),
     description: joi_1.default.string().allow('', null),
-    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus.VACANT)).optional(),
+    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus.VACANT)).messages({
+        'any.only': `AvailabilityStatus type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
+        'string.base': 'AvailabilityStatus type must be a string'
+    }).optional(),
     amenities: joi_1.default.array().items(joi_1.default.string()).optional(),
 });
 const propertyMediaFilesSchema = joi_1.default.object({
@@ -207,6 +216,10 @@ const propertyMediaFilesSchema = joi_1.default.object({
     type: joi_1.default.string()
         .valid(...Object.values(client_1.MediaType))
         .default(client_1.MediaType.IMAGE)
+        .messages({
+        'any.only': `MediaType type must be one of: ${Object.values(client_1.MediaType).join(',')}`,
+        'string.base': 'MediaType type must be a string'
+    })
         .required(),
 });
 exports.unitConfigurationSchema = joi_1.default.object({
@@ -220,7 +233,10 @@ exports.unitConfigurationSchema = joi_1.default.object({
     price: joi_1.default.string().required(),
     area: joi_1.default.string(),
     description: joi_1.default.string().optional(),
-    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).optional(),
+    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).messages({
+        'any.only': `AvailabilityStatus type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
+        'string.base': 'AvailabilityStatus type must be a string'
+    }).optional(),
 });
 // Room Detail Joi
 exports.roomDetailSchema = joi_1.default.object({
@@ -228,7 +244,10 @@ exports.roomDetailSchema = joi_1.default.object({
     roomSize: joi_1.default.string().required(),
     ensuite: joi_1.default.boolean().default(false),
     price: joi_1.default.string().required(),
-    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).default(client_1.AvailabilityStatus.VACANT),
+    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).messages({
+        'any.only': `AvailabilityStatus type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
+        'string.base': 'AvailabilityStatus type must be a string'
+    }).default(client_1.AvailabilityStatus.VACANT),
 });
 // SharedFacilities Joi
 exports.sharedFacilitiesSchema = joi_1.default.object({
@@ -246,7 +265,10 @@ exports.bookingSchema = joi_1.default.object({
     checkOutDate: joi_1.default.date().required(),
     guestCount: joi_1.default.number().required(),
     totalPrice: joi_1.default.string().required(),
-    status: joi_1.default.string().valid(...Object.values(client_1.BookingStatus)).default(client_1.BookingStatus.PENDING),
+    status: joi_1.default.string().valid(...Object.values(client_1.BookingStatus)).messages({
+        'any.only': `BookingStatus type must be one of: ${Object.values(client_1.BookingStatus).join(',')}`,
+        'string.base': 'BookingStatus type must be a string'
+    }).default(client_1.BookingStatus.PENDING),
     guestName: joi_1.default.string().required(),
     guestEmail: joi_1.default.string().email().required(),
     guestPhone: joi_1.default.string().optional(),
@@ -300,23 +322,26 @@ exports.shortletPropertySchema = joi_1.default.object({
     safetyFeatures: joi_1.default.array().items(joi_1.default.string()).optional(),
     customSafetyFeatures: joi_1.default.array().items(joi_1.default.string()).optional(),
     // Property Details
-    bedrooms: joi_1.default.number().integer().required(),
+    bedrooms: joi_1.default.number().integer().optional(),
     beds: joi_1.default.number().integer().optional(),
-    bathrooms: joi_1.default.number().required(),
+    bathrooms: joi_1.default.number().optional(),
     maxGuests: joi_1.default.number().integer().optional(),
     propertySize: joi_1.default.string().optional(),
-    sizeUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).optional(),
+    sizeUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).messages({
+        'any.only': `sizeUnit type must be one of: ${Object.values(client_1.AreaUnit).join(',')}`,
+        'string.base': 'sizeUnit type must be a string'
+    }).optional(),
     floorLevel: joi_1.default.number().integer().optional(),
     totalFloors: joi_1.default.number().integer().optional(),
     renovationYear: joi_1.default.string().optional(),
     yearBuilt: joi_1.default.number().integer().optional(),
     furnished: joi_1.default.boolean().default(true),
     // Availability && Pricing
-    minStayDays: joi_1.default.number().integer().required(),
+    minStayDays: joi_1.default.number().integer().optional(),
     maxStayDays: joi_1.default.number().integer().optional(),
     availableFrom: joi_1.default.date().optional(),
     availableTo: joi_1.default.date().optional(),
-    basePrice: joi_1.default.number().required(),
+    basePrice: joi_1.default.number().optional(),
     cleaningFee: joi_1.default.number().optional(),
     weeklyDiscount: joi_1.default.number().optional(),
     monthlyDiscount: joi_1.default.number().optional(),
@@ -333,10 +358,13 @@ exports.shortletPropertySchema = joi_1.default.object({
     quietHoursStart: joi_1.default.string().optional(),
     quietHoursEnd: joi_1.default.string().optional(),
     // Booking & Policies
-    cancellationPolicy: joi_1.default.string().valid(...Object.values(client_1.CancellationPolicy)).optional(),
+    cancellationPolicy: joi_1.default.string().valid(...Object.values(client_1.CancellationPolicy)).messages({
+        'any.only': `CancellationPolicy type must be one of: ${Object.values(client_1.CancellationPolicy).join(',')}`,
+        'string.base': 'CancellationPolicy type must be a string'
+    }).optional(),
     customCancellationPolicy: joi_1.default.string().optional(),
     houseManual: joi_1.default.string().optional(),
-    checkInInstructions: joi_1.default.string().required(),
+    checkInInstructions: joi_1.default.string().optional(),
     localRecommendations: joi_1.default.string().optional(),
     emergencyContact: joi_1.default.string().optional(),
     // Host info
@@ -367,21 +395,33 @@ exports.shortletPropertySchema = joi_1.default.object({
     hostLanguages: joi_1.default.array().items(joi_1.default.string()).optional(),
 });
 exports.residentialPropertySchema = joi_1.default.object({
-    status: joi_1.default.string().valid(...Object.values(client_1.PropertyStatus)).default(client_1.PropertyStatus.FOR_RENT),
-    bedrooms: joi_1.default.number().required(),
-    bathrooms: joi_1.default.number().required(),
-    receiptionRooms: joi_1.default.number().required(),
+    status: joi_1.default.string().valid(...Object.values(client_1.PropertyStatus)).messages({
+        'any.only': `Property Status type must be one of: ${Object.values(client_1.PropertyStatus).join(',')}`,
+        'string.base': 'PropertyStatus type must be a string'
+    }).default(client_1.PropertyStatus.FOR_RENT),
+    bedrooms: joi_1.default.number().optional(),
+    bathrooms: joi_1.default.number().optional(),
+    receiptionRooms: joi_1.default.number().optional(),
     toilets: joi_1.default.number().optional(),
-    tenure: joi_1.default.string().valid(...Object.values(client_1.TensureType)).optional(),
+    tenure: joi_1.default.string().valid(...Object.values(client_1.TensureType)).messages({
+        'any.only': `Tensure type must be one of: ${Object.values(client_1.TensureType).join(',')}`,
+        'string.base': 'Tensure type must be a string'
+    }).optional(),
     furnished: joi_1.default.boolean().optional(),
     renovationYear: joi_1.default.string().optional(),
     councilTaxBand: joi_1.default.string().optional(),
     parkingSpaces: joi_1.default.number().default(0),
-    garageType: joi_1.default.string().valid(...Object.values(client_1.GarageType)).optional(),
+    garageType: joi_1.default.string().valid(...Object.values(client_1.GarageType)).messages({
+        'any.only': `Garage type must be one of: ${Object.values(client_1.GarageType).join(',')}`,
+        'string.base': 'Garage type must be a string'
+    }).optional(),
     yearBuilt: joi_1.default.number().optional(),
     floorLevel: joi_1.default.number().optional(),
     totalArea: joi_1.default.string().optional(),
-    areaUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).optional(),
+    areaUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).messages({
+        'any.only': `areaUnit type must be one of: ${Object.values(client_1.AreaUnit).join(',')}`,
+        'string.base': 'areaUnit type must be a string'
+    }).optional(),
     petPolicy: joi_1.default.string().optional(),
     rentalTerms: joi_1.default.string().optional(),
     utilities: joi_1.default.array().items(joi_1.default.string()).optional(),
@@ -414,20 +454,32 @@ exports.residentialPropertySchema = joi_1.default.object({
     environmentalImpactRating: joi_1.default.number().optional(),
     heatingTypes: joi_1.default.array().items(joi_1.default.string()),
     coolingTypes: joi_1.default.array().items(joi_1.default.string()),
-    glazingTypes: joi_1.default.string().valid(...Object.values(client_1.GlazingType)).optional(),
+    glazingTypes: joi_1.default.string().valid(...Object.values(client_1.GlazingType)).messages({
+        'any.only': `Glazing type must be one of: ${Object.values(client_1.GlazingType).join(',')}`,
+        'string.base': 'Glazing type must be a string'
+    }).optional(),
     additionalNotes: joi_1.default.string().optional(),
     bills: joi_1.default.array().items(joi_1.default.string().uuid()).optional(),
     PropertySpecification: joi_1.default.array().items(joi_1.default.object())
 });
 exports.commercialPropertySchema = joi_1.default.object({
     totalArea: joi_1.default.string().required(),
-    areaUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).required(),
+    areaUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).messages({
+        'any.only': `areaUnit type must be one of: ${Object.values(client_1.LeaseTermUnit).join(',')}`,
+        'string.base': 'areaUnit type must be a string'
+    }).required(),
     businessRates: joi_1.default.string().optional(),
     serviceCharge: joi_1.default.number().optional(),
-    leaseTermUnit: joi_1.default.string().valid(...Object.values(client_1.LeaseTermUnit)).required(),
+    leaseTermUnit: joi_1.default.string().valid(...Object.values(client_1.LeaseTermUnit)).messages({
+        'any.only': `LeaseTermUnit type must be one of: ${Object.values(client_1.LeaseTermUnit).join(',')}`,
+        'string.base': 'LeaseTermUnit type must be a string'
+    }).required(),
     minimumLeaseTerm: joi_1.default.number().required(),
     maximumLeaseTerm: joi_1.default.number().optional(),
-    buildingClass: joi_1.default.string().valid(...Object.values(client_1.BuildingClass)).optional(),
+    buildingClass: joi_1.default.string().valid(...Object.values(client_1.BuildingClass)).messages({
+        'any.only': `buildingClass type must be one of: ${Object.values(client_1.BuildingClass).join(',')}`,
+        'string.base': 'buildingClass type must be a string'
+    }).optional(),
     lastRefurbished: joi_1.default.string().optional(),
     totalFloors: joi_1.default.number().optional(),
     zoning: joi_1.default.string().optional(),
@@ -451,7 +503,7 @@ exports.commercialPropertySchema = joi_1.default.object({
     hasYard: joi_1.default.boolean().default(false),
     yardDepth: joi_1.default.string().optional(),
     safetyFeatures: joi_1.default.array().items(joi_1.default.string()),
-    customSafetyFeatures: joi_1.default.array().items(joi_1.default.string()),
+    customSafetyFeatures: joi_1.default.array().items(joi_1.default.string()).optional(),
     epcRating: joi_1.default.string().optional(),
     energyEfficiencyRating: joi_1.default.number().optional(),
     environmentalImpactRating: joi_1.default.number().optional(),
@@ -492,7 +544,10 @@ exports.IBasePropertyDTOSchema = joi_1.default.object({
     description: joi_1.default.string().optional(),
     shortDescription: joi_1.default.string().optional(),
     propertySize: joi_1.default.number().optional(),
-    areaUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).optional(),
+    areaUnit: joi_1.default.string().valid(...Object.values(client_1.AreaUnit)).messages({
+        'any.only': `AreaUnit type must be one of: ${Object.values(client_1.AreaUnit).join(',')}`,
+        'string.base': 'AreaUnit type must be a string'
+    }).optional(),
     yearBuilt: joi_1.default.number().optional(),
     city: joi_1.default.string().required(),
     state: joi_1.default.string().required(),
@@ -502,23 +557,33 @@ exports.IBasePropertyDTOSchema = joi_1.default.object({
     address2: joi_1.default.string().optional(),
     latitude: joi_1.default.number().optional(),
     longitude: joi_1.default.number().optional(),
-    currency: joi_1.default.string().valid(...Object.values(client_1.Currency)).required(),
+    currency: joi_1.default.string().valid(...Object.values(client_1.Currency)).optional(),
     marketValue: joi_1.default.number().optional(),
     price: joi_1.default.number().required(),
     securityDeposit: joi_1.default.number().optional(),
     initialDeposit: joi_1.default.number().optional(),
-    priceFrequency: joi_1.default.string().valid(...Object.values(client_1.PriceFrequency)).optional(),
+    priceFrequency: joi_1.default.string().valid(...Object.values(client_1.PriceFrequency)).messages({
+        'any.only': `priceFrequency type must be one of: ${Object.values(client_1.PriceFrequency).join(',')}`,
+        'string.base': 'priceFrequency type must be a string'
+    }).optional(),
     rentalPeriod: joi_1.default.string().required(),
-    specificationType: joi_1.default.string().valid(...Object.values(client_1.PropertySpecificationType)).required(),
-    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).optional(),
+    specificationType: joi_1.default.string().valid(...Object.values(client_1.PropertySpecificationType)).messages({
+        'any.required': 'specificationType type is required',
+        'any.only': `specificationType type must be one of: ${Object.values(client_1.PropertySpecificationType).join(',')}`,
+        'string.base': 'specification type must be a string'
+    }).required(),
+    availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).messages({
+        'any.only': `availability type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
+        'string.base': 'availability type must be a string'
+    }).optional(),
     businessRateVerified: joi_1.default.boolean().optional(),
     postalCodeVerified: joi_1.default.boolean().optional(),
     landRegistryNumber: joi_1.default.string().optional(),
     vatStatus: joi_1.default.string().valid(...Object.values(client_1.VatStatus)).optional(),
     keyFeatures: joi_1.default.array().items(joi_1.default.string()).required(),
-    customKeyFeatures: joi_1.default.array().items(joi_1.default.string()).required(),
-    nearbyAmenities: joi_1.default.array().items(joi_1.default.string()).required(),
-    customNearbyAmenities: joi_1.default.array().items(joi_1.default.string()).required(),
+    customKeyFeatures: joi_1.default.array().items(joi_1.default.string()).optional(),
+    nearbyAmenities: joi_1.default.array().items(joi_1.default.string()).optional(),
+    customNearbyAmenities: joi_1.default.array().items(joi_1.default.string()).optional(),
     amenityDistances: joi_1.default.object().pattern(joi_1.default.string(), joi_1.default.number()).optional(),
     contactName: joi_1.default.string().optional(),
     contactCompany: joi_1.default.string().optional(),
@@ -528,7 +593,11 @@ exports.IBasePropertyDTOSchema = joi_1.default.object({
     images: joi_1.default.array().items(propertyMediaFilesSchema).optional(),
     videos: joi_1.default.array().items(propertyMediaFilesSchema).optional(),
     virtualTours: joi_1.default.array().items(propertyMediaFilesSchema).optional(),
-    propertySubType: joi_1.default.string().valid(...Object.values(propertyType)).required(),
+    propertySubType: joi_1.default.string().valid(...Object.values(propertyType)).messages({
+        'any.required': 'Property type is required',
+        'any.only': `Property type must be one of: ${propertyType.join(',')}`,
+        'string.base': 'Property type must be a string'
+    }).required(),
     otherTypeSpecific: joi_1.default.alternatives().try(joi_1.default.object().unknown(), joi_1.default.string().custom((value, helpers) => {
         try {
             const parsed = JSON.parse(value);
