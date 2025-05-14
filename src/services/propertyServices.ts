@@ -100,6 +100,10 @@ class PropertyService {
         this.propsInclusion = {
             propertyListingHistory: true,
             state: true,
+            images: true,
+            videos: true,
+            virtualTours: true,
+            propertyDocument: true,
             application: true,
             reviews: true,
             UserLikedProperty: true,
