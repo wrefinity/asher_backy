@@ -81,18 +81,18 @@ export interface IBasePropertyDTO {
     country: string;
     zipcode: string;
     address: string;
-    address2: string;
+    address2?: string;
     latitude?: number;
     longitude?: number;
 
     //
-    currency: Currency;
+    currency?: Currency;
     marketValue?: number;
     price: number;
     securityDeposit?: number;
     initialDeposit?: number;
     priceFrequency?: PriceFrequency;
-    rentalPeriod: string;
+    rentalPeriod?: string;
     specificationType: PropertySpecificationType;
 
     availability?: AvailabilityStatus
@@ -226,15 +226,13 @@ export interface SuitableUse {
     name: string;
 }
 
-
-
 export interface IResidentialDTO {
     id?: string;
     status: PropertyStatus;
-    bedrooms: number;
-    bathrooms: number;
-    receiptionRooms: number;
-    toilets: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    receiptionRooms?: number;
+    toilets?: number;
 
     tenure?: TensureType;
     furnished?: boolean;
@@ -264,8 +262,8 @@ export interface IResidentialDTO {
     // shared room and hmo specifics
     roomDetails?: IRoomDetail[];
     sharedFacilities?: ISharedFacilities;
-    otherSharedFacilities: string[];
-    houseRule: string;
+    otherSharedFacilities?: string[];
+    houseRule?: string;
     maxOccupant?: number;
     isHMO?: boolean;
     isShareHouse?: boolean;
@@ -280,19 +278,19 @@ export interface IResidentialDTO {
     totalFloors?: number;
     unitPerFloors?: number;
     totalUnits?: number;
-    buildingAmenityFeatures: string[];
-    safetyFeatures: string[];
-    customSafetyFeatures: string[];
+    buildingAmenityFeatures?: string[];
+    safetyFeatures?: string[];
+    customSafetyFeatures?: string[];
 
-    epcRating: string;
-    energyEfficiencyRating: number;
-    environmentalImpactRating: number
+    epcRating?: string;
+    energyEfficiencyRating?: number;
+    environmentalImpactRating?: number
     heatingTypes?: string[];
     coolingTypes?: string[];
     glazingTypes?: GlazingType;
 
     bills?: string[];
-    additionalNotes: string
+    additionalNotes?: string
 }
 
 export interface ICommercialDTO   {

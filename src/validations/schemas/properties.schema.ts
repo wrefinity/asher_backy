@@ -235,9 +235,9 @@ const propertyDocumentSchema = Joi.object({
 export const commercialPropertyFloorSchema = Joi.object({
   floorNumber: Joi.number().required(),
   area: Joi.string().required(),
-  price: Joi.string().required(),
-  available: Joi.boolean(),
-  partialFloor: Joi.boolean(),
+  price: Joi.string().optional(),
+  available: Joi.boolean().optional(),
+  partialFloor: Joi.boolean().optional(),
   description: Joi.string().allow('', null),
   availability: Joi.string().valid(...Object.values(AvailabilityStatus.VACANT)).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
@@ -267,10 +267,10 @@ export const unitConfigurationSchema = Joi.object({
   unitNumber: Joi.string().optional(),
   floorNumber: Joi.number().optional(),
   count: Joi.number().optional(),
-  bedrooms: Joi.number(),
-  bathrooms: Joi.number(),
+  bedrooms: Joi.number().optional(),
+  bathrooms: Joi.number().optional(),
   price: Joi.string().required(),
-  area: Joi.string(),
+  area: Joi.string().optional(),
   description: Joi.string().optional(),
   availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
@@ -282,7 +282,7 @@ export const unitConfigurationSchema = Joi.object({
 export const roomDetailSchema = Joi.object({
   roomName: Joi.string().required(),
   roomSize: Joi.string().required(),
-  ensuite: Joi.boolean().default(false),
+  ensuite: Joi.boolean().default(false).optional(),
   price: Joi.string().required(),
   availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
@@ -292,13 +292,13 @@ export const roomDetailSchema = Joi.object({
 
 // SharedFacilities Joi
 export const sharedFacilitiesSchema = Joi.object({
-  kitchen: Joi.boolean().default(false),
-  bathroom: Joi.boolean().default(false),
-  livingRoom: Joi.boolean().default(false),
-  garden: Joi.boolean().default(false),
-  garage: Joi.boolean().default(false),
-  laundry: Joi.boolean().default(false),
-  parking: Joi.boolean().default(false),
+  kitchen: Joi.boolean().default(false).optional(),
+  bathroom: Joi.boolean().default(false).optional(),
+  livingRoom: Joi.boolean().default(false).optional(),
+  garden: Joi.boolean().default(false).optional(),
+  garage: Joi.boolean().default(false).optional(),
+  laundry: Joi.boolean().default(false).optional(),
+  parking: Joi.boolean().default(false).optional(),
   other: Joi.string().optional(),
 });
 
@@ -523,8 +523,8 @@ export const residentialPropertySchema = Joi.object({
   epcRating: Joi.string().optional(),
   energyEfficiencyRating: Joi.number().optional(),
   environmentalImpactRating: Joi.number().optional(),
-  heatingTypes: Joi.array().items(Joi.string()),
-  coolingTypes: Joi.array().items(Joi.string()),
+  heatingTypes: Joi.array().items(Joi.string()).optional(),
+  coolingTypes: Joi.array().items(Joi.string()).optional(),
   glazingTypes: Joi.string().valid(...Object.values(GlazingType)).messages({
     'any.only': `Glazing type must be one of: ${Object.values(GlazingType).join(',')}`,
     'string.base': 'Glazing type must be a string'

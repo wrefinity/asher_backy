@@ -686,7 +686,7 @@ model ShortletProperty {
 model CommercialPropertyFloor {
   id           String             @id @default(cuid())
   floorNumber  Int
-  area         String
+  area         String?
   price        String
   available    Boolean            @default(true)
   partialFloor Boolean            @default(false)
