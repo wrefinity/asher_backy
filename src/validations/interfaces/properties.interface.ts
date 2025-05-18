@@ -274,7 +274,7 @@ export interface IResidentialDTO {
     occupantsDetails?: string;
 
     // unit configuration for highrise build type
-    unitConfiguration?: IUnitConfiguration[];
+    unitConfigurations?: IUnitConfiguration[];
     totalFloors?: number;
     unitPerFloors?: number;
     totalUnits?: number;
@@ -351,7 +351,7 @@ export interface ICommercialDTO   {
 
     // Multi-unit properties
     totalUnits?: number;
-    unitConfiguration?: IUnitConfiguration[];
+    unitConfigurations?: IUnitConfiguration[];
 
     // Additional commercial-specific fields
     leaseTerm?: string;

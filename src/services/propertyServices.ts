@@ -787,61 +787,7 @@ class PropertyService {
             },
         });
     }
-
-    // async createPropertyFeature(data: PropertyFeature[] | any) {
-    //     return await prismaClient.propertyFeatures.createMany({
-    //         data,
-    //         skipDuplicates: true
-    //     });
-    // }
-    // async getPropertyFeature() {
-    //     return await prismaClient.propertyFeatures.findMany();
-    // }
-    // async getPropertyFeaturesByIds(featureIds: string[]): Promise<string[]> {
-    //     if (!featureIds || featureIds.length === 0) {
-    //         return [];
-    //     }
-
-    //     const existingFeatures = await prismaClient.propertyFeatures.findMany({
-    //         where: {
-    //             id: { in: featureIds },
-    //         },
-    //         select: { id: true },
-    //     });
-
-    //     const existingFeatureIds = existingFeatures.map((f) => f.id);
-
-    //     const missingFeatureIds = featureIds.filter((id) => !existingFeatureIds.includes(id));
-
-    //     if (missingFeatureIds.length > 0) {
-    //         throw new Error(`The following feature IDs do not exist: ${missingFeatureIds.join(", ")}`);
-    //     }
-
-    //     return existingFeatureIds;
-    // }
-
-
-    // async ensurePropertyIsNotLinked(propertyId: string): Promise<void> {
-    //     const [residential, commercial, shortlet] = await Promise.all([
-    //         prismaClient.residentialProperty.findUnique({ where: { propertyId } }),
-    //         prismaClient.commercialProperty.findUnique({ where: { propertyId } }),
-    //         prismaClient.shortletProperty.findUnique({ where: { propertyId } }),
-    //     ]);
-
-    //     if (residential) {
-    //         throw new Error(`Property with ID ${propertyId} is already linked to a residential property.`);
-    //     }
-
-    //     if (commercial) {
-    //         throw new Error(`Property with ID ${propertyId} is already linked to a commercial property.`);
-    //     }
-
-    //     if (shortlet) {
-    //         throw new Error(`Property with ID ${propertyId} is already linked to a shortlet property.`);
-    //     }
-    // }
-
-
+    
     async createProperties(data: IBasePropertyDTO, specification: IPropertySpecificationDTO, uploadedFiles?: any[], userId?: string) {
         const { shortlet, specificationType, residential, commercial } = specification;
 
@@ -972,8 +918,9 @@ class PropertyService {
             bills,
             buildingAmenityFeatures,
             roomDetails,
+            PropertySpecification,
             sharedFacilities,
-            unitConfiguration,
+            unitConfigurations,
             ...rest } = data;
 
         // Verify property exists
@@ -1013,7 +960,7 @@ class PropertyService {
                     },
                 },
                 unitConfigurations: {
-                    create: unitConfiguration?.map((unit: any) => ({
+                    create: unitConfigurations?.map((unit: any) => ({
                         unitType: unit.unitType,
                         unitNumber: unit.unitNumber,
                         floorNumber: unit.floorNumber,
@@ -1051,8 +998,9 @@ class PropertyService {
             otherSharedFacilities = [],
             floorAvailability,
             roomDetails,
-            unitConfiguration,
+            unitConfigurations,
             suitableFor,
+            PropertySpecification,
             sharedFacilities,
             ...rest
         } = data;
@@ -1120,7 +1068,7 @@ class PropertyService {
                 },
 
                 unitConfigurations: {
-                    create: unitConfiguration?.map((unit: any) => ({
+                    create: unitConfigurations?.map((unit: any) => ({
                         unitType: unit.unitType,
                         unitNumber: unit.unitNumber,
                         floorNumber: unit.floorNumber,
@@ -1147,6 +1095,7 @@ class PropertyService {
             hostLanguages,
             additionalRules, unavailableDates,
             seasonalPricing,
+            PropertySpecification,
             sharedFacilities, roomDetails, ...rest } = data;
 
         // Step 1: Verify property exists

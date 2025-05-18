@@ -513,7 +513,7 @@ export const residentialPropertySchema = Joi.object({
   totalOccupants: Joi.number().optional(),
   occupantsDetails: Joi.string().optional(),
 
-  unitConfiguration: Joi.array().items(unitConfigurationSchema).optional(),
+  unitConfigurations: Joi.array().items(unitConfigurationSchema).optional(),
   totalFloors: Joi.number().optional(),
   unitPerFloors: Joi.number().optional(),
   totalUnits: Joi.number().optional(),
@@ -641,6 +641,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   yearBuilt: Joi.number().optional(),
   city: Joi.string().required(),
   state: Joi.string().required(),
+  stateId: Joi.string().optional(),
   country: Joi.string().required(),
   zipcode: Joi.string().required(),
   address: Joi.string().required(),
@@ -677,7 +678,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
   nearbyAmenities: Joi.array().items(Joi.string()).optional(),
   customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
-  amenityDistances: Joi.object().pattern(Joi.string(), Joi.number()).optional(),
+  amenityDistances: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
 
   contactName: Joi.string().optional(),
   contactCompany: Joi.string().optional(),

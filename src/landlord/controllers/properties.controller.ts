@@ -9,12 +9,13 @@ import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
-import { parseDateFieldNew} from "../../utils/helpers";
+import { parseDateFieldNew } from "../../utils/helpers";
 import { PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 import profileServices from '../../services/profileServices';
 import userServices from '../../services/user.services';
+import propertyUploadServices from '../../services/property.upload.services';
 
 
 class PropertyController {
@@ -29,7 +30,7 @@ class PropertyController {
             }
             const { error, value } = IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
             if (error) {
-                return res.status(400).json({ error: error.details});
+                return res.status(400).json({ error: error.details });
             }
             const state = await stateServices.getStateByName(value?.state)
 
@@ -48,27 +49,27 @@ class PropertyController {
                 uploadedFiles,
                 specificationType,
                 propertySubType,
-                otherTypeSpecific, 
+                otherTypeSpecific,
                 commercial,
                 shortlet,
                 residential, ...data
             } = value
 
-            delete data['documentName']         
-            delete data['docType']         
-            delete data['idType']         
-            delete data['uploadedFiles']         
-   
-            const specification: IPropertySpecificationDTO  = {
+            delete data['documentName']
+            delete data['docType']
+            delete data['idType']
+            delete data['uploadedFiles']
+
+            const specification: IPropertySpecificationDTO = {
                 propertySubType: propertySubType,
                 specificationType: specificationType,
-                otherTypeSpecific, 
+                otherTypeSpecific,
                 commercial,
                 shortlet,
                 residential
             }
             // const lateFee = rentalFee * 0.01;
-            const property = await PropertyServices.createProperties({ ...data, stateId: state?.id, landlordId },  specification, uploadedFiles, req.user?.id)
+            const property = await PropertyServices.createProperties({ ...data, stateId: state?.id, landlordId }, specification, uploadedFiles, req.user?.id)
             return res.status(201).json({ property })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -95,18 +96,18 @@ class PropertyController {
             const userExist = await userServices.findAUserById(userId);
 
             if (!userExist) {
-                return res.status(400).json({message: "user doesnt exist"}); 
+                return res.status(400).json({ message: "user doesnt exist" });
             }
             const preferences = await profileServices.activeSearchPreference(userId);
-            if(preferences.length <= 0){
-                return res.status(400).json({message: "user have not set active search preference"});
+            if (preferences.length <= 0) {
+                return res.status(400).json({ message: "user have not set active search preference" });
             }
             const properties = await PropertyServices.getPropertyOnUserPreference(preferences, landlordId);
-            return res.status(201).json({properties});
+            return res.status(201).json({ properties });
 
         } catch (error) {
             ErrorService.handleError(error, res);
-        } 
+        }
     }
 
     categorizedPropsInRentals = async (req: CustomRequest, res: Response) => {
@@ -134,8 +135,8 @@ class PropertyController {
             if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
 
-            if(landlordId !== propertyExist.landlordId){
-                return res.status(404).json({ message: "only lanlord that created the props can delist it" }) 
+            if (landlordId !== propertyExist.landlordId) {
+                return res.status(404).json({ message: "only lanlord that created the props can delist it" })
             }
             const properties = await PropertyServices.delistPropertyListing(propertiesId);
             if (!properties) return res.status(200).json({ message: "No Property listed yet" })
@@ -209,8 +210,8 @@ class PropertyController {
             const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, value.propertyId);
             // scenario where property doesnot belong to landlord
             if (!checkOwnership) return res.status(400).json({ message: 'property does not exist under landlord' });
-            if(checkOwnership.availability === AvailabilityStatus.OCCUPIED){
-                return res.status(400).json({ message: 'Property already occupied' }); 
+            if (checkOwnership.availability === AvailabilityStatus.OCCUPIED) {
+                return res.status(400).json({ message: 'Property already occupied' });
             }
             const listing = await PropertyServices.createPropertyListing(data);
             return res.status(201).json({ message: 'Property listing created', listing });
@@ -315,7 +316,7 @@ class PropertyController {
             }
             // get listing
             const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
-            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false,  AvailabilityStatus.OCCUPIED);
+            const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false, AvailabilityStatus.OCCUPIED);
 
             // Return the ative and inactive property listing
             return res.status(200).json({ activePropsListing, inActivePropsListing });
@@ -374,36 +375,13 @@ class PropertyController {
 
             let uploadErrors: UploadError[] = [];
 
+
             for (const row of dataFetched) {
                 try {
-                    let rowErrors: string[] = [];
-                    // Convert semicolon-separated amenities string to an array
-                    if (row.amenities && typeof row.amenities === 'string') {
-                        row.amenities = row.amenities.split(';').map(item => item.trim());
-                    }
-                    // Parse date fields
-                    // row.yearBuilt = parseDateField(row.yearBuilt);
-                    // row.dueDate = parseDateField(row.dueDate);
+                    const propertyType = row.specificationType as PropertySpecificationType;
+                    const propertyDto = await propertyUploadServices.transformRowToDto(row, propertyType);                 
 
-
-                    // Convert date fields safely
-                    const dateFields = [
-                        { key: "dueDate", label: "Due Date" },
-                        { key: "yearBuilt", label: "Year Built" },
-                    ];
-
-                    for (const field of dateFields) {
-                        try {
-                            if (row[field.key]) {
-                                row[field.key] = parseDateFieldNew(row[field.key]?.toString(), field.label);
-                            }
-                        } catch (dateError) {
-                            rowErrors.push(dateError.message);
-                        }
-                    }
-
-                    // Validate the row using Joi validations
-                    const { error, value } = createPropertySchema.validate(row, { abortEarly: false });
+                    const { error, value } = IBasePropertyDTOSchema.validate(propertyDto, { abortEarly: false });
                     if (error) {
                         const existingError = uploadErrors.find(err => err.name === row.name);
                         if (existingError) {
@@ -416,15 +394,6 @@ class PropertyController {
                         }
                         continue;
                     }
-                    if (rowErrors.length > 0) {
-                        let existingError = uploadErrors.find(err => err.name === row.name);
-                        if (existingError) {
-                            existingError.errors.push(...rowErrors);
-                        } else {
-                            uploadErrors.push({ name: Array.isArray(row.name) ? row.name[0] : row.name, errors: rowErrors });
-                        }
-                        continue;
-                    }
 
                     const state = await stateServices.getStateByName(Array.isArray(row.state) ? row.state[0] : row.state)
 
@@ -434,7 +403,7 @@ class PropertyController {
                         state?.id,
                         Array.isArray(row.city) ? row.city[0] : row.city
                     );
-                    
+
                     if (existance) {
                         const existingError = uploadErrors.find(err => err.name === row.name);
                         if (existingError) {
@@ -450,9 +419,35 @@ class PropertyController {
 
                     delete value["state"]
 
-                    // const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, landlordId });
+                    const {
+                        uploadedFiles,
+                        specificationType,
+                        propertySubType,
+                        otherTypeSpecific,
+                        commercial,
+                        shortlet,
+                        residential, ...data
+                    } = value
+        
+                    delete data['documentName']
+                    delete data['docType']
+                    delete data['idType']
+                    delete data['uploadedFiles']
+        
+                    const specification: IPropertySpecificationDTO = {
+                        propertySubType: propertySubType,
+                        specificationType: specificationType,
+                        otherTypeSpecific,
+                        commercial,
+                        shortlet,
+                        residential
+                    }
+                    delete specification["PropertySpecification"]
+                    console.log(specification)
 
-                    uploaded.push([]);
+                    // const lateFee = rentalFee * 0.01;
+                    const property = await PropertyServices.createProperties({ ...data, stateId: state?.id, landlordId }, specification, uploadedFiles, req.user?.id)
+                    uploaded.push(property);
                 } catch (err) {
                     const existingError = uploadErrors.find(error => error.name === row.name);
                     if (existingError) {
@@ -479,6 +474,132 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     };
+    // bulkPropsUpload = async (req: CustomRequest, res: Response) => {
+    //     try {
+    //         const landlordId = req.user?.landlords?.id;
+    //         if (!landlordId) {
+    //             return res.status(404).json({ error: 'Kindly login as landlord' });
+    //         }
+    //         if (!req.file) return res.status(400).json({ error: 'No CSV file uploaded.' });
+
+    //         const filePath = req.file.path;
+    //         // Read and process the CSV file
+    //         const dataFetched = await parseCSV(filePath);
+    //         let uploaded = [];
+
+    //         interface UploadError {
+    //             name: string;
+    //             errors: string[];
+    //             row?: any;
+    //         }
+
+    //         let uploadErrors: UploadError[] = [];
+
+    //         for (const row of dataFetched) {
+    //             try {
+    //                 let rowErrors: string[] = [];
+    //                 // Convert semicolon-separated amenities string to an array
+    //                 if (row.amenities && typeof row.amenities === 'string') {
+    //                     row.amenities = row.amenities.split(';').map(item => item.trim());
+    //                 }
+    //                 // Parse date fields
+    //                 // row.yearBuilt = parseDateField(row.yearBuilt);
+    //                 // row.dueDate = parseDateField(row.dueDate);
+
+
+    //                 // Convert date fields safely
+    //                 const dateFields = [
+    //                     { key: "dueDate", label: "Due Date" },
+    //                     { key: "yearBuilt", label: "Year Built" },
+    //                 ];
+
+    //                 for (const field of dateFields) {
+    //                     try {
+    //                         if (row[field.key]) {
+    //                             row[field.key] = parseDateFieldNew(row[field.key]?.toString(), field.label);
+    //                         }
+    //                     } catch (dateError) {
+    //                         rowErrors.push(dateError.message);
+    //                     }
+    //                 }
+
+    //                 // Validate the row using Joi validations
+    //                 const { error, value } = createPropertySchema.validate(row, { abortEarly: false });
+    //                 if (error) {
+    //                     const existingError = uploadErrors.find(err => err.name === row.name);
+    //                     if (existingError) {
+    //                         existingError.errors.push(...error.details.map(detail => detail.message));
+    //                     } else {
+    //                         uploadErrors.push({
+    //                             name: Array.isArray(row.name) ? row.name[0] : row.name,
+    //                             errors: [...error.details.map(detail => detail.message)],
+    //                         });
+    //                     }
+    //                     continue;
+    //                 }
+    //                 if (rowErrors.length > 0) {
+    //                     let existingError = uploadErrors.find(err => err.name === row.name);
+    //                     if (existingError) {
+    //                         existingError.errors.push(...rowErrors);
+    //                     } else {
+    //                         uploadErrors.push({ name: Array.isArray(row.name) ? row.name[0] : row.name, errors: rowErrors });
+    //                     }
+    //                     continue;
+    //                 }
+
+    //                 const state = await stateServices.getStateByName(Array.isArray(row.state) ? row.state[0] : row.state)
+
+    //                 const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
+    //                     landlordId,
+    //                     Array.isArray(row.name) ? row.name[0] : row.name,
+    //                     state?.id,
+    //                     Array.isArray(row.city) ? row.city[0] : row.city
+    //                 );
+
+    //                 if (existance) {
+    //                     const existingError = uploadErrors.find(err => err.name === row.name);
+    //                     if (existingError) {
+    //                         existingError.errors.push('Property already exists');
+    //                     } else {
+    //                         uploadErrors.push({
+    //                             name: Array.isArray(row.name) ? row.name[0] : row.name,
+    //                             errors: ['Property already exists'],
+    //                         });
+    //                     }
+    //                     continue;
+    //                 }
+
+    //                 delete value["state"]
+
+    //                 // const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, landlordId });
+
+    //                 uploaded.push([]);
+    //             } catch (err) {
+    //                 const existingError = uploadErrors.find(error => error.name === row.name);
+    //                 if (existingError) {
+    //                     existingError.errors.push(`Unexpected error: ${err.message}`);
+    //                 } else {
+    //                     uploadErrors.push({
+    //                         name: Array.isArray(row.name) ? row.name[0] : row.name,
+    //                         errors: [`Unexpected error: ${err.message}`],
+    //                     });
+    //                 }
+    //             }
+    //         }
+
+    //         // Delete the file after processing if needed
+    //         fs.unlinkSync(filePath);
+
+    //         // Determine response based on upload results
+    //         if (uploaded.length > 0) {
+    //             return res.status(200).json({ uploaded, uploadErrors });
+    //         } else {
+    //             return res.status(400).json({ error: 'No property was uploaded.', uploadErrors });
+    //         }
+    //     } catch (error) {
+    //         ErrorService.handleError(error, res);
+    //     }
+    // };
 
     // Get all tenants for a specific property
     getTenantsForProperty = async (req: CustomRequest, res: Response) => {
