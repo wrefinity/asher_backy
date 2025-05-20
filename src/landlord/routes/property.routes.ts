@@ -26,6 +26,7 @@ class ApartmentLandlordRouter {
         this.router.get('/property', PropertyController.getCurrentLandlordProperties)
         // this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.post('/create', upload.array("files"), handlePropertyUploads, PropertyController.createProperties)
+        this.router.post('/create-room', upload.array("files"), handlePropertyUploads, PropertyController.createRoom)
         this.router.post('/upload', uploadcsv.single("files"), PropertyController.bulkPropsUpload)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)

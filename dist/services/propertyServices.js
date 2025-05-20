@@ -99,56 +99,65 @@ class PropertyService {
         // Function to aggregate properties by state for the current landlord
         this.aggregatePropertiesByState = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             try {
-                // Group properties by stateId for the current landlord
                 const groupedProperties = yield __1.prismaClient.properties.groupBy({
-                    by: ['stateId'], // Group by stateId instead of state name
+                    by: ['stateId'],
                     where: {
-                        landlordId, // Filter by the current landlordId
-                        isDeleted: false, // Exclude deleted properties
+                        landlordId,
+                        isDeleted: false,
                     },
                 });
-                // Object to store the grouped properties by state
                 const propertiesByState = {};
-                // Loop through each state group and fetch properties with apartments for that state
                 for (const group of groupedProperties) {
                     const stateId = group.stateId;
                     if (!stateId)
-                        continue; // Skip if stateId is null or undefined
-                    // Fetch the state details
+                        continue;
                     const state = yield __1.prismaClient.state.findUnique({
                         where: { id: stateId },
                     });
                     if (!state)
-                        continue; // Skip if state is not found
-                    // Fetch properties belonging to the current state and landlord, including apartments
-                    const properties = yield __1.prismaClient.properties.findMany({
+                        continue;
+                    const rawProperties = yield __1.prismaClient.properties.findMany({
                         where: {
-                            stateId: stateId,
-                            landlordId: landlordId,
-                            isDeleted: false, // Exclude deleted properties
+                            stateId,
+                            landlordId,
+                            isDeleted: false,
                         },
-                        include: Object.assign({}, this.propsInclusion),
+                        include: this.propsInclusion,
                     });
-                    // Store the properties in the result object under the respective state name
-                    propertiesByState[state.name.toLowerCase()] = properties;
+                    const flattenedProperties = rawProperties.map(property => {
+                        var _a, _b, _c;
+                        // Narrow the type of specification
+                        const specifications = property.specification;
+                        const activeSpec = specifications.find(spec => spec.isActive);
+                        const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
+                        return Object.assign(Object.assign(Object.assign({}, property), activeSpec), specificDetails);
+                    });
+                    propertiesByState[state.name.toLowerCase()] = flattenedProperties;
                 }
                 return propertiesByState;
             }
             catch (error) {
                 console.error('Error in aggregatePropertiesByState:', error);
-                throw error; // or handle it as per your application's needs
+                throw error;
             }
         });
         // Function to aggregate properties by state for the current landlord
         this.getPropertiesByLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            // Group properties by state for the current landlord
             const unGroundProps = yield __1.prismaClient.properties.findMany({
                 where: {
                     landlordId,
                 },
-                include: Object.assign({}, this.propsInclusion)
+                include: this.propsInclusion,
             });
-            return unGroundProps;
+            const fullDetailsList = unGroundProps.map(property => {
+                var _a, _b, _c;
+                // Narrow the type of specification
+                const specifications = property.specification;
+                const activeSpec = specifications.find(spec => spec.isActive);
+                const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
+                return Object.assign(Object.assign(Object.assign({}, property), activeSpec), specificDetails);
+            });
+            return fullDetailsList;
         });
         // Function to aggregate properties by state for the current landlord
         this.getPropertiesByState = () => __awaiter(this, void 0, void 0, function* () {
@@ -587,6 +596,10 @@ class PropertyService {
         this.propsInclusion = {
             propertyListingHistory: true,
             state: true,
+            images: true,
+            videos: true,
+            virtualTours: true,
+            propertyDocument: true,
             application: true,
             reviews: true,
             UserLikedProperty: true,
@@ -594,48 +607,6 @@ class PropertyService {
             specification: this.specificationInclusion
         };
     }
-    // async createPropertyFeature(data: PropertyFeature[] | any) {
-    //     return await prismaClient.propertyFeatures.createMany({
-    //         data,
-    //         skipDuplicates: true
-    //     });
-    // }
-    // async getPropertyFeature() {
-    //     return await prismaClient.propertyFeatures.findMany();
-    // }
-    // async getPropertyFeaturesByIds(featureIds: string[]): Promise<string[]> {
-    //     if (!featureIds || featureIds.length === 0) {
-    //         return [];
-    //     }
-    //     const existingFeatures = await prismaClient.propertyFeatures.findMany({
-    //         where: {
-    //             id: { in: featureIds },
-    //         },
-    //         select: { id: true },
-    //     });
-    //     const existingFeatureIds = existingFeatures.map((f) => f.id);
-    //     const missingFeatureIds = featureIds.filter((id) => !existingFeatureIds.includes(id));
-    //     if (missingFeatureIds.length > 0) {
-    //         throw new Error(`The following feature IDs do not exist: ${missingFeatureIds.join(", ")}`);
-    //     }
-    //     return existingFeatureIds;
-    // }
-    // async ensurePropertyIsNotLinked(propertyId: string): Promise<void> {
-    //     const [residential, commercial, shortlet] = await Promise.all([
-    //         prismaClient.residentialProperty.findUnique({ where: { propertyId } }),
-    //         prismaClient.commercialProperty.findUnique({ where: { propertyId } }),
-    //         prismaClient.shortletProperty.findUnique({ where: { propertyId } }),
-    //     ]);
-    //     if (residential) {
-    //         throw new Error(`Property with ID ${propertyId} is already linked to a residential property.`);
-    //     }
-    //     if (commercial) {
-    //         throw new Error(`Property with ID ${propertyId} is already linked to a commercial property.`);
-    //     }
-    //     if (shortlet) {
-    //         throw new Error(`Property with ID ${propertyId} is already linked to a shortlet property.`);
-    //     }
-    // }
     createProperties(data, specification, uploadedFiles, userId) {
         return __awaiter(this, void 0, void 0, function* () {
             const { shortlet, specificationType, residential, commercial } = specification;
@@ -740,7 +711,7 @@ class PropertyService {
     createResidentialProperty(propertyId, data, tx, specification) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c, _d, _e, _f, _g;
-            const { outdoorsSpacesFeature, safetyFeatures, bills, buildingAmenityFeatures, roomDetails, sharedFacilities, unitConfiguration } = data, rest = __rest(data, ["outdoorsSpacesFeature", "safetyFeatures", "bills", "buildingAmenityFeatures", "roomDetails", "sharedFacilities", "unitConfiguration"]);
+            const { outdoorsSpacesFeature, safetyFeatures, bills, buildingAmenityFeatures, roomDetails, PropertySpecification, sharedFacilities, unitConfigurations } = data, rest = __rest(data, ["outdoorsSpacesFeature", "safetyFeatures", "bills", "buildingAmenityFeatures", "roomDetails", "PropertySpecification", "sharedFacilities", "unitConfigurations"]);
             // Verify property exists
             const property = yield tx.properties.findUnique({
                 where: { id: propertyId }
@@ -770,7 +741,7 @@ class PropertyService {
                             other: (sharedFacilities === null || sharedFacilities === void 0 ? void 0 : sharedFacilities.other) || "",
                         },
                     }, unitConfigurations: {
-                        create: (unitConfiguration === null || unitConfiguration === void 0 ? void 0 : unitConfiguration.map((unit) => ({
+                        create: (unitConfigurations === null || unitConfigurations === void 0 ? void 0 : unitConfigurations.map((unit) => ({
                             unitType: unit.unitType,
                             unitNumber: unit.unitNumber,
                             floorNumber: unit.floorNumber,
@@ -800,7 +771,7 @@ class PropertyService {
     createCommercialProperty(propertyId, data, tx, specification) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c, _d, _e, _f, _g;
-            const { safetyFeatures = [], coolingTypes = [], heatingTypes = [], customSafetyFeatures = [], securityFeatures = [], otherSharedFacilities = [], floorAvailability, roomDetails, unitConfiguration, suitableFor, sharedFacilities } = data, rest = __rest(data, ["safetyFeatures", "coolingTypes", "heatingTypes", "customSafetyFeatures", "securityFeatures", "otherSharedFacilities", "floorAvailability", "roomDetails", "unitConfiguration", "suitableFor", "sharedFacilities"]);
+            const { safetyFeatures = [], coolingTypes = [], heatingTypes = [], customSafetyFeatures = [], securityFeatures = [], otherSharedFacilities = [], floorAvailability, roomDetails, unitConfigurations, suitableFor, PropertySpecification, sharedFacilities } = data, rest = __rest(data, ["safetyFeatures", "coolingTypes", "heatingTypes", "customSafetyFeatures", "securityFeatures", "otherSharedFacilities", "floorAvailability", "roomDetails", "unitConfigurations", "suitableFor", "PropertySpecification", "sharedFacilities"]);
             const property = yield tx.properties.findUnique({
                 where: { id: propertyId }
             });
@@ -846,7 +817,7 @@ class PropertyService {
                     }, suitableFor: {
                         create: (suitableFor === null || suitableFor === void 0 ? void 0 : suitableFor.map((name) => ({ name }))) || []
                     }, unitConfigurations: {
-                        create: (unitConfiguration === null || unitConfiguration === void 0 ? void 0 : unitConfiguration.map((unit) => ({
+                        create: (unitConfigurations === null || unitConfigurations === void 0 ? void 0 : unitConfigurations.map((unit) => ({
                             unitType: unit.unitType,
                             unitNumber: unit.unitNumber,
                             floorNumber: unit.floorNumber,
@@ -866,7 +837,7 @@ class PropertyService {
     createShortletProperty(propertyId, data, tx, specification) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c, _d, _e, _f, _g;
-            const { safetyFeatures, buildingAmenityFeatures, outdoorsSpacesFeatures, hostLanguages, additionalRules, unavailableDates, seasonalPricing, sharedFacilities, roomDetails } = data, rest = __rest(data, ["safetyFeatures", "buildingAmenityFeatures", "outdoorsSpacesFeatures", "hostLanguages", "additionalRules", "unavailableDates", "seasonalPricing", "sharedFacilities", "roomDetails"]);
+            const { safetyFeatures, buildingAmenityFeatures, outdoorsSpacesFeatures, hostLanguages, additionalRules, unavailableDates, seasonalPricing, PropertySpecification, sharedFacilities, roomDetails } = data, rest = __rest(data, ["safetyFeatures", "buildingAmenityFeatures", "outdoorsSpacesFeatures", "hostLanguages", "additionalRules", "unavailableDates", "seasonalPricing", "PropertySpecification", "sharedFacilities", "roomDetails"]);
             // Step 1: Verify property exists
             const property = yield tx.properties.findUnique({
                 where: { id: propertyId }

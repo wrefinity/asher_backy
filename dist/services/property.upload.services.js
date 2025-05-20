@@ -1,327 +1,267 @@
-// import * as csv from 'csv-parser';
-// import * as fs from 'fs';
-// // import { validate } from 'joi';
-// import { 
-//   PropertyType, 
-//   AvailabilityStatus,
-//   AreaUnit,
-//   Currency,
-//   PriceFrequency,
-//   PropertySpecificationType,
-//   PropertyStatus,
-//   CancellationPolicy,
-//   MediaType,
-//   DocumentType,
-//   IdType,
-//   LeaseTermUnit,
-//   BuildingClass,
-//   GlazingType,
-//   VatStatus,
-//   TensureType,
-//   GarageType,
-//   BookingStatus
-// } from '@prisma/client';
-// import { 
-//   IBasePropertyDTOSchema,
-//   shortletPropertySchema,
-//   commercialPropertySchema,
-//   residentialPropertySchema,
-//   commercialPropertyUnitSchema,
-//   propertyDocumentSchema,
-//   commercialPropertyFloorSchema,
-//   propertyMediaFilesSchema,
-//   unitConfigurationSchema,
-//   roomDetailSchema,
-//   sharedFacilitiesSchema,
-//   bookingSchema,
-//   seasonalPricingSchema,
-//   unavailableDateSchema,
-//   additionalRuleSchema,
-//   hostLanguageSchema,
-//   suitableUseSchema
-// } from '../validations/schemas/properties.schema';
-// export class PropertyBulkUploadService {
-//     processCSV = async (filePath: string): Promise<{ success: number; errors: number; errorsList: string[] }> =>{
-//     let successCount = 0;
-//     let errorCount = 0;
-//     const errorsList: string[] = [];
-//     return new Promise((resolve, reject) => {
-//       fs.createReadStream(filePath)
-//         .pipe(csv())
-//         .on('data', async (row) => {
-//           try {
-//             const propertyType = this.determinePropertyType(row);
-//             const propertyDto = await this.transformRowToDto(row, propertyType);
-//             // await this.upsertProperty(propertyDto);
-//             successCount++;
-//           } catch (error) {
-//             const errorMsg = `Row ${errorCount + 1}: ${error.message}`;
-//             errorsList.push(errorMsg);
-//             errorCount++;
-//           }
-//         })
-//         .on('end', () => {
-//           resolve({ success: successCount, errors: errorCount, errorsList });
-//         })
-//         .on('error', (error) => {
-//           reject(error);
-//         });
-//     });
-//   }
-//   private determinePropertyType(row: any): PropertySpecificationType {
-//     if (row.specificationType) {
-//       return row.specificationType as PropertySpecificationType;
-//     }
-//     // Inference logic
-//     if (row.minStayDays) return PropertySpecificationType.SHORTLET;
-//     if (row.businessRates || row.serviceCharge) return PropertySpecificationType.COMMERCIAL;
-//     return PropertySpecificationType.RESIDENTIAL;
-//   }
-//   private async transformRowToDto(row: any, specificationType: PropertySpecificationType): Promise<IBasePropertyDTO> {
-//     const baseDto = {
-//       // Base Properties
-//       name: row.name,
-//       description: row.description,
-//       shortDescription: row.shortDescription,
-//       propertySize: row.propertySize ? parseFloat(row.propertySize) : undefined,
-//       areaUnit: row.areaUnit as AreaUnit,
-//       yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
-//       city: row.city,
-//       state: row.state,
-//       country: row.country,
-//       zipcode: row.zipcode,
-//       address: row.address,
-//       address2: row.address2,
-//       latitude: row.latitude ? parseFloat(row.latitude) : undefined,
-//       longitude: row.longitude ? parseFloat(row.longitude) : undefined,
-//       currency: row.currency as Currency,
-//       marketValue: row.marketValue ? parseFloat(row.marketValue) : undefined,
-//       price: parseFloat(row.price),
-//       securityDeposit: row.securityDeposit ? parseFloat(row.securityDeposit) : undefined,
-//       initialDeposit: row.initialDeposit ? parseFloat(row.initialDeposit) : undefined,
-//       priceFrequency: row.priceFrequency as PriceFrequency,
-//       rentalPeriod: row.rentalPeriod,
-//       specificationType: specificationType,
-//       propertySubType: row.propertySubType,
-//       availability: row.availability as AvailabilityStatus,
-//       businessRateVerified: row.businessRateVerified === 'true',
-//       postalCodeVerified: row.postalCodeVerified === 'true',
-//       landRegistryNumber: row.landRegistryNumber,
-//       vatStatus: row.vatStatus as VatStatus,
-//       keyFeatures: row.keyFeatures ? row.keyFeatures.split(';') : [],
-//       customKeyFeatures: row.customKeyFeatures ? row.customKeyFeatures.split(';') : [],
-//       nearbyAmenities: row.nearbyAmenities ? row.nearbyAmenities.split(';') : [],
-//       customNearbyAmenities: row.customNearbyAmenities ? row.customNearbyAmenities.split(';') : [],
-//       amenityDistances: row.amenityDistances ? JSON.parse(row.amenityDistances) : {},
-//       contactName: row.contactName,
-//       contactCompany: row.contactCompany,
-//       companyLogoUrl: row.companyLogoUrl,
-//       viewingArrangements: row.viewingArrangements,
-//       propertyDocument: row.propertyDocument ? JSON.parse(row.propertyDocument) : [],
-//       images: row.images ? JSON.parse(row.images) : [],
-//       videos: row.videos ? JSON.parse(row.videos) : [],
-//       virtualTours: row.virtualTours ? JSON.parse(row.virtualTours) : [],
-//       otherTypeSpecific: row.otherTypeSpecific ? JSON.parse(row.otherTypeSpecific) : undefined,
-//       // Type-specific properties
-//       residential: specificationType === PropertySpecificationType.RESIDENTIAL ? this.parseResidential(row) : undefined,
-//       commercial: specificationType === PropertySpecificationType.COMMERCIAL ? this.parseCommercial(row) : undefined,
-//       shortlet: specificationType === PropertySpecificationType.SHORTLET ? this.parseShortlet(row) : undefined
-//     };
-//     const { error, value } = IBasePropertyDTOSchema.validate(baseDto, { abortEarly: false });
-//     if (error) {
-//         return { error: error.details};
-//     }
-//     return value;
-//   }
-//   private parseResidential(row: any) {
-//     return {
-//       status: row.status as PropertyStatus,
-//       bedrooms: parseInt(row.bedrooms),
-//       bathrooms: parseInt(row.bathrooms),
-//       receiptionRooms: parseInt(row.receiptionRooms),
-//       toilets: row.toilets ? parseInt(row.toilets) : undefined,
-//       tenure: row.tenure as TensureType,
-//       furnished: row.furnished === 'true',
-//       renovationYear: row.renovationYear,
-//       councilTaxBand: row.councilTaxBand,
-//       parkingSpaces: row.parkingSpaces ? parseInt(row.parkingSpaces) : 0,
-//       garageType: row.garageType as GarageType,
-//       yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
-//       floorLevel: row.floorLevel ? parseInt(row.floorLevel) : undefined,
-//       totalArea: row.totalArea,
-//       areaUnit: row.areaUnit as AreaUnit,
-//       petPolicy: row.petPolicy,
-//       rentalTerms: row.rentalTerms,
-//       utilities: row.utilities ? row.utilities.split(';') : [],
-//       garden: row.garden,
-//       gardenSize: row.gardenSize,
-//       houseStyle: row.houseStyle,
-//       numberOfStories: row.numberOfStories,
-//       outdoorsSpacesFeatures: row.outdoorsSpacesFeatures ? row.outdoorsSpacesFeatures.split(';') : [],
-//       buildingAmenityFeatures: row.buildingAmenityFeatures ? row.buildingAmenityFeatures.split(';') : [],
-//       safetyFeatures: row.safetyFeatures ? row.safetyFeatures.split(';') : [],
-//       roomDetails: row.roomDetails ? JSON.parse(row.roomDetails) : [],
-//       sharedFacilities: row.sharedFacilities ? JSON.parse(row.sharedFacilities) : undefined,
-//       otherSharedFacilities: row.otherSharedFacilities ? row.otherSharedFacilities.split(';') : [],
-//       houseRule: row.houseRule,
-//       maxOccupant: row.maxOccupant ? parseInt(row.maxOccupant) : undefined,
-//       isHMO: row.isHMO === 'true',
-//       isShareHouse: row.isShareHouse === 'true',
-//       isHMOLicenced: row.isHMOLicenced === 'true',
-//       hmoLicenceNumber: row.hmoLicenceNumber,
-//       hmoLicenceExpiryDate: row.hmoLicenceExpiryDate,
-//       totalOccupants: row.totalOccupants ? parseInt(row.totalOccupants) : undefined,
-//       occupantsDetails: row.occupantsDetails,
-//       unitConfiguration: row.unitConfiguration ? JSON.parse(row.unitConfiguration) : [],
-//       totalFloors: row.totalFloors ? parseInt(row.totalFloors) : undefined,
-//       unitPerFloors: row.unitPerFloors ? parseInt(row.unitPerFloors) : undefined,
-//       totalUnits: row.totalUnits ? parseInt(row.totalUnits) : undefined,
-//       customSafetyFeatures: row.customSafetyFeatures ? row.customSafetyFeatures.split(';') : [],
-//       epcRating: row.epcRating,
-//       energyEfficiencyRating: row.energyEfficiencyRating ? parseInt(row.energyEfficiencyRating) : undefined,
-//       environmentalImpactRating: row.environmentalImpactRating ? parseInt(row.environmentalImpactRating) : undefined,
-//       heatingTypes: row.heatingTypes ? row.heatingTypes.split(';') : [],
-//       coolingTypes: row.coolingTypes ? row.coolingTypes.split(';') : [],
-//       glazingTypes: row.glazingTypes as GlazingType,
-//       additionalNotes: row.additionalNotes,
-//       bills: row.bills ? row.bills.split(';') : [],
-//       PropertySpecification: row.PropertySpecification ? JSON.parse(row.PropertySpecification) : []
-//     };
-//   }
-//   private parseCommercial(row: any) {
-//     return {
-//       totalArea: row.totalArea,
-//       areaUnit: row.areaUnit as AreaUnit,
-//       businessRates: row.businessRates,
-//       serviceCharge: row.serviceCharge ? parseFloat(row.serviceCharge) : undefined,
-//       leaseTermUnit: row.leaseTermUnit as LeaseTermUnit,
-//       minimumLeaseTerm: parseInt(row.minimumLeaseTerm),
-//       maximumLeaseTerm: row.maximumLeaseTerm ? parseInt(row.maximumLeaseTerm) : undefined,
-//       buildingClass: row.buildingClass as BuildingClass,
-//       lastRefurbished: row.lastRefurbished,
-//       totalFloors: row.totalFloors ? parseInt(row.totalFloors) : undefined,
-//       zoning: row.zoning,
-//       yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
-//       totalRooms: parseInt(row.totalRooms),
-//       parkingSpaces: row.parkingSpaces ? parseInt(row.parkingSpaces) : 0,
-//       floorLevel: row.floorLevel ? parseInt(row.floorLevel) : undefined,
-//       availableFrom: row.availableFrom,
-//       floorNumber: row.floorNumber ? parseInt(row.floorNumber) : undefined,
-//       workstations: row.workstations ? parseInt(row.workstations) : undefined,
-//       meetingRooms: row.meetingRooms ? parseInt(row.meetingRooms) : undefined,
-//       officeLayout: row.officeLayout,
-//       highRiseFloors: row.highRiseFloors ? parseInt(row.highRiseFloors) : undefined,
-//       floorAvailability: row.floorAvailability ? JSON.parse(row.floorAvailability) : [],
-//       securityFeatures: row.securityFeatures ? row.securityFeatures.split(';') : [],
-//       clearHeight: row.clearHeight,
-//       loadingDoorsCount: row.loadingDoorsCount ? parseInt(row.loadingDoorsCount) : undefined,
-//       powerSupply: row.powerSupply,
-//       floorLoad: row.floorLoad,
-//       columnSpacing: row.columnSpacing,
-//       hasYard: row.hasYard === 'true',
-//       yardDepth: row.yardDepth,
-//       safetyFeatures: row.safetyFeatures ? row.safetyFeatures.split(';') : [],
-//       customSafetyFeatures: row.customSafetyFeatures ? row.customSafetyFeatures.split(';') : [],
-//       epcRating: row.epcRating,
-//       energyEfficiencyRating: row.energyEfficiencyRating ? parseInt(row.energyEfficiencyRating) : undefined,
-//       environmentalImpactRating: row.environmentalImpactRating ? parseInt(row.environmentalImpactRating) : undefined,
-//       heatingTypes: row.heatingTypes ? row.heatingTypes.split(';') : [],
-//       coolingTypes: row.coolingTypes ? row.coolingTypes.split(';') : [],
-//       hasGreenCertification: row.hasGreenCertification === 'true',
-//       greenCertificationType: row.greenCertificationType,
-//       greenCertificationLevel: row.greenCertificationLevel,
-//       totalUnits: row.totalUnits ? parseInt(row.totalUnits) : undefined,
-//       unitConfigurations: row.unitConfigurations ? JSON.parse(row.unitConfigurations) : [],
-//       leaseTerm: row.leaseTerm,
-//       leaseTermNegotiable: row.leaseTermNegotiable !== 'false',
-//       rentReviewPeriod: row.rentReviewPeriod,
-//       breakClause: row.breakClause,
-//       rentFreeOffered: row.rentFreeOffered === 'true',
-//       rentFreePeriod: row.rentFreePeriod,
-//       suitableFor: row.suitableFor ? row.suitableFor.split(';') : [],
-//       roomDetails: row.roomDetails ? JSON.parse(row.roomDetails) : [],
-//       sharedFacilities: row.sharedFacilities ? JSON.parse(row.sharedFacilities) : undefined,
-//       otherSharedFacilities: row.otherSharedFacilities ? row.otherSharedFacilities.split(';') : [],
-//       houseRule: row.houseRule,
-//       maxOccupant: row.maxOccupant ? parseInt(row.maxOccupant) : undefined,
-//       isHMO: row.isHMO === 'true',
-//       isShareHouse: row.isShareHouse === 'true',
-//       isHMOLicenced: row.isHMOLicenced === 'true',
-//       hmoLicenceNumber: row.hmoLicenceNumber,
-//       hmoLicenceExpiryDate: row.hmoLicenceExpiryDate,
-//       totalOccupants: row.totalOccupants ? parseInt(row.totalOccupants) : undefined,
-//       occupantsDetails: row.occupantsDetails
-//     };
-//   }
-//   private parseShortlet(row: any) {
-//     return {
-//       lotSize: row.lotSize ? parseInt(row.lotSize) : undefined,
-//       garageSpaces: row.garageSpaces ? parseInt(row.garageSpaces) : undefined,
-//       outdoorsSpacesFeatures: row.outdoorsSpacesFeatures ? row.outdoorsSpacesFeatures.split(';') : [],
-//       buildingName: row.buildingName,
-//       unitNumber: row.unitNumber ? parseInt(row.unitNumber) : undefined,
-//       buildingAmenityFeatures: row.buildingAmenityFeatures ? row.buildingAmenityFeatures.split(';') : [],
-//       safetyFeatures: row.safetyFeatures ? row.safetyFeatures.split(';') : [],
-//       customSafetyFeatures: row.customSafetyFeatures ? row.customSafetyFeatures.split(';') : [],
-//       bedrooms: parseInt(row.bedrooms),
-//       beds: row.beds ? parseInt(row.beds) : undefined,
-//       bathrooms: parseInt(row.bathrooms),
-//       maxGuests: row.maxGuests ? parseInt(row.maxGuests) : undefined,
-//       propertySize: row.propertySize,
-//       sizeUnit: row.sizeUnit as AreaUnit,
-//       floorLevel: row.floorLevel ? parseInt(row.floorLevel) : undefined,
-//       totalFloors: row.totalFloors ? parseInt(row.totalFloors) : undefined,
-//       renovationYear: row.renovationYear,
-//       yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
-//       furnished: row.furnished !== 'false',
-//       minStayDays: parseInt(row.minStayDays),
-//       maxStayDays: row.maxStayDays ? parseInt(row.maxStayDays) : undefined,
-//       availableFrom: row.availableFrom,
-//       availableTo: row.availableTo,
-//       basePrice: parseFloat(row.basePrice),
-//       cleaningFee: row.cleaningFee ? parseFloat(row.cleaningFee) : undefined,
-//       weeklyDiscount: row.weeklyDiscount ? parseFloat(row.weeklyDiscount) : undefined,
-//       monthlyDiscount: row.monthlyDiscount ? parseFloat(row.monthlyDiscount) : undefined,
-//       checkInTime: row.checkInTime,
-//       checkOutTime: row.checkOutTime,
-//       instantBooking: row.instantBooking === 'true',
-//       allowChildren: row.allowChildren !== 'false',
-//       allowInfants: row.allowInfants !== 'false',
-//       allowPets: row.allowPets === 'true',
-//       allowSmoking: row.allowSmoking === 'true',
-//       allowParties: row.allowParties === 'true',
-//       quietHours: row.quietHours === 'true',
-//       quietHoursStart: row.quietHoursStart,
-//       quietHoursEnd: row.quietHoursEnd,
-//       cancellationPolicy: row.cancellationPolicy as CancellationPolicy,
-//       customCancellationPolicy: row.customCancellationPolicy,
-//       houseManual: row.houseManual,
-//       checkInInstructions: row.checkInInstructions,
-//       localRecommendations: row.localRecommendations,
-//       emergencyContact: row.emergencyContact,
-//       hostName: row.hostName,
-//       hostPhotoUrl: row.hostPhotoUrl,
-//       responseRate: row.responseRate ? parseInt(row.responseRate) : undefined,
-//       responseTime: row.responseTime,
-//       isSuperhost: row.isSuperhost === 'true',
-//       joinedDate: row.joinedDate,
-//       roomDetails: row.roomDetails ? JSON.parse(row.roomDetails) : [],
-//       sharedFacilities: row.sharedFacilities ? JSON.parse(row.sharedFacilities) : undefined,
-//       otherSharedFacilities: row.otherSharedFacilities ? row.otherSharedFacilities.split(';') : [],
-//       houseRule: row.houseRule,
-//       maxOccupant: row.maxOccupant ? parseInt(row.maxOccupant) : undefined,
-//       isHMO: row.isHMO === 'true',
-//       isShareHouse: row.isShareHouse === 'true',
-//       isHMOLicenced: row.isHMOLicenced === 'true',
-//       hmoLicenceNumber: row.hmoLicenceNumber,
-//       hmoLicenceExpiryDate: row.hmoLicenceExpiryDate,
-//       totalOccupants: row.totalOccupants ? parseInt(row.totalOccupants) : undefined,
-//       occupantsDetails: row.occupantsDetails,
-//       bookings: row.bookings ? JSON.parse(row.bookings) : [],
-//       seasonalPricing: row.seasonalPricing ? JSON.parse(row.seasonalPricing) : [],
-//       unavailableDates: row.unavailableDates ? row.unavailableDates.split(';') : [],
-//       additionalRules: row.additionalRules ? row.additionalRules.split(';') : [],
-//       hostLanguages: row.hostLanguages ? row.hostLanguages.split(';') : []
-//     };
-//   }
-// }
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const state_services_1 = __importDefault(require("../services/state.services"));
+const client_1 = require("@prisma/client");
+class PropertyBulkUploadService {
+    constructor() {
+        this.transformRowToDto = (row, specificationType) => __awaiter(this, void 0, void 0, function* () {
+            if (!row.state)
+                new Error("Kindly supply the state");
+            const state = yield state_services_1.default.getStateByName(row === null || row === void 0 ? void 0 : row.state);
+            const baseDto = {
+                stateId: state.id,
+                name: row.name,
+                description: row.description,
+                shortDescription: row.shortDescription,
+                propertySize: row.propertySize ? parseFloat(row.propertySize) : undefined,
+                areaUnit: row.areaUnit,
+                yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
+                city: row === null || row === void 0 ? void 0 : row.city,
+                state: row === null || row === void 0 ? void 0 : row.state,
+                country: row === null || row === void 0 ? void 0 : row.country,
+                zipcode: row === null || row === void 0 ? void 0 : row.zipcode,
+                address: row === null || row === void 0 ? void 0 : row.address,
+                address2: row === null || row === void 0 ? void 0 : row.address2,
+                latitude: (row === null || row === void 0 ? void 0 : row.latitude) ? parseFloat(row.latitude) : undefined,
+                longitude: (row === null || row === void 0 ? void 0 : row.longitude) ? parseFloat(row.longitude) : undefined,
+                currency: row === null || row === void 0 ? void 0 : row.currency,
+                marketValue: row.marketValue ? parseFloat(row.marketValue) : undefined,
+                price: parseFloat(row.price),
+                securityDeposit: row.securityDeposit ? parseFloat(row.securityDeposit) : undefined,
+                initialDeposit: row.initialDeposit ? parseFloat(row.initialDeposit) : undefined,
+                priceFrequency: row.priceFrequency,
+                rentalPeriod: row.rentalPeriod,
+                specificationType: specificationType,
+                propertySubType: row.propertySubType,
+                availability: row.availability,
+                businessRateVerified: row.businessRateVerified === 'true',
+                postalCodeVerified: row.postalCodeVerified === 'true',
+                landRegistryNumber: row.landRegistryNumber,
+                vatStatus: row.vatStatus,
+                keyFeatures: row.keyFeatures ? row.keyFeatures.split(';') : [],
+                customKeyFeatures: row.customKeyFeatures ? row.customKeyFeatures.split(';') : [],
+                nearbyAmenities: row.nearbyAmenities ? row.nearbyAmenities.split(';') : [],
+                customNearbyAmenities: row.customNearbyAmenities ? row.customNearbyAmenities.split(';') : [],
+                amenityDistances: row.amenityDistances ? JSON.parse(row.amenityDistances) : {},
+                contactName: row.contactName,
+                contactCompany: row.contactCompany,
+                companyLogoUrl: row.companyLogoUrl,
+                viewingArrangements: row.viewingArrangements,
+                propertyDocument: row.propertyDocument ? JSON.parse(row.propertyDocument) : [],
+                images: row.images ? JSON.parse(row.images) : [],
+                videos: row.videos ? JSON.parse(row.videos) : [],
+                virtualTours: row.virtualTours ? JSON.parse(row.virtualTours) : [],
+                otherTypeSpecific: row.otherTypeSpecific ? JSON.parse(row.otherTypeSpecific) : undefined,
+                // Type-specific properties
+                residential: specificationType === client_1.PropertySpecificationType.RESIDENTIAL ? this.parseResidential(row) : undefined,
+                commercial: specificationType === client_1.PropertySpecificationType.COMMERCIAL ? this.parseCommercial(row) : undefined,
+                shortlet: specificationType === client_1.PropertySpecificationType.SHORTLET ? this.parseShortlet(row) : undefined
+            };
+            return baseDto;
+        });
+    }
+    parseResidential(row) {
+        return {
+            status: row.status,
+            bedrooms: parseInt(row.bedrooms),
+            bathrooms: parseInt(row.bathrooms),
+            receiptionRooms: parseInt(row.receiptionRooms),
+            toilets: row.toilets ? parseInt(row.toilets) : undefined,
+            tenure: row.tenure,
+            furnished: row.furnished === 'true',
+            renovationYear: row.renovationYear,
+            councilTaxBand: row.councilTaxBand,
+            parkingSpaces: row.parkingSpaces ? parseInt(row.parkingSpaces) : 0,
+            garageType: row.garageType,
+            yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
+            floorLevel: row.floorLevel ? parseInt(row.floorLevel) : undefined,
+            totalArea: row.totalArea,
+            areaUnit: row.areaUnit,
+            petPolicy: row.petPolicy,
+            rentalTerms: row.rentalTerms,
+            utilities: row.utilities ? row.utilities.split(';') : [],
+            garden: row.garden,
+            gardenSize: row.gardenSize,
+            houseStyle: row.houseStyle,
+            numberOfStories: row.numberOfStories,
+            outdoorsSpacesFeatures: row.outdoorsSpacesFeatures ? row.outdoorsSpacesFeatures.split(';') : [],
+            buildingAmenityFeatures: row.buildingAmenityFeatures ? row.buildingAmenityFeatures.split(';') : [],
+            safetyFeatures: row.safetyFeatures ? row.safetyFeatures.split(';') : [],
+            roomDetails: row.roomDetails ? JSON.parse(row.roomDetails) : [],
+            sharedFacilities: row.sharedFacilities ? JSON.parse(row.sharedFacilities) : undefined,
+            otherSharedFacilities: row.otherSharedFacilities ? row.otherSharedFacilities.split(';') : [],
+            houseRule: row.houseRule,
+            maxOccupant: row.maxOccupant ? parseInt(row.maxOccupant) : undefined,
+            isHMO: row.isHMO === 'true',
+            isShareHouse: row.isShareHouse === 'true',
+            isHMOLicenced: row.isHMOLicenced === 'true',
+            hmoLicenceNumber: row.hmoLicenceNumber,
+            hmoLicenceExpiryDate: row.hmoLicenceExpiryDate,
+            totalOccupants: row.totalOccupants ? parseInt(row.totalOccupants) : undefined,
+            occupantsDetails: row.occupantsDetails,
+            unitConfiguration: row.unitConfiguration ? JSON.parse(row.unitConfiguration) : [],
+            totalFloors: row.totalFloors ? parseInt(row.totalFloors) : undefined,
+            unitPerFloors: row.unitPerFloors ? parseInt(row.unitPerFloors) : undefined,
+            totalUnits: row.totalUnits ? parseInt(row.totalUnits) : undefined,
+            customSafetyFeatures: row.customSafetyFeatures ? row.customSafetyFeatures.split(';') : [],
+            epcRating: row.epcRating,
+            energyEfficiencyRating: row.energyEfficiencyRating ? parseInt(row.energyEfficiencyRating) : undefined,
+            environmentalImpactRating: row.environmentalImpactRating ? parseInt(row.environmentalImpactRating) : undefined,
+            heatingTypes: row.heatingTypes ? row.heatingTypes.split(';') : [],
+            coolingTypes: row.coolingTypes ? row.coolingTypes.split(';') : [],
+            glazingTypes: row.glazingTypes,
+            additionalNotes: row.additionalNotes,
+            bills: row.bills ? row.bills.split(';') : [],
+            PropertySpecification: row.PropertySpecification ? JSON.parse(row.PropertySpecification) : []
+        };
+    }
+    parseCommercial(row) {
+        return {
+            totalArea: row.totalArea,
+            areaUnit: row === null || row === void 0 ? void 0 : row.areaUnit,
+            businessRates: row === null || row === void 0 ? void 0 : row.businessRates,
+            serviceCharge: row.serviceCharge ? parseFloat(row.serviceCharge) : undefined,
+            leaseTermUnit: row === null || row === void 0 ? void 0 : row.leaseTermUnit,
+            minimumLeaseTerm: parseInt(row.minimumLeaseTerm),
+            maximumLeaseTerm: row.maximumLeaseTerm ? parseInt(row.maximumLeaseTerm) : undefined,
+            buildingClass: row.buildingClass,
+            lastRefurbished: row.lastRefurbished,
+            totalFloors: row.totalFloors ? parseInt(row.totalFloors) : undefined,
+            zoning: row.zoning,
+            yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
+            totalRooms: parseInt(row.totalRooms),
+            parkingSpaces: row.parkingSpaces ? parseInt(row.parkingSpaces) : 0,
+            floorLevel: row.floorLevel ? parseInt(row.floorLevel) : undefined,
+            availableFrom: row.availableFrom,
+            floorNumber: row.floorNumber ? parseInt(row.floorNumber) : undefined,
+            workstations: row.workstations ? parseInt(row.workstations) : undefined,
+            meetingRooms: row.meetingRooms ? parseInt(row.meetingRooms) : undefined,
+            officeLayout: row.officeLayout,
+            highRiseFloors: row.highRiseFloors ? parseInt(row.highRiseFloors) : undefined,
+            floorAvailability: row.floorAvailability ? JSON.parse(row.floorAvailability) : [],
+            securityFeatures: row.securityFeatures ? row.securityFeatures.split(';') : [],
+            clearHeight: row.clearHeight,
+            loadingDoorsCount: row.loadingDoorsCount ? parseInt(row.loadingDoorsCount) : undefined,
+            powerSupply: row.powerSupply,
+            floorLoad: row.floorLoad,
+            columnSpacing: row.columnSpacing,
+            hasYard: row.hasYard === 'true',
+            yardDepth: row.yardDepth,
+            safetyFeatures: row.safetyFeatures ? row.safetyFeatures.split(';') : [],
+            customSafetyFeatures: row.customSafetyFeatures ? row.customSafetyFeatures.split(';') : [],
+            epcRating: row.epcRating,
+            energyEfficiencyRating: row.energyEfficiencyRating ? parseInt(row.energyEfficiencyRating) : undefined,
+            environmentalImpactRating: row.environmentalImpactRating ? parseInt(row.environmentalImpactRating) : undefined,
+            heatingTypes: row.heatingTypes ? row.heatingTypes.split(';') : [],
+            coolingTypes: row.coolingTypes ? row.coolingTypes.split(';') : [],
+            hasGreenCertification: row.hasGreenCertification === 'true',
+            greenCertificationType: row.greenCertificationType,
+            greenCertificationLevel: row.greenCertificationLevel,
+            totalUnits: row.totalUnits ? parseInt(row.totalUnits) : undefined,
+            unitConfigurations: row.unitConfigurations ? JSON.parse(row.unitConfigurations) : [],
+            leaseTerm: row.leaseTerm,
+            leaseTermNegotiable: row.leaseTermNegotiable !== 'false',
+            rentReviewPeriod: row.rentReviewPeriod,
+            breakClause: row.breakClause,
+            rentFreeOffered: row.rentFreeOffered === 'true',
+            rentFreePeriod: row.rentFreePeriod,
+            suitableFor: row.suitableFor ? row.suitableFor.split(';') : [],
+            roomDetails: row.roomDetails ? JSON.parse(row.roomDetails) : [],
+            sharedFacilities: row.sharedFacilities ? JSON.parse(row.sharedFacilities) : undefined,
+            otherSharedFacilities: row.otherSharedFacilities ? row.otherSharedFacilities.split(';') : [],
+            houseRule: row.houseRule,
+            maxOccupant: row.maxOccupant ? parseInt(row.maxOccupant) : undefined,
+            isHMO: row.isHMO === 'true',
+            isShareHouse: row.isShareHouse === 'true',
+            isHMOLicenced: row.isHMOLicenced === 'true',
+            hmoLicenceNumber: row.hmoLicenceNumber,
+            hmoLicenceExpiryDate: row.hmoLicenceExpiryDate,
+            totalOccupants: row.totalOccupants ? parseInt(row.totalOccupants) : undefined,
+            occupantsDetails: row.occupantsDetails
+        };
+    }
+    parseShortlet(row) {
+        return {
+            lotSize: row.lotSize ? parseInt(row.lotSize) : undefined,
+            garageSpaces: row.garageSpaces ? parseInt(row.garageSpaces) : undefined,
+            outdoorsSpacesFeatures: row.outdoorsSpacesFeatures ? row.outdoorsSpacesFeatures.split(';') : [],
+            buildingName: row === null || row === void 0 ? void 0 : row.buildingName,
+            unitNumber: (row === null || row === void 0 ? void 0 : row.unitNumber) ? parseInt(row.unitNumber) : undefined,
+            buildingAmenityFeatures: row.buildingAmenityFeatures ? row.buildingAmenityFeatures.split(';') : [],
+            safetyFeatures: row.safetyFeatures ? row.safetyFeatures.split(';') : [],
+            customSafetyFeatures: row.customSafetyFeatures ? row.customSafetyFeatures.split(';') : [],
+            bedrooms: row.bedrooms ? parseInt(row === null || row === void 0 ? void 0 : row.bedrooms) : 0,
+            beds: row.beds ? parseInt(row.beds) : undefined,
+            bathrooms: parseInt(row.bathrooms),
+            maxGuests: row.maxGuests ? parseInt(row.maxGuests) : undefined,
+            propertySize: row.propertySize,
+            sizeUnit: row.sizeUnit,
+            floorLevel: (row === null || row === void 0 ? void 0 : row.floorLevel) ? parseInt(row.floorLevel) : undefined,
+            totalFloors: (row === null || row === void 0 ? void 0 : row.totalFloors) ? parseInt(row.totalFloors) : undefined,
+            renovationYear: row === null || row === void 0 ? void 0 : row.renovationYear,
+            yearBuilt: row.yearBuilt ? parseInt(row.yearBuilt) : undefined,
+            furnished: row.furnished !== 'false',
+            minStayDays: parseInt(row.minStayDays),
+            maxStayDays: (row === null || row === void 0 ? void 0 : row.maxStayDays) ? parseInt(row.maxStayDays) : undefined,
+            availableFrom: row === null || row === void 0 ? void 0 : row.availableFrom,
+            availableTo: row === null || row === void 0 ? void 0 : row.availableTo,
+            basePrice: parseFloat(row === null || row === void 0 ? void 0 : row.basePrice),
+            cleaningFee: (row === null || row === void 0 ? void 0 : row.cleaningFee) ? parseFloat(row.cleaningFee) : undefined,
+            weeklyDiscount: (row === null || row === void 0 ? void 0 : row.weeklyDiscount) ? parseFloat(row.weeklyDiscount) : undefined,
+            monthlyDiscount: (row === null || row === void 0 ? void 0 : row.monthlyDiscount) ? parseFloat(row.monthlyDiscount) : undefined,
+            checkInTime: row === null || row === void 0 ? void 0 : row.checkInTime,
+            checkOutTime: row === null || row === void 0 ? void 0 : row.checkOutTime,
+            instantBooking: (row === null || row === void 0 ? void 0 : row.instantBooking) === 'true',
+            allowChildren: (row === null || row === void 0 ? void 0 : row.allowChildren) !== 'false',
+            allowInfants: (row === null || row === void 0 ? void 0 : row.allowInfants) !== 'false',
+            allowPets: (row === null || row === void 0 ? void 0 : row.allowPets) === 'true',
+            allowSmoking: (row === null || row === void 0 ? void 0 : row.allowSmoking) === 'true',
+            allowParties: (row === null || row === void 0 ? void 0 : row.allowParties) === 'true',
+            quietHours: (row === null || row === void 0 ? void 0 : row.quietHours) === 'true',
+            quietHoursStart: row === null || row === void 0 ? void 0 : row.quietHoursStart,
+            quietHoursEnd: row === null || row === void 0 ? void 0 : row.quietHoursEnd,
+            cancellationPolicy: row === null || row === void 0 ? void 0 : row.cancellationPolicy,
+            customCancellationPolicy: row === null || row === void 0 ? void 0 : row.customCancellationPolicy,
+            houseManual: row === null || row === void 0 ? void 0 : row.houseManual,
+            checkInInstructions: row === null || row === void 0 ? void 0 : row.checkInInstructions,
+            localRecommendations: row === null || row === void 0 ? void 0 : row.localRecommendations,
+            emergencyContact: row === null || row === void 0 ? void 0 : row.emergencyContact,
+            hostName: row === null || row === void 0 ? void 0 : row.hostName,
+            hostPhotoUrl: row === null || row === void 0 ? void 0 : row.hostPhotoUrl,
+            responseRate: (row === null || row === void 0 ? void 0 : row.responseRate) ? parseInt(row.responseRate) : undefined,
+            responseTime: row === null || row === void 0 ? void 0 : row.responseTime,
+            isSuperhost: (row === null || row === void 0 ? void 0 : row.isSuperhost) === 'true',
+            joinedDate: row === null || row === void 0 ? void 0 : row.joinedDate,
+            roomDetails: (row === null || row === void 0 ? void 0 : row.roomDetails) ? JSON.parse(row.roomDetails) : [],
+            sharedFacilities: row.sharedFacilities ? JSON.parse(row.sharedFacilities) : undefined,
+            otherSharedFacilities: (row === null || row === void 0 ? void 0 : row.otherSharedFacilities) ? row.otherSharedFacilities.split(';') : [],
+            houseRule: row === null || row === void 0 ? void 0 : row.houseRule,
+            maxOccupant: (row === null || row === void 0 ? void 0 : row.maxOccupant) ? parseInt(row.maxOccupant) : undefined,
+            isHMO: (row === null || row === void 0 ? void 0 : row.isHMO) === 'true',
+            isShareHouse: (row === null || row === void 0 ? void 0 : row.isShareHouse) === 'true',
+            isHMOLicenced: (row === null || row === void 0 ? void 0 : row.isHMOLicenced) === 'true',
+            hmoLicenceNumber: row === null || row === void 0 ? void 0 : row.hmoLicenceNumber,
+            hmoLicenceExpiryDate: row === null || row === void 0 ? void 0 : row.hmoLicenceExpiryDate,
+            totalOccupants: (row === null || row === void 0 ? void 0 : row.totalOccupants) ? parseInt(row.totalOccupants) : undefined,
+            occupantsDetails: row === null || row === void 0 ? void 0 : row.occupantsDetails,
+            bookings: row.bookings ? JSON.parse(row.bookings) : [],
+            seasonalPricing: (row === null || row === void 0 ? void 0 : row.seasonalPricing) ? JSON.parse(row.seasonalPricing) : [],
+            unavailableDates: (row === null || row === void 0 ? void 0 : row.unavailableDates) ? row.unavailableDates.split(';') : [],
+            additionalRules: (row === null || row === void 0 ? void 0 : row.additionalRules) ? row.additionalRules.split(';') : [],
+            hostLanguages: (row === null || row === void 0 ? void 0 : row.hostLanguages) ? row.hostLanguages.split(';') : []
+        };
+    }
+}
+exports.default = new PropertyBulkUploadService();

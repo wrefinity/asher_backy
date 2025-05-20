@@ -16,10 +16,12 @@ import stateServices from '../../services/state.services';
 import profileServices from '../../services/profileServices';
 import userServices from '../../services/user.services';
 import propertyUploadServices from '../../services/property.upload.services';
+import propertyRoomService from '../../services/property.room.service';
 
 
 class PropertyController {
     constructor() { }
+
 
 
     createProperties = async (req: CustomRequest, res: Response) => {
@@ -76,6 +78,15 @@ class PropertyController {
         }
     }
 
+    createRoom = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        try { 
+            const room = propertyRoomService.createRoomDetail(req.body)
+            return res.status(201).json({ room })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
 
     getCurrentLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {
@@ -379,7 +390,7 @@ class PropertyController {
             for (const row of dataFetched) {
                 try {
                     const propertyType = row.specificationType as PropertySpecificationType;
-                    const propertyDto = await propertyUploadServices.transformRowToDto(row, propertyType);                 
+                    const propertyDto = await propertyUploadServices.transformRowToDto(row, propertyType);
 
                     const { error, value } = IBasePropertyDTOSchema.validate(propertyDto, { abortEarly: false });
                     if (error) {
@@ -428,12 +439,12 @@ class PropertyController {
                         shortlet,
                         residential, ...data
                     } = value
-        
+
                     delete data['documentName']
                     delete data['docType']
                     delete data['idType']
                     delete data['uploadedFiles']
-        
+
                     const specification: IPropertySpecificationDTO = {
                         propertySubType: propertySubType,
                         specificationType: specificationType,

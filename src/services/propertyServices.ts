@@ -1,4 +1,4 @@
-import { PropertySpecificationType } from "@prisma/client";
+import { Prisma, PropertySpecificationType } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
@@ -198,66 +198,103 @@ class PropertyService {
     // Function to aggregate properties by state for the current landlord
     aggregatePropertiesByState = async (landlordId: string) => {
         try {
-            // Group properties by stateId for the current landlord
             const groupedProperties = await prismaClient.properties.groupBy({
-                by: ['stateId'], // Group by stateId instead of state name
+                by: ['stateId'],
                 where: {
-                    landlordId, // Filter by the current landlordId
-                    isDeleted: false, // Exclude deleted properties
+                    landlordId,
+                    isDeleted: false,
                 },
             });
-
-            // Object to store the grouped properties by state
+    
             const propertiesByState: { [key: string]: any[] } = {};
-
-            // Loop through each state group and fetch properties with apartments for that state
+    
             for (const group of groupedProperties) {
                 const stateId = group.stateId;
-
-                if (!stateId) continue; // Skip if stateId is null or undefined
-
-                // Fetch the state details
+                if (!stateId) continue;
+    
                 const state = await prismaClient.state.findUnique({
                     where: { id: stateId },
                 });
-
-                if (!state) continue; // Skip if state is not found
-
-                // Fetch properties belonging to the current state and landlord, including apartments
-                const properties = await prismaClient.properties.findMany({
+                if (!state) continue;
+    
+                const rawProperties = await prismaClient.properties.findMany({
                     where: {
-                        stateId: stateId,
-                        landlordId: landlordId,
-                        isDeleted: false, // Exclude deleted properties
+                        stateId,
+                        landlordId,
+                        isDeleted: false,
                     },
-                    include: {
-                        ...this.propsInclusion
-                    },
+                    include: this.propsInclusion,
                 });
-
-                // Store the properties in the result object under the respective state name
-                propertiesByState[state.name.toLowerCase()] = properties;
+    
+                const flattenedProperties = rawProperties.map(property => {
+                    // Narrow the type of specification
+                    const specifications = property.specification as Array<
+                        Prisma.PropertySpecificationGetPayload<{
+                            include: typeof this.specificationInclusion.include;
+                        }>
+                    >;
+    
+                    const activeSpec = specifications.find(spec => spec.isActive);
+    
+                    const specificDetails =
+                        (activeSpec?.residential ??
+                         activeSpec?.commercial ??
+                         activeSpec?.shortlet ??
+                         {}) as Record<string, any>;
+    
+                    return {
+                        ...property,
+                        ...activeSpec,        // Spread all fields from the specification (like listAs, type, etc.)
+                        ...specificDetails,   // Spread all residential/commercial/shortlet-specific fields
+                    };
+                });
+    
+                propertiesByState[state.name.toLowerCase()] = flattenedProperties;
             }
-
+    
             return propertiesByState;
         } catch (error) {
             console.error('Error in aggregatePropertiesByState:', error);
-            throw error; // or handle it as per your application's needs
+            throw error;
         }
-    }
+    };
+    
     // Function to aggregate properties by state for the current landlord
     getPropertiesByLandlord = async (landlordId: string) => {
-        // Group properties by state for the current landlord
-        const unGroundProps = await prismaClient.properties.findMany({
+        const unGroundProps: Prisma.propertiesGetPayload<{
+            include: typeof this.propsInclusion;
+        }>[] = await prismaClient.properties.findMany({
             where: {
                 landlordId,
             },
-            include: {
-                ...this.propsInclusion
-            }
+            include: this.propsInclusion,
         });
-        return unGroundProps
-    }
+    
+        const fullDetailsList = unGroundProps.map(property => {
+            // Narrow the type of specification
+            const specifications = property.specification as Array<
+                Prisma.PropertySpecificationGetPayload<{
+                    include: typeof this.specificationInclusion.include;
+                }>
+            >;
+    
+            const activeSpec = specifications.find(spec => spec.isActive);
+    
+            const specificDetails =
+                (activeSpec?.residential ?? activeSpec?.commercial ?? activeSpec?.shortlet ?? {}) as Record<string, any>;
+    
+            return {
+                ...property,
+                ...activeSpec,
+                ...specificDetails,
+            };
+        });
+    
+        return fullDetailsList;
+    };
+    
+    
+
 
 
     // Function to aggregate properties by state for the current landlord
@@ -787,7 +824,7 @@ class PropertyService {
             },
         });
     }
-    
+
     async createProperties(data: IBasePropertyDTO, specification: IPropertySpecificationDTO, uploadedFiles?: any[], userId?: string) {
         const { shortlet, specificationType, residential, commercial } = specification;
 
@@ -1203,7 +1240,7 @@ class PropertyService {
             // Create or reuse specification based on target type
             switch (data.specificationType) {
                 case PropertySpecificationType.COMMERCIAL:
-                    return this.handleCommercialSwitch(tx, specification.commercial, propertyId, property.specification?.[0], );
+                    return this.handleCommercialSwitch(tx, specification.commercial, propertyId, property.specification?.[0],);
                 case PropertySpecificationType.RESIDENTIAL:
                     return this.handleResidentialSwitch(tx, specification.residential, propertyId, property.specification?.[0]);
                 case PropertySpecificationType.SHORTLET:
@@ -1215,7 +1252,7 @@ class PropertyService {
     }
 
     private async handleCommercialSwitch(tx: any, request: ICommercialDTO | any, propertyId: string, currentSpec?: any) {
-        const { ...commercialData}= request;
+        const { ...commercialData } = request;
 
         // Reuse existing commercial spec if available, otherwise create new
         const commercial = currentSpec?.commercial
@@ -1224,7 +1261,7 @@ class PropertyService {
                     ...currentSpec.commercial,
                     id: undefined, // Let Prisma generate new ID
                     ...commercialData,
-                    securityFeatures: { set:  currentSpec.commercial.securityFeatures || commercialData.securityFeatures },
+                    securityFeatures: { set: currentSpec.commercial.securityFeatures || commercialData.securityFeatures },
                 }
             })
             : await tx.commercialProperty.create({
@@ -1238,7 +1275,7 @@ class PropertyService {
     }
 
     private async handleResidentialSwitch(tx: any, request: IResidentialDTO, propertyId: string, currentSpec?: any) {
-        const {...residentialData} = request;
+        const { ...residentialData } = request;
 
         const residential = currentSpec?.residential
             ? await tx.residentialProperty.create({
@@ -1260,7 +1297,7 @@ class PropertyService {
     }
 
     private async handleShortletSwitch(tx: any, request: IShortletDTO | any, propertyId: string, currentSpec?: any) {
-        const {...shortletData} = request;
+        const { ...shortletData } = request;
 
         const shortlet = currentSpec?.shortlet
             ? await tx.shortletProperty.create({

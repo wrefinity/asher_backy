@@ -80,4 +80,6 @@ model PropertyMediaFiles {
   @@index([imagePropertyId])
   @@index([videoPropertyId])
   @@index([virtualTourPropertyId])
+  RoomDetail RoomDetail[] @relation("RoomImages")
+  UnitConfiguration UnitConfiguration[] @relation("UnitImages")
 }

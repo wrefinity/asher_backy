@@ -197,9 +197,9 @@ const propertyDocumentSchema = joi_1.default.object({
 exports.commercialPropertyFloorSchema = joi_1.default.object({
     floorNumber: joi_1.default.number().required(),
     area: joi_1.default.string().required(),
-    price: joi_1.default.string().required(),
-    available: joi_1.default.boolean(),
-    partialFloor: joi_1.default.boolean(),
+    price: joi_1.default.string().optional(),
+    available: joi_1.default.boolean().optional(),
+    partialFloor: joi_1.default.boolean().optional(),
     description: joi_1.default.string().allow('', null),
     availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus.VACANT)).messages({
         'any.only': `AvailabilityStatus type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
@@ -228,10 +228,10 @@ exports.unitConfigurationSchema = joi_1.default.object({
     unitNumber: joi_1.default.string().optional(),
     floorNumber: joi_1.default.number().optional(),
     count: joi_1.default.number().optional(),
-    bedrooms: joi_1.default.number(),
-    bathrooms: joi_1.default.number(),
+    bedrooms: joi_1.default.number().optional(),
+    bathrooms: joi_1.default.number().optional(),
     price: joi_1.default.string().required(),
-    area: joi_1.default.string(),
+    area: joi_1.default.string().optional(),
     description: joi_1.default.string().optional(),
     availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).messages({
         'any.only': `AvailabilityStatus type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
@@ -242,7 +242,7 @@ exports.unitConfigurationSchema = joi_1.default.object({
 exports.roomDetailSchema = joi_1.default.object({
     roomName: joi_1.default.string().required(),
     roomSize: joi_1.default.string().required(),
-    ensuite: joi_1.default.boolean().default(false),
+    ensuite: joi_1.default.boolean().default(false).optional(),
     price: joi_1.default.string().required(),
     availability: joi_1.default.string().valid(...Object.values(client_1.AvailabilityStatus)).messages({
         'any.only': `AvailabilityStatus type must be one of: ${Object.values(client_1.AvailabilityStatus).join(',')}`,
@@ -251,13 +251,13 @@ exports.roomDetailSchema = joi_1.default.object({
 });
 // SharedFacilities Joi
 exports.sharedFacilitiesSchema = joi_1.default.object({
-    kitchen: joi_1.default.boolean().default(false),
-    bathroom: joi_1.default.boolean().default(false),
-    livingRoom: joi_1.default.boolean().default(false),
-    garden: joi_1.default.boolean().default(false),
-    garage: joi_1.default.boolean().default(false),
-    laundry: joi_1.default.boolean().default(false),
-    parking: joi_1.default.boolean().default(false),
+    kitchen: joi_1.default.boolean().default(false).optional(),
+    bathroom: joi_1.default.boolean().default(false).optional(),
+    livingRoom: joi_1.default.boolean().default(false).optional(),
+    garden: joi_1.default.boolean().default(false).optional(),
+    garage: joi_1.default.boolean().default(false).optional(),
+    laundry: joi_1.default.boolean().default(false).optional(),
+    parking: joi_1.default.boolean().default(false).optional(),
     other: joi_1.default.string().optional(),
 });
 exports.bookingSchema = joi_1.default.object({
@@ -444,7 +444,7 @@ exports.residentialPropertySchema = joi_1.default.object({
     hmoLicenceExpiryDate: joi_1.default.date().optional(),
     totalOccupants: joi_1.default.number().optional(),
     occupantsDetails: joi_1.default.string().optional(),
-    unitConfiguration: joi_1.default.array().items(exports.unitConfigurationSchema).optional(),
+    unitConfigurations: joi_1.default.array().items(exports.unitConfigurationSchema).optional(),
     totalFloors: joi_1.default.number().optional(),
     unitPerFloors: joi_1.default.number().optional(),
     totalUnits: joi_1.default.number().optional(),
@@ -452,8 +452,8 @@ exports.residentialPropertySchema = joi_1.default.object({
     epcRating: joi_1.default.string().optional(),
     energyEfficiencyRating: joi_1.default.number().optional(),
     environmentalImpactRating: joi_1.default.number().optional(),
-    heatingTypes: joi_1.default.array().items(joi_1.default.string()),
-    coolingTypes: joi_1.default.array().items(joi_1.default.string()),
+    heatingTypes: joi_1.default.array().items(joi_1.default.string()).optional(),
+    coolingTypes: joi_1.default.array().items(joi_1.default.string()).optional(),
     glazingTypes: joi_1.default.string().valid(...Object.values(client_1.GlazingType)).messages({
         'any.only': `Glazing type must be one of: ${Object.values(client_1.GlazingType).join(',')}`,
         'string.base': 'Glazing type must be a string'
@@ -551,6 +551,7 @@ exports.IBasePropertyDTOSchema = joi_1.default.object({
     yearBuilt: joi_1.default.number().optional(),
     city: joi_1.default.string().required(),
     state: joi_1.default.string().required(),
+    stateId: joi_1.default.string().optional(),
     country: joi_1.default.string().required(),
     zipcode: joi_1.default.string().required(),
     address: joi_1.default.string().required(),
@@ -584,7 +585,7 @@ exports.IBasePropertyDTOSchema = joi_1.default.object({
     customKeyFeatures: joi_1.default.array().items(joi_1.default.string()).optional(),
     nearbyAmenities: joi_1.default.array().items(joi_1.default.string()).optional(),
     customNearbyAmenities: joi_1.default.array().items(joi_1.default.string()).optional(),
-    amenityDistances: joi_1.default.object().pattern(joi_1.default.string(), joi_1.default.number()).optional(),
+    amenityDistances: joi_1.default.object().pattern(joi_1.default.string(), joi_1.default.string()).optional(),
     contactName: joi_1.default.string().optional(),
     contactCompany: joi_1.default.string().optional(),
     companyLogoUrl: joi_1.default.string().uri().optional(),

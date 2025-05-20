@@ -198,9 +198,9 @@ model propertyListingHistory {
   listAs          PropertySpecificationType? @default(SHORTLET)
   propertySubType PropertyType?
 
-  price           Decimal? @default(0.00) @db.Decimal(18, 2)
+  price           Decimal?        @default(0.00) @db.Decimal(18, 2)
   priceFrequency  PriceFrequency?
-  securityDeposit Decimal? @default(0.00) @db.Decimal(18, 2)
+  securityDeposit Decimal?        @default(0.00) @db.Decimal(18, 2)
   minStayDays     Int?
   maxStayDays     Int?
   // time attributes
@@ -304,7 +304,7 @@ model properties {
   maintenanceWhitelist maintenanceWhitelist[]
 
   // Pricing, transaction, and budget
-  currency       Currency?        @default(NGN)
+  currency       Currency?       @default(NGN)
   priceFrequency PriceFrequency?
   rentalPeriod   String?
   transactions   Transaction[]
@@ -350,10 +350,10 @@ model properties {
   nearbyAmenities       String[] // JSON array of amenity IDs
   customNearbyAmenities String[] // JSON array of custom amenities
   amenityDistances      Json? // JSON object mapping amenity ID to distance
+  inspection            inspection[]
+  TenantLeaseBreach     TenantLeaseBreach[]
 
   @@unique([landlordId, name, stateId, city])
-  inspection inspection[]
-  TenantLeaseBreach TenantLeaseBreach[]
 }
 
 model PropertySpecification {
@@ -384,20 +384,20 @@ model PropertySpecification {
 }
 
 model SharedFacilities {
-  id                    String              @id @default(cuid())
-  kitchen               Boolean             @default(false)
-  bathroom              Boolean             @default(false)
-  livingRoom            Boolean             @default(false)
-  garden                Boolean             @default(false)
-  garage                Boolean             @default(false)
-  laundry               Boolean             @default(false)
-  parking               Boolean             @default(false)
+  id                    String               @id @default(cuid())
+  kitchen               Boolean              @default(false)
+  bathroom              Boolean              @default(false)
+  livingRoom            Boolean              @default(false)
+  garden                Boolean              @default(false)
+  garage                Boolean              @default(false)
+  laundry               Boolean              @default(false)
+  parking               Boolean              @default(false)
   other                 String?
   residentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: Cascade)
   residentialPropertyId String?              @unique
-  CommercialProperty    CommercialProperty? @relation(fields: [commercialPropertyId], references: [id])
+  CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
   commercialPropertyId  String?
-  ShortletProperty      ShortletProperty?   @relation(fields: [shortletPropertyId], references: [id])
+  ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
   shortletPropertyId    String?
 }
 
@@ -411,23 +411,27 @@ model UnitConfiguration {
   bathrooms             Int?
   price                 String
   area                  String?
+  images                PropertyMediaFiles[] @relation("UnitImages")
   description           String?
   availability          AvailabilityStatus?
   ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
   residentialPropertyId String?
   CommercialProperty    CommercialProperty[]
 
-  Booking Booking[]
+  Booking   Booking[]
   violation violation[]
 }
+
 
 model RoomDetail {
   id                    String               @id @default(cuid())
   roomName              String
   roomSize              String
   ensuite               Boolean              @default(false)
+  isDeleted             Boolean              @default(false)
   price                 String
   availability          AvailabilityStatus?  @default(VACANT)
+  images                PropertyMediaFiles[] @relation("RoomImages")
   ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
   residentialPropertyId String?
   CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
@@ -470,7 +474,7 @@ model ResidentialProperty {
   gardenSize             String?
   houseStyle             String?
   numberOfStories        String?
-  outdoorsSpacesFeatures String[] 
+  outdoorsSpacesFeatures String[]
 
   // shared room and hmo specifics
   roomDetails           RoomDetail[]
@@ -491,7 +495,7 @@ model ResidentialProperty {
   totalFloors             Int?
   unitPerFloors           Int?
   totalUnits              Int?
-  buildingAmenityFeatures String[]  
+  buildingAmenityFeatures String[]
   safetyFeatures          String[]
   customSafetyFeatures    String[]
 
@@ -551,7 +555,7 @@ model CommercialProperty {
   powerSupply       String?
   floorLoad         String?
   columnSpacing     String?
-  hasYard           Boolean            @default(false)
+  hasYard           Boolean  @default(false)
   yardDepth         String?
 
   safetyFeatures            String[]
@@ -562,7 +566,7 @@ model CommercialProperty {
   environmentalImpactRating Int?
   heatingTypes              String[] // JSON array of heating types
   coolingTypes              String[] // JSON array of cooling types
-  hasGreenCertification     Boolean            @default(false)
+  hasGreenCertification     Boolean  @default(false)
   greenCertificationType    String?
   greenCertificationLevel   String?
 
@@ -607,7 +611,7 @@ model ShortletProperty {
   unitNumber              Int?
   buildingAmenityFeatures String[]
   safetyFeatures          String[]
-  customSafetyFeatures String[]
+  customSafetyFeatures    String[]
 
   // Property Details
   bedrooms       Int?
@@ -736,10 +740,10 @@ model Booking {
   user       users?           @relation(fields: [userId], references: [id])
 
   unitConfigurationId String?
-  unitConfiguration   UnitConfiguration?     @relation(fields: [unitConfigurationId], references: [id], onDelete: Cascade)
+  unitConfiguration   UnitConfiguration? @relation(fields: [unitConfigurationId], references: [id], onDelete: Cascade)
 
-  roomDetailId        String?
-  roomDetail          RoomDetail?            @relation(fields: [roomDetailId], references: [id], onDelete: Cascade)
+  roomDetailId String?
+  roomDetail   RoomDetail? @relation(fields: [roomDetailId], references: [id], onDelete: Cascade)
 
   cancellationPolicy CancellationPolicy? @default(FLEXIBLE)
   isRefundable       Refundability       @default(YES)
