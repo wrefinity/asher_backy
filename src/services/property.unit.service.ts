@@ -55,6 +55,8 @@ class PropertyUnit {
             default:
                 throw new Error('Invalid property type');
         }
+        console.log("=====================================")
+        console.log(whereClause)
 
         return await prismaClient.unitConfiguration.findMany({
             where: whereClause,

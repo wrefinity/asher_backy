@@ -350,7 +350,7 @@ class PropertyController {
     }
     getPropsUnitsByPropertyId = async (req: CustomRequest, res: Response) =>{
         try {
-          const propertyId = req.params.id;
+          const propertyId = req.params.propertyId;
           const specification = req.query.specification as PropertySpecificationType;
           
           // Validate specification type
@@ -381,7 +381,7 @@ class PropertyController {
   
     getPropsRoom = async (req: CustomRequest, res: Response) => {
         try {
-            const roomId = req.params.id;
+            const roomId = req.params.propertyId;
             const room =  await propertyRoomService.getRoomById(roomId)
             if (!room) {
                 return res.status(404).json({ message: 'Property room not found' });
