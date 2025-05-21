@@ -24,23 +24,6 @@ const __1 = require("..");
 const client_1 = require("@prisma/client");
 class PropertyUnit {
     constructor() {
-        this.getUnitByProperty = (propertyType, propertyId) => __awaiter(this, void 0, void 0, function* () {
-            let whereClause = {};
-            switch (propertyType) {
-                case client_1.PropertySpecificationType.RESIDENTIAL:
-                    whereClause.residentialPropertyId = propertyId;
-                    break;
-                case client_1.PropertySpecificationType.COMMERCIAL:
-                    whereClause.commercialPropertyId = propertyId;
-                    break;
-                default:
-                    throw new Error('Invalid property type');
-            }
-            return yield __1.prismaClient.unitConfiguration.findMany({
-                where: whereClause,
-                include: { images: true },
-            });
-        });
         // Update unit details
         this.updateUnitProperty = (id, data) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.unitConfiguration.update({
@@ -97,6 +80,32 @@ class PropertyUnit {
                     CommercialProperty: true,
                     images: true,
                 }
+            });
+        });
+    }
+    getUnitByProperty(propertyType, propertyId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Validate propertyType again in service layer for extra safety
+            if (!Object.values(client_1.PropertySpecificationType).includes(propertyType)) {
+                throw new Error(`Invalid property type: ${propertyType}`);
+            }
+            let whereClause = {};
+            switch (propertyType) {
+                case client_1.PropertySpecificationType.RESIDENTIAL:
+                    whereClause.residentialPropertyId = propertyId;
+                    break;
+                case client_1.PropertySpecificationType.COMMERCIAL:
+                    whereClause.commercialPropertyId = propertyId;
+                    break;
+                //   case PropertySpecificationType.SHORTLET:
+                //     whereClause.shortletPropertyId = propertyId;
+                //     break;
+                default:
+                    throw new Error('Invalid property type');
+            }
+            return yield __1.prismaClient.unitConfiguration.findMany({
+                where: whereClause,
+                include: { images: true },
             });
         });
     }

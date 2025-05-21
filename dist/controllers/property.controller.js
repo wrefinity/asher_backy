@@ -18,6 +18,8 @@ const maintenance_service_1 = __importDefault(require("../services/maintenance.s
 const logs_services_1 = __importDefault(require("../services/logs.services"));
 const client_1 = require("@prisma/client");
 const landlord_service_1 = require("../landlord/services/landlord.service");
+const property_unit_service_1 = __importDefault(require("../services/property.unit.service"));
+const property_room_service_1 = __importDefault(require("../services/property.room.service"));
 class PropertyController {
     constructor() {
         // using filters base on property size, type and location
@@ -302,6 +304,87 @@ class PropertyController {
                 }
                 const vendors = yield maintenance_service_1.default.getVendorsForPropertyMaintenance(propertyId);
                 return res.status(200).json({ vendors });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        // unit sess
+        this.getPropsUnit = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const unitId = req.params.id;
+                const unit = yield property_unit_service_1.default.getUnitById(unitId);
+                if (!unit) {
+                    return res.status(404).json({ message: 'Property unit not found' });
+                }
+                return res.status(200).json({ unit });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getPropsUnitsByPropertyId = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const propertyId = req.params.id;
+                const specification = req.query.specification;
+                // Validate specification type
+                if (!Object.values(client_1.PropertySpecificationType).includes(specification)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Invalid property specification type. Must be one of: ${Object.values(client_1.PropertySpecificationType).join(', ')}`
+                    });
+                }
+                const units = yield property_unit_service_1.default.getUnitByProperty(specification, propertyId);
+                if (!units || units.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'No property units found'
+                    });
+                }
+                return res.status(200).json({
+                    success: true,
+                    data: units
+                });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getPropsRoom = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const roomId = req.params.id;
+                const room = yield property_room_service_1.default.getRoomById(roomId);
+                if (!room) {
+                    return res.status(404).json({ message: 'Property room not found' });
+                }
+                return res.status(200).json({ room });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.getPropsRoomByPropertyId = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const propertyId = req.params.propertyId;
+                const specification = req.query.specification;
+                // Validate specification type
+                if (!Object.values(client_1.PropertySpecificationType).includes(specification)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Invalid property specification type. Must be one of: ${Object.values(client_1.PropertySpecificationType).join(', ')}`
+                    });
+                }
+                const rooms = yield property_room_service_1.default.getRoomsByProperty(specification, propertyId);
+                if (!rooms || rooms.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'No property room found'
+                    });
+                }
+                return res.status(200).json({
+                    success: true,
+                    data: rooms
+                });
             }
             catch (error) {
                 error_service_1.default.handleError(error, res);

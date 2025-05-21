@@ -25,6 +25,10 @@ const client_1 = require("@prisma/client");
 class PropertyRoom {
     constructor() {
         this.getRoomsByProperty = (propertyType, propertyId) => __awaiter(this, void 0, void 0, function* () {
+            // Validate propertyType again in service layer for extra safety
+            if (!Object.values(client_1.PropertySpecificationType).includes(propertyType)) {
+                throw new Error(`Invalid property type: ${propertyType}`);
+            }
             let whereClause = {};
             switch (propertyType) {
                 case client_1.PropertySpecificationType.RESIDENTIAL:
@@ -33,9 +37,9 @@ class PropertyRoom {
                 case client_1.PropertySpecificationType.COMMERCIAL:
                     whereClause.commercialPropertyId = propertyId;
                     break;
-                case client_1.PropertySpecificationType.SHORTLET:
-                    whereClause.shortletPropertyId = propertyId;
-                    break;
+                //   case PropertySpecificationType.SHORTLET:
+                //     whereClause.shortletPropertyId = propertyId;
+                //     break;
                 default:
                     throw new Error('Invalid property type');
             }

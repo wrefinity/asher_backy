@@ -33,7 +33,15 @@ class PropertyRoom {
         });
     }
 
-    getRoomsByProperty = async (propertyType: PropertySpecificationType, propertyId: string) => {
+    getRoomsByProperty = async (
+        propertyType: PropertySpecificationType,
+        propertyId: string
+    ) => {
+        // Validate propertyType again in service layer for extra safety
+        if (!Object.values(PropertySpecificationType).includes(propertyType)) {
+            throw new Error(`Invalid property type: ${propertyType}`);
+        }
+
         let whereClause: any = {};
         switch (propertyType) {
             case PropertySpecificationType.RESIDENTIAL:
@@ -42,9 +50,9 @@ class PropertyRoom {
             case PropertySpecificationType.COMMERCIAL:
                 whereClause.commercialPropertyId = propertyId;
                 break;
-            case PropertySpecificationType.SHORTLET:
-                whereClause.shortletPropertyId = propertyId;
-                break;
+            //   case PropertySpecificationType.SHORTLET:
+            //     whereClause.shortletPropertyId = propertyId;
+            //     break;
             default:
                 throw new Error('Invalid property type');
         }

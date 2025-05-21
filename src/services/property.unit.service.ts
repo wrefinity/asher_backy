@@ -31,7 +31,16 @@ class PropertyUnit {
         });
     }
 
-    getUnitByProperty = async (propertyType: PropertySpecificationType, propertyId: string) => {
+
+    async getUnitByProperty(
+        propertyType: PropertySpecificationType,
+        propertyId: string
+    ) {
+        // Validate propertyType again in service layer for extra safety
+        if (!Object.values(PropertySpecificationType).includes(propertyType)) {
+            throw new Error(`Invalid property type: ${propertyType}`);
+        }
+
         let whereClause: any = {};
         switch (propertyType) {
             case PropertySpecificationType.RESIDENTIAL:
@@ -40,6 +49,9 @@ class PropertyUnit {
             case PropertySpecificationType.COMMERCIAL:
                 whereClause.commercialPropertyId = propertyId;
                 break;
+            //   case PropertySpecificationType.SHORTLET:
+            //     whereClause.shortletPropertyId = propertyId;
+            //     break;
             default:
                 throw new Error('Invalid property type');
         }
@@ -52,7 +64,7 @@ class PropertyUnit {
 
 
     // Update unit details
-    updateUnitProperty = async (id: string, data: any) =>{
+    updateUnitProperty = async (id: string, data: any) => {
         return await prismaClient.unitConfiguration.update({
             where: { id },
             data,
@@ -60,7 +72,7 @@ class PropertyUnit {
     }
 
     // Soft delete the unit by marking isDeleted = true (you need to add this field in the model)
-    softDeleteUnit = async (id: string) =>{
+    softDeleteUnit = async (id: string) => {
         return await prismaClient.unitConfiguration.update({
             where: { id },
             data: { isDeleted: true },
@@ -68,7 +80,7 @@ class PropertyUnit {
     }
 
     // Update unit availability status (VACANT or OCCUPIED)
-    updateUnitAvailabilityStatus= async (id: string, availability: AvailabilityStatus) =>{
+    updateUnitAvailabilityStatus = async (id: string, availability: AvailabilityStatus) => {
         return await prismaClient.unitConfiguration.update({
             where: { id },
             data: { availability },

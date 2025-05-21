@@ -6,6 +6,8 @@ import { CustomRequest } from "../utils/types";
 import LogsServices from "../services/logs.services";
 import { LogType, logTypeStatus, PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import { LandlordService } from "../landlord/services/landlord.service";
+import propertyUnitService from "../services/property.unit.service";
+import propertyRoomService from "../services/property.room.service";
 
 class PropertyController {
     constructor() { }
@@ -332,6 +334,92 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+    
+    // unit sess
+    getPropsUnit = async (req: CustomRequest, res: Response) => {
+        try {
+            const unitId = req.params.id;
+            const unit =  await propertyUnitService.getUnitById(unitId)
+            if (!unit) {
+                return res.status(404).json({ message: 'Property unit not found' });
+            }
+            return res.status(200).json({ unit })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+    getPropsUnitsByPropertyId = async (req: CustomRequest, res: Response) =>{
+        try {
+          const propertyId = req.params.id;
+          const specification = req.query.specification as PropertySpecificationType;
+          
+          // Validate specification type
+          if (!Object.values(PropertySpecificationType).includes(specification)) {
+            return res.status(400).json({ 
+              success: false,
+              message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+            });
+          }
+    
+          const units = await propertyUnitService.getUnitByProperty(specification, propertyId);
+          
+          if (!units || units.length === 0) {
+            return res.status(404).json({ 
+              success: false,
+              message: 'No property units found' 
+            });
+          }
+          
+          return res.status(200).json({ 
+            success: true,
+            data: units 
+          });
+        } catch (error) {
+          ErrorService.handleError(error, res);
+        }
+      }
+  
+    getPropsRoom = async (req: CustomRequest, res: Response) => {
+        try {
+            const roomId = req.params.id;
+            const room =  await propertyRoomService.getRoomById(roomId)
+            if (!room) {
+                return res.status(404).json({ message: 'Property room not found' });
+            }
+            return res.status(200).json({ room })
+        } catch (error) {
+            ErrorService.handleError(error, res)
+        }
+    }
+
+    getPropsRoomByPropertyId = async (req: CustomRequest, res: Response) =>{
+        try {
+          const propertyId = req.params.propertyId;
+          const specification = req.query.specification as PropertySpecificationType;
+          
+          // Validate specification type
+          if (!Object.values(PropertySpecificationType).includes(specification)) {
+            return res.status(400).json({ 
+              success: false,
+              message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+            });
+          }
+    
+          const rooms = await propertyRoomService.getRoomsByProperty(specification, propertyId);
+          if (!rooms || rooms.length === 0) {
+            return res.status(404).json({ 
+              success: false,
+              message: 'No property room found' 
+            });
+          } 
+          return res.status(200).json({ 
+            success: true,
+            data: rooms 
+          });
+        } catch (error) {
+          ErrorService.handleError(error, res);
+        }
+      }
 
 }
 
