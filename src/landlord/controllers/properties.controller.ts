@@ -10,13 +10,14 @@ import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
 import { parseDateFieldNew } from "../../utils/helpers";
-import { PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
+import { PropertySpecificationType, PropertyType, AvailabilityStatus, ListingType } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 import profileServices from '../../services/profileServices';
 import userServices from '../../services/user.services';
 import propertyUploadServices from '../../services/property.upload.services';
 import propertyRoomService from '../../services/property.room.service';
+import propertyUnitService from '../../services/property.unit.service';
 
 
 class PropertyController {
@@ -80,7 +81,7 @@ class PropertyController {
 
     createRoom = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
-        try { 
+        try {
             const room = propertyRoomService.createRoomDetail(req.body)
             return res.status(201).json({ room })
         } catch (error) {
@@ -214,23 +215,50 @@ class PropertyController {
     createPropertyListing = async (req: CustomRequest, res: Response) => {
         const { error, value } = createPropertyListingSchema.validate(req.body);
         if (error) return res.status(400).json({ error: error.details[0].message });
+
         try {
             const data: PropertyListingDTO = value;
-            // check if property is owned by landlord
             const landlordId = req.user?.landlords?.id;
-            const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, value.propertyId);
-            // scenario where property doesnot belong to landlord
-            if (!checkOwnership) return res.status(400).json({ message: 'property does not exist under landlord' });
+
+            const checkOwnership = await PropertyServices.checkLandlordPropertyExist(
+                landlordId,
+                value.propertyId
+            );
+
+            if (!checkOwnership)
+                return res.status(400).json({ message: 'property does not exist under landlord' });
+
             if (checkOwnership.availability === AvailabilityStatus.OCCUPIED) {
                 return res.status(400).json({ message: 'Property already occupied' });
             }
+
+            // if (
+            //     value.type === ListingType.ROOM &&
+            //     checkOwnership.specificationType !== 'RESIDENTIAL' &&
+            //     checkOwnership.specificationType !== 'SHORTLET'
+            // ) {
+            //     throw new Error('ROOM can only be listed under Residential or Shortlet properties');
+            // }
+
+            // Validate unitId if provided
+            if (value.unitId) {
+                const unitExists = await propertyUnitService.getUnitById(value.unitId);
+                if (!unitExists) return res.status(400).json({ message: 'Invalid unit ID' });
+            }
+
+            // Validate roomId if provided
+            if (value.roomId) {
+                const roomExists = await propertyRoomService.getRoomById(value.roomId);
+                if (!roomExists) return res.status(400).json({ message: 'Invalid room ID' });
+            }
+
             const listing = await PropertyServices.createPropertyListing(data);
             return res.status(201).json({ message: 'Property listing created', listing });
-
         } catch (err) {
             ErrorService.handleError(err, res);
         }
-    }
+    };
+
     unListPropertyListing = async (req: CustomRequest, res: Response) => {
         const propertyId = req.params.propertyId
         try {

@@ -33,7 +33,9 @@ export interface PropertyListingDTO {
     payApplicationFee: boolean;
     type?: ListingType; //ENTIRE_PROPERTY
     listAs: PropertySpecificationType;
-    propertyId?: string;
+    propertyId: string;
+    unitId?: string;
+    roomId?: string;
 
     propertySubType: PropertyType,
     priceFrequency: PriceFrequency,

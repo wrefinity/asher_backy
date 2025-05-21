@@ -128,7 +128,9 @@ exports.updatePropertyDocumentSchema = joi_1.default.object({
 exports.createPropertyListingSchema = joi_1.default.object({
     payApplicationFee: joi_1.default.boolean().required(),
     type: joi_1.default.string().valid(...listingTypes).required(),
-    propertyId: joi_1.default.string().optional(),
+    propertyId: joi_1.default.string().required(),
+    unitId: joi_1.default.string().optional(),
+    roomId: joi_1.default.string().optional(),
     propertySubType: joi_1.default.string().valid(...propertyType).required(),
     listAs: joi_1.default.string().valid(...Object.values(client_1.PropertySpecificationType)).required(),
     priceFrequency: joi_1.default.string().valid(...Object.values(client_1.PriceFrequency)).required(),

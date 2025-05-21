@@ -37,6 +37,7 @@ const profileServices_1 = __importDefault(require("../../services/profileService
 const user_services_1 = __importDefault(require("../../services/user.services"));
 const property_upload_services_1 = __importDefault(require("../../services/property.upload.services"));
 const property_room_service_1 = __importDefault(require("../../services/property.room.service"));
+const property_unit_service_1 = __importDefault(require("../../services/property.unit.service"));
 class PropertyController {
     constructor() {
         this.createProperties = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -233,14 +234,31 @@ class PropertyController {
                 return res.status(400).json({ error: error.details[0].message });
             try {
                 const data = value;
-                // check if property is owned by landlord
                 const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
                 const checkOwnership = yield propertyServices_1.default.checkLandlordPropertyExist(landlordId, value.propertyId);
-                // scenario where property doesnot belong to landlord
                 if (!checkOwnership)
                     return res.status(400).json({ message: 'property does not exist under landlord' });
                 if (checkOwnership.availability === client_1.AvailabilityStatus.OCCUPIED) {
                     return res.status(400).json({ message: 'Property already occupied' });
+                }
+                // if (
+                //     value.type === ListingType.ROOM &&
+                //     checkOwnership.specificationType !== 'RESIDENTIAL' &&
+                //     checkOwnership.specificationType !== 'SHORTLET'
+                // ) {
+                //     throw new Error('ROOM can only be listed under Residential or Shortlet properties');
+                // }
+                // Validate unitId if provided
+                if (value.unitId) {
+                    const unitExists = yield property_unit_service_1.default.getUnitById(value.unitId);
+                    if (!unitExists)
+                        return res.status(400).json({ message: 'Invalid unit ID' });
+                }
+                // Validate roomId if provided
+                if (value.roomId) {
+                    const roomExists = yield property_room_service_1.default.getRoomById(value.roomId);
+                    if (!roomExists)
+                        return res.status(400).json({ message: 'Invalid room ID' });
                 }
                 const listing = yield propertyServices_1.default.createPropertyListing(data);
                 return res.status(201).json({ message: 'Property listing created', listing });

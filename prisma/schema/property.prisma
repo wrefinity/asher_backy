@@ -198,6 +198,12 @@ model propertyListingHistory {
   listAs          PropertySpecificationType? @default(SHORTLET)
   propertySubType PropertyType?
 
+  unitId String?
+  unit   UnitConfiguration? @relation(fields: [unitId], references: [id])
+
+  roomId String?
+  room   RoomDetail? @relation(fields: [roomId], references: [id])
+
   price           Decimal?        @default(0.00) @db.Decimal(18, 2)
   priceFrequency  PriceFrequency?
   securityDeposit Decimal?        @default(0.00) @db.Decimal(18, 2)
@@ -411,6 +417,7 @@ model UnitConfiguration {
   bathrooms             Int?
   price                 String
   area                  String?
+  isDeleted             Boolean              @default(false)
   images                PropertyMediaFiles[] @relation("UnitImages")
   description           String?
   availability          AvailabilityStatus?
@@ -420,8 +427,9 @@ model UnitConfiguration {
 
   Booking   Booking[]
   violation violation[]
-}
 
+  propertyListingHistory propertyListingHistory[]
+}
 
 model RoomDetail {
   id                    String               @id @default(cuid())
@@ -440,6 +448,8 @@ model RoomDetail {
   shortletPropertyId    String?
 
   Booking Booking[]
+
+  propertyListingHistory propertyListingHistory[]
 }
 
 // Residential Property specific fields - Done
@@ -781,23 +791,3 @@ model propertySettings {
 
   @@unique([propertyId, settingType])
 }
-
-// model propertyFeatures {
-//   id         String              @id @default(cuid())
-//   name       String
-//   type       PropertyFeatureType @default(KEY)
-//   isDeleted  Boolean             @default(false)
-//   properties properties[]
-
-//   CommercialPropertySecurityFeatures CommercialProperty[]      @relation("SecurityFeatures")
-//   CommercialSafetyProperty           CommercialProperty[]      @relation("safetyFeatures")
-//   CommercialPropertyFloor            CommercialPropertyFloor[] @relation("BuildingFeatures")
-
-//   ResidentialOutDoorProperty  ResidentialProperty[] @relation("ResidentialOutdoorsSpaceFeatures")
-//   ResidentialBuildingProperty ResidentialProperty[] @relation("ResidentialBuildingAmenityFeatures")
-//   ResidentialSafetyProperty   ResidentialProperty[] @relation("ResidentialSafetyFeatures")
-
-//   ShortletOutletProperty   ShortletProperty[] @relation("ShortletOutdoorsSpaceFeatures")
-//   ShortletBuildingProperty ShortletProperty[] @relation("ShortletBuildingAmenityFeatures")
-//   ShortletSafetyProperty   ShortletProperty[] @relation("ShortletSafetyFeatures")
-// }

@@ -208,9 +208,7 @@ class PropertyService {
                     landlordId,
                     id: propertyId
                 },
-                include: {
-                    state: true
-                }
+                include: Object.assign({}, this.propsInclusion),
             });
         });
         this.getPropertyExpenses = (landlordId, propertyId) => __awaiter(this, void 0, void 0, function* () {

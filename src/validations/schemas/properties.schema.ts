@@ -148,9 +148,10 @@ export const updatePropertyDocumentSchema = Joi.object({
 
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
-
   type: Joi.string().valid(...listingTypes).required(),
-  propertyId: Joi.string().optional(),
+  propertyId: Joi.string().required(),
+  unitId: Joi.string().optional(),
+  roomId: Joi.string().optional(),
   propertySubType: Joi.string().valid(...propertyType).required(),
   listAs: Joi.string().valid(...Object.values(PropertySpecificationType)).required(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).required(),

@@ -295,8 +295,6 @@ class PropertyService {
     
     
 
-
-
     // Function to aggregate properties by state for the current landlord
     getPropertiesByState = async () => {
         try {
@@ -358,8 +356,8 @@ class PropertyService {
                 id: propertyId
             },
             include: {
-                state: true
-            }
+                ...this.propsInclusion
+            },
         })
     }
 
@@ -654,6 +652,7 @@ class PropertyService {
             take,
         });
     };
+    
     createPropertyListing = async (data: PropertyListingDTO | any) => {
         const propListed = await this.getPropsListedById(data.propertyId);
         if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
