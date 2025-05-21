@@ -80,8 +80,28 @@ class PropertyController {
         this.createRoom = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+            const { error, value } = properties_schema_1.IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
+            if (error) {
+                return res.status(400).json({ error: error.details });
+            }
             try {
                 const room = property_room_service_1.default.createRoomDetail(req.body);
+                return res.status(201).json({ room });
+            }
+            catch (error) {
+                error_service_1.default.handleError(error, res);
+            }
+        });
+        this.createUnit = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
+            // unitConfigurationSchema
+            const { error, value } = properties_schema_1.unitConfigurationSchema.validate(req.body, { abortEarly: false });
+            if (error) {
+                return res.status(400).json({ error: error.details });
+            }
+            try {
+                const room = property_unit_service_1.default.createUnitDetail(req.body);
                 return res.status(201).json({ room });
             }
             catch (error) {

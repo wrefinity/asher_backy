@@ -196,7 +196,7 @@ export const updatePropertyViewingSchema = Joi.object({
 
 // 🔹 CommercialPropertyUnit Schema
 export const commercialPropertyUnitSchema = Joi.object({
-  id: Joi.string().required(),
+  id: Joi.string().optional(),
   unitType: Joi.string().required(),
   unitNumber: Joi.string().optional(),
   floorNumber: Joi.number().integer().required(),
@@ -263,7 +263,7 @@ const propertyMediaFilesSchema = Joi.object({
 })
 
 export const unitConfigurationSchema = Joi.object({
-  id: Joi.string(),
+  id: Joi.string().optional(),
   unitType: Joi.string().required(),
   unitNumber: Joi.string().optional(),
   floorNumber: Joi.number().optional(),

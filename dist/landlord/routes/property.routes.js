@@ -50,6 +50,7 @@ class ApartmentLandlordRouter {
         // this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.post('/create', multer_1.default.array("files"), multerCloudinary_1.handlePropertyUploads, properties_controller_1.default.createProperties);
         this.router.post('/create-room', multer_1.default.array("files"), multerCloudinary_1.handlePropertyUploads, properties_controller_1.default.createRoom);
+        this.router.post('/create-unit', multer_1.default.array("files"), multerCloudinary_1.handlePropertyUploads, properties_controller_1.default.createUnit);
         this.router.post('/upload', multer_1.uploadcsv.single("files"), properties_controller_1.default.bulkPropsUpload);
         this.router.delete('/property/:propertyId', properties_controller_1.default.deleteLandlordProperties);
         this.router.patch('/property/status/:propertyId', properties_controller_1.default.updatePropertyAvailability);

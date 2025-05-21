@@ -166,7 +166,7 @@ exports.updatePropertyViewingSchema = joi_1.default.object({
 });
 // 🔹 CommercialPropertyUnit Schema
 exports.commercialPropertyUnitSchema = joi_1.default.object({
-    id: joi_1.default.string().required(),
+    id: joi_1.default.string().optional(),
     unitType: joi_1.default.string().required(),
     unitNumber: joi_1.default.string().optional(),
     floorNumber: joi_1.default.number().integer().required(),
@@ -225,7 +225,7 @@ const propertyMediaFilesSchema = joi_1.default.object({
         .required(),
 });
 exports.unitConfigurationSchema = joi_1.default.object({
-    id: joi_1.default.string(),
+    id: joi_1.default.string().optional(),
     unitType: joi_1.default.string().required(),
     unitNumber: joi_1.default.string().optional(),
     floorNumber: joi_1.default.number().optional(),

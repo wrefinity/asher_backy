@@ -205,18 +205,18 @@ class PropertyService {
                     isDeleted: false,
                 },
             });
-    
+
             const propertiesByState: { [key: string]: any[] } = {};
-    
+
             for (const group of groupedProperties) {
                 const stateId = group.stateId;
                 if (!stateId) continue;
-    
+
                 const state = await prismaClient.state.findUnique({
                     where: { id: stateId },
                 });
                 if (!state) continue;
-    
+
                 const rawProperties = await prismaClient.properties.findMany({
                     where: {
                         stateId,
@@ -225,7 +225,7 @@ class PropertyService {
                     },
                     include: this.propsInclusion,
                 });
-    
+
                 const flattenedProperties = rawProperties.map(property => {
                     // Narrow the type of specification
                     const specifications = property.specification as Array<
@@ -233,32 +233,32 @@ class PropertyService {
                             include: typeof this.specificationInclusion.include;
                         }>
                     >;
-    
+
                     const activeSpec = specifications.find(spec => spec.isActive);
-    
+
                     const specificDetails =
                         (activeSpec?.residential ??
-                         activeSpec?.commercial ??
-                         activeSpec?.shortlet ??
-                         {}) as Record<string, any>;
-    
+                            activeSpec?.commercial ??
+                            activeSpec?.shortlet ??
+                            {}) as Record<string, any>;
+
                     return {
                         ...property,
                         ...activeSpec,        // Spread all fields from the specification (like listAs, type, etc.)
                         ...specificDetails,   // Spread all residential/commercial/shortlet-specific fields
                     };
                 });
-    
+
                 propertiesByState[state.name.toLowerCase()] = flattenedProperties;
             }
-    
+
             return propertiesByState;
         } catch (error) {
             console.error('Error in aggregatePropertiesByState:', error);
             throw error;
         }
     };
-    
+
     // Function to aggregate properties by state for the current landlord
     getPropertiesByLandlord = async (landlordId: string) => {
         const unGroundProps: Prisma.propertiesGetPayload<{
@@ -269,7 +269,7 @@ class PropertyService {
             },
             include: this.propsInclusion,
         });
-    
+
         const fullDetailsList = unGroundProps.map(property => {
             // Narrow the type of specification
             const specifications = property.specification as Array<
@@ -277,23 +277,23 @@ class PropertyService {
                     include: typeof this.specificationInclusion.include;
                 }>
             >;
-    
+
             const activeSpec = specifications.find(spec => spec.isActive);
-    
+
             const specificDetails =
                 (activeSpec?.residential ?? activeSpec?.commercial ?? activeSpec?.shortlet ?? {}) as Record<string, any>;
-    
+
             return {
                 ...property,
                 ...activeSpec,
                 ...specificDetails,
             };
         });
-    
+
         return fullDetailsList;
     };
-    
-    
+
+
 
     // Function to aggregate properties by state for the current landlord
     getPropertiesByState = async () => {
@@ -652,7 +652,7 @@ class PropertyService {
             take,
         });
     };
-    
+
     createPropertyListing = async (data: PropertyListingDTO | any) => {
         const propListed = await this.getPropsListedById(data.propertyId);
         if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
@@ -732,12 +732,35 @@ class PropertyService {
     }
     // to update property to listing and not listing
     getPropertyById = async (propertyId: string) => {
-        return await prismaClient.properties.findFirst({
+        const props = await prismaClient.properties.findFirst({
             where: { id: propertyId },
             include: {
                 ...this.propsInclusion
             }
         });
+
+        if (!props) throw new Error("Property not found")
+
+        // Narrow the type of specification
+        const specifications = props.specification as Array<
+            Prisma.PropertySpecificationGetPayload<{
+                include: typeof this.specificationInclusion.include;
+            }>
+        >;
+
+        const activeSpec = specifications.find(spec => spec.isActive);
+
+        const specificDetails =
+            (activeSpec?.residential ??
+                activeSpec?.commercial ??
+                activeSpec?.shortlet ??
+                {}) as Record<string, any>;
+
+        return {
+            ...props,
+            ...activeSpec,   
+            ...specificDetails,
+        };
     }
     getPropertiesWithoutTenants = async (landlordId: string) => {
         // Fetch all properties where there are no tenants associated
@@ -1045,7 +1068,6 @@ class PropertyService {
             where: { id: propertyId }
         });
         if (!property) throw new Error(`Property ${propertyId} not found`);
-
         // Proceed with creation
         const commercial = await tx.commercialProperty.create({
             data: {
@@ -1120,7 +1142,17 @@ class PropertyService {
             }
         });
 
-        return commercial;
+        return await tx.propertySpecification.create({
+            data: {
+                property: {
+                    connect: { id: property.id }
+                },
+                specificationType: PropertySpecificationType.COMMERCIAL,
+                commercial: { connect: { id: commercial.id } },
+                propertySubType: specification.propertySubType,
+                otherTypeSpecific: specification?.otherTypeSpecific
+            }
+        });
     }
 
     async createShortletProperty(propertyId: string, data: IShortletDTO | any, tx: any, specification: IPropertySpecificationDTO) {

@@ -409,10 +409,18 @@ class PropertyService {
         });
         // to update property to listing and not listing
         this.getPropertyById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.findFirst({
+            var _a, _b, _c;
+            const props = yield __1.prismaClient.properties.findFirst({
                 where: { id: propertyId },
                 include: Object.assign({}, this.propsInclusion)
             });
+            if (!props)
+                throw new Error("Property not found");
+            // Narrow the type of specification
+            const specifications = props.specification;
+            const activeSpec = specifications.find(spec => spec.isActive);
+            const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
+            return Object.assign(Object.assign(Object.assign({}, props), activeSpec), specificDetails);
         });
         this.getPropertiesWithoutTenants = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             // Fetch all properties where there are no tenants associated
@@ -829,7 +837,17 @@ class PropertyService {
                         }))) || []
                     } })
             });
-            return commercial;
+            return yield tx.propertySpecification.create({
+                data: {
+                    property: {
+                        connect: { id: property.id }
+                    },
+                    specificationType: client_1.PropertySpecificationType.COMMERCIAL,
+                    commercial: { connect: { id: commercial.id } },
+                    propertySubType: specification.propertySubType,
+                    otherTypeSpecific: specification === null || specification === void 0 ? void 0 : specification.otherTypeSpecific
+                }
+            });
         });
     }
     createShortletProperty(propertyId, data, tx, specification) {
