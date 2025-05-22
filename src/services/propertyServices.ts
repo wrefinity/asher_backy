@@ -4,7 +4,14 @@ import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
-import { spec } from "node:test/reporters";
+
+
+
+type PropertyWithSpecification = Prisma.propertiesGetPayload<{
+    include: any;
+}>;
+
+type FlattenedProperty = Record<string, any>;
 
 interface PropertyFilters {
     landlordId?: string;
@@ -43,6 +50,9 @@ class PropertyService {
     landlordInclusion: any
     propsInclusion: any
     specificationInclusion: any
+
+
+
 
     constructor() {
 
@@ -124,12 +134,15 @@ class PropertyService {
     }
 
     getLandlordProperties = async (landlordId: string) => {
-        return await prismaClient.properties.findMany({
+        const rawProperties = await prismaClient.properties.findMany({
             where: { isDeleted: false, landlordId },
             include: {
                 ...this.propsInclusion
             }
-        })
+        })///
+        return rawProperties.map(p =>
+            this.flatten(p)
+        );
     }
     getPropertyOnUserPreference = async (userPreferenceTypes: PropertyType[], landlordId: string) => {
         return await prismaClient.properties.findMany({
@@ -195,69 +208,63 @@ class PropertyService {
         });
     }
 
+    flatten = (property: PropertyWithSpecification): FlattenedProperty => {
+        const specifications = property.specification as Array<
+            Prisma.PropertySpecificationGetPayload<{
+                include: typeof this.specificationInclusion.include;
+            }>
+        >;
+
+        const activeSpec = specifications.find(spec => spec.isActive);
+
+        const specificDetails =
+            (activeSpec?.residential ??
+                activeSpec?.commercial ??
+                activeSpec?.shortlet ??
+                {}) as Record<string, any>;
+
+        return {
+            ...property,
+            ...activeSpec,
+            ...specificDetails,
+        };
+    }
+
     // Function to aggregate properties by state for the current landlord
     aggregatePropertiesByState = async (landlordId: string) => {
-        try {
-            const groupedProperties = await prismaClient.properties.groupBy({
-                by: ['stateId'],
-                where: {
-                    landlordId,
-                    isDeleted: false,
-                },
+        const groupedProperties = await prismaClient.properties.groupBy({
+            by: ['stateId'],
+            where: {
+                landlordId,
+                isDeleted: false,
+            },
+        });
+
+        const propertiesByState: { [key: string]: any[] } = {};
+
+        for (const group of groupedProperties) {
+            const stateId = group.stateId;
+            if (!stateId) continue;
+
+            const state = await prismaClient.state.findUnique({ where: { id: stateId } });
+            if (!state) continue;
+
+            const rawProperties = await prismaClient.properties.findMany({
+                where: { stateId, landlordId, isDeleted: false },
+                include: this.propsInclusion,
             });
 
-            const propertiesByState: { [key: string]: any[] } = {};
+            const flattened = rawProperties.map(p =>
+                this.flatten(p)
+            );
 
-            for (const group of groupedProperties) {
-                const stateId = group.stateId;
-                if (!stateId) continue;
-
-                const state = await prismaClient.state.findUnique({
-                    where: { id: stateId },
-                });
-                if (!state) continue;
-
-                const rawProperties = await prismaClient.properties.findMany({
-                    where: {
-                        stateId,
-                        landlordId,
-                        isDeleted: false,
-                    },
-                    include: this.propsInclusion,
-                });
-
-                const flattenedProperties = rawProperties.map(property => {
-                    // Narrow the type of specification
-                    const specifications = property.specification as Array<
-                        Prisma.PropertySpecificationGetPayload<{
-                            include: typeof this.specificationInclusion.include;
-                        }>
-                    >;
-
-                    const activeSpec = specifications.find(spec => spec.isActive);
-
-                    const specificDetails =
-                        (activeSpec?.residential ??
-                            activeSpec?.commercial ??
-                            activeSpec?.shortlet ??
-                            {}) as Record<string, any>;
-
-                    return {
-                        ...property,
-                        ...activeSpec,        // Spread all fields from the specification (like listAs, type, etc.)
-                        ...specificDetails,   // Spread all residential/commercial/shortlet-specific fields
-                    };
-                });
-
-                propertiesByState[state.name.toLowerCase()] = flattenedProperties;
-            }
-
-            return propertiesByState;
-        } catch (error) {
-            console.error('Error in aggregatePropertiesByState:', error);
-            throw error;
+            propertiesByState[state.name.toLowerCase()] = flattened;
         }
+
+        return propertiesByState;
     };
+
+
 
     // Function to aggregate properties by state for the current landlord
     getPropertiesByLandlord = async (landlordId: string) => {
@@ -270,29 +277,32 @@ class PropertyService {
             include: this.propsInclusion,
         });
 
-        const fullDetailsList = unGroundProps.map(property => {
-            // Narrow the type of specification
-            const specifications = property.specification as Array<
-                Prisma.PropertySpecificationGetPayload<{
-                    include: typeof this.specificationInclusion.include;
-                }>
-            >;
+        return unGroundProps.map(p =>
+            this.flatten(p)
+        );
 
-            const activeSpec = specifications.find(spec => spec.isActive);
+        // const fullDetailsList = unGroundProps.map(property => {
+        //     // Narrow the type of specification
+        //     const specifications = property.specification as Array<
+        //         Prisma.PropertySpecificationGetPayload<{
+        //             include: typeof this.specificationInclusion.include;
+        //         }>
+        //     >;
 
-            const specificDetails =
-                (activeSpec?.residential ?? activeSpec?.commercial ?? activeSpec?.shortlet ?? {}) as Record<string, any>;
+        //     const activeSpec = specifications.find(spec => spec.isActive);
 
-            return {
-                ...property,
-                ...activeSpec,
-                ...specificDetails,
-            };
-        });
+        //     const specificDetails =
+        //         (activeSpec?.residential ?? activeSpec?.commercial ?? activeSpec?.shortlet ?? {}) as Record<string, any>;
 
-        return fullDetailsList;
+        //     return {
+        //         ...property,
+        //         ...activeSpec,
+        //         ...specificDetails,
+        //     };
+        // });
+
+        // return fullDetailsList;
     };
-
 
 
     // Function to aggregate properties by state for the current landlord
@@ -350,7 +360,7 @@ class PropertyService {
 
     checkLandlordPropertyExist = async (landlordId: string, propertyId: string) => {
 
-        return await prismaClient.properties.findFirst({
+        const props = await prismaClient.properties.findFirst({
             where: {
                 landlordId,
                 id: propertyId
@@ -359,6 +369,7 @@ class PropertyService {
                 ...this.propsInclusion
             },
         })
+        return this.flatten(props)
     }
 
     getPropertyExpenses = async (landlordId: string, propertyId: string) => {
@@ -740,27 +751,7 @@ class PropertyService {
         });
 
         if (!props) throw new Error("Property not found")
-
-        // Narrow the type of specification
-        const specifications = props.specification as Array<
-            Prisma.PropertySpecificationGetPayload<{
-                include: typeof this.specificationInclusion.include;
-            }>
-        >;
-
-        const activeSpec = specifications.find(spec => spec.isActive);
-
-        const specificDetails =
-            (activeSpec?.residential ??
-                activeSpec?.commercial ??
-                activeSpec?.shortlet ??
-                {}) as Record<string, any>;
-
-        return {
-            ...props,
-            ...activeSpec,   
-            ...specificDetails,
-        };
+        return this.flatten(props);
     }
     getPropertiesWithoutTenants = async (landlordId: string) => {
         // Fetch all properties where there are no tenants associated
@@ -778,6 +769,7 @@ class PropertyService {
 
         return properties;
     }
+
     getPropertiesAttachedToTenants = async (tenantId: string) => {
         return await prismaClient.properties.findFirst({
             where: {

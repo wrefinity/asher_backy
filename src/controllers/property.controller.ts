@@ -334,12 +334,12 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
-    
+
     // unit sess
     getPropsUnit = async (req: CustomRequest, res: Response) => {
         try {
             const unitId = req.params.id;
-            const unit =  await propertyUnitService.getUnitById(unitId)
+            const unit = await propertyUnitService.getUnitById(unitId)
             if (!unit) {
                 return res.status(404).json({ message: 'Property unit not found' });
             }
@@ -348,41 +348,41 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
-    getPropsUnitsByPropertyId = async (req: CustomRequest, res: Response) =>{
+    getPropsUnitsByPropertyId = async (req: CustomRequest, res: Response) => {
         try {
-          const propertyId = req.params.propertyId;
-          const specification = req.query.specification as PropertySpecificationType;
-          
-          // Validate specification type
-          if (!Object.values(PropertySpecificationType).includes(specification)) {
-            return res.status(400).json({ 
-              success: false,
-              message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+            const propertyId = req.params.propertyId;
+            const specification = req.query.specification as PropertySpecificationType;
+
+            // Validate specification type
+            if (!Object.values(PropertySpecificationType).includes(specification)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+                });
+            }
+
+            const units = await propertyUnitService.getUnitByProperty(specification, propertyId);
+
+            if (!units || units.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No property units found'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: units
             });
-          }
-    
-          const units = await propertyUnitService.getUnitByProperty(specification, propertyId);
-          
-          if (!units || units.length === 0) {
-            return res.status(404).json({ 
-              success: false,
-              message: 'No property units found' 
-            });
-          }
-          
-          return res.status(200).json({ 
-            success: true,
-            data: units 
-          });
         } catch (error) {
-          ErrorService.handleError(error, res);
+            ErrorService.handleError(error, res);
         }
-      }
-  
+    }
+
     getPropsRoom = async (req: CustomRequest, res: Response) => {
         try {
             const roomId = req.params.propertyId;
-            const room =  await propertyRoomService.getRoomById(roomId)
+            const room = await propertyRoomService.getRoomById(roomId)
             if (!room) {
                 return res.status(404).json({ message: 'Property room not found' });
             }
@@ -392,34 +392,34 @@ class PropertyController {
         }
     }
 
-    getPropsRoomByPropertyId = async (req: CustomRequest, res: Response) =>{
+    getPropsRoomByPropertyId = async (req: CustomRequest, res: Response) => {
         try {
-          const propertyId = req.params.propertyId;
-          const specification = req.query.specification as PropertySpecificationType;
-          
-          // Validate specification type
-          if (!Object.values(PropertySpecificationType).includes(specification)) {
-            return res.status(400).json({ 
-              success: false,
-              message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+            const propertyId = req.params.propertyId;
+            const specification = req.query.specification as PropertySpecificationType;
+
+            // Validate specification type
+            if (!Object.values(PropertySpecificationType).includes(specification)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+                });
+            }
+
+            const rooms = await propertyRoomService.getRoomsByProperty(specification, propertyId);
+            if (!rooms || rooms.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No property room found'
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                data: rooms
             });
-          }
-    
-          const rooms = await propertyRoomService.getRoomsByProperty(specification, propertyId);
-          if (!rooms || rooms.length === 0) {
-            return res.status(404).json({ 
-              success: false,
-              message: 'No property room found' 
-            });
-          } 
-          return res.status(200).json({ 
-            success: true,
-            data: rooms 
-          });
         } catch (error) {
-          ErrorService.handleError(error, res);
+            ErrorService.handleError(error, res);
         }
-      }
+    }
 
 }
 

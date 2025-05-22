@@ -33,10 +33,11 @@ class PropertyService {
             });
         });
         this.getLandlordProperties = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.findMany({
+            const rawProperties = yield __1.prismaClient.properties.findMany({
                 where: { isDeleted: false, landlordId },
                 include: Object.assign({}, this.propsInclusion)
-            });
+            }); ///
+            return rawProperties.map(p => this.flatten(p));
         });
         this.getPropertyOnUserPreference = (userPreferenceTypes, landlordId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.properties.findMany({
@@ -96,50 +97,38 @@ class PropertyService {
                 data: { availability }
             });
         });
+        this.flatten = (property) => {
+            var _a, _b, _c;
+            const specifications = property.specification;
+            const activeSpec = specifications.find(spec => spec.isActive);
+            const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
+            return Object.assign(Object.assign(Object.assign({}, property), activeSpec), specificDetails);
+        };
         // Function to aggregate properties by state for the current landlord
         this.aggregatePropertiesByState = (landlordId) => __awaiter(this, void 0, void 0, function* () {
-            try {
-                const groupedProperties = yield __1.prismaClient.properties.groupBy({
-                    by: ['stateId'],
-                    where: {
-                        landlordId,
-                        isDeleted: false,
-                    },
+            const groupedProperties = yield __1.prismaClient.properties.groupBy({
+                by: ['stateId'],
+                where: {
+                    landlordId,
+                    isDeleted: false,
+                },
+            });
+            const propertiesByState = {};
+            for (const group of groupedProperties) {
+                const stateId = group.stateId;
+                if (!stateId)
+                    continue;
+                const state = yield __1.prismaClient.state.findUnique({ where: { id: stateId } });
+                if (!state)
+                    continue;
+                const rawProperties = yield __1.prismaClient.properties.findMany({
+                    where: { stateId, landlordId, isDeleted: false },
+                    include: this.propsInclusion,
                 });
-                const propertiesByState = {};
-                for (const group of groupedProperties) {
-                    const stateId = group.stateId;
-                    if (!stateId)
-                        continue;
-                    const state = yield __1.prismaClient.state.findUnique({
-                        where: { id: stateId },
-                    });
-                    if (!state)
-                        continue;
-                    const rawProperties = yield __1.prismaClient.properties.findMany({
-                        where: {
-                            stateId,
-                            landlordId,
-                            isDeleted: false,
-                        },
-                        include: this.propsInclusion,
-                    });
-                    const flattenedProperties = rawProperties.map(property => {
-                        var _a, _b, _c;
-                        // Narrow the type of specification
-                        const specifications = property.specification;
-                        const activeSpec = specifications.find(spec => spec.isActive);
-                        const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
-                        return Object.assign(Object.assign(Object.assign({}, property), activeSpec), specificDetails);
-                    });
-                    propertiesByState[state.name.toLowerCase()] = flattenedProperties;
-                }
-                return propertiesByState;
+                const flattened = rawProperties.map(p => this.flatten(p));
+                propertiesByState[state.name.toLowerCase()] = flattened;
             }
-            catch (error) {
-                console.error('Error in aggregatePropertiesByState:', error);
-                throw error;
-            }
+            return propertiesByState;
         });
         // Function to aggregate properties by state for the current landlord
         this.getPropertiesByLandlord = (landlordId) => __awaiter(this, void 0, void 0, function* () {
@@ -149,15 +138,24 @@ class PropertyService {
                 },
                 include: this.propsInclusion,
             });
-            const fullDetailsList = unGroundProps.map(property => {
-                var _a, _b, _c;
-                // Narrow the type of specification
-                const specifications = property.specification;
-                const activeSpec = specifications.find(spec => spec.isActive);
-                const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
-                return Object.assign(Object.assign(Object.assign({}, property), activeSpec), specificDetails);
-            });
-            return fullDetailsList;
+            return unGroundProps.map(p => this.flatten(p));
+            // const fullDetailsList = unGroundProps.map(property => {
+            //     // Narrow the type of specification
+            //     const specifications = property.specification as Array<
+            //         Prisma.PropertySpecificationGetPayload<{
+            //             include: typeof this.specificationInclusion.include;
+            //         }>
+            //     >;
+            //     const activeSpec = specifications.find(spec => spec.isActive);
+            //     const specificDetails =
+            //         (activeSpec?.residential ?? activeSpec?.commercial ?? activeSpec?.shortlet ?? {}) as Record<string, any>;
+            //     return {
+            //         ...property,
+            //         ...activeSpec,
+            //         ...specificDetails,
+            //     };
+            // });
+            // return fullDetailsList;
         });
         // Function to aggregate properties by state for the current landlord
         this.getPropertiesByState = () => __awaiter(this, void 0, void 0, function* () {
@@ -203,13 +201,14 @@ class PropertyService {
             }
         });
         this.checkLandlordPropertyExist = (landlordId, propertyId) => __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.properties.findFirst({
+            const props = yield __1.prismaClient.properties.findFirst({
                 where: {
                     landlordId,
                     id: propertyId
                 },
                 include: Object.assign({}, this.propsInclusion),
             });
+            return this.flatten(props);
         });
         this.getPropertyExpenses = (landlordId, propertyId) => __awaiter(this, void 0, void 0, function* () {
             return yield __1.prismaClient.maintenance.findMany({
@@ -409,18 +408,13 @@ class PropertyService {
         });
         // to update property to listing and not listing
         this.getPropertyById = (propertyId) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c;
             const props = yield __1.prismaClient.properties.findFirst({
                 where: { id: propertyId },
                 include: Object.assign({}, this.propsInclusion)
             });
             if (!props)
                 throw new Error("Property not found");
-            // Narrow the type of specification
-            const specifications = props.specification;
-            const activeSpec = specifications.find(spec => spec.isActive);
-            const specificDetails = ((_c = (_b = (_a = activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.residential) !== null && _a !== void 0 ? _a : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.commercial) !== null && _b !== void 0 ? _b : activeSpec === null || activeSpec === void 0 ? void 0 : activeSpec.shortlet) !== null && _c !== void 0 ? _c : {});
-            return Object.assign(Object.assign(Object.assign({}, props), activeSpec), specificDetails);
+            return this.flatten(props);
         });
         this.getPropertiesWithoutTenants = (landlordId) => __awaiter(this, void 0, void 0, function* () {
             // Fetch all properties where there are no tenants associated

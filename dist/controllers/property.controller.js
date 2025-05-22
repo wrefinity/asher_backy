@@ -325,7 +325,7 @@ class PropertyController {
         });
         this.getPropsUnitsByPropertyId = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const propertyId = req.params.id;
+                const propertyId = req.params.propertyId;
                 const specification = req.query.specification;
                 // Validate specification type
                 if (!Object.values(client_1.PropertySpecificationType).includes(specification)) {
@@ -352,7 +352,7 @@ class PropertyController {
         });
         this.getPropsRoom = (req, res) => __awaiter(this, void 0, void 0, function* () {
             try {
-                const roomId = req.params.id;
+                const roomId = req.params.propertyId;
                 const room = yield property_room_service_1.default.getRoomById(roomId);
                 if (!room) {
                     return res.status(404).json({ message: 'Property room not found' });
