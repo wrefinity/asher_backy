@@ -343,7 +343,7 @@ class PropertyController {
             if (!unit) {
                 return res.status(404).json({ message: 'Property unit not found' });
             }
-            return res.status(200).json({ unit })
+            return res.status(200).json({ property:unit })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -372,7 +372,7 @@ class PropertyController {
 
             return res.status(200).json({
                 success: true,
-                data: units
+                property: units
             });
         } catch (error) {
             ErrorService.handleError(error, res);
@@ -386,7 +386,7 @@ class PropertyController {
             if (!room) {
                 return res.status(404).json({ message: 'Property room not found' });
             }
-            return res.status(200).json({ room })
+            return res.status(200).json({ property:room })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -414,7 +414,7 @@ class PropertyController {
             }
             return res.status(200).json({
                 success: true,
-                data: rooms
+                property: rooms
             });
         } catch (error) {
             ErrorService.handleError(error, res);

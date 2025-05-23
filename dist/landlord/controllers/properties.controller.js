@@ -85,6 +85,11 @@ class PropertyController {
                 return res.status(400).json({ error: error.details });
             }
             try {
+                const { uploadedFiles, specificationType, propertySubType, otherTypeSpecific, commercial, shortlet, residential } = value, data = __rest(value, ["uploadedFiles", "specificationType", "propertySubType", "otherTypeSpecific", "commercial", "shortlet", "residential"]);
+                delete data['documentName'];
+                delete data['docType'];
+                delete data['idType'];
+                delete data['uploadedFiles'];
                 const room = property_room_service_1.default.createRoomDetail(req.body);
                 return res.status(201).json({ room });
             }
