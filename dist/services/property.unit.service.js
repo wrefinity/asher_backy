@@ -84,7 +84,7 @@ class PropertyUnit {
     // Get unit by ID
     getUnitById(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield __1.prismaClient.unitConfiguration.findUnique({
+            const props = yield __1.prismaClient.unitConfiguration.findUnique({
                 where: { id },
                 include: {
                     ResidentialProperty: true,
@@ -92,6 +92,11 @@ class PropertyUnit {
                     images: true,
                 }
             });
+            if (!props) {
+                throw new Error("Unit not found");
+            }
+            const { ResidentialProperty, CommercialProperty } = props, rest = __rest(props, ["ResidentialProperty", "CommercialProperty"]);
+            return Object.assign(Object.assign({}, rest), { residential: ResidentialProperty, commercial: CommercialProperty });
         });
     }
     getUnitByProperty(propertyType, propertyId) {

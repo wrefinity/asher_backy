@@ -34,7 +34,7 @@ class PropertyUnit {
 
     // Get unit by ID
     async getUnitById(id: string) {
-        return await prismaClient.unitConfiguration.findUnique({
+        const props = await prismaClient.unitConfiguration.findUnique({
             where: { id },
             include: {
                 ResidentialProperty: true,
@@ -42,6 +42,21 @@ class PropertyUnit {
                 images: true,
             }
         });
+
+        if (!props) { throw new Error("Unit not found") }
+
+        const {
+            ResidentialProperty,
+            CommercialProperty,
+            ...rest
+        } = props;
+
+        return {
+            // property: rest,
+            ...rest,
+            residential: ResidentialProperty,
+            commercial: CommercialProperty,
+        };
     }
 
 
@@ -69,10 +84,26 @@ class PropertyUnit {
                 throw new Error('Invalid property type');
         }
 
-        return await prismaClient.unitConfiguration.findMany({
+        const units = await prismaClient.unitConfiguration.findMany({
             where: whereClause,
-            include: { images: true, ResidentialProperty: true,  CommercialProperty: true},
+            include: { images: true, ResidentialProperty: true, CommercialProperty: true },
         });
+
+        // get All
+        const unitx = units.map(unit => {
+            const {
+                ResidentialProperty,
+                CommercialProperty,
+                ...rest
+            } = unit;
+
+            return {
+                ...rest,
+                residential: ResidentialProperty,
+                commercial: CommercialProperty,
+            };
+        });
+        return unitx;
     }
 
 
