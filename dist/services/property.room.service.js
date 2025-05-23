@@ -84,15 +84,26 @@ class PropertyRoom {
     // Create a room under any one of the property types
     createRoomDetail(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { residentialPropertyId, commercialPropertyId, shortletPropertyId } = data, rest = __rest(data, ["residentialPropertyId", "commercialPropertyId", "shortletPropertyId"]);
-            const propertyTypes = [residentialPropertyId, commercialPropertyId, shortletPropertyId].filter(Boolean);
+            const { residentialPropertyId, commercialPropertyId, shortletPropertyId, uploadedFiles } = data, rest = __rest(data, ["residentialPropertyId", "commercialPropertyId", "shortletPropertyId", "uploadedFiles"]);
+            const propertyTypes = [residentialPropertyId, commercialPropertyId].filter(Boolean);
             if (propertyTypes.length !== 1) {
-                throw new Error('Exactly one of residentialPropertyId, commercialPropertyId, or shortletPropertyId must be provided.');
+                throw new Error('Exactly one of residentialPropertyId, commercialPropertyId, or commercialPropertyId must be provided.');
             }
+            // Separate media by type
+            const images = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_1.MediaType.IMAGE);
             return yield __1.prismaClient.roomDetail.create({
                 data: Object.assign(Object.assign({}, rest), { residentialPropertyId,
                     commercialPropertyId,
-                    shortletPropertyId }),
+                    shortletPropertyId, images: {
+                        create: images === null || images === void 0 ? void 0 : images.map(img => ({
+                            type: img.type,
+                            size: img.size,
+                            fileType: img.fileType,
+                            url: img.url,
+                            isPrimary: img.isPrimary,
+                            caption: img.caption,
+                        }))
+                    } }),
             });
         });
     }

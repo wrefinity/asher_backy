@@ -27,7 +27,7 @@ export async function createVerificationToken(userId: string, tokenGenerateFunc:
     }
 }
 
-export async function validateVerificationToken(token: string, userId: string): Promise<boolean> {
+export async function validateVerificationToken(token: string, userId: string){
     try {
         const verificationToken = await prismaClient.verificationToken.findFirst({
             where: {
@@ -39,7 +39,7 @@ export async function validateVerificationToken(token: string, userId: string): 
             },
         });
 
-        return !!verificationToken; // Return true if token exists and is valid
+        return verificationToken; // Return true if token exists and is valid
     } catch (error) {
         loggers.info(`Error validating verification token: - ${error}`);
         throw new Error('Failed to validate verification token');

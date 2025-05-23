@@ -59,14 +59,25 @@ class PropertyUnit {
     // Create a unit under any one of the property types
     createUnitDetail(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { residentialPropertyId, commercialPropertyId } = data, rest = __rest(data, ["residentialPropertyId", "commercialPropertyId"]);
+            const { residentialPropertyId, commercialPropertyId, uploadedFiles } = data, rest = __rest(data, ["residentialPropertyId", "commercialPropertyId", "uploadedFiles"]);
             const propertyTypes = [residentialPropertyId, commercialPropertyId].filter(Boolean);
             if (propertyTypes.length !== 1) {
                 throw new Error('Exactly one of residentialPropertyId or commercialPropertyId must be provided.');
             }
+            // Separate media by type
+            const images = uploadedFiles === null || uploadedFiles === void 0 ? void 0 : uploadedFiles.filter(file => (file === null || file === void 0 ? void 0 : file.identifier) === 'MediaTable' && (file === null || file === void 0 ? void 0 : file.type) === client_1.MediaType.IMAGE);
             return yield __1.prismaClient.unitConfiguration.create({
                 data: Object.assign(Object.assign({}, rest), { residentialPropertyId,
-                    commercialPropertyId }),
+                    commercialPropertyId, images: {
+                        create: images === null || images === void 0 ? void 0 : images.map(img => ({
+                            type: img.type,
+                            size: img.size,
+                            fileType: img.fileType,
+                            url: img.url,
+                            isPrimary: img.isPrimary,
+                            caption: img.caption,
+                        }))
+                    } }),
             });
         });
     }
@@ -103,11 +114,9 @@ class PropertyUnit {
                 default:
                     throw new Error('Invalid property type');
             }
-            console.log("=====================================");
-            console.log(whereClause);
             return yield __1.prismaClient.unitConfiguration.findMany({
                 where: whereClause,
-                include: { images: true },
+                include: { images: true, ResidentialProperty: true, CommercialProperty: true },
             });
         });
     }

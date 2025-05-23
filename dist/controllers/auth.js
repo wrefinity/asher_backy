@@ -80,8 +80,7 @@ class AuthControls {
                 // Validate verification token
                 const isValidToken = yield (0, verification_token_service_1.validateVerificationToken)(token, user.id);
                 if (!isValidToken) {
-                    res.status(400).json({ message: 'Invalid or expired token' });
-                    return;
+                    return res.status(400).json({ message: 'Invalid or expired token' });
                 }
                 // Update user's isVerified status to true
                 const updatedUser = yield user_services_1.default.updateUserVerificationStatus(user.id, true);

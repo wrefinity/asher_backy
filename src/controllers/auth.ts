@@ -76,8 +76,7 @@ class AuthControls {
             // Validate verification token
             const isValidToken = await validateVerificationToken(token, user.id);
             if (!isValidToken) {
-                res.status(400).json({ message: 'Invalid or expired token' });
-                return;
+                return res.status(400).json({ message: 'Invalid or expired token' });
             }
             // Update user's isVerified status to true
             const updatedUser = await UserServices.updateUserVerificationStatus(user.id, true);

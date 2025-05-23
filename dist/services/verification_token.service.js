@@ -54,7 +54,7 @@ function validateVerificationToken(token, userId) {
                     },
                 },
             });
-            return !!verificationToken; // Return true if token exists and is valid
+            return verificationToken; // Return true if token exists and is valid
         }
         catch (error) {
             loggers_1.default.info(`Error validating verification token: - ${error}`);

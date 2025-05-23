@@ -80,12 +80,12 @@ class PropertyController {
         this.createRoom = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-            const { error, value } = properties_schema_1.IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
+            const { error, value } = properties_schema_1.roomDetailSchema.validate(req.body, { abortEarly: false });
             if (error) {
                 return res.status(400).json({ error: error.details });
             }
             try {
-                const { uploadedFiles, specificationType, propertySubType, otherTypeSpecific, commercial, shortlet, residential } = value, data = __rest(value, ["uploadedFiles", "specificationType", "propertySubType", "otherTypeSpecific", "commercial", "shortlet", "residential"]);
+                const { uploadedFiles } = value, data = __rest(value, ["uploadedFiles"]);
                 delete data['documentName'];
                 delete data['docType'];
                 delete data['idType'];
@@ -100,13 +100,17 @@ class PropertyController {
         this.createUnit = (req, res) => __awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const landlordId = (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.landlords) === null || _b === void 0 ? void 0 : _b.id;
-            // unitConfigurationSchema
             const { error, value } = properties_schema_1.unitConfigurationSchema.validate(req.body, { abortEarly: false });
             if (error) {
                 return res.status(400).json({ error: error.details });
             }
             try {
-                const room = property_unit_service_1.default.createUnitDetail(req.body);
+                const { uploadedFiles } = value, data = __rest(value, ["uploadedFiles"]);
+                delete data['documentName'];
+                delete data['docType'];
+                delete data['idType'];
+                delete data['uploadedFiles'];
+                const room = property_unit_service_1.default.createUnitDetail(Object.assign(Object.assign({}, data), { uploadedFiles }));
                 return res.status(201).json({ room });
             }
             catch (error) {

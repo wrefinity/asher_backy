@@ -226,6 +226,12 @@ const propertyMediaFilesSchema = joi_1.default.object({
 });
 exports.unitConfigurationSchema = joi_1.default.object({
     id: joi_1.default.string().optional(),
+    // media files attachement for middlewares
+    documentName: joi_1.default.array().items(joi_1.default.string()).optional(),
+    docType: joi_1.default.array().items(joi_1.default.string()).optional(),
+    idType: joi_1.default.array().items(joi_1.default.string()).optional(),
+    uploadedFiles: joi_1.default.array().items(joi_1.default.object()).optional(),
+    images: joi_1.default.array().items(propertyMediaFilesSchema).optional(),
     unitType: joi_1.default.string().required(),
     unitNumber: joi_1.default.string().optional(),
     floorNumber: joi_1.default.number().optional(),
@@ -242,6 +248,12 @@ exports.unitConfigurationSchema = joi_1.default.object({
 });
 // Room Detail Joi
 exports.roomDetailSchema = joi_1.default.object({
+    // media files attachement for middlewares
+    documentName: joi_1.default.array().items(joi_1.default.string()).optional(),
+    docType: joi_1.default.array().items(joi_1.default.string()).optional(),
+    idType: joi_1.default.array().items(joi_1.default.string()).optional(),
+    uploadedFiles: joi_1.default.array().items(joi_1.default.object()).optional(),
+    images: joi_1.default.array().items(propertyMediaFilesSchema).optional(),
     roomName: joi_1.default.string().required(),
     roomSize: joi_1.default.string().required(),
     ensuite: joi_1.default.boolean().default(false).optional(),

@@ -1,20 +1,33 @@
 import { prismaClient } from "..";
-import { AvailabilityStatus, PropertySpecificationType } from "@prisma/client";
+import { AvailabilityStatus, MediaType, PropertySpecificationType } from "@prisma/client";
 
 class PropertyUnit {
 
     // Create a unit under any one of the property types
     async createUnitDetail(data: any) {
-        const { residentialPropertyId, commercialPropertyId, ...rest } = data;
+        const { residentialPropertyId, commercialPropertyId, uploadedFiles, ...rest } = data;
         const propertyTypes = [residentialPropertyId, commercialPropertyId].filter(Boolean);
         if (propertyTypes.length !== 1) {
             throw new Error('Exactly one of residentialPropertyId or commercialPropertyId must be provided.');
         }
+        // Separate media by type
+        const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
+
         return await prismaClient.unitConfiguration.create({
             data: {
                 ...rest,
                 residentialPropertyId,
                 commercialPropertyId,
+                images: {
+                    create: images?.map(img => ({
+                        type: img.type,
+                        size: img.size,
+                        fileType: img.fileType,
+                        url: img.url,
+                        isPrimary: img.isPrimary,
+                        caption: img.caption,
+                    }))
+                },
             },
         });
     }
@@ -55,12 +68,10 @@ class PropertyUnit {
             default:
                 throw new Error('Invalid property type');
         }
-        console.log("=====================================")
-        console.log(whereClause)
 
         return await prismaClient.unitConfiguration.findMany({
             where: whereClause,
-            include: { images: true },
+            include: { images: true, ResidentialProperty: true,  CommercialProperty: true},
         });
     }
 

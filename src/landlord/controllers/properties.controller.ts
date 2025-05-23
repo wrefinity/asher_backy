@@ -2,15 +2,14 @@ import fs from 'fs';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, IBasePropertyDTOSchema, unitConfigurationSchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, IBasePropertyDTOSchema, unitConfigurationSchema, roomDetailSchema } from "../../validations/schemas/properties.schema"
 import { IPropertySpecificationDTO } from "../../validations/interfaces/properties.interface"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
-import { parseDateFieldNew } from "../../utils/helpers";
-import { PropertySpecificationType, PropertyType, AvailabilityStatus, ListingType } from "@prisma/client"
+import { PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 import profileServices from '../../services/profileServices';
@@ -81,28 +80,18 @@ class PropertyController {
 
     createRoom = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
-
-
-        const { error, value } = IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
+        const { error, value } = roomDetailSchema.validate(req.body, { abortEarly: false });
         if (error) {
             return res.status(400).json({ error: error.details });
         }
         try {
             const {
-                uploadedFiles,
-                specificationType,
-                propertySubType,
-                otherTypeSpecific,
-                commercial,
-                shortlet,
-                residential, ...data
+                uploadedFiles, ...data
             } = value
-
             delete data['documentName']
             delete data['docType']
             delete data['idType']
             delete data['uploadedFiles']
-
             const room = propertyRoomService.createRoomDetail(req.body)
             return res.status(201).json({ room })
         } catch (error) {
@@ -111,14 +100,22 @@ class PropertyController {
     }
     createUnit = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
-        // unitConfigurationSchema
 
         const { error, value } = unitConfigurationSchema.validate(req.body, { abortEarly: false });
         if (error) {
             return res.status(400).json({ error: error.details });
         }
+        
         try {
-            const room = propertyUnitService.createUnitDetail(req.body)
+            const {
+                uploadedFiles, ...data
+            } = value
+            delete data['documentName']
+            delete data['docType']
+            delete data['idType']
+            delete data['uploadedFiles']
+
+            const room = propertyUnitService.createUnitDetail({...data, uploadedFiles})
             return res.status(201).json({ room })
         } catch (error) {
             ErrorService.handleError(error, res)

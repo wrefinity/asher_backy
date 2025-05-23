@@ -1,21 +1,34 @@
 import { prismaClient } from "..";
-import { AvailabilityStatus, PropertySpecificationType } from "@prisma/client";
+import { AvailabilityStatus, MediaType, PropertySpecificationType } from "@prisma/client";
 
 class PropertyRoom {
 
     // Create a room under any one of the property types
     async createRoomDetail(data: any) {
-        const { residentialPropertyId, commercialPropertyId, shortletPropertyId, ...rest } = data;
-        const propertyTypes = [residentialPropertyId, commercialPropertyId, shortletPropertyId].filter(Boolean);
+        const { residentialPropertyId, commercialPropertyId, shortletPropertyId, uploadedFiles, ...rest } = data;
+        const propertyTypes = [residentialPropertyId, commercialPropertyId].filter(Boolean);
         if (propertyTypes.length !== 1) {
-            throw new Error('Exactly one of residentialPropertyId, commercialPropertyId, or shortletPropertyId must be provided.');
+            throw new Error('Exactly one of residentialPropertyId, commercialPropertyId, or commercialPropertyId must be provided.');
         }
+        // Separate media by type
+        const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
+
         return await prismaClient.roomDetail.create({
             data: {
                 ...rest,
                 residentialPropertyId,
                 commercialPropertyId,
                 shortletPropertyId,
+                images: {
+                    create: images?.map(img => ({
+                        type: img.type,
+                        size: img.size,
+                        fileType: img.fileType,
+                        url: img.url,
+                        isPrimary: img.isPrimary,
+                        caption: img.caption,
+                    }))
+                },
             },
         });
     }
@@ -65,7 +78,7 @@ class PropertyRoom {
 
 
     // Update room details
-    updateRoomProperty = async (id: string, data: any) =>{
+    updateRoomProperty = async (id: string, data: any) => {
         return await prismaClient.roomDetail.update({
             where: { id },
             data,
@@ -73,7 +86,7 @@ class PropertyRoom {
     }
 
     // Soft delete the unit by marking isDeleted = true (you need to add this field in the model)
-    softDeleteUnit = async (id: string) =>{
+    softDeleteUnit = async (id: string) => {
         return await prismaClient.roomDetail.update({
             where: { id },
             data: { isDeleted: true },
@@ -81,7 +94,7 @@ class PropertyRoom {
     }
 
     // Update unit availability status (VACANT or OCCUPIED)
-    updateUnitAvailabilityStatus= async (id: string, availability: AvailabilityStatus) =>{
+    updateUnitAvailabilityStatus = async (id: string, availability: AvailabilityStatus) => {
         return await prismaClient.roomDetail.update({
             where: { id },
             data: { availability },
