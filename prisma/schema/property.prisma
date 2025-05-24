@@ -423,7 +423,8 @@ model UnitConfiguration {
   availability          AvailabilityStatus?
   ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
   residentialPropertyId String?
-  CommercialProperty    CommercialProperty[]
+  CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
+  commercialPropertyId  String?
 
   Booking   Booking[]
   violation violation[]

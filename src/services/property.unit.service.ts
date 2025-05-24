@@ -63,48 +63,51 @@ class PropertyUnit {
     async getUnitByProperty(
         propertyType: PropertySpecificationType,
         propertyId: string
-    ) {
-        // Validate propertyType again in service layer for extra safety
+      ) {
         if (!Object.values(PropertySpecificationType).includes(propertyType)) {
-            throw new Error(`Invalid property type: ${propertyType}`);
+          throw new Error(`Invalid property type: ${propertyType}`);
         }
-
+      
         let whereClause: any = {};
+      
         switch (propertyType) {
-            case PropertySpecificationType.RESIDENTIAL:
-                whereClause.residentialPropertyId = propertyId;
-                break;
-            case PropertySpecificationType.COMMERCIAL:
-                whereClause.commercialPropertyId = propertyId;
-                break;
-            //   case PropertySpecificationType.SHORTLET:
-            //     whereClause.shortletPropertyId = propertyId;
-            //     break;
-            default:
-                throw new Error('Invalid property type');
+          case PropertySpecificationType.RESIDENTIAL:
+            whereClause.ResidentialProperty = { id: propertyId };
+            break;
+          case PropertySpecificationType.COMMERCIAL:
+            whereClause.CommercialProperty = { id: propertyId };
+            break;
+          // Uncomment and extend for SHORTLET or others:
+          // case PropertySpecificationType.SHORTLET:
+          //   whereClause.ShortletProperty = { id: propertyId };
+          //   break;
+          default:
+            throw new Error('Invalid property type');
         }
-
+      
         const units = await prismaClient.unitConfiguration.findMany({
-            where: whereClause,
-            include: { images: true, ResidentialProperty: true, CommercialProperty: true },
+          where: whereClause,
+          include: {
+            images: true,
+            ResidentialProperty: true,
+            CommercialProperty: true,
+          },
         });
-
-        // get All
-        const unitx = units.map(unit => {
-            const {
-                ResidentialProperty,
-                CommercialProperty,
-                ...rest
-            } = unit;
-
-            return {
-                ...rest,
-                residential: ResidentialProperty,
-                commercial: CommercialProperty,
-            };
+      
+        // Format response to flatten and rename relations
+        const formattedUnits = units.map(unit => {
+          const { ResidentialProperty, CommercialProperty, ...rest } = unit;
+      
+          return {
+            ...rest,
+            residential: ResidentialProperty,
+            commercial: CommercialProperty,
+          };
         });
-        return unitx;
-    }
+      
+        return formattedUnits;
+      }
+      
 
 
     // Update unit details
