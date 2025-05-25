@@ -232,7 +232,7 @@ const propertyDocumentSchema = Joi.object({
   uploadedBy: Joi.string().optional(),
 })
 
-
+// ..
 export const commercialPropertyFloorSchema = Joi.object({
   floorNumber: Joi.number().required(),
   area: Joi.string().required(),
