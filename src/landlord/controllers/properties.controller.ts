@@ -92,7 +92,9 @@ class PropertyController {
             delete data['docType']
             delete data['idType']
             delete data['uploadedFiles']
-            const room = propertyRoomService.createRoomDetail(req.body)
+
+            const room = await propertyRoomService.createRoomDetail({...data, uploadedFiles})
+            if(!room) return res.status(400).json({message: "room creation failed"})
             return res.status(201).json({ room })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -115,8 +117,9 @@ class PropertyController {
             delete data['idType']
             delete data['uploadedFiles']
 
-            const room = propertyUnitService.createUnitDetail({...data, uploadedFiles})
-            return res.status(201).json({ room })
+            const unit = await propertyUnitService.createUnitDetail({...data, uploadedFiles})
+            if(!unit) return res.status(400).json({message: "unit creation failed"})
+            return res.status(201).json({ unit })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
