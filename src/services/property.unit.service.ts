@@ -14,6 +14,7 @@ class PropertyUnit {
         const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
 
         return await prismaClient.unitConfiguration.create({
+
             data: {
                 ...rest,
                 residentialPropertyId,

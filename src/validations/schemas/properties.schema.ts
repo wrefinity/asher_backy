@@ -232,7 +232,7 @@ const propertyDocumentSchema = Joi.object({
   uploadedBy: Joi.string().optional(),
 })
 
-
+// ..
 export const commercialPropertyFloorSchema = Joi.object({
   floorNumber: Joi.number().required(),
   area: Joi.string().required(),
@@ -264,6 +264,8 @@ const propertyMediaFilesSchema = Joi.object({
 
 export const unitConfigurationSchema = Joi.object({
   id: Joi.string().optional(),
+  residentialPropertyId: Joi.string().optional(),
+  commercialPropertyId: Joi.string().optional(),
 
   // media files attachement for middlewares
   documentName: Joi.array().items(Joi.string()).optional(),
@@ -289,13 +291,15 @@ export const unitConfigurationSchema = Joi.object({
 
 // Room Detail Joi
 export const roomDetailSchema = Joi.object({
-
+  residentialPropertyId: Joi.string().optional(),
+  commercialPropertyId: Joi.string().optional(),
   // media files attachement for middlewares
   documentName: Joi.array().items(Joi.string()).optional(),
   docType: Joi.array().items(Joi.string()).optional(),
   idType: Joi.array().items(Joi.string()).optional(),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),    
+  
   roomName: Joi.string().required(),
   roomSize: Joi.string().required(),
   ensuite: Joi.boolean().default(false).optional(),
