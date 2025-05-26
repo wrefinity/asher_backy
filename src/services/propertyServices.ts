@@ -685,17 +685,26 @@ class PropertyService {
                 switch (property.listAs) {
                     case PropertySpecificationType.COMMERCIAL:
                         if (primarySpec.commercial) {
-                            specData = primarySpec.commercial;
+                            const {id, ...restCommercial} = primarySpec.commercial
+                            specData = {...restCommercial, commercialPropertyId: id};
                         }
                         break;
                     case PropertySpecificationType.RESIDENTIAL:
                         if (primarySpec.residential) {
                             specData = primarySpec.residential;
+
+                            const {id, ...restResidential} = primarySpec.residential
+                            specData = {...restResidential, residentialPropertyId: id};
                         }
                         break;
                     case PropertySpecificationType.SHORTLET:
                         if (primarySpec.shortlet) {
+    
+
                             specData = primarySpec.shortlet;
+
+                            const {id, ...restShortlet} = primarySpec.shortlet
+                            specData = {...restShortlet, shortletPropertyId: id};
                         }
                         break;
                 }
