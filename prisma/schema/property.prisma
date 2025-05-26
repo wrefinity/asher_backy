@@ -418,6 +418,7 @@ model UnitConfiguration {
   price                 String
   area                  String?
   isDeleted             Boolean              @default(false)
+  isListed             Boolean              @default(true)
   images                PropertyMediaFiles[] @relation("UnitImages")
   description           String?
   availability          AvailabilityStatus?
@@ -441,6 +442,7 @@ model RoomDetail {
   price                 String
   availability          AvailabilityStatus?  @default(VACANT)
   images                PropertyMediaFiles[] @relation("RoomImages")
+  isListed             Boolean              @default(true)
   ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
   residentialPropertyId String?
   CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])

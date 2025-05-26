@@ -530,6 +530,8 @@ class PropertyService {
                 } as any,
             },
         });
+
+
     };
 
 
@@ -565,7 +567,7 @@ class PropertyService {
             minGarage,
             maxGarage
         } = property || {};
-        return await prismaClient.propertyListingHistory.findMany({
+        const properties = await prismaClient.propertyListingHistory.findMany({
             where: {
                 ...(isActive !== undefined && { isActive }),
                 ...(isActive !== undefined && { onListing: isActive }),
@@ -661,6 +663,56 @@ class PropertyService {
             },
             skip,
             take,
+        });
+        // Transform the properties to spread specifications based on listAs type
+        return properties.map(property => {
+            // Type assertion for the specification array
+            const specification = property.property.specification as {
+                residential?: any;
+                commercial?: any;
+                shortlet?: any;
+            } | undefined;
+
+            const { specification: _, ...propertyWithoutSpec } = property.property;
+            const primarySpec = specification?.[0];
+
+            let specData = null;
+            let specificationType = primarySpec?.specificationType;
+            let propertySubType = primarySpec?.propertySubType;
+
+            // Type-safe specification extraction
+            if (primarySpec) {
+                switch (property.listAs) {
+                    case PropertySpecificationType.COMMERCIAL:
+                        if (primarySpec.commercial) {
+                            specData = primarySpec.commercial;
+                        }
+                        break;
+                    case PropertySpecificationType.RESIDENTIAL:
+                        if (primarySpec.residential) {
+                            specData = primarySpec.residential;
+                        }
+                        break;
+                    case PropertySpecificationType.SHORTLET:
+                        if (primarySpec.shortlet) {
+                            specData = primarySpec.shortlet;
+                        }
+                        break;
+                }
+            }
+
+            return {
+                ...property,
+                property: {
+                    ...propertyWithoutSpec,
+                    // Only include spec data if it exists
+                    ...(specData ? specData : {}),
+                    specificationType,
+                    propertySubType,
+                    // Include all specifications for reference if needed
+                    allSpecifications: specification
+                }
+            };
         });
     };
 

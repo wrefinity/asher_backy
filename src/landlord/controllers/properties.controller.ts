@@ -17,6 +17,9 @@ import userServices from '../../services/user.services';
 import propertyUploadServices from '../../services/property.upload.services';
 import propertyRoomService from '../../services/property.room.service';
 import propertyUnitService from '../../services/property.unit.service';
+import propertyServices from '../../services/propertyServices';
+import commercialServices from '../../services/commercial.services';
+import residentialServices from '../../services/residential.services';
 
 
 class PropertyController {
@@ -84,6 +87,17 @@ class PropertyController {
         if (error) {
             return res.status(400).json({ error: error.details });
         }
+
+        if(value.residentialPropertyId){
+            // check existences of the residential
+            const avail = await residentialServices.getResidentialPropertyById(value.residentialPropertyId)
+            if(!avail){ return res.status(400).json({message: "residential property not found"})}
+        }
+        if(value.commercialPropertyId){
+            // check existences of the commercial
+            const avail = await commercialServices.getCommercialPropertyById(value.commercialPropertyId)
+            if(!avail){ return res.status(400).json({message: "commercial property not found"})}
+        }
         try {
             const {
                 uploadedFiles, ...data
@@ -108,6 +122,16 @@ class PropertyController {
             return res.status(400).json({ error: error.details });
         }
         
+        if(value.residentialPropertyId){
+            // check existences of the residential
+            const avail = await residentialServices.getResidentialPropertyById(value.residentialPropertyId)
+            if(!avail){ return res.status(400).json({message: "residential property not found"})}
+        }
+        if(value.commercialPropertyId){
+            // check existences of the commercial
+            const avail = await commercialServices.getCommercialPropertyById(value.commercialPropertyId)
+            if(!avail){ return res.status(400).json({message: "commercial property not found"})}
+        }
         try {
             const {
                 uploadedFiles, ...data

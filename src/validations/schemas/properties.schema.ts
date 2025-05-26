@@ -145,16 +145,41 @@ export const updatePropertyDocumentSchema = Joi.object({
 
 
 
-
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
-  type: Joi.string().valid(...listingTypes).required(),
+  type: Joi.string().valid(...listingTypes).required()   .messages({
+    'string.base': '"type" must be a string',
+    'any.only': `"type" must be one of ${Object.values(ListingType).join(', ')}`,
+    'any.required': '"type" is required'
+  }),
   propertyId: Joi.string().required(),
   unitId: Joi.string().optional(),
   roomId: Joi.string().optional(),
-  propertySubType: Joi.string().valid(...propertyType).required(),
-  listAs: Joi.string().valid(...Object.values(PropertySpecificationType)).required(),
-  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).required(),
+
+  propertySubType: Joi.string()
+    .valid(...propertyType)
+    .required()
+    .messages({
+      'string.base': '"propertySubType" must be a string',
+      'any.only': `"propertySubType" must be one of ${propertyType.join(', ')}`,
+      'any.required': '"propertySubType" is required'
+    }),
+  listAs: Joi.string()
+    .valid(...Object.values(PropertySpecificationType))
+    .required()
+    .messages({
+      'string.base': '"listAs" must be a string',
+      'any.only': `"listAs" must be one of ${Object.values(PropertySpecificationType).join(', ')}`,
+      'any.required': '"listAs" is required'
+    }),
+  priceFrequency: Joi.string()
+    .valid(...Object.values(PriceFrequency))
+    .required()
+    .messages({
+      'string.base': '"priceFrequency" must be a string',
+      'any.only': `"priceFrequency" must be one of ${Object.values(PriceFrequency).join(', ')}`,
+      'any.required': '"priceFrequency" is required'
+    }),
   price: Joi.number().required(),
   securityDeposit: Joi.number().required(),
   minStayDays: Joi.number().optional(),
