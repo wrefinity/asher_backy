@@ -306,6 +306,10 @@ export const unitConfigurationSchema = Joi.object({
   bedrooms: Joi.number().optional(),
   bathrooms: Joi.number().optional(),
   price: Joi.string().required(),
+  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
+    'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
+    'string.base': 'priceFrequency type must be a string'
+  }).optional(),
   area: Joi.string().optional(),
   description: Joi.string().optional(),
   availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
@@ -318,17 +322,22 @@ export const unitConfigurationSchema = Joi.object({
 export const roomDetailSchema = Joi.object({
   residentialPropertyId: Joi.string().optional(),
   commercialPropertyId: Joi.string().optional(),
+  unitId: Joi.string().optional(),
   // media files attachement for middlewares
   documentName: Joi.array().items(Joi.string()).optional(),
   docType: Joi.array().items(Joi.string()).optional(),
   idType: Joi.array().items(Joi.string()).optional(),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),    
-  
+  count: Joi.number().optional(), 
   roomName: Joi.string().required(),
   roomSize: Joi.string().required(),
   ensuite: Joi.boolean().default(false).optional(),
   price: Joi.string().required(),
+  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
+    'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
+    'string.base': 'priceFrequency type must be a string'
+  }).optional(),
   availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
     'string.base': 'AvailabilityStatus type must be a string'
@@ -724,11 +733,6 @@ export const IBasePropertyDTOSchema = Joi.object({
   nearbyAmenities: Joi.array().items(Joi.string()).optional(),
   customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
   amenityDistances: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
-
-  contactName: Joi.string().optional(),
-  contactCompany: Joi.string().optional(),
-  companyLogoUrl: Joi.string().uri().optional(),
-  viewingArrangements: Joi.string().optional(),
 
   propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),

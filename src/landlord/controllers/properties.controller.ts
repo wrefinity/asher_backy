@@ -55,6 +55,7 @@ class PropertyController {
                 specificationType,
                 propertySubType,
                 otherTypeSpecific,
+                count,
                 commercial,
                 shortlet,
                 residential, ...data

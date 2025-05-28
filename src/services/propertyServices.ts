@@ -1,4 +1,4 @@
-import { Prisma, PropertySpecificationType } from "@prisma/client";
+import { PriceFrequency, Prisma, PropertySpecificationType } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
@@ -1051,14 +1051,26 @@ class PropertyService {
                 bills: {
                     connect: bills?.length ? bills?.map((id) => ({ id })) : undefined,
                 },
+                // roomDetails: {
+                //     create: roomDetails?.map((room: any) => ({
+                //         roomName: room.roomName,
+                //         roomSize: room.roomSize,
+                //         ensuite: room.ensuite,
+                //         price: room.price,
+                //     })) || [],
+                // },
                 roomDetails: {
-                    create: roomDetails?.map((room: any) => ({
+                    create: roomDetails?.flatMap((room: any) => 
+                      Array.from({ length: room.count || 1 }, () => ({
                         roomName: room.roomName,
                         roomSize: room.roomSize,
+                        count: room.count,
                         ensuite: room.ensuite,
                         price: room.price,
-                    })) || [],
-                },
+                        priceFrequency: room.priceFrequency,
+                      }))
+                    ) || [],
+                  },
                 sharedFacilities: {
                     create: {
                         kitchen: sharedFacilities?.kitchen ?? false,
@@ -1071,20 +1083,38 @@ class PropertyService {
                         other: sharedFacilities?.other || "",
                     },
                 },
+                // unitConfigurations: {
+                //     create: unitConfigurations?.map((unit: any) => ({
+                //         unitType: unit.unitType,
+                //         unitNumber: unit.unitNumber,
+                //         floorNumber: unit.floorNumber,
+                //         count: unit.count,
+                //         bedrooms: unit.bedrooms,
+                //         bathrooms: unit.bathrooms,
+                //         price: unit.price,
+                //         PriceFrequency: unit.PriceFrequency,
+                //         area: unit.area,
+                //         description: unit.description,
+                //         availability: unit.availability,
+                //     })) || [],
+                // },
                 unitConfigurations: {
-                    create: unitConfigurations?.map((unit: any) => ({
+                    create: unitConfigurations?.flatMap((unit: any) => 
+                      Array.from({ length: unit.count || 1 }, (_, i) => ({
                         unitType: unit.unitType,
-                        unitNumber: unit.unitNumber,
+                        unitNumber: `${unit.unitNumber}${i + 1}`,
                         floorNumber: unit.floorNumber,
-                        count: unit.count,
                         bedrooms: unit.bedrooms,
                         bathrooms: unit.bathrooms,
+                        count: unit.count,
                         price: unit.price,
+                        priceFrequency: unit.priceFrequency,
                         area: unit.area,
                         description: unit.description,
                         availability: unit.availability,
-                    })) || [],
-                },
+                      }))
+                    ) || [],
+                  },
             },
         });
         return await tx.propertySpecification.create({

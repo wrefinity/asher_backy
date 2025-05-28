@@ -108,13 +108,6 @@ export interface IBasePropertyDTO {
     customNearbyAmenities: string[];
     amenityDistances?: Record<string, number>;
 
-
-    // company information
-    contactName?: string;
-    contactCompany?: string;
-    companyLogoUrl?: string;
-    viewingArrangements?: string;
-
     propertyDocument: PropertyDocument[]
     image?: PropertyMediaFiles[]
     videos?: PropertyMediaFiles[]
@@ -138,7 +131,9 @@ export interface IRoomDetail {
     roomName?: string;
     roomSize?: string;
     ensuite?: boolean;
+    count?: number;
     price?: string;
+    priceFrequency?: PriceFrequency;
     availability?: AvailabilityStatus;
 }
 
@@ -192,6 +187,7 @@ export interface IUnitConfiguration {
     bedrooms?: number;
     bathrooms?: number;
     price: string;
+    priceFrequency?: PriceFrequency;
     area?: string;
     description?: string;
 }

@@ -293,6 +293,7 @@ model properties {
   address2  String?
 
   // //                                               visualizations
+  count            Int?
   // Media
   images           PropertyMediaFiles[] @relation("PropertyImages")
   videos           PropertyMediaFiles[] @relation("PropertyVideos")
@@ -342,12 +343,6 @@ model properties {
   violation violation[] @relation("violations")
 
   UserLikedProperty UserLikedProperty[]
-
-  // Contact & Additional Information
-  contactName         String?
-  contactCompany      String?
-  companyLogoUrl      String?
-  viewingArrangements String?
 
   // Property features
   keyFeatures           String[]
@@ -416,9 +411,10 @@ model UnitConfiguration {
   bedrooms              Int?
   bathrooms             Int?
   price                 String
+  priceFrequency        PriceFrequency?
   area                  String?
   isDeleted             Boolean              @default(false)
-  isListed             Boolean              @default(true)
+  isListed              Boolean              @default(false)
   images                PropertyMediaFiles[] @relation("UnitImages")
   description           String?
   availability          AvailabilityStatus?
@@ -431,6 +427,7 @@ model UnitConfiguration {
   violation violation[]
 
   propertyListingHistory propertyListingHistory[]
+  RoomDetail             RoomDetail[]
 }
 
 model RoomDetail {
@@ -439,16 +436,20 @@ model RoomDetail {
   roomSize              String
   ensuite               Boolean              @default(false)
   isDeleted             Boolean              @default(false)
+  count                 Int?
   price                 String
+  priceFrequency        PriceFrequency?
   availability          AvailabilityStatus?  @default(VACANT)
   images                PropertyMediaFiles[] @relation("RoomImages")
-  isListed             Boolean              @default(true)
+  isListed              Boolean              @default(false)
   ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
   residentialPropertyId String?
   CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
   commercialPropertyId  String?
   ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
   shortletPropertyId    String?
+  unit                  UnitConfiguration?   @relation(fields: [unitId], references: [id])
+  unitId                String?
 
   Booking Booking[]
 
