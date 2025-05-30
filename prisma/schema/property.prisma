@@ -39,6 +39,8 @@ enum PropertyType {
   HOUSE_MULTIPLE_OCCUPATION
   SHARED_HOUSE
   RENTAL_ROOM
+  DETACHED
+  SEMI_DETACHED
   APARTMENT
   VILLA
   CONDOMINIUM
@@ -187,6 +189,7 @@ enum PropertyFeatureType {
 model propertyListingHistory {
   id                String  @id @default(cuid())
   payApplicationFee Boolean @default(false)
+  applicationFeeAmount           Decimal?        @default(0.00) @db.Decimal(18, 2)
   isActive          Boolean @default(true)
   onListing         Boolean @default(true)
 
@@ -205,6 +208,7 @@ model propertyListingHistory {
   room   RoomDetail? @relation(fields: [roomId], references: [id])
 
   price           Decimal?        @default(0.00) @db.Decimal(18, 2)
+  
   priceFrequency  PriceFrequency?
   securityDeposit Decimal?        @default(0.00) @db.Decimal(18, 2)
   minStayDays     Int?

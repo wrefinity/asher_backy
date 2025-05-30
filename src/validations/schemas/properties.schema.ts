@@ -147,18 +147,27 @@ export const updatePropertyDocumentSchema = Joi.object({
 
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
+  applicationFeeAmount: Joi.number().optional(),
   type: Joi.string().valid(...listingTypes).required()   .messages({
     'string.base': '"type" must be a string',
     'any.only': `"type" must be one of ${Object.values(ListingType).join(', ')}`,
     'any.required': '"type" is required'
   }),
   propertyId: Joi.string().required(),
-  unitId: Joi.string().optional(),
-  roomId: Joi.string().optional(),
+  // Arrays of IDs
+  unitId: Joi.array()
+    .items(Joi.string())
+    .min(1)
+    .optional(),
+
+  roomId: Joi.array()
+    .items(Joi.string())
+    .min(1)
+    .optional(),
 
   propertySubType: Joi.string()
     .valid(...propertyType)
-    .required()
+    .optional()
     .messages({
       'string.base': '"propertySubType" must be a string',
       'any.only': `"propertySubType" must be one of ${propertyType.join(', ')}`,

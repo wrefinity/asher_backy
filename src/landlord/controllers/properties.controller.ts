@@ -89,15 +89,15 @@ class PropertyController {
             return res.status(400).json({ error: error.details });
         }
 
-        if(value.residentialPropertyId){
+        if (value.residentialPropertyId) {
             // check existences of the residential
             const avail = await residentialServices.getResidentialPropertyById(value.residentialPropertyId)
-            if(!avail){ return res.status(400).json({message: "residential property not found"})}
+            if (!avail) { return res.status(400).json({ message: "residential property not found" }) }
         }
-        if(value.commercialPropertyId){
+        if (value.commercialPropertyId) {
             // check existences of the commercial
             const avail = await commercialServices.getCommercialPropertyById(value.commercialPropertyId)
-            if(!avail){ return res.status(400).json({message: "commercial property not found"})}
+            if (!avail) { return res.status(400).json({ message: "commercial property not found" }) }
         }
         try {
             const {
@@ -108,8 +108,8 @@ class PropertyController {
             delete data['idType']
             delete data['uploadedFiles']
 
-            const room = await propertyRoomService.createRoomDetail({...data, uploadedFiles})
-            if(!room) return res.status(400).json({message: "room creation failed"})
+            const room = await propertyRoomService.createRoomDetail({ ...data, uploadedFiles })
+            if (!room) return res.status(400).json({ message: "room creation failed" })
             return res.status(201).json({ room })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -122,16 +122,16 @@ class PropertyController {
         if (error) {
             return res.status(400).json({ error: error.details });
         }
-        
-        if(value.residentialPropertyId){
+
+        if (value.residentialPropertyId) {
             // check existences of the residential
             const avail = await residentialServices.getResidentialPropertyById(value.residentialPropertyId)
-            if(!avail){ return res.status(400).json({message: "residential property not found"})}
+            if (!avail) { return res.status(400).json({ message: "residential property not found" }) }
         }
-        if(value.commercialPropertyId){
+        if (value.commercialPropertyId) {
             // check existences of the commercial
             const avail = await commercialServices.getCommercialPropertyById(value.commercialPropertyId)
-            if(!avail){ return res.status(400).json({message: "commercial property not found"})}
+            if (!avail) { return res.status(400).json({ message: "commercial property not found" }) }
         }
         try {
             const {
@@ -142,8 +142,8 @@ class PropertyController {
             delete data['idType']
             delete data['uploadedFiles']
 
-            const unit = await propertyUnitService.createUnitDetail({...data, uploadedFiles})
-            if(!unit) return res.status(400).json({message: "unit creation failed"})
+            const unit = await propertyUnitService.createUnitDetail({ ...data, uploadedFiles })
+            if (!unit) return res.status(400).json({ message: "unit creation failed" })
             return res.status(201).json({ unit })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -301,16 +301,24 @@ class PropertyController {
             //     throw new Error('ROOM can only be listed under Residential or Shortlet properties');
             // }
 
-            // Validate unitId if provided
-            if (value.unitId) {
-                const unitExists = await propertyUnitService.getUnitById(value.unitId);
-                if (!unitExists) return res.status(400).json({ message: 'Invalid unit ID' });
+            // Validate array of unitIds
+            if (Array.isArray(value.unitId) && value.unitId.length > 0) {
+                for (const uid of value.unitId) {
+                    const unitExists = await propertyUnitService.getUnitById(uid);
+                    if (!unitExists) {
+                        return res.status(400).json({ message: `Invalid unit ID: ${uid}` });
+                    }
+                }
             }
 
-            // Validate roomId if provided
-            if (value.roomId) {
-                const roomExists = await propertyRoomService.getRoomById(value.roomId);
-                if (!roomExists) return res.status(400).json({ message: 'Invalid room ID' });
+            // Validate array of roomIds
+            if (Array.isArray(value.roomId) && value.roomId.length > 0) {
+                for (const rid of value.roomId) {
+                    const roomExists = await propertyRoomService.getRoomById(rid);
+                    if (!roomExists) {
+                        return res.status(400).json({ message: `Invalid room ID: ${rid}` });
+                    }
+                }
             }
 
             const listing = await PropertyServices.createPropertyListing(data);

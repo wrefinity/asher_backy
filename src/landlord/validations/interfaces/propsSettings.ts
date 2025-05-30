@@ -30,15 +30,16 @@ export interface IGlobalSetting {
 }
 
 export interface PropertyListingDTO {
-    payApplicationFee: boolean;
+    payApplicationFee?: boolean;
+    applicationFeeAmount?: boolean;
     type?: ListingType; //ENTIRE_PROPERTY
     listAs: PropertySpecificationType;
     propertyId: string;
-    unitId?: string;
-    roomId?: string;
+    unitId?: string[];
+    roomId?: string[];
 
-    propertySubType: PropertyType,
-    priceFrequency: PriceFrequency,
+    propertySubType?: PropertyType,
+    priceFrequency?: PriceFrequency,
     price: number,
     securityDeposit?: number,
     minStayDays?: number,

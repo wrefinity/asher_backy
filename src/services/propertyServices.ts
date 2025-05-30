@@ -62,6 +62,7 @@ class PropertyService {
                     include: {
                         unitConfigurations: true,
                         sharedFacilities: true,
+                        roomDetails: true,
                         bills: true,
                     }
                 },
@@ -726,12 +727,55 @@ class PropertyService {
     };
 
     createPropertyListing = async (data: PropertyListingDTO | any) => {
-        const propListed = await this.getPropsListedById(data.propertyId);
-        if (propListed) throw new Error(`The props with ID ${data.propertyId} have been listed`);
-        return await prismaClient.propertyListingHistory.create({
-            data,
-        });
+        const { propertyId, unitIds, roomIds, ...baseData } = data;
+    
+        const propListed = await this.getPropsListedById(propertyId);
+        if (propListed) throw new Error(`The property with ID ${propertyId} has already been listed`);
+    
+        const listings = [];
+    
+        // If unitIds exist, iterate and create listing for each unit
+        if (Array.isArray(unitIds) && unitIds.length > 0) {
+            for (const unitId of unitIds) {
+                const created = await prismaClient.propertyListingHistory.create({
+                    data: {
+                        ...baseData,
+                        propertyId,
+                        unitId
+                    },
+                });
+                listings.push(created);
+            }
+        }
+    
+        // If roomIds exist, iterate and create listing for each room
+        if (Array.isArray(roomIds) && roomIds.length > 0) {
+            for (const roomId of roomIds) {
+                const created = await prismaClient.propertyListingHistory.create({
+                    data: {
+                        ...baseData,
+                        propertyId,
+                        roomId
+                    },
+                });
+                listings.push(created);
+            }
+        }
+    
+        // If neither roomIds nor unitIds were provided, create one general listing
+        if ((!unitIds || unitIds.length === 0) && (!roomIds || roomIds.length === 0)) {
+            const created = await prismaClient.propertyListingHistory.create({
+                data: {
+                    ...baseData,
+                    propertyId
+                },
+            });
+            listings.push(created);
+        }
+    
+        return listings;
     };
+    
 
     deletePropertyListing = async (propertyId: string) => {
         const lastListed = await this.getPropsListedById(propertyId);
