@@ -726,55 +726,72 @@ class PropertyService {
         });
     };
 
-    createPropertyListing = async (data: PropertyListingDTO | any) => {
-        const { propertyId, unitIds, roomIds, ...baseData } = data;
+    async createPropertyListing(data: PropertyListingDTO | any) {
+        const { propertyId, unitId:unitIds, roomId:roomIds, ...baseData } = data;
     
         const propListed = await this.getPropsListedById(propertyId);
-        if (propListed) throw new Error(`The property with ID ${propertyId} has already been listed`);
+        if (propListed) {
+            throw new Error(`The property with ID ${propertyId} has already been listed`);
+        }
     
         const listings = [];
     
         // If unitIds exist, iterate and create listing for each unit
-        if (Array.isArray(unitIds) && unitIds.length > 0) {
+        if (Array.isArray(unitIds) ){
             for (const unitId of unitIds) {
-                const created = await prismaClient.propertyListingHistory.create({
-                    data: {
-                        ...baseData,
-                        propertyId,
-                        unitId
-                    },
-                });
-                listings.push(created);
+                if (unitId) { // Ensure unitId is not null/undefined
+                    const created = await prismaClient.propertyListingHistory.create({
+                        data: {
+                            ...baseData,
+                            propertyId,
+                            unitId,
+                            roomId: null
+                        },
+                    });
+                    listings.push(created);
+                }
             }
         }
     
         // If roomIds exist, iterate and create listing for each room
-        if (Array.isArray(roomIds) && roomIds.length > 0) {
+        if (Array.isArray(roomIds)) {
             for (const roomId of roomIds) {
-                const created = await prismaClient.propertyListingHistory.create({
-                    data: {
-                        ...baseData,
-                        propertyId,
-                        roomId
-                    },
-                });
-                listings.push(created);
+                if (roomId) { // Ensure roomId is not null/undefined
+                    const created = await prismaClient.propertyListingHistory.create({
+                        data: {
+                            ...baseData,
+                            propertyId,
+                            roomId,
+                            unitId: null 
+                        },
+                    });
+                    listings.push(created);
+                }
             }
         }
     
         // If neither roomIds nor unitIds were provided, create one general listing
-        if ((!unitIds || unitIds.length === 0) && (!roomIds || roomIds.length === 0)) {
+        if (
+            (!unitIds || unitIds.length === 0 || unitIds.every(id => !id)) && 
+            (!roomIds || roomIds.length === 0 || roomIds.every(id => !id))
+        ) {
             const created = await prismaClient.propertyListingHistory.create({
                 data: {
                     ...baseData,
-                    propertyId
+                    propertyId,
+                    unitId: null,
+                    roomId: null
                 },
             });
             listings.push(created);
         }
     
+        if (listings.length === 0) {
+            throw new Error('No valid listings were created - check your unitIds and roomIds');
+        }
+    
         return listings;
-    };
+    }
     
 
     deletePropertyListing = async (propertyId: string) => {
