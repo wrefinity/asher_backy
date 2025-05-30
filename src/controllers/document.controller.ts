@@ -68,17 +68,16 @@ class DocumentController {
             );
 
             // Separate successes/errors
-            const uploadedFiles = results
-                .filter(r => r.status === 'fulfilled')
-                .map(r => r.value);
-            const errors = results
-                .filter(r => r.status === 'rejected')
-                .map(r => r.reason);
+            // const uploadedFiles = results
+            //     .filter(r => r.status === 'fulfilled')
+            //     .map(r => r.value);
+            // const errors = results
+            //     .filter(r => r.status === 'rejected')
+            //     .map(r => r.reason);
 
             return res.status(201).json({
                 success: true,
-                uploadedFiles,
-                errors
+                results
             });
         } catch (error) {
             ErrorService.handleError(error, res);

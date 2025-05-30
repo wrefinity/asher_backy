@@ -841,25 +841,36 @@ class PropertyService {
 
         return propsListed
     }
+
     // to update property listings
-    updatePropertyListing = async (data: Partial<PropertyListingDTO | any>, propertyId: string, landlordId: string) => {
-        const propsListed = await this.getPropsListedById(propertyId);
-        if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
+    getPropertyListingByListingId = async ( listedId: string) => {
+        return await prismaClient.propertyListingHistory.findUnique({
+            where: {
+                id: listedId
+            },
+            include:{
+                property: true,
+            }
+        })
+    }
+    updatePropertyListing = async (data: Partial<PropertyListingDTO | any>, listedId: string, landlordId: string) => {
+        const propsListed = await this.getPropertyListingByListingId(listedId);
+        if (!propsListed) throw new Error(`The props listing with the listing id: ${listedId} have not been listed`);
         if (propsListed?.property?.landlordId !== landlordId) {
             throw new Error("only landlord that created this props listing can update props listing");
         }
 
         return await prismaClient.propertyListingHistory.update({
-            where: { propertyId },
+            where: { id:listedId },
             data,
         });
     }
     // to update property to listing and not listing 
-    updateListingStatus = async (propertyId: string) => {
-        const propsListed = await this.getPropsListedById(propertyId);
-        if (!propsListed) throw new Error(`The props with ID ${propertyId} have not been listed`);
+    updateListingStatus = async (listedId: string) => {
+        const propsListed = await this.getPropertyListingByListingId(listedId);
+        if (!propsListed) throw new Error(`The props listing with the listing id: ${listedId} have not been listed`);
         return await prismaClient.propertyListingHistory.update({
-            where: { propertyId },
+            where: { id:listedId },
             data: { onListing: false },
         });
     }

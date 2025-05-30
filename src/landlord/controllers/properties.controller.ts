@@ -441,7 +441,7 @@ class PropertyController {
         try {
             const { error, value } = updatePropertyListingSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
-            const propertyId = req.params.propertyId;
+            const listedId = req.params.listedId;
             // Extract landlordId from the authenticated user
             const landlordId = req.user?.landlords?.id;
 
@@ -449,7 +449,7 @@ class PropertyController {
                 return res.status(400).json({ message: "Landlord not found" });
             }
             // update listing
-            const listing = await PropertyServices.updatePropertyListing(value, propertyId, landlordId);
+            const listing = await PropertyServices.updatePropertyListing(value, listedId, landlordId);
 
             // Return the update property listing
             return res.status(200).json({ listing });
