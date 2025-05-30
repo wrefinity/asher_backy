@@ -749,6 +749,10 @@ class PropertyService {
                         },
                     });
                     listings.push(created);
+                    await prismaClient.unitConfiguration.update({
+                        where: { id: unitId },
+                        data: { isListed: true }
+                    });
                 }
             }
         }
