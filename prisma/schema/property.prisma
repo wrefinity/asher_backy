@@ -195,7 +195,7 @@ model propertyListingHistory {
 
   type ListingType? @default(SINGLE_UNIT)
 
-  propertyId String?     @unique // If set, these settings apply to the property
+  propertyId String?      // If set, these settings apply to the property
   property   properties? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   listAs          PropertySpecificationType? @default(SHORTLET)
