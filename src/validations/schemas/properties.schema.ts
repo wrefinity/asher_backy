@@ -143,8 +143,6 @@ export const updatePropertyDocumentSchema = Joi.object({
 
 
 
-
-
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
   applicationFeeAmount: Joi.number().optional(),
@@ -183,14 +181,14 @@ export const createPropertyListingSchema = Joi.object({
     }),
   priceFrequency: Joi.string()
     .valid(...Object.values(PriceFrequency))
-    .required()
+    .optional()
     .messages({
       'string.base': '"priceFrequency" must be a string',
       'any.only': `"priceFrequency" must be one of ${Object.values(PriceFrequency).join(', ')}`,
       'any.required': '"priceFrequency" is required'
     }),
-  price: Joi.number().required(),
-  securityDeposit: Joi.number().required(),
+  price: Joi.number().optional(),
+  securityDeposit: Joi.number().optional(),
   minStayDays: Joi.number().optional(),
   maxStayDays: Joi.number().optional(),
   availableFrom: Joi.date().iso().optional(),

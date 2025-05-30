@@ -40,7 +40,7 @@ export interface PropertyListingDTO {
 
     propertySubType?: PropertyType,
     priceFrequency?: PriceFrequency,
-    price: number,
+    price?: number,
     securityDeposit?: number,
     minStayDays?: number,
     maxStayDays?: number,
