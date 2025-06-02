@@ -423,7 +423,8 @@ class PropertyController {
                 return res.status(400).json({ message: "Landlord not found" });
             }
             // get listing
-            const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
+            // const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
+            const activePropsListing = await PropertyServices.getPropertyListingDetails(landlordId);
             const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false, AvailabilityStatus.OCCUPIED);
 
             // Return the ative and inactive property listing

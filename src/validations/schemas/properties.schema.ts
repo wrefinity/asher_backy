@@ -143,25 +143,24 @@ export const updatePropertyDocumentSchema = Joi.object({
 
 
 
+
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
   applicationFeeAmount: Joi.number().optional(),
-  type: Joi.string().valid(...listingTypes).required()   .messages({
-    'string.base': '"type" must be a string',
-    'any.only': `"type" must be one of ${Object.values(ListingType).join(', ')}`,
-    'any.required': '"type" is required'
-  }),
-  propertyId: Joi.string().required(),
-  // Arrays of IDs
-  unitId: Joi.array()
-    .items(Joi.string())
-    .min(1)
-    .optional(),
 
-  roomId: Joi.array()
-    .items(Joi.string())
-    .min(1)
-    .optional(),
+  type: Joi.string()
+    .valid(...Object.values(ListingType))
+    .required()
+    .messages({
+      'string.base': '"type" must be a string',
+      'any.only': `"type" must be one of ${Object.values(ListingType).join(', ')}`,
+      'any.required': '"type" is required',
+    }),
+
+  propertyId: Joi.string().required(),
+
+  unitId: Joi.array().items(Joi.string()).optional(),
+  roomId: Joi.array().items(Joi.string()).optional(),
 
   propertySubType: Joi.string()
     .valid(...propertyType)
@@ -169,31 +168,74 @@ export const createPropertyListingSchema = Joi.object({
     .messages({
       'string.base': '"propertySubType" must be a string',
       'any.only': `"propertySubType" must be one of ${propertyType.join(', ')}`,
-      'any.required': '"propertySubType" is required'
     }),
+
   listAs: Joi.string()
     .valid(...Object.values(PropertySpecificationType))
     .required()
     .messages({
       'string.base': '"listAs" must be a string',
       'any.only': `"listAs" must be one of ${Object.values(PropertySpecificationType).join(', ')}`,
-      'any.required': '"listAs" is required'
+      'any.required': '"listAs" is required',
     }),
+
   priceFrequency: Joi.string()
     .valid(...Object.values(PriceFrequency))
     .optional()
     .messages({
       'string.base': '"priceFrequency" must be a string',
       'any.only': `"priceFrequency" must be one of ${Object.values(PriceFrequency).join(', ')}`,
-      'any.required': '"priceFrequency" is required'
     }),
-  price: Joi.number().optional(),
-  securityDeposit: Joi.number().optional(),
-  minStayDays: Joi.number().optional(),
-  maxStayDays: Joi.number().optional(),
-  availableFrom: Joi.date().iso().optional(),
-  availableTo: Joi.date().iso().optional(),
+
+  price: Joi.number().positive().required(),
+  securityDeposit: Joi.number().min(0).optional(),
+  minStayDays: Joi.number().integer().min(1).optional(),
+  maxStayDays: Joi.number().integer().min(Joi.ref('minStayDays')).optional(),
+  availableFrom: Joi.date().iso().min('now').optional(),
+  availableTo: Joi.date().iso().min(Joi.ref('availableFrom')).optional(),
+}).custom((value, helpers) => {
+  const { type, unitId = [], roomId = [] } = value;
+
+  // TypeScript type guard for Joi custom validation
+  const createError = (message: string) => {
+    return helpers.error('any.custom', { message });
+  };
+
+  if (type === ListingType.ENTIRE_PROPERTY) {
+    if (unitId.length > 0 || roomId.length > 0) {
+      return createError('Cannot specify units or rooms when listing entire property');
+    }
+  }
+
+  if (type === ListingType.SINGLE_UNIT) {
+    if (unitId.length === 0) {
+      return createError('At least one unit must be specified for single unit listing');
+    }
+    if (roomId.length > 0) {
+      return createError('Cannot specify rooms when listing a single unit');
+    }
+  }
+
+  if (type === ListingType.ROOM) {
+    if (roomId.length === 0) {
+      return createError('At least one room must be specified for room listing');
+    }
+    if (unitId.length > 0) {
+      return createError('Cannot specify units when listing a room');
+    }
+  }
+
+  return value;
+}).messages({
+  'any.custom': '{{#error}}',
+  'number.base': '{{#label}} must be a number',
+  'number.positive': 'Price must be positive',
+  'date.min': '{{#label}} must be in the future',
+  'number.min': '{{#label}} must be at least {{#limit}}'
 });
+
+
+
 export const updatePropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().optional(),
   type: Joi.string().valid(...listingTypes).default(ListingType.ENTIRE_PROPERTY).optional(),
