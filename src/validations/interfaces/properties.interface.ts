@@ -90,7 +90,7 @@ export interface IBasePropertyDTO {
     marketValue?: number;
     price: number;
     securityDeposit?: number;
-    initialDeposit?: number;
+    // initialDeposit?: number;
     priceFrequency?: PriceFrequency;
     rentalPeriod?: string;
     specificationType: PropertySpecificationType;
@@ -104,9 +104,9 @@ export interface IBasePropertyDTO {
 
     keyFeatures: string[];
     customKeyFeatures: string[];
-    nearbyAmenities: string[];
-    customNearbyAmenities: string[];
-    amenityDistances?: Record<string, number>;
+    // nearbyAmenities: string[];
+    // customNearbyAmenities: string[];
+    // amenityDistances?: Record<string, number>;
 
     propertyDocument: PropertyDocument[]
     image?: PropertyMediaFiles[]

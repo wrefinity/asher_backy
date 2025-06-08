@@ -756,7 +756,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   marketValue: Joi.number().optional(),
   price: Joi.number().required(),
   securityDeposit: Joi.number().optional(),
-  initialDeposit: Joi.number().optional(),
+  // initialDeposit: Joi.number().optional(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
     'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
     'string.base': 'priceFrequency type must be a string'
@@ -779,9 +779,9 @@ export const IBasePropertyDTOSchema = Joi.object({
 
   keyFeatures: Joi.array().items(Joi.string()).required(),
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
-  nearbyAmenities: Joi.array().items(Joi.string()).optional(),
-  customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
-  amenityDistances: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
+  // nearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  // customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  // amenityDistances: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
 
   propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),

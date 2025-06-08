@@ -22,28 +22,32 @@ enum DeliveryMethod {
 
 enum ViolationStatus {
   PENDING
+  ESCALATED
+  DELIVERED
 }
 
 model violation {
-  id                  String             @id @default(cuid()) // Unique ID for the violation entry
-  actionTaken         String?
-  noticeType          NoticeType?
-  deliveryMethod      DeliveryMethod?
-  description         String // Description of the violation
-  severityLevel       SeverityLevel?     @default(LOW) // Default value should be just the enum value (MODERATE)
-  propertyId          String? // Foreign key for the property (optional)
-  property            properties?        @relation("violations", fields: [propertyId], references: [id]) // Property relation
-  tenantId            String? // Foreign key for the tenant
-  tenant              tenants?           @relation("tenant", fields: [tenantId], references: [id]) // Tenant relation
-  createdById         String? // Foreign key for the user (optional)
-  unit                UnitConfiguration? @relation(fields: [unitId], references: [id])
-  unitId              String?
-  user                users?             @relation("users", fields: [createdById], references: [id]) // User relation
-  isDeleted           Boolean            @default(false)
-  dueDate             DateTime?
-  createdAt           DateTime           @default(now()) // Timestamp when violation was created
-  updatedAt           DateTime           @updatedAt // Timestamp when violation was last updated
+  id             String             @id @default(cuid()) // Unique ID for the violation entry
+  actionTaken    String?
+  noticeType     NoticeType?
+  deliveryMethod DeliveryMethod?
+  amount         Decimal?           @default(0.00) @db.Decimal(18, 2)
+  description    String // Description of the violation
+  severityLevel  SeverityLevel?     @default(LOW) // Default value should be just the enum value (MODERATE)
+  propertyId     String? // Foreign key for the property (optional)
+  property       properties?        @relation("violations", fields: [propertyId], references: [id]) // Property relation
+  tenantId       String? // Foreign key for the tenant
+  tenant         tenants?           @relation("tenant", fields: [tenantId], references: [id]) // Tenant relation
+  createdById    String? // Foreign key for the user (optional)
+  unit           UnitConfiguration? @relation(fields: [unitId], references: [id])
+  unitId         String?
+  user           users?             @relation("users", fields: [createdById], references: [id]) // User relation
+  isDeleted      Boolean            @default(false)
+  dueDate        DateTime?
+  createdAt      DateTime           @default(now()) // Timestamp when violation was created
+  updatedAt      DateTime           @updatedAt // Timestamp when violation was last updated
 }
+
 model TenantLeaseBreach {
   id             String          @id @default(cuid())
   tenantId       String
@@ -91,5 +95,3 @@ enum LeaseBreachType {
   // Other
   OTHER
 }
-
-// evication cases

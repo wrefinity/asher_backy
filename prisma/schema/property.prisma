@@ -278,7 +278,7 @@ model properties {
   //                                               marketValue
   marketValue     Decimal? @default(0.00) @db.Decimal(18, 2)
   price           Decimal? @default(0.00) @db.Decimal(18, 2)
-  initialDeposit  Decimal? @default(0.00) @db.Decimal(18, 2)
+  // initialDeposit  Decimal? @default(0.00) @db.Decimal(18, 2)
   securityDeposit Decimal? @default(0.00) @db.Decimal(18, 2)
 
   // features
@@ -352,9 +352,9 @@ model properties {
   keyFeatures           String[]
   customKeyFeatures     String[]
   // Nearby amenities
-  nearbyAmenities       String[] // JSON array of amenity IDs
-  customNearbyAmenities String[] // JSON array of custom amenities
-  amenityDistances      Json? // JSON object mapping amenity ID to distance
+  // nearbyAmenities       String[] // JSON array of amenity IDs
+  // customNearbyAmenities String[] // JSON array of custom amenities
+  // amenityDistances      Json? // JSON object mapping amenity ID to distance
   inspection            inspection[]
   TenantLeaseBreach     TenantLeaseBreach[]
 
