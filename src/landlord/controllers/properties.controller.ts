@@ -446,7 +446,7 @@ class PropertyController {
             }
             // get listing
            // const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false, AvailabilityStatus.OCCUPIED);
-            const inActivePropsListing = await PropertyServices.getInactiveLandlordProperties(landlordId);
+            const inActivePropsListing = await PropertyServices.getInactiveListings(landlordId);
 
             // Return the ative and inactive property listing
             return res.status(200).json({ inActivePropsListing });

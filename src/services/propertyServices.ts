@@ -6,7 +6,16 @@ import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPrici
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import property from "../routes/property";
 
-
+interface InactiveListingResult {
+    property: any; // Replace 'any' with your Property type
+    unit: any; // Replace 'any' with your UnitConfiguration type
+    room: any | null; // Replace 'any' with your RoomDetail type
+    specificationDetails: {
+        residential: any | null; // Replace 'any' with your ResidentialProperty type
+        commercial: any | null; // Replace 'any' with your CommercialProperty type
+    };
+    specificationType: PropertySpecificationType;
+}
 
 type PropertyWithSpecification = Prisma.propertiesGetPayload<{
     include: any;
@@ -408,6 +417,90 @@ class PropertyService {
             }
         });
     }
+
+    getInactiveListings = async (landlordId: string) => {
+        // Get all properties with their specifications and units/rooms
+        const properties = await prismaClient.properties.findMany({
+            where: {
+                landlordId,
+                isDeleted: false,
+                specification: {
+                    some: {
+                        isActive: true
+                    }
+                }
+            },
+            include: {
+                specification: {
+                    include: {
+                        residential: {
+                            include: {
+                                unitConfigurations: {
+                                    where: { isListed: false, isDeleted: false },
+                                    include: {
+                                        RoomDetail: {
+                                            where: { isListed: false, isDeleted: false }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        commercial: {
+                            include: {
+                                unitConfigurations: {
+                                    where: { isListed: false, isDeleted: false },
+                                    include: {
+                                        RoomDetail: {
+                                            where: { isListed: false, isDeleted: false }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Transform the data into the desired format
+        const result = properties.flatMap(property => {
+            return property.specification.flatMap(spec => {
+                // Create a base object that will be common to all listings
+                const baseListing = {
+                    property,
+                    specificationType: spec.specificationType,
+                    specificationDetails: {
+                        residential: spec.residential,
+                        commercial: spec.commercial
+                    }
+                };
+
+                // Handle unit configurations based on specification type
+                if (spec.specificationType === 'RESIDENTIAL' && spec.residential) {
+                    return spec.residential.unitConfigurations.map(unit => (
+                        {
+                        ...baseListing,
+                        unit,
+                        room: unit.RoomDetail.length > 0 ? unit.RoomDetail[0] : null,
+                        listingType: unit.RoomDetail.length > 0 ? 'SINGLE_ROOM' : 'SINGLE_UNIT'
+                    }));
+                }
+
+                if (spec.specificationType === 'COMMERCIAL' && spec.commercial) {
+                    return spec.commercial.unitConfigurations.map(unit => ({
+                        ...baseListing,
+                        unit,
+                        room: unit.RoomDetail.length > 0 ? unit.RoomDetail[0] : null,
+                        listingType: unit.RoomDetail.length > 0 ? 'SINGLE_ROOM' : 'SINGLE_UNIT'
+                    }));
+                }
+
+                return [];
+            });
+        });
+
+        return result;
+    };
 
 
     getPropertyListingDetails = async (landlordId: string) => {
@@ -1053,7 +1146,7 @@ class PropertyService {
             throw new Error('Failed to fetch inactive properties');
         }
     }
-    
+
     async createPropertyListing(data: PropertyListingDTO | any) {
         const { propertyId, unitId: unitIds, roomId: roomIds, ...baseData } = data;
 
