@@ -156,7 +156,6 @@ class ApplicationControls {
                 landlordId
             }, false, req.user?.id, true);
 
-
             if (!tenant) return res.status(400).json({ message: "tenant not created" })
             await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.TENANT_CREATED);
             return res.status(200).json({ tenant });
@@ -176,15 +175,29 @@ class ApplicationControls {
             const { error, value } = createApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
             const invitedByLandordId = req.user?.landlords?.id;
+            const { propertiesId, ...rest } = value
+
+            // check for property existance
+            const propertyExist = await propertyServices.searchPropertyUnitRoom(propertiesId);
+            if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
+
+
+            const { type, data } = propertyExist;
+
+            // Only one of these will be assigned, others remain undefined
+            const id = data.id;
+            const propertyId = type === 'property' ? id : undefined;
+            const unitId = type === 'unit' ? id : undefined;
+            const roomId = type === 'room' ? id : undefined;
+
 
             const invite = await ApplicationInvitesService.createInvite({
-                ...value,
+                ...rest,
                 invitedByLandordId,
                 enquiryId,
                 responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING]
-            });
+            }, { propertyId, unitId, roomId },);
 
-            const propertyId = value.propertyId;
             const property = await propertyServices.getPropertyById(propertyId);
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
@@ -219,24 +232,40 @@ class ApplicationControls {
             if (error) return res.status(400).json({ error: error.details[0].message });
             const invitedByLandordId = req.user?.landlords?.id;
 
-            const propertyId = value.propertyId;
-            const property = await propertyServices.getPropertyById(propertyId);
+            const entityId = value.propertyId;
+            const property = await propertyServices.searchPropertyUnitRoom(entityId);
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
             }
-            
+
             const userExist = await userServices.getUserById(value.userInvitedId);
             if (!userExist) {
                 return res.status(404).json({ message: 'user not found' });
             }
-            const enquire = await logsServices.createLog({ status: logTypeStatus.INVITED, type: LogType.APPLICATION, events: "Application Invites", createdById: userExist?.id})
+            const enquire = await logsServices.createLog({ status: logTypeStatus.INVITED, type: LogType.APPLICATION, events: "Application Invites", createdById: userExist?.id })
+            const { propertiesId, ...rest } = value
+
+            // check for property existance
+            const propertyExist = await propertyServices.searchPropertyUnitRoom(propertiesId);
+            if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
+
+
+            const { type, data } = propertyExist;
+
+            // Only one of these will be assigned, others remain undefined
+            const id = data.id;
+            const propertyId = type === 'property' ? id : undefined;
+            const unitId = type === 'unit' ? id : undefined;
+            const roomId = type === 'room' ? id : undefined;
+
             const invite = await ApplicationInvitesService.createInvite({
-                ...value,
+                ...rest,
                 invitedByLandordId,
                 userInvitedId: userExist?.id,
                 enquiryId: enquire?.id,
                 responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING]
-            });
+            }, { propertyId, unitId, roomId },);
+
             // send message to the tenants
             const htmlContent = `
                 <h2>Invitation for Property Viewing</h2>
@@ -249,7 +278,7 @@ class ApplicationControls {
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
             await Emailer(userExist?.email, "Asher Rentals Invites", htmlContent)
-           
+
             return res.status(201).json({ invite });
         } catch (error) {
             errorService.handleError(error, res)
@@ -743,7 +772,7 @@ class ApplicationControls {
             errorService.handleError(error, res);
         }
     };
-    
+
     // sendAgreementForm = async (req: CustomRequest, res: Response) => {
     //     try {
     //         const applicationId = req.params.id;

@@ -412,7 +412,7 @@ class PropertyController {
         }
     };
 
-    getActiveOrInactivePropsListing = async (req: CustomRequest, res: Response) => {
+    getActivePropsListing = async (req: CustomRequest, res: Response) => {
 
         try {
             // Extract landlordId from the authenticated user
@@ -437,6 +437,33 @@ class PropertyController {
 
 
     }
+    getInactivePropsListing = async (req: CustomRequest, res: Response) => {
+
+        try {
+            // Extract landlordId from the authenticated user
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+            // get listing
+            // const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
+            const activePropsListing = await PropertyServices.getPropertyListingDetails(landlordId);
+            // const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false, AvailabilityStatus.OCCUPIED);
+            const inActivePropsListing = await PropertyServices.getInactiveLandlordProperties(landlordId);
+
+            // Return the ative and inactive property listing
+            return res.status(200).json({ activePropsListing, inActivePropsListing });
+
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+
+
+    }
+
+
     updatePropsListing = async (req: CustomRequest, res: Response) => {
 
         try {

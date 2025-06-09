@@ -262,7 +262,7 @@ class ApplicantControls {
       const userId = String(req.user.id);
       const propertiesId = req.params.propertiesId;
       // check for property existance
-      const propertyExist = await PropertyServices.getPropertiesById(propertiesId);
+      const propertyExist = await PropertyServices.searchPropertyUnitRoom(propertiesId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
 
       const { error, value } = applicantPersonalDetailsSchema.validate(req.body);
@@ -306,14 +306,23 @@ class ApplicantControls {
           error: "Application requires completion of APPLY, FEEDBACK, and PENDING steps"
         });
       }
-      const application = await ApplicantService.createApplication({ ...value, userId }, propertiesId, userId);
+
+      const { type, data } = propertyExist;
+
+      // Only one of these will be assigned, others remain undefined
+      const id = data.id;
+      const propertyId = type === 'property' ? id : undefined;
+      const unitId = type === 'unit' ? id : undefined;
+      const roomId = type === 'room' ? id : undefined;
+
+      const application = await ApplicantService.createApplication({ ...value, userId }, { propertyId, unitId, roomId }, userId);
 
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
     }
   }
-  
+
   createOrUpdateAdditionInfo = async (req: CustomRequest, res: Response) => {
     try {
       const userId = String(req.user.id);
@@ -789,7 +798,7 @@ class ApplicantControls {
           details: [`Application with ID ${applicationId} does not exist`]
         });
       }
-   
+
 
       // Get recipient email
       const landlordId = application.properties?.landlordId;

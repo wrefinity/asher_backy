@@ -173,7 +173,7 @@ class ApplicantService {
     }
   };
 
-  createApplication = async (data: ApplicantPersonalDetailsIF, propertiesId: string, userId: string) => {
+  createApplication = async (data: ApplicantPersonalDetailsIF, ids: any, userId: string) => {
     const {
       title,
       firstName,
@@ -191,6 +191,8 @@ class ApplicantService {
       issuingAuthority,
       expiryDate,
     } = data;
+
+    const { propertyId: propertiesId, unitId, roomId } = ids
     const nextOfKinData: NextOfKinIF = {
       id: nextOfKin?.id,
       firstName: nextOfKin.firstName,
@@ -263,7 +265,6 @@ class ApplicantService {
     const recentApplication = await prismaClient.application.findFirst({
       where: {
         userId,
-        propertiesId,
         createdAt: {
           gte: threeMonthsAgo, // Get applications made within the last 3 months
         },
@@ -278,10 +279,12 @@ class ApplicantService {
     // Create application record
     const app = await prismaClient.application.create({
       data: {
-        propertiesId,
         createdById: userId,
         invited,
         userId,
+        propertiesId: propertiesId || undefined,
+        roomId: roomId || undefined,           // Only include if room exists
+        unitId: unitId || undefined,           // Only include if unit exists
         applicationInviteId: applicationInviteId,
         lastStep: ApplicationSaveState.PERSONAL_KIN,
         completedSteps: [ApplicationSaveState.PERSONAL_KIN],
@@ -668,7 +671,7 @@ class ApplicantService {
       whereClause.userInvitedId = filters.userInvitedId;
     }
 
-    if(!includeApplication){
+    if (!includeApplication) {
       whereClause.application = null;
     }
 
@@ -686,7 +689,7 @@ class ApplicantService {
           include: this.propsIncusion,
         },
         // Conditionally include application based on parameter
-         ...(includeApplication && {
+        ...(includeApplication && {
           application: {
             include: this.applicationInclusion
           }
@@ -698,7 +701,7 @@ class ApplicantService {
   async updateInvites(id, updateData: ApplicationInvite) {
     return await applicationServices.updateInvite(id, updateData);
   }
-  async updateAgreementDocs(applicationId,  documentUrl: any) {
+  async updateAgreementDocs(applicationId, documentUrl: any) {
     // Update agreement document
     return await prismaClient.application.update({
       where: { id: applicationId },

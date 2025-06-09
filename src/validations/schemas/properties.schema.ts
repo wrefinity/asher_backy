@@ -186,7 +186,7 @@ export const createPropertyListingSchema = Joi.object({
       'any.only': `"priceFrequency" must be one of ${Object.values(PriceFrequency).join(', ')}`,
     }),
 
-  price: Joi.number().positive().required(),
+  price: Joi.number().positive().optional(),
   securityDeposit: Joi.number().min(0).optional(),
   minStayDays: Joi.number().integer().min(1).optional(),
   maxStayDays: Joi.number().integer().min(Joi.ref('minStayDays')).optional(),

@@ -51,10 +51,15 @@ class ApplicationInvitesService {
         }
     };
 
-    async createInvite(data: Omit<ApplicationInvite, "id">) {
+    async createInvite(data: Omit<ApplicationInvite, "id">, ids: any) {
+
+        const { propertyId: propertiesId, unitId, roomId } = ids
         return prismaClient.applicationInvites.create({
             data: {
                 ...data,
+                propertiesId: propertiesId || undefined,
+                roomId: roomId || undefined,           // Only include if room exists
+                unitId: unitId || undefined,           // Only include if unit exists
                 responseStepsCompleted: { set: data.responseStepsCompleted ?? [] } // Ensure correct array handling
             },
             include: this.inviteInclude,

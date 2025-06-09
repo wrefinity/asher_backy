@@ -4,6 +4,7 @@ import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
+import property from "../routes/property";
 
 
 
@@ -50,9 +51,6 @@ class PropertyService {
     landlordInclusion: any
     propsInclusion: any
     specificationInclusion: any
-
-
-
 
     constructor() {
 
@@ -123,8 +121,6 @@ class PropertyService {
         }
     }
 
-
-
     getProperties = async () => {
         return await prismaClient.properties.findMany({
             where: { isDeleted: false },
@@ -145,6 +141,7 @@ class PropertyService {
             this.flatten(p)
         );
     }
+
     getPropertyOnUserPreference = async (userPreferenceTypes: PropertyType[], landlordId: string) => {
         return await prismaClient.properties.findMany({
             where: {
@@ -193,6 +190,7 @@ class PropertyService {
             data
         });
     }
+
     deleteProperty = async (landlordId: string, id: string) => {
         return await prismaClient.properties.update({
             where: { id, landlordId },
@@ -537,8 +535,8 @@ class PropertyService {
                             spec => spec.specificationType === listing.listAs
                         );
 
-                        const {specification: specx, ...rest} = listing.property
-                        
+                        const { specification: specx, ...rest } = listing.property
+
 
                         return {
                             listingType: ListingType.SINGLE_UNIT,
@@ -565,8 +563,8 @@ class PropertyService {
                             spec => spec.specificationType === listing.listAs
                         );
 
-                        const {specification: specxx, ...resty} = listing.property
-                        
+                        const { specification: specxx, ...resty } = listing.property
+
                         return {
                             listingType: ListingType.ROOM,
                             property: resty,
@@ -912,139 +910,150 @@ class PropertyService {
         });
     };
 
-    getInactiveLandlordProperties = async  (landlordId: string) =>{
-        try {
-          // First get properties that exist in listing history but are inactive
-          const inactiveListings = await prismaClient.propertyListingHistory.findMany({
-            where: {
-              property: { landlordId, isDeleted: false },
-              isActive: false,
-              onListing: false
-            },
-            include: {
-              property: true
-            }
-          });
-      
-          // Then get all properties that have NEVER been listed
-          const neverListedProperties = await prismaClient.properties.findMany({
-            where: {
-              landlordId,
-              isDeleted: false,
-              propertyListingHistory: { none: {} }
-            }
-          });
-      
-          // Combine both sets of properties
-          const allInactiveProperties = [
-            ...inactiveListings.map(listing => ({
-              ...listing,
-              isInListingHistory: true
-            })),
-            ...neverListedProperties.map(property => ({
-              property,
-              isInListingHistory: false,
-              isActive: false,
-              onListing: false,
-              type: null,
-              price: null,
-              priceFrequency: null
-            }))
-          ];
-      
-          if (!allInactiveProperties.length) {
-            return [];
-          }
-      
-          // Fetch complete data for all properties in a single query
-          const enrichedProperties: Prisma.propertiesGetPayload<{
-            include: typeof this.propsInclusion;
-        }>[]  = await prismaClient.properties.findMany({
-            where: {
-              id: { in: allInactiveProperties.map(p => p.property.id) }
-            },
-            include: this.propsInclusion,
-            // include: {
-                
-            //   images: true,
-            //   specification: {
-            //     include: {
-            //       residential: true,
-            //       commercial: true,
-            //       shortlet: true
-            //     }
-            //   },
-            //   propertyListingHistory: {
-            //     where: {
-            //       isActive: false,
-            //       onListing: false
-            //     },
-            //     include: {
-            //       unit: {
-            //         include: {
-            //           images: true
-            //         }
-            //       },
-            //       room: {
-            //         include: {
-            //           images: true,
-            //         }
-            //       }
-            //     }
-            //   }
-            // }
-          });
+    getInactiveLandlordProperties = async (landlordId: string) => {
 
+        // TODO: a single unit and room should have the whole information 
+        /*
+        {
+         unit: {......},
+         room: {...},
+         property info,
 
-    
-          
-          
-        return enrichedProperties.map(p =>
-            this.flatten(p)
-        );
-          // Transform the data for response
-        //   return enrichedProperties.map(property => {
-        //     // Find the most recent inactive listing (if exists)
-        //     const listing = property.propertyListingHistory[0] || null;
-      
-        //     return {
-        //       id: property.id,
-        //       name: property.name,
-        //       address: property.address,
-        //       primaryImage: property.images[0] || null,
-        //       status: listing ? 'PREVIOUSLY_LISTED' : 'NEVER_LISTED',
-        //       lastListedDate: listing?.createdAt || null,
-        //       specifications: property.specification.map(spec => ({
-        //         type: spec.specificationType,
-        //         details: {
-        //           residential: spec.residential,
-        //           commercial: spec.commercial,
-        //           shortlet: spec.shortlet
-        //         }
-        //       })),
-        //       listingDetails: listing ? {
-        //         type: listing.type,
-        //         price: listing.price,
-        //         priceFrequency: listing.priceFrequency,
-        //         unit: listing.unit ? {
-        //           id: listing.unit.id,
-        //           unitType: listing.unit.unitType,
-        //           primaryImage: listing.unit.images[0] || null
-        //         } : null,
-        //         room: listing.room ? {
-        //           id: listing.room.id,
-        //           roomName: listing.room.roomName,
-        //           primaryImage: listing.room.images[0] || null
-        //         } : null
-        //       } : null
-        //     };
-        //   });
-      
-        } catch (error) {
-          console.error('Error fetching inactive properties:', error);
-          throw new Error('Failed to fetch inactive properties');
         }
-      }
+        */
+        try {
+            // First get properties that exist in listing history but are inactive
+            const inactiveListings = await prismaClient.propertyListingHistory.findMany({
+                where: {
+                    property: { landlordId, isDeleted: false },
+                    isActive: false,
+                    onListing: false
+                },
+                include: {
+                    property: true
+                }
+            });
+
+            // Then get all properties that have NEVER been listed
+            const neverListedProperties = await prismaClient.properties.findMany({
+                where: {
+                    landlordId,
+                    isDeleted: false,
+                    propertyListingHistory: { none: {} }
+                }
+            });
+
+            // Combine both sets of properties
+            const allInactiveProperties = [
+                ...inactiveListings.map(listing => ({
+                    ...listing,
+                    isInListingHistory: true
+                })),
+                ...neverListedProperties.map(property => ({
+                    property,
+                    isInListingHistory: false,
+                    isActive: false,
+                    onListing: false,
+                    type: null,
+                    price: null,
+                    priceFrequency: null
+                }))
+            ];
+
+            if (!allInactiveProperties.length) {
+                return [];
+            }
+
+            // Fetch complete data for all properties in a single query
+            const enrichedProperties: Prisma.propertiesGetPayload<{
+                include: typeof this.propsInclusion;
+            }>[] = await prismaClient.properties.findMany({
+                where: {
+                    id: { in: allInactiveProperties.map(p => p.property.id) }
+                },
+                include: this.propsInclusion,
+                // include: {
+
+                //   images: true,
+                //   specification: {
+                //     include: {
+                //       residential: true,
+                //       commercial: true,
+                //       shortlet: true
+                //     }
+                //   },
+                //   propertyListingHistory: {
+                //     where: {
+                //       isActive: false,
+                //       onListing: false
+                //     },
+                //     include: {
+                //       unit: {
+                //         include: {
+                //           images: true
+                //         }
+                //       },
+                //       room: {
+                //         include: {
+                //           images: true,
+                //         }
+                //       }
+                //     }
+                //   }
+                // }
+            });
+
+
+
+
+
+            return enrichedProperties.map(p =>
+                this.flatten(p)
+            );
+            // Transform the data for response
+            //   return enrichedProperties.map(property => {
+            //     // Find the most recent inactive listing (if exists)
+            //     const listing = property.propertyListingHistory[0] || null;
+
+            //     return {
+            //       id: property.id,
+            //       name: property.name,
+            //       address: property.address,
+            //       primaryImage: property.images[0] || null,
+            //       status: listing ? 'PREVIOUSLY_LISTED' : 'NEVER_LISTED',
+            //       lastListedDate: listing?.createdAt || null,
+            //       specifications: property.specification.map(spec => ({
+            //         type: spec.specificationType,
+            //         details: {
+            //           residential: spec.residential,
+            //           commercial: spec.commercial,
+            //           shortlet: spec.shortlet
+            //         }
+            //       })),
+            //       listingDetails: listing ? {
+            //         type: listing.type,
+            //         price: listing.price,
+            //         priceFrequency: listing.priceFrequency,
+            //         unit: listing.unit ? {
+            //           id: listing.unit.id,
+            //           unitType: listing.unit.unitType,
+            //           primaryImage: listing.unit.images[0] || null
+            //         } : null,
+            //         room: listing.room ? {
+            //           id: listing.room.id,
+            //           roomName: listing.room.roomName,
+            //           primaryImage: listing.room.images[0] || null
+            //         } : null
+            //       } : null
+            //     };
+            //   });
+
+        } catch (error) {
+            console.error('Error fetching inactive properties:', error);
+            throw new Error('Failed to fetch inactive properties');
+        }
+    }
+    
     async createPropertyListing(data: PropertyListingDTO | any) {
         const { propertyId, unitId: unitIds, roomId: roomIds, ...baseData } = data;
 
@@ -1052,9 +1061,7 @@ class PropertyService {
         if (propListed) {
             throw new Error(`The property with ID ${propertyId} has already been listed`);
         }
-
         const listings = [];
-
         // If unitIds exist, iterate and create listing for each unit
         if (Array.isArray(unitIds)) {
             for (const unitId of unitIds) {
@@ -1389,18 +1396,7 @@ class PropertyService {
                     throw new Error(`Unknown specification type: ${specificationType}`);
             }
 
-            // Step 3: Create Listing History
-            // await tx.propertyListingHistory.create({
-            //     data: {
-            //         propertyId: property.id,
-            //         onListing: true,
-            //         type: 'LISTING_WEBSITE'
-            //     }
-            // });
-
-
-
-            // Step 4: Return full property with related entities
+            // Return full property with related entities
             return tx.properties.findUnique({
                 where: { id: property.id },
                 include: {
@@ -1944,6 +1940,33 @@ class PropertyService {
                 shortlet: true
             }
         });
+    }
+
+    searchPropertyUnitRoom = async (id: string) => {
+        // Search all three entities in parallel
+        const [property, unit, room] = await Promise.all([
+            prismaClient.properties.findFirst({
+                where: { id, isDeleted: false }
+            }),
+            prismaClient.unitConfiguration.findFirst({
+                where: { id, isDeleted: false }
+            }),
+            prismaClient.roomDetail.findFirst({
+                where: { id, isDeleted: false }
+            })
+        ]);
+        // Determine which entity was found
+        let result;
+        if (property) {
+            result = { type: 'property', data: property };
+        } else if (unit) {
+            result = { type: 'unit', data: unit };
+        } else if (room) {
+            result = { type: 'room', data: room };
+        } else {
+            throw new Error('No matching property, unit, or room found');
+        }
+        return result;
     }
 }
 

@@ -80,19 +80,22 @@ model applicationInvites {
   responseStepsCompleted InvitedResponse[]
 
   // relation ship fields
-  properties         properties? @relation(fields: [propertiesId], references: [id])
+  properties         properties?        @relation(fields: [propertiesId], references: [id])
   propertiesId       String?
+  units              UnitConfiguration? @relation(fields: [unitId], references: [id])
+  unitId             String?
+  rooms              RoomDetail?        @relation(fields: [roomId], references: [id])
+  roomId             String?
   invitedByLandordId String?
-  landlords          landlords?  @relation(fields: [invitedByLandordId], references: [id])
-  tenants            tenants?    @relation(fields: [tenantsId], references: [id])
+  landlords          landlords?         @relation(fields: [invitedByLandordId], references: [id])
+  tenants            tenants?           @relation(fields: [tenantsId], references: [id])
   tenantsId          String?
-  userInvited        users?      @relation(fields: [userInvitedId], references: [id])
+  userInvited        users?             @relation(fields: [userInvitedId], references: [id])
   userInvitedId      String?
-  enquires           Log?        @relation(fields: [enquiryId], references: [id])
+  enquires           Log?               @relation(fields: [enquiryId], references: [id])
   enquiryId          String?
 
   application application?
-  
 }
 
 model application {
@@ -114,6 +117,11 @@ model application {
   // end of property relates
   status           ApplicationStatus   @default(PENDING)
   statuesCompleted ApplicationStatus[]
+
+  units  UnitConfiguration? @relation(fields: [unitId], references: [id])
+  unitId String?
+  rooms  RoomDetail?        @relation(fields: [roomId], references: [id])
+  roomId String?
 
   invited       InvitedStatus? @default(NO)
   stepCompleted Int?           @default(1)
@@ -175,9 +183,9 @@ model application {
   guarantorAgreement           GuarantorAgreement?
   employeeReference            EmployeeReferenceForm?
 
-  users users[]
-  agreementDocumentUrl String[]  // Array to maintain version history
-  agreementVersion     Int      @default(1)
+  users                users[]
+  agreementDocumentUrl String[] // Array to maintain version history
+  agreementVersion     Int       @default(1)
   lastAgreementUpdate  DateTime?
 }
 
@@ -333,8 +341,8 @@ model EmploymentInformation {
   positionTitle        String?
   application          application[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userId String?
   user   users?  @relation(fields: [userId], references: [id])

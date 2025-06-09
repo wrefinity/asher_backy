@@ -432,6 +432,10 @@ model UnitConfiguration {
 
   propertyListingHistory propertyListingHistory[]
   RoomDetail             RoomDetail[]
+
+  applicationInvites applicationInvites[]
+
+  application application[]
 }
 
 model RoomDetail {
@@ -456,8 +460,10 @@ model RoomDetail {
   unitId                String?
 
   Booking Booking[]
-
   propertyListingHistory propertyListingHistory[]
+  applicationInvites applicationInvites[]
+
+  application application[]
 }
 
 // Residential Property specific fields - Done
