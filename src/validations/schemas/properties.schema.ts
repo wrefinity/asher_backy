@@ -158,7 +158,6 @@ export const createPropertyListingSchema = Joi.object({
     }),
 
   propertyId: Joi.string().required(),
-
   unitId: Joi.array().items(Joi.string()).optional(),
   roomId: Joi.array().items(Joi.string()).optional(),
 

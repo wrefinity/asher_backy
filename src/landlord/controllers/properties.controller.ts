@@ -289,10 +289,9 @@ class PropertyController {
             if (!checkOwnership)
                 return res.status(400).json({ message: 'property does not exist under landlord' });
 
-            if (checkOwnership.availability === AvailabilityStatus.OCCUPIED) {
-                return res.status(400).json({ message: 'Property already occupied' });
-            }
-
+            // if (checkOwnership.availability === AvailabilityStatus.OCCUPIED) {
+            //     return res.status(400).json({ message: 'Property already occupied' });
+            // }
             // if (
             //     value.type === ListingType.ROOM &&
             //     checkOwnership.specificationType !== 'RESIDENTIAL' &&
