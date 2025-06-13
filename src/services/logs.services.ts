@@ -5,6 +5,9 @@ import applicationServices from "./application.services";
 export interface LogIF {
   events: string;
   propertyId?: string;
+  propertyListingId?: string;
+  unitId?: string;
+  roomId?: string;
   subjects?: string;
   type?: LogType;
   status?: logTypeStatus,
@@ -24,6 +27,9 @@ class LogService {
   constructor() {
     this.inclusion = {
       property: true,
+      propertyListing: true,
+      units: true,
+      rooms: true,
       users: {
         select: { email: true, id: true, profile: true }
       },
@@ -42,6 +48,15 @@ class LogService {
       // createdById: data?.createdById || undefined,
       application: data.applicationId
         ? { connect: { id: data.applicationId } }
+        : undefined,
+      units: data.unitId
+        ? { connect: { id: data.unitId } }
+        : undefined,
+      rooms: data.roomId
+        ? { connect: { id: data.roomId } }
+        : undefined,
+      propertyListing: data.propertyListingId
+        ? { connect: { id: data.propertyListingId } }
         : undefined,
       applicationInvites: data.applicationInvitedId
         ? { connect: { id: data.applicationInvitedId } }
@@ -63,7 +78,7 @@ class LogService {
     if (log && data.response === InvitedResponse.FEEDBACK && data.applicationInvitedId) {
       await applicationServices.updateInviteResponse(data.applicationInvitedId, data.response);
     }
-  
+
 
     return log;
   };
@@ -112,7 +127,7 @@ class LogService {
     });
   }
 
-  getLogsById = async (logId: string): Promise<LogIF | null>  =>{
+  getLogsById = async (logId: string): Promise<LogIF | null> => {
     return await prismaClient.log.findFirst({
       where: {
         id: logId,

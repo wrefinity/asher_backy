@@ -217,6 +217,10 @@ model propertyListingHistory {
   createdAt       DateTime?       @default(now())
   availableFrom   DateTime?
   availableTo     DateTime?
+
+  applicationInvites applicationInvites[]
+
+  Log Log[]
 }
 
 model SuitableUse {
@@ -436,6 +440,8 @@ model UnitConfiguration {
   applicationInvites applicationInvites[]
 
   application application[]
+
+  Log Log[]
 }
 
 model RoomDetail {
@@ -464,6 +470,8 @@ model RoomDetail {
   applicationInvites applicationInvites[]
 
   application application[]
+
+  Log Log[]
 }
 
 // Residential Property specific fields - Done

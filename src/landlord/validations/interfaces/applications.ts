@@ -9,6 +9,7 @@ export interface ApplicationInvite {
     response?: InvitedResponse;
     responseStepsCompleted?: InvitedResponse[];
     propertiesId?: string | null;
+    propertyListingId?: string | null;
     invitedByLandordId?: string | null;
     userInvitedId?: string | null;
     tenantsId?: string | null;

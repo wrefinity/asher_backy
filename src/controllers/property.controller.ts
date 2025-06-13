@@ -254,16 +254,16 @@ class PropertyController {
     enquireProperty = async (req: CustomRequest, res: Response) => {
         try {
             const createdById = req.user?.id;
-            const { propertyId, message } = req.body;
+            const { propertyId, message, propertyListingId } = req.body;
 
             // Validate required fields
-            if (!propertyId || !message) {
-                return res.status(400).json({ message: "Both propertyId and message are required" });
+            if (!propertyId || !message || !propertyListingId) {
+                return res.status(400).json({ message: "Both propertyId (ex unitId, propertyId, roomId), listingId, and message are required" });
             }
             // check props existence
-            const property = await PropertyServices.getPropertyById(propertyId)
+            const propertyExist = await PropertyServices.searchPropertyUnitRoom(propertyId)
 
-            if (!property) return res.status(400).json({ message: "property with the id given doesnt exist" });
+            if (!propertyExist) return res.status(400).json({ message: "property with the id given doesnt exist" });
             // check if propertyId have been viewed before by the user 
             // const logcreated = await LogsServices.checkPropertyLogs(
             //     createdById,
@@ -271,11 +271,25 @@ class PropertyController {
             //     propertyId
             // )
             // if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
+
+            if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertyId} doesn't exist` });
+
+
+            const { type, data } = propertyExist;
+
+            // Only one of these will be assigned, others remain undefined
+            const id = data.id;
+            const propsId = type === 'property' ? id : undefined;
+            const unitId = type === 'unit' ? id : undefined;
+            const roomId = type === 'room' ? id : undefined;
             const log = await LogsServices.createLog({
-                propertyId,
+                propertyId:propsId,
                 events: message,
                 createdById,
                 type: LogType.ENQUIRED,
+                unitId,
+                roomId,
+                propertyListingId,
                 status: logTypeStatus.PENDING
             })
             return res.status(200).json(log)

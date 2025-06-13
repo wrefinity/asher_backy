@@ -11,6 +11,8 @@ class ApplicationInvitesService {
         employmentInfo: true,
         personalDetails: true,
         properties: true,
+        units: true,
+        rooms: true,
         emergencyInfo: true,
         guarantorInformation: true,
         declaration: true,
@@ -53,10 +55,11 @@ class ApplicationInvitesService {
 
     async createInvite(data: Omit<ApplicationInvite, "id">, ids: any) {
 
-        const { propertyId: propertiesId, unitId, roomId } = ids
+        const { propertyId: propertiesId, unitId, roomId, propertyListingId } = ids
         return prismaClient.applicationInvites.create({
             data: {
                 ...data,
+                propertyListingId,
                 propertiesId: propertiesId || undefined,
                 roomId: roomId || undefined,           // Only include if room exists
                 unitId: unitId || undefined,           // Only include if unit exists

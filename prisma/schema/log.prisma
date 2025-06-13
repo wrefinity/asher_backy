@@ -21,7 +21,7 @@ enum logTypeStatus {
 }
 
 model Log {
-    id              String         @id @default(cuid()) // Unique ID for the log entry
+    id              String   @id @default(cuid()) // Unique ID for the log entry
     subjects        String?
     viewAgain       YesNo? // The feedback comment
     considerRenting YesNo? // The feedback comment
@@ -29,17 +29,25 @@ model Log {
     type            LogType?
 
     // for application enquiry pending
-    status          logTypeStatus?
+    status logTypeStatus?
 
-    createdAt       DateTime       @default(now()) // Log creation timestamp
-    propertyId      String? // Foreign key for the property (optional)
-    property        properties?    @relation("props", fields: [propertyId], references: [id])
-    applicationId   String? // Foreign key for the property (optional)
-    application     application?   @relation("apply", fields: [applicationId], references: [id])
-    transactionId   String? // Foreign key for the transaction (optional)
-    transaction     Transaction?   @relation("transactions", fields: [transactionId], references: [id])
-    createdById     String? // Foreign key for the transaction (optional)
-    users           users?         @relation("users", fields: [createdById], references: [id])
+    createdAt  DateTime    @default(now()) // Log creation timestamp
+    propertyId String? // Foreign key for the property (optional)
+    property   properties? @relation("props", fields: [propertyId], references: [id])
+
+    propertyListing   propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
+    propertyListingId String?
+    units             UnitConfiguration?      @relation(fields: [unitId], references: [id])
+    unitId            String?
+    rooms             RoomDetail?             @relation(fields: [roomId], references: [id])
+    roomId            String?
+
+    applicationId String? // Foreign key for the property (optional)
+    application   application? @relation("apply", fields: [applicationId], references: [id])
+    transactionId String? // Foreign key for the transaction (optional)
+    transaction   Transaction? @relation("transactions", fields: [transactionId], references: [id])
+    createdById   String? // Foreign key for the transaction (optional)
+    users         users?       @relation("users", fields: [createdById], references: [id])
 
     applicationInvites applicationInvites[]
 }

@@ -8,6 +8,7 @@ export const createApplicationInviteSchema = Joi.object({
   scheduleDate: Joi.date().iso().optional(),
   response: Joi.string().valid(...invitedResponseType).default(InvitedResponse.PENDING).optional(),
   propertiesId: Joi.string().optional(),
+  propertyListingId: Joi.string().optional(),
   userInvitedId: Joi.string().required(),
   tenantId: Joi.string().uuid().optional()
 });
