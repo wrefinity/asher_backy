@@ -932,10 +932,16 @@ class PropertyService {
                     include: {
                         state: true,
                         application: true,
+                        images: true,
+                        videos: true,
+                        virtualTours: true,
+                        propertyDocument: true,
+                        propertyListingHistory: true,
                         reviews: true,
                         UserLikedProperty: true,
                         landlord: this.landlordInclusion,
                         specification: this.specificationInclusion,
+
                     },
                 },
             },
