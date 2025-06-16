@@ -174,26 +174,32 @@ class ApplicationControls {
             }
             const { error, value } = createApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
+            
             const invitedByLandordId = req.user?.landlords?.id;
-            const { propertiesId, ...rest } = value
+            const {  ...rest } = value
+
+            const {propertyId, propertyListingId, unitId, roomId} = enquire
 
             // check for property existance
-            const propertyExist = await propertyServices.searchPropertyUnitRoom(propertiesId);
-            if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
+            // const propertyExist = await propertyServices.searchPropertyUnitRoom(propertiesId);
+            // if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
 
 
-            const { type, data } = propertyExist;
+            // const { type, data } = propertyExist;
 
-            // Only one of these will be assigned, others remain undefined
-            const id = data.id;
-            const propertyId = type === 'property' ? id : undefined;
-            const unitId = type === 'unit' ? id : undefined;
-            const roomId = type === 'room' ? id : undefined;
-
+            // // Only one of these will be assigned, others remain undefined
+            // const id = data.id;
+            // const propertyId = type === 'property' ? id : undefined;
+            // const unitId = type === 'unit' ? id : undefined;
+            // const roomId = type === 'room' ? id : undefined;
+            // const propertyId = type === 'property' ? id : undefined;
+            // const unitId = type === 'unit' ? id : undefined;
+            // const roomId = type === 'room' ? id : undefined;
 
             const invite = await ApplicationInvitesService.createInvite({
                 ...rest,
                 invitedByLandordId,
+                propertyListingId,
                 enquiryId,
                 responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING]
             }, { propertyId, unitId, roomId },);
@@ -219,7 +225,7 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-            await Emailer(tenantInfor.email, "Asher Rentals Invites", htmlContent)
+            await Emailer(userExist.email, "Asher Rentals Invites", htmlContent)
             await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED })
             return res.status(201).json({ invite });
         } catch (error) {

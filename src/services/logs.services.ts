@@ -83,7 +83,6 @@ class LogService {
     return log;
   };
 
-
   // Get all logs by types, status, etc.
   getLogs = async (landlordId: string, type: LogType, status: logTypeStatus = null) => {
     return await prismaClient.log.findMany({

@@ -479,11 +479,11 @@ class PropertyService {
                 if (spec.specificationType === 'RESIDENTIAL' && spec.residential) {
                     return spec.residential.unitConfigurations.map(unit => (
                         {
-                        ...baseListing,
-                        unit,
-                        room: unit.RoomDetail.length > 0 ? unit.RoomDetail[0] : null,
-                        listingType: unit.RoomDetail.length > 0 ? 'SINGLE_ROOM' : 'SINGLE_UNIT'
-                    }));
+                            ...baseListing,
+                            unit,
+                            room: unit.RoomDetail.length > 0 ? unit.RoomDetail[0] : null,
+                            listingType: unit.RoomDetail.length > 0 ? 'SINGLE_ROOM' : 'SINGLE_UNIT'
+                        }));
                 }
 
                 if (spec.specificationType === 'COMMERCIAL' && spec.commercial) {
@@ -2045,7 +2045,15 @@ class PropertyService {
         // Search all three entities in parallel
         const [property, unit, room] = await Promise.all([
             prismaClient.properties.findFirst({
-                where: { id, isDeleted: false }
+                where: {
+                    id, isDeleted: false,
+                    propertyListingHistory: {
+                        some: {
+                            isActive: true,
+                            onListing: true
+                        }
+                    }
+                }
             }),
             prismaClient.unitConfiguration.findFirst({
                 where: { id, isDeleted: false }

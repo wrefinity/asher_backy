@@ -43,10 +43,7 @@ class ApplicantControls {
   };
   getPendingApplications = async (req: CustomRequest, res: Response) => {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(403).json({ error: 'kindly login as applicant' });
-      }
+      const userId = req.user?.id; 
       const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
       res.status(200).json({ pendingApplications });
     } catch (error) {
@@ -56,9 +53,7 @@ class ApplicantControls {
   getApplications = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user?.id;
-      if (!userId) {
-        return res.status(403).json({ error: 'kindly login as applicant' });
-      }
+  
       const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
       const completedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.COMPLETED);
       const approvedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.APPROVED);
@@ -118,11 +113,6 @@ class ApplicantControls {
     try {
       const userId = req.user?.id;
       const { propertyId, applicationId } = req.params;
-
-      // Validate user ID
-      if (!userId) {
-        return res.status(403).json({ error: 'Kindly login as an applicant.' });
-      }
 
       // Validate propertyId
       if (!propertyId) {
