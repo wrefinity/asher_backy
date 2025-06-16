@@ -1157,10 +1157,10 @@ class PropertyService {
     async createPropertyListing(data: PropertyListingDTO | any) {
         const { propertyId, unitId: unitIds, roomId: roomIds, ...baseData } = data;
 
-        const propListed = await this.getPropsListedById(propertyId);
-        if (propListed) {
-            throw new Error(`The property with ID ${propertyId} has already been listed`);
-        }
+        // const propListed = await this.getPropsListedById(propertyId);
+        // if (propListed) {
+        //     throw new Error(`The property with ID ${propertyId} has already been listed`);
+        // }
         const listings = [];
         // If unitIds exist, iterate and create listing for each unit
         if (Array.isArray(unitIds)) {

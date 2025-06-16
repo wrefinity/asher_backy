@@ -37,6 +37,10 @@ class ApplicantService {
     }
   }
   private propsIncusion = {
+    images: true,
+    videos: true,
+    virtualTours: true,
+    propertyDocument: true,
     landlord: {
       include: {
         user: {
