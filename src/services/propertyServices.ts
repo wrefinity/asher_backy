@@ -944,6 +944,8 @@ class PropertyService {
 
                     },
                 },
+                unit:true,
+                room:true,
             },
             skip,
             take,

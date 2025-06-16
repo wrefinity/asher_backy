@@ -685,6 +685,10 @@ class ApplicantService {
       where: whereClause,
       include: {
         enquires: true,
+        units:true,
+        rooms: true,
+        propertyListing: true,
+        userInvited: this.userInclusion,
         properties: {
           include: this.propsIncusion,
         },
