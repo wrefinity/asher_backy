@@ -28,6 +28,7 @@ class PropertyRouter {
         this.router.get('/property/landlord/:landlordId', PropertyController.getPropertyListedByLandlord)
         this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, PropertyController.createLikeProperty)
         this.router.get('/property/user/likes', this.authenticateService.authorize, PropertyController.getLikePropertyHistories)
+        this.router.get('/property/listing/:id', PropertyController.getPropertyListingById)
         this.router.get('/property/:id', PropertyController.getPropertyById)
         this.router.get('/property/state', PropertyController.getPropertyByState)
         this.router.get('/property/listing', PropertyController.getListedProperties)

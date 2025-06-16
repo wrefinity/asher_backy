@@ -1275,14 +1275,116 @@ class PropertyService {
 
     // to update property listings
     getPropertyListingByListingId = async (listedId: string) => {
-        return await prismaClient.propertyListingHistory.findUnique({
-            where: {
-                id: listedId
-            },
-            include: {
-                property: true,
+        try {
+            return await prismaClient.propertyListingHistory.findUnique({
+                where: {
+                    id: listedId
+                },
+                include: {
+                    property: {
+                        
+                    },
+                    unit: {
+                        include: {
+                            RoomDetail: true,
+                            images: true
+                        }
+                    },
+                    room: {
+                        include: {
+                            images: true
+                        }
+                    }
+                }
+            });
+    
+         
+        } catch (error) {
+            console.error('Error fetching property listing:', error);
+            throw error;
+        }
+    }
+    getPropertyListingByListingIdNew = async (listedId: string) => {
+        try {
+            const listing = await prismaClient.propertyListingHistory.findUnique({
+                where: {
+                    id: listedId
+                },
+                include: {
+                    property: {
+                        include: {
+                            specification: {
+                                where: {
+                                    isActive: true
+                                },
+                                include: {
+                                    residential: true,
+                                    commercial: true,
+                                    shortlet: true
+                                },
+                                take: 1 // Only get one specification
+                            },
+                            state: true,
+                            images: true,
+                            landlord: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            email: true,
+                                            profile: {
+                                                select: {
+                                                    fullname: true,
+                                                    profileUrl: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    unit: {
+                        include: {
+                            RoomDetail: true,
+                            images: true
+                        }
+                    },
+                    room: {
+                        include: {
+                            images: true
+                        }
+                    }
+                }
+            });
+    
+            if (!listing) {
+                throw new Error('Listing not found');
             }
-        })
+    
+            // Get the first active specification or null
+            const activeSpecification = listing.property?.specification[0] || null;
+    
+            // Transform the specification to include IDs
+            const transformedSpecification = activeSpecification ? {
+                ...activeSpecification,
+                residentialId: activeSpecification.residential?.id ?? null,
+                commercialId: activeSpecification.commercial?.id ?? null,
+                shortletId: activeSpecification.shortlet?.id ?? null
+            } : null;
+    
+            return {
+                property: {
+                    ...listing.property,
+                    specification: transformedSpecification
+                },
+                specification: transformedSpecification,
+                room: listing.room,
+                unit: listing.unit
+            };
+        } catch (error) {
+            console.error('Error fetching property listing:', error);
+            throw error;
+        }
     }
     updatePropertyListing = async (data: Partial<PropertyListingDTO | any>, listedId: string, landlordId: string) => {
         const propsListed = await this.getPropertyListingByListingId(listedId);
