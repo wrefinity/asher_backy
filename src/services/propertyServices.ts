@@ -1201,7 +1201,8 @@ class PropertyService {
         }
 
         // If neither roomIds nor unitIds were provided, create one general listing
-        if (
+        // Handle ENTIRE_PROPERTY listing (no specific units/rooms)
+        if ( data.type === ListingType.ENTIRE_PROPERTY &&
             (!unitIds || unitIds.length === 0 || unitIds.every(id => !id)) &&
             (!roomIds || roomIds.length === 0 || roomIds.every(id => !id))
         ) {
@@ -1209,35 +1210,21 @@ class PropertyService {
                 data: {
                     ...baseData,
                     propertyId,
+                    type: ListingType.ENTIRE_PROPERTY,
                     unitId: null,
                     roomId: null
                 },
             });
             listings.push(created);
-        }
 
-        // Handle ENTIRE_PROPERTY listing (no specific units/rooms)
-        if (data.type === ListingType.ENTIRE_PROPERTY &&
-            (!unitIds || unitIds.length === 0) &&
-            (!roomIds || roomIds.length === 0)) {
-
-            const created = await prismaClient.propertyListingHistory.create({
-                data: {
-                    ...baseData,
-                    propertyId,
-                    unitId: null,
-                    roomId: null,
-                    type: ListingType.ENTIRE_PROPERTY
-                },
-            });
-            listings.push(created);
-
-            // property's isListed status
-            await prismaClient.properties.update({
+             // property's isListed status
+             await prismaClient.properties.update({
                 where: { id: propertyId },
                 data: { isListed: true }
             });
         }
+
+   
 
         if (listings.length === 0) {
             throw new Error('No valid listings were created - check your unitIds and roomIds');
