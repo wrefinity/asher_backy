@@ -187,15 +187,15 @@ enum PropertyFeatureType {
 }
 
 model propertyListingHistory {
-  id                String  @id @default(cuid())
-  payApplicationFee Boolean @default(false)
-  applicationFeeAmount           Decimal?        @default(0.00) @db.Decimal(18, 2)
-  isActive          Boolean @default(true)
-  onListing         Boolean @default(true)
+  id                   String   @id @default(cuid())
+  payApplicationFee    Boolean  @default(false)
+  applicationFeeAmount Decimal? @default(0.00) @db.Decimal(18, 2)
+  isActive             Boolean  @default(true)
+  onListing            Boolean  @default(true)
 
   type ListingType? @default(SINGLE_UNIT)
 
-  propertyId String?      // If set, these settings apply to the property
+  propertyId String? // If set, these settings apply to the property
   property   properties? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   listAs          PropertySpecificationType? @default(SHORTLET)
@@ -207,8 +207,8 @@ model propertyListingHistory {
   roomId String?
   room   RoomDetail? @relation(fields: [roomId], references: [id])
 
-  price           Decimal?        @default(0.00) @db.Decimal(18, 2)
-  
+  price Decimal? @default(0.00) @db.Decimal(18, 2)
+
   priceFrequency  PriceFrequency?
   securityDeposit Decimal?        @default(0.00) @db.Decimal(18, 2)
   minStayDays     Int?
@@ -331,6 +331,7 @@ model properties {
   // UK specifics
   businessRateVerified Boolean    @default(false)
   postalCodeVerified   Boolean    @default(false)
+  isListed             Boolean    @default(false)
   landRegistryNumber   String?
   vatStatus            VatStatus? @default(VAT_EXEMPT)
 
@@ -353,14 +354,14 @@ model properties {
   UserLikedProperty UserLikedProperty[]
 
   // Property features
-  keyFeatures           String[]
-  customKeyFeatures     String[]
+  keyFeatures       String[]
+  customKeyFeatures String[]
   // Nearby amenities
   // nearbyAmenities       String[] // JSON array of amenity IDs
   // customNearbyAmenities String[] // JSON array of custom amenities
   // amenityDistances      Json? // JSON object mapping amenity ID to distance
-  inspection            inspection[]
-  TenantLeaseBreach     TenantLeaseBreach[]
+  inspection        inspection[]
+  TenantLeaseBreach TenantLeaseBreach[]
 
   @@unique([landlordId, name, stateId, city])
 }
@@ -465,9 +466,9 @@ model RoomDetail {
   unit                  UnitConfiguration?   @relation(fields: [unitId], references: [id])
   unitId                String?
 
-  Booking Booking[]
+  Booking                Booking[]
   propertyListingHistory propertyListingHistory[]
-  applicationInvites applicationInvites[]
+  applicationInvites     applicationInvites[]
 
   application application[]
 

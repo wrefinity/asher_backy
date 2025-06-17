@@ -635,20 +635,19 @@ class ApplicantService {
     if (!id) {
       throw new Error("Invalid application invite ID");
     }
-    return await prismaClient.applicationInvites.findUnique({
+
+    return await prismaClient.applicationInvites.findFirst({
       where: { id },
       include: {
+        enquires: true,
+        units:true,
+        rooms: true,
+        propertyListing: true,
+        userInvited: this.userInclusion,
         properties: {
-          include: this.propsIncusion
-        },
-        userInvited: {
-          select: {
-            id: true,
-            email: true,
-            profile: true
-          }
+          include: this.propsIncusion,
         }
-      }
+      },
     });
   }
 

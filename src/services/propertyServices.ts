@@ -943,8 +943,8 @@ class PropertyService {
                         specification: this.specificationInclusion,
                     },
                 },
-                unit:true,
-                room:true,
+                unit: true,
+                room: true,
             },
             skip,
             take,
@@ -1216,6 +1216,29 @@ class PropertyService {
             listings.push(created);
         }
 
+        // Handle ENTIRE_PROPERTY listing (no specific units/rooms)
+        if (data.type === ListingType.ENTIRE_PROPERTY &&
+            (!unitIds || unitIds.length === 0) &&
+            (!roomIds || roomIds.length === 0)) {
+
+            const created = await prismaClient.propertyListingHistory.create({
+                data: {
+                    ...baseData,
+                    propertyId,
+                    unitId: null,
+                    roomId: null,
+                    type: ListingType.ENTIRE_PROPERTY
+                },
+            });
+            listings.push(created);
+
+            // property's isListed status
+            await prismaClient.properties.update({
+                where: { id: propertyId },
+                data: { isListed: true }
+            });
+        }
+
         if (listings.length === 0) {
             throw new Error('No valid listings were created - check your unitIds and roomIds');
         }
@@ -1281,7 +1304,7 @@ class PropertyService {
                 },
                 include: {
                     property: {
-                        
+
                     },
                     unit: {
                         include: {
@@ -1296,8 +1319,8 @@ class PropertyService {
                     }
                 }
             });
-    
-         
+
+
         } catch (error) {
             console.error('Error fetching property listing:', error);
             throw error;
@@ -1355,14 +1378,14 @@ class PropertyService {
                     }
                 }
             });
-    
+
             if (!listing) {
                 throw new Error('Listing not found');
             }
-    
+
             // Get the first active specification or null
             const activeSpecification = listing.property?.specification[0] || null;
-    
+
             // Transform the specification to include IDs
             const transformedSpecification = activeSpecification ? {
                 ...activeSpecification,
@@ -1370,7 +1393,7 @@ class PropertyService {
                 commercialId: activeSpecification.commercial?.id ?? null,
                 shortletId: activeSpecification.shortlet?.id ?? null
             } : null;
-    
+
             return {
                 property: {
                     ...listing.property,
