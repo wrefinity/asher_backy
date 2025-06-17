@@ -317,13 +317,13 @@ class PropertyController {
                     if (!roomExists) {
                         return res.status(400).json({ message: `Invalid room ID: ${rid}` });
                     }
-                    
+
 
                 }
             }
 
             const listing = await PropertyServices.createPropertyListing(data);
-            return res.status(201).json({ message: 'Property listing created', listing });
+            return res.status(201).json(listing);
         } catch (err) {
             ErrorService.handleError(err, res);
         }
