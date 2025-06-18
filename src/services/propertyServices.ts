@@ -1316,9 +1316,9 @@ class PropertyService {
             const created = await prismaClient.propertyListingHistory.create({
                 data: {
                     ...baseData,
-                    property: {connect: { id: propertyId }},
-                    unit: {connect: { id: unitId }},
-                    room: null,
+                    propertyId: propertyId,
+                    unitId:unitId,
+                    roomId: null,
                     type: ListingType.SINGLE_UNIT
                 }
                 
@@ -1335,9 +1335,9 @@ class PropertyService {
             const created = await prismaClient.propertyListingHistory.create({
                 data: {
                     ...baseData,
-                    property: {connect: {id:propertyId}},
-                    room: {connect: {id:roomId}},
-                    unit: null,
+                    propertyId:propertyId,
+                    roomId:roomId,
+                    unitId: null,
                     type: ListingType.ROOM
                 }
             });
@@ -1353,9 +1353,9 @@ class PropertyService {
             const created = await prismaClient.propertyListingHistory.create({
                 data: {
                     ...baseData,
-                    property: {connect: {id:propertyId}},
-                    unit: null,
-                    room: null,
+                    propertyId: propertyId,
+                    unitId: null,
+                    roomId: null,
                     type: ListingType.ENTIRE_PROPERTY
                 }
             });
