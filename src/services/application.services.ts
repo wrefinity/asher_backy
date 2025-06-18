@@ -4,6 +4,7 @@ import { ApplicationInvite } from "../landlord/validations/interfaces/applicatio
 import logsServices from "./logs.services";
 import applicantService from "../webuser/services/applicantService";
 import { VerificationUpdateIF } from "../validations/interfaces/references.interfaces"
+import { stat } from "fs";
 class ApplicationInvitesService {
     private userInclusion = { email: true, profile: true, id: true };
     private applicationInclusion = {
@@ -37,7 +38,19 @@ class ApplicationInvitesService {
     }
 
     private inviteInclude = {
-        properties: true,
+        properties: {
+            include: {
+                landlord: {
+                    select: { user: { select: this.userInclusion } }
+                },
+                state: true,
+                images: true,
+                videos: true,
+                virtualTours: true,
+                propertyDocument: true,
+                ratings: true,
+            }
+        },
         tenants: {
             include: { user: { select: this.userInclusion } },
         },
@@ -47,7 +60,10 @@ class ApplicationInvitesService {
         landlords: {
             include: { user: { select: this.userInclusion } },
         },
+
         enquires: true,
+        rooms: true,
+        units: true,
         application: {
             include: this.applicationInclusion
         }
