@@ -1318,7 +1318,7 @@ class PropertyService {
                     ...baseData,
                     property: {connect: { id: propertyId }},
                     unit: {connect: { id: unitId }},
-                    roomId: null,
+                    room: null,
                     type: ListingType.SINGLE_UNIT
                 }
                 
@@ -1337,7 +1337,7 @@ class PropertyService {
                     ...baseData,
                     property: {connect: {id:propertyId}},
                     room: {connect: {id:roomId}},
-                    unitId: null,
+                    unit: null,
                     type: ListingType.ROOM
                 }
             });
@@ -1354,8 +1354,8 @@ class PropertyService {
                 data: {
                     ...baseData,
                     property: {connect: {id:propertyId}},
-                    unitId: null,
-                    roomId: null,
+                    unit: null,
+                    room: null,
                     type: ListingType.ENTIRE_PROPERTY
                 }
             });

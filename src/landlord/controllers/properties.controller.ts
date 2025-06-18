@@ -289,17 +289,6 @@ class PropertyController {
             if (!checkOwnership)
                 return res.status(400).json({ message: 'property does not exist under landlord' });
 
-            // if (checkOwnership.availability === AvailabilityStatus.OCCUPIED) {
-            //     return res.status(400).json({ message: 'Property already occupied' });
-            // }
-            // if (
-            //     value.type === ListingType.ROOM &&
-            //     checkOwnership.specificationType !== 'RESIDENTIAL' &&
-            //     checkOwnership.specificationType !== 'SHORTLET'
-            // ) {
-            //     throw new Error('ROOM can only be listed under Residential or Shortlet properties');
-            // }
-
             // Validate array of unitIds
             if (Array.isArray(value.unitId) && value.unitId.length > 0) {
                 for (const uid of value.unitId) {
@@ -317,8 +306,6 @@ class PropertyController {
                     if (!roomExists) {
                         return res.status(400).json({ message: `Invalid room ID: ${rid}` });
                     }
-
-
                 }
             }
 
