@@ -34,21 +34,24 @@ model maintenance {
   landlordDecision  maintenanceDecisionStatus?
 
   cancelReason              String? // Reason for cancellation
-  flagCancellation          Boolean?      @default(false)
+  flagCancellation          Boolean?           @default(false)
   vendorConsentCancellation Boolean? // Vendor’s consent for cancellation
   // relation fields
-  tenant                    tenants?      @relation(name: "tenantUser", fields: [tenantId], references: [id])
+  tenant                    tenants?           @relation(name: "tenantUser", fields: [tenantId], references: [id])
   tenantId                  String?
-  landlord                  landlords?    @relation(name: "landlordUser", fields: [landlordId], references: [id])
+  landlord                  landlords?         @relation(name: "landlordUser", fields: [landlordId], references: [id])
   landlordId                String?
-  vendor                    vendors?      @relation(name: "vendorUser", fields: [vendorId], references: [id])
+  vendor                    vendors?           @relation(name: "vendorUser", fields: [vendorId], references: [id])
   vendorId                  String?
-  property                  properties?   @relation(fields: [propertyId], references: [id])
+  property                  properties?        @relation(fields: [propertyId], references: [id])
   propertyId                String?
-
-  category                  category      @relation(fields: [categoryId], references: [id])
+  units                     UnitConfiguration? @relation(fields: [unitId], references: [id])
+  unitId                    String?
+  rooms                     RoomDetail?        @relation(fields: [roomId], references: [id])
+  roomId                    String?
+  category                  category           @relation(fields: [categoryId], references: [id])
   categoryId                String
-  subcategories             subCategory[] @relation("SubCategoryMaintenance")
+  subcategories             subCategory[]      @relation("SubCategoryMaintenance")
 
   // Chat integration for communication on maintenance issues
   chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
@@ -61,7 +64,7 @@ model maintenance {
 
   //payment
   paymentStatus TransactionStatus @default(PENDING)
-  amount        Decimal?           @db.Decimal(18, 2)
+  amount        Decimal?          @db.Decimal(18, 2)
 }
 
 model maintenanceRescheduleHistory {
@@ -98,14 +101,18 @@ model services {
 }
 
 model maintenanceWhitelist {
-  id            String       @id @default(cuid())
-  category      category?     @relation(fields: [categoryId], references: [id])
+  id            String             @id @default(cuid())
+  category      category?          @relation(fields: [categoryId], references: [id])
   categoryId    String
-  subcategory   subCategory? @relation(fields: [subcategoryId], references: [id])
+  subcategory   subCategory?       @relation(fields: [subcategoryId], references: [id])
   subcategoryId String?
-  landlord      landlords    @relation(fields: [landlordId], references: [id])
+  landlord      landlords          @relation(fields: [landlordId], references: [id])
   landlordId    String
-  property      properties?  @relation(fields: [propertyId], references: [id])
-  propertyId    String? 
-  isActive      Boolean      @default(true)
+  property      properties?        @relation(fields: [propertyId], references: [id])
+  propertyId    String?
+  units         UnitConfiguration? @relation(fields: [unitId], references: [id])
+  unitId        String?
+  rooms         RoomDetail?        @relation(fields: [roomId], references: [id])
+  roomId        String?
+  isActive      Boolean            @default(true)
 }

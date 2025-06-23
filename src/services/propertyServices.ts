@@ -181,7 +181,6 @@ class PropertyService {
         return await prismaClient.properties.findUnique({
             where: { id },
             include: {
-
                 state: true,
                 specification: this.specificationInclusion,
                 agency: true,

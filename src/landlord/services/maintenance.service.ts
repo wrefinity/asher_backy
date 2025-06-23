@@ -18,6 +18,8 @@ class LandlordMaintenanceService {
     property: boolean;
     apartment: boolean;
     category: boolean;
+    rooms: boolean;
+    units: boolean;
   };
 
   constructor() {
@@ -26,26 +28,30 @@ class LandlordMaintenanceService {
       property: true,
       apartment: true,
       category: true,
+      rooms: true,
+      units: true,
     };
   }
   getMaintenanceCounts = async (landlordId: string): Promise<MaintenanceCounts> => {
     // Count maintenance records with status "PENDING"
     const pendingCount = await prismaClient.maintenance.count({
       where: {
-        property: {
-          landlordId
-        },
+        OR: [
+          { landlordId: landlordId },
+          { property: { landlordId: landlordId } }
+        ],
         status: maintenanceStatus.PENDING,
-        isDeleted: false,  // Ensure no deleted records
+        isDeleted: false,
       },
     });
 
     // Count maintenance records with status "COMPLETED"
     const completedCount = await prismaClient.maintenance.count({
       where: {
-        property: {
-          landlordId
-        },
+        OR: [
+          { landlordId: landlordId },
+          { property: { landlordId: landlordId } }
+        ],
         status: maintenanceStatus.COMPLETED,
         isDeleted: false,
       },
@@ -65,15 +71,14 @@ class LandlordMaintenanceService {
     // Count maintenance records with status "CANCELLATION_REQUEST"
     const tenantRequestCount = await prismaClient.maintenance.count({
       where: {
-        property: {
-          landlordId
-        },
+        OR: [
+          { landlordId: landlordId },
+          { property: { landlordId: landlordId } }
+        ],
         handleByLandlord: false,
         isDeleted: false,
       },
     });
-
-    // Return the counts as an object
     return {
       pending: pendingCount,
       completed: completedCount,
@@ -85,10 +90,10 @@ class LandlordMaintenanceService {
   getRequestedMaintenanceByLandlord = async (landlordId: string, status?: maintenanceStatus) => {
     const maintenanceRequests = await prismaClient.maintenance.findMany({
       where: {
-        landlordId: landlordId,
-        property: {
-          landlordId: landlordId,
-        },
+        OR: [
+          { landlordId: landlordId },
+          { property: { landlordId: landlordId } }
+        ],
         isDeleted: false,
         ...(status && { status: status as any }),
       },
@@ -304,7 +309,7 @@ class LandlordMaintenanceService {
 
     // Step 1: Retrieve the current isActive value
     const whitelistEntry = await prismaClient.maintenanceWhitelist.findFirst({
-      where: { subcategoryId, landlordId: currentLandlordId},
+      where: { subcategoryId, landlordId: currentLandlordId },
     });
 
     if (!whitelistEntry) {
@@ -317,7 +322,7 @@ class LandlordMaintenanceService {
 
     // Step 2: Toggle the isActive value
     const updatedEntry = await prismaClient.maintenanceWhitelist.update({
-      where: { id: whitelistEntry.id},
+      where: { id: whitelistEntry.id },
       data: { isActive: !whitelistEntry.isActive },
     });
 

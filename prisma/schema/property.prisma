@@ -443,6 +443,10 @@ model UnitConfiguration {
   application application[]
 
   Log Log[]
+
+  maintenance maintenance[]
+
+  maintenanceWhitelist maintenanceWhitelist[]
 }
 
 model RoomDetail {
@@ -473,6 +477,10 @@ model RoomDetail {
   application application[]
 
   Log Log[]
+
+  maintenance maintenance[]
+
+  maintenanceWhitelist maintenanceWhitelist[]
 }
 
 // Residential Property specific fields - Done
