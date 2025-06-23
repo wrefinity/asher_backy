@@ -99,7 +99,15 @@ class LandlordMaintenanceService {
       },
       include: {
         landlord: true,
-        ...this.inclusion,
+        vendor: true,
+        property: true,
+        category: true,
+        rooms: true,
+        units: true,
+        reScheduleHistory: true,
+        tenant: true,
+        subcategories: true,
+        chatRoom: true
       },
     });
     return maintenanceRequests;
