@@ -35,6 +35,7 @@ class WalletController {
 
     async fundWallet(req: CustomRequest, res: Response) {
         const userId = String(req.user.id)
+        console.log('Funding wallet for user:', userId);
         const { amount, paymentGateway,  currency,  payment_method } = req.body
         if (!Object.values(PaymentGateway).includes(paymentGateway)) {
             return res.status(400).json({ message: 'Invalid payment gateway' });
@@ -47,9 +48,9 @@ class WalletController {
             return res.status(400).json({ message: 'Currency is required' });
         }
 
-        if (!payment_method) {
-            return res.status(400).json({ message: 'Payment method is required' });
-        }
+        // if (!payment_method) {
+        //     return res.status(400).json({ message: 'Payment method is required' });
+        // }
         const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const countryCode = await getCountryCodeFromIp(userIpAddress);
         console.log('Country Code:', countryCode);

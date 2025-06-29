@@ -236,8 +236,7 @@ class WalletService {
                 const paymentIntent = await stripeService.createPaymentIntent(
                     amount * 100, // Stripe expects amounts in cents
                     currency,
-                    stripeCustomer.id,
-                    payment_method
+                    stripeCustomer.id
                 );
                 paymentResponse = paymentIntent;
                 referenceId = paymentIntent.id;

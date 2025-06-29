@@ -65,14 +65,14 @@ class StripeService {
         }
     }
 
-    async createPaymentIntent(amount: number, currency: string, customerId: string, payment_method: string): Promise<StripePaymentIntent> {
+    async createPaymentIntent(amount: number, currency: string, customerId: string, payment_method?: string): Promise<StripePaymentIntent> {
         try {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount,
                 currency,
                 customer: customerId,
                 payment_method_types: ['card'],
-                payment_method
+                // payment_method
             });
             return {
                 id: paymentIntent.id,
