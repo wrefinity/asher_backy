@@ -14,8 +14,10 @@ class WalletRouter {
     }
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize)
-        this.router.get('/:userId', walletController.getUserWallet)
+        this.router.get('/', walletController.getUserWallet)
+        this.router.get('/all', walletController.getUserWallets)
         this.router.post('/fund', walletController.fundWallet)
+        this.router.post('/fund-verify/:paymentIntent', walletController.verifyPayment)
 
     }
 

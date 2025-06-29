@@ -447,6 +447,8 @@ model UnitConfiguration {
   maintenance maintenance[]
 
   maintenanceWhitelist maintenanceWhitelist[]
+
+  Transaction Transaction[]
 }
 
 model RoomDetail {
@@ -481,6 +483,8 @@ model RoomDetail {
   maintenance maintenance[]
 
   maintenanceWhitelist maintenanceWhitelist[]
+
+  Transaction Transaction[]
 }
 
 // Residential Property specific fields - Done

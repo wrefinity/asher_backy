@@ -65,13 +65,14 @@ class StripeService {
         }
     }
 
-    async createPaymentIntent(amount: number, currency: string, customerId: string): Promise<StripePaymentIntent> {
+    async createPaymentIntent(amount: number, currency: string, customerId: string, payment_method: string): Promise<StripePaymentIntent> {
         try {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount,
                 currency,
                 customer: customerId,
                 payment_method_types: ['card'],
+                payment_method
             });
             return {
                 id: paymentIntent.id,
@@ -108,6 +109,12 @@ class StripeService {
     async verifyPaymentIntent(paymentIntentId: string): Promise<StripePaymentIntent | null> {
         try {
             const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+            console.log(paymentIntent)
+
+            if(paymentIntent.status === 'succeeded') {
+                this.handleSuccessfulPayment(paymentIntent as StripePaymentIntent);
+            }
+            
             return {
                 id: paymentIntent.id,
                 amount: paymentIntent.amount,
@@ -175,7 +182,6 @@ class StripeService {
         if (session.payment_status === 'paid') {
           // Extract the session ID
           const sessionId = session.id;
-    
           // Call your existing handleLinkSuccessfulPayment method
           await this.handleLinkSuccessfulPayment(sessionId);
         } else {
@@ -183,6 +189,10 @@ class StripeService {
         }
       }
     async handleSuccessfulPayment(paymentIntent: StripePaymentIntent): Promise<void> {
+
+        console.log(`============================{paymentIntent.id}============================`);
+        console.log(paymentIntent);
+        console.log(`Handling successful payment for PaymentIntent: ${paymentIntent.id}`);
         const transaction = await prismaClient.transaction.findUnique({
             where: { stripePaymentIntentId: paymentIntent.id },
         });
@@ -207,9 +217,7 @@ class StripeService {
                         increment: transaction.amount,
                     },
                 },
-            });
-
-            
+            }); 
         });
     }
 
@@ -229,8 +237,6 @@ class StripeService {
                 status: TransactionStatus.FAILED,
             },
         });
-
-        // TODO: Implement notification to user about failed payment
     }
 
     private async handleSubscriptionUpdate(subscription: StripeSubscription): Promise<void> {
@@ -259,7 +265,6 @@ class StripeService {
             },
         });
 
-        // TODO: Implement any necessary cleanup or notification logic
     }
 
     createOrGetStripeCustomer = async (userId: string): Promise<StripeCustomer> =>{

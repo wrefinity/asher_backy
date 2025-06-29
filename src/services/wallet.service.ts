@@ -42,6 +42,11 @@ class WalletService {
             where: { userId, currency, isActive:true },
         });
     }
+    getUserWallets = async (userId: string) => {
+        return await prismaClient.wallet.findMany({
+            where: { userId, isActive:true },
+        });
+    }
 
     getOrCreateWallet = async (userId: string, currency: string = "NGN") => {
         let wallet = await prismaClient.wallet.findFirst({
@@ -101,7 +106,7 @@ class WalletService {
     //     };
     // }
 
-    async fundWalletUsingStripe(userId: string, amount: number, currency: string = 'usd') {
+    async fundWalletUsingStripe(userId: string, amount: number, currency: string = 'usd', payment_method: string) {
         const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
@@ -126,7 +131,8 @@ class WalletService {
         const paymentIntent = await stripeService.createPaymentIntent(
             amount * 100,
             currency,
-            stripeCustomer.id
+            stripeCustomer.id,
+            payment_method
         );
 
         // Create a transaction record
@@ -196,7 +202,11 @@ class WalletService {
         };
     }
 
-    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway: PaymentGateway) =>{
+    async verifyStripePayment (paymentIntent){
+        return await stripeService.verifyPaymentIntent(paymentIntent);
+    }
+
+    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) =>{
         const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
@@ -226,7 +236,8 @@ class WalletService {
                 const paymentIntent = await stripeService.createPaymentIntent(
                     amount * 100, // Stripe expects amounts in cents
                     currency,
-                    stripeCustomer.id
+                    stripeCustomer.id,
+                    payment_method
                 );
                 paymentResponse = paymentIntent;
                 referenceId = paymentIntent.id;

@@ -58,6 +58,10 @@ model Transaction {
   stripePaymentIntentId     String?              @unique
   propertyId                String?
   property                  properties?          @relation(fields: [propertyId], references: [id])
+  unitId                    String?
+  unit                      UnitConfiguration?   @relation(fields: [unitId], references: [id])
+  roomId                    String?
+  room                      RoomDetail?          @relation(fields: [roomId], references: [id])
   billId                    String?
   bill                      bills?               @relation(fields: [billId], references: [id])
   createdAt                 DateTime             @default(now())
