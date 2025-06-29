@@ -206,7 +206,7 @@ class WalletService {
         return await stripeService.verifyPaymentIntent(paymentIntent);
     }
 
-    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'usd', countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) =>{
+    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'USD', countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) =>{
         const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },

@@ -21,6 +21,7 @@ class TransactionRouter {
         // this.router.post('/pay-bill', transferControllers.makePayment)
         this.router.post('/pay-bill', transactionsControllers.makeTransaction)
         this.router.post('/transfer', transferControllers.transferFunds)
+        this.router.get('/all', transactionsControllers.getTransaction)
     }
 
 }
