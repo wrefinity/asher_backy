@@ -10,7 +10,7 @@ class WalletController {
         let locationCur = req.query.locationCurrency as string;
         if (!locationCur) {
             let _, locationCurrency = await getCurrentCountryCurrency();
-            locationCur = locationCurrency.toString().toUpperCase();
+            locationCur = locationCurrency?.toString()?.toUpperCase();
         }
         const userId = String(req.user.id)
         try {
