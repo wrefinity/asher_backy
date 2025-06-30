@@ -211,7 +211,7 @@ class StripeService {
             });
 
             await prisma.wallet.update({
-                where: { id: transaction.walletId },
+                where: { id: transaction.walletId},
                 data: {
                     balance: {
                         increment: transaction.amount,

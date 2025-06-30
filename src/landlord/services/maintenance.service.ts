@@ -16,7 +16,6 @@ class LandlordMaintenanceService {
   protected inclusion: {
     vendor: boolean;
     property: boolean;
-    apartment: boolean;
     category: boolean;
     rooms: boolean;
     units: boolean;
@@ -26,7 +25,6 @@ class LandlordMaintenanceService {
     this.inclusion = {
       vendor: true,
       property: true,
-      apartment: true,
       category: true,
       rooms: true,
       units: true,
