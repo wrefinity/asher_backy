@@ -1,0 +1,39 @@
+model DocuTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  content     Json
+  ownerId     String
+  owner       users    @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isActive    Boolean  @default(true)
+  versions    DocuTemplateVersion[]
+  userTemplates UserDocuTemplate[]
+}
+
+model DocuTemplateVersion {
+  id          String      @id @default(cuid())
+  templateId  String
+  template    DocuTemplate @relation(fields: [templateId], references: [id])
+  version     Int
+  content     String
+  createdAt   DateTime    @default(now())
+  updatedBy   String
+  user        users       @relation(fields: [updatedBy], references: [id])
+  
+  @@unique([templateId, version])
+}
+
+model UserDocuTemplate {
+  id         String      @id @default(cuid())
+  userId     String
+  user       users       @relation(fields: [userId], references: [id])
+  templateId String
+  template   DocuTemplate @relation(fields: [templateId], references: [id])
+  isDefault  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([userId, templateId])
+}

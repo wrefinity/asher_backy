@@ -83,3 +83,6 @@ model PropertyMediaFiles {
   RoomDetail RoomDetail[] @relation("RoomImages")
   UnitConfiguration UnitConfiguration[] @relation("UnitImages")
 }
+
+
+

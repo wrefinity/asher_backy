@@ -72,6 +72,10 @@ model users {
     Booking     Booking[]
 
     UserSearchPreference UserSearchPreference[]
+
+    assignedTemplates   UserDocuTemplate[]
+    DocuTemplate        DocuTemplate[]
+    DocuTemplateVersion DocuTemplateVersion[]
 }
 
 model UserLikedProperty {
@@ -87,7 +91,7 @@ model UserLikedProperty {
 
 model UserSearchPreference {
     id          String         @id @default(cuid())
-    description String?         @unique
+    description String?        @unique
     userId      String         @unique
     user        users          @relation(fields: [userId], references: [id])
     types       PropertyType[]

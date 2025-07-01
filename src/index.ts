@@ -28,6 +28,7 @@ import LogRouter from "./routes/log";
 import TransactionRouter from "./routes/transaction";
 import WalletRouter from "./routes/wallet";
 import UserRouter from "./routes/users";
+import DocuSignRouter from "./routes/docusign";
 import AdsRouter from "./tenant/routes/ads.routes";
 import CommunityPostRouter from "./tenant/routes/community-post.routes";
 import communityRoutes from "./tenant/routes/community.routes";
@@ -107,6 +108,7 @@ class Server {
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenants", TenantRouter);
+        this.app.use("/api/docusign", DocuSignRouter);
         // this.app.use("/api/generator", GeneratorRouter);
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
