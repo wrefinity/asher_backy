@@ -190,7 +190,6 @@ class StripeService {
       }
     async handleSuccessfulPayment(paymentIntent: StripePaymentIntent): Promise<void> {
 
-        console.log(`============================{paymentIntent.id}============================`);
         console.log(paymentIntent);
         console.log(`Handling successful payment for PaymentIntent: ${paymentIntent.id}`);
         const transaction = await prismaClient.transaction.findUnique({

@@ -109,7 +109,7 @@ class DocuTemplateService {
   // Get templates for a specific user
   async getUserTemplates(userId: string) {
     return prismaClient.userDocuTemplate.findMany({
-      where: {  userId },
+      where: {  userId, template: { isActive: true } },
       include: {
         template: {
           include: {

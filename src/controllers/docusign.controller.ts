@@ -23,7 +23,7 @@ class DocuTemplateController {
           userId: req.user.id
         });
       }
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: template
       });
@@ -44,8 +44,13 @@ class DocuTemplateController {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      await docuTemplateService.createTemplateVersion(id, req.body, req.user.id);
-      
+      const created = await docuTemplateService.createTemplateVersion(id, req.body, req.user.id);
+      if(!created){
+        return res.status(404).json({
+          success: false,
+          message: 'version creation failed, template not found'
+        });
+      }
       res.status(201).json({
         success: true,
         message: 'New template version created successfully'
