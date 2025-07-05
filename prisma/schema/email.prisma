@@ -1,7 +1,7 @@
 model Email {
     id               String   @id @default(cuid())
     senderEmail      String
-    receiverEmail    String
+    receiverEmail    String?
     subject          String?
     body             String
     attachment       String[]
