@@ -17,6 +17,7 @@ class WalletRouter {
         this.router.get('/', walletController.getUserWallet)
         this.router.get('/all', walletController.getUserWallets)
         this.router.post('/fund', walletController.fundWallet)
+        this.router.post('/transfer', walletController.transferBalance)
         this.router.post('/fund-verify/:paymentIntent', walletController.verifyPayment)
 
     }

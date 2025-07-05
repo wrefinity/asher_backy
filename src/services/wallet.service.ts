@@ -36,21 +36,35 @@ class WalletService {
         }
     };
 
+    // Get wallet by ID
+    async getWalletById(walletId: string) {
+        return await prismaClient.wallet.findUnique({
+            where: { id: walletId },
+            select: {
+                id: true,
+                userId: true,
+                balance: true,
+                currency: true,
+                isActive: true
+            }
+        });
+    }
 
     getUserWallet = async (userId: string, currency: string) => {
         return await prismaClient.wallet.findFirst({
-            where: { userId, currency, isActive:true },
+            where: { userId, currency, isActive: true },
         });
     }
+
     getUserWallets = async (userId: string) => {
         return await prismaClient.wallet.findMany({
-            where: { userId, isActive:true },
+            where: { userId, isActive: true },
         });
     }
 
     getOrCreateWallet = async (userId: string, currency: string = "NGN") => {
         let wallet = await prismaClient.wallet.findFirst({
-            where: { userId, currency, isActive:true },
+            where: { userId, currency, isActive: true },
         });
         if (!wallet) {
             wallet = await prismaClient.wallet.create({
@@ -65,6 +79,146 @@ class WalletService {
             });
         }
         return wallet;
+    }
+    
+    // Transfer balance between wallets
+    async transferBalance(
+        senderWalletId: string,
+        receiverWalletId: string,
+        amount: Decimal
+    ): Promise<{
+        senderWallet: any;
+        receiverWallet: any;
+        senderTransaction: any;
+        receiverTransaction: any;
+    }> {
+        // Validate amount
+        if (amount.lte(0)) {
+            throw new Error('Amount must be greater than zero');
+        }
+
+        return await prismaClient.$transaction(async (prisma) => {
+            // Get and lock sender wallet
+            const senderWallet = await prisma.wallet.findUnique({
+                where: { id: senderWalletId, isActive: true },
+                select: {
+                    id: true,
+                    balance: true,
+                    currency: true,
+                    userId: true,
+                    user: {
+                        select: {
+                            email: true,
+                            id: true
+                        }
+                    }
+                }
+            });
+
+            if (!senderWallet) {
+                throw new Error('Sender wallet not found or inactive');
+            }
+
+            // Get and lock receiver wallet
+            const receiverWallet = await prisma.wallet.findUnique({
+                where: { id: receiverWalletId, isActive: true },
+                select: {
+                    id: true,
+                    balance: true,
+                    currency: true,
+                    userId: true,
+                    user: {
+                        select: {
+                            email: true,
+                            id: true,
+                        }
+                    }
+                }
+            });
+
+            if (!receiverWallet) {
+                throw new Error('Receiver wallet not found or inactive');
+            }
+
+            // Check same currency
+            if (senderWallet.currency !== receiverWallet.currency) {
+                throw new Error('Cannot transfer between different currencies');
+            }
+
+            // Check sufficient balance
+            if (senderWallet.balance.lt(amount)) {
+                throw new Error('Insufficient balance in sender wallet');
+            }
+
+            // Update sender balance
+            const updatedSenderWallet = await prisma.wallet.update({
+                where: { id: senderWalletId },
+                data: { balance: { decrement: amount } },
+                select: {
+                    id: true,
+                    balance: true,
+                    currency: true
+                }
+            });
+
+            // Update receiver balance
+            const updatedReceiverWallet = await prisma.wallet.update({
+                where: { id: receiverWalletId },
+                data: { balance: { increment: amount } },
+                select: {
+                    id: true,
+                    balance: true,
+                    currency: true
+                }
+            });
+
+            // Create transactions
+            const transferId = generateIDs('TRF');
+            const now = new Date();
+
+            // Sender transaction
+            const senderTransaction = await prisma.transaction.create({
+                data: {
+                    wallet: {
+                        connect: { id: senderWalletId }
+                    },
+                    user: { connect: { id: senderWallet.user.id } },
+                    amount: amount,
+                    type: TransactionType.DEBIT,
+                    status: TransactionStatus.COMPLETED,
+                    description: `Transfer to ${receiverWallet.user?.email || receiverWalletId}`,
+                    referenceId: transferId,
+                    reference: TransactionReference.TRANSFER,
+                    createdAt: now,
+                    updatedAt: now,
+                }
+            });
+
+            // Receiver transaction
+            const receiverTransaction = await prisma.transaction.create({
+                data: {
+                    wallet: {
+                        connect: { id: receiverWalletId }
+                    },
+                    amount: amount,
+                    type: TransactionType.CREDIT,
+                    status: TransactionStatus.COMPLETED,
+                    user: { connect: { id: receiverWallet.user.id } },
+                    description: `Transfer from ${senderWallet.user?.email || senderWalletId}`,
+                    referenceId: transferId,
+                    reference: TransactionReference.TRANSFER,
+                    createdAt: now,
+                    updatedAt: now,
+                }
+            });
+
+            return {
+                senderWallet: updatedSenderWallet,
+                receiverWallet: updatedReceiverWallet,
+                senderTransaction,
+                receiverTransaction
+            };
+        });
     }
 
     // async fundWallet(userId: string, amount: number) {
@@ -202,11 +356,11 @@ class WalletService {
         };
     }
 
-    async verifyStripePayment (paymentIntent){
+    async verifyStripePayment(paymentIntent) {
         return await stripeService.verifyPaymentIntent(paymentIntent);
     }
 
-    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'USD', countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) =>{
+    fundWalletGeneral = async (userId: string, amount: number, currency: string = 'USD', countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) => {
         const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
@@ -383,8 +537,6 @@ class WalletService {
 
         return updatedWallet;
     }
-
-   
 }
 
 export default new WalletService();

@@ -5,6 +5,8 @@ import walletService from "../services/wallet.service";
 import { getCountryCodeFromIp } from "../utils/helpers";
 import { PaymentGateway } from '@prisma/client';
 import { getCurrentCountryCurrency } from "../utils/helpers";
+import { Decimal } from '@prisma/client/runtime/library';
+
 class WalletController {
     getUserWallet = async (req: CustomRequest, res: Response) =>{
         let locationCur = req.query.locationCurrency as string;
@@ -76,6 +78,47 @@ class WalletController {
             res.status(200).json(fundWallet)
         } catch (error) {
             errorService.handleError(error, res);
+        }
+    }
+        // Transfer balance between wallets
+    async transferBalance(req: CustomRequest, res: Response) {
+        try {
+
+            const { senderWalletId, receiverWalletId, amount } = req.body;
+            const userId = req.user.id; 
+            
+            // Validate input
+            if (!senderWalletId || !receiverWalletId || amount === undefined) {
+                return res.status(400).json({ message: 'Missing required parameters' });
+            }
+
+            // Convert amount to Decimal
+            const decimalAmount = new Decimal(amount.toString());
+            
+            // Verify sender wallet belongs to user
+            const senderWallet = await walletService.getWalletById(senderWalletId);
+            if (!senderWallet || senderWallet.userId !== userId) {
+                return res.status(403).json({ message: 'Invalid sender wallet' });
+            }
+            
+            // Perform transfer
+            const result = await walletService.transferBalance(
+                senderWalletId,
+                receiverWalletId,
+                decimalAmount
+            );
+            
+            res.json({
+                message: 'Transfer successful',
+                senderWallet: result.senderWallet,
+                receiverWallet: result.receiverWallet,
+                transactions: {
+                    sender: result.senderTransaction,
+                    receiver: result.receiverTransaction
+                }
+            });
+        } catch (error) {
+            res.status(400).json({ message: error.message });
         }
     }
 }

@@ -29,13 +29,19 @@ export interface CustomRequest extends Request {
 
 export type EmailDataType = {
     senderEmail: string;
-    recieverEmail: string;
+    receiverEmail: string;
     subject: string;
     body: string;
-    attachment?: string;
+    isReadBySender?: boolean;
+    isReadByReceiver?: boolean;
+    attachment?: string[];
     isDraft?: boolean;
     isSent?: boolean;
     isRead?: boolean;
+    isStarred?: boolean;
+    isArchived?: boolean;
+    isSpam?: boolean;   
+    isReply?: boolean;
 }
 export interface CloudinaryFile extends Express.Multer.File {
     buffer: Buffer;

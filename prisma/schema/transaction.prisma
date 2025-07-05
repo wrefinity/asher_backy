@@ -12,6 +12,7 @@ enum TransactionReference {
   CHARGES
   SUPPLIES
   EQUIPMENTS
+  TRANSFER
 }
 
 enum TransactionType {

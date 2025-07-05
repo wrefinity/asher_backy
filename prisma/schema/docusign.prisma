@@ -1,9 +1,14 @@
+enum DocuTemplateFor {
+  USER
+  ASHER
+}
 model DocuTemplate {
   id          String   @id @default(cuid())
   title       String
   description String?
   content     Json
   ownerId     String
+  documentFor DocuTemplateFor @default(USER)
   owner       users    @relation(fields: [ownerId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

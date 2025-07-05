@@ -16,11 +16,13 @@ class EmailRouter {
 
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
+        this.router.get('/', EmailController.getUserInbox)
         this.router.post('/', upload.array('files'), uploadToCloudinary, EmailController.createEmail)
+        this.router.post('/reply', upload.array('files'), uploadToCloudinary, EmailController.replyToEmail)
         this.router.get('/:emailId', EmailController.getEmailById)
         this.router.patch('/:emailId', EmailController.updateEmail)
         this.router.delete('/:emailId', EmailController.deleteEmail)
-        this.router.get('/user/:email/inbox', EmailController.getUserInbox)
+        this.router.get('/user-mails/categorize', EmailController.getUserEmail)
         this.router.get('/user/sent', EmailController.getUserSentEmails)
         this.router.get('/user/:email/drafts', EmailController.getUserDraftEmails)
         this.router.get('/user/unread', EmailController.getUserUnreadEmails)
