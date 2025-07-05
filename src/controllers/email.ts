@@ -11,49 +11,77 @@ class EmailController {
     constructor() {
     }
 
-    createEmail = async (req: CustomRequest, res: Response) => {
-        try {
-            console.log("Creating email with body:", req.body);
-            // Validate request body
-            const { error, value } = EmailSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ message: error.details[0].message });
-            }
+createEmail = async (req: CustomRequest, res: Response) => {
+    try {
+        
+        // Validate request body
+        const { error, value } = EmailSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+        console.log("Creating email with body:", value);
 
-            // Handle optional attachment
-            const attachment = value.cloudinaryUrls ?? null;
+       const isDraft = value.isDraft ?? false;
+        
+        // Handle optional attachment
+        const attachment = value.cloudinaryUrls ?? null;
 
-            // Determine sender email
-            let senderEmail: string | null = req.user?.email ?? null;
-            if (req.user?.tenant?.id) {
-                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
-                senderEmail = tenant?.tenantWebUserEmail ?? senderEmail;
-            }
+        // Determine sender email
+        let senderEmail: string | null = req.user?.email ?? null;
+        if (req.user?.tenant?.id) {
+            const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
+            senderEmail = tenant?.tenantWebUserEmail ?? senderEmail;
+        }
 
-            // Fetch sender details
-            const receiver = await EmailService.checkUserEmailExists(value.receiverEmail);
+        // Prepare email data
+        const { 
+            cloudinaryUrls, 
+            cloudinaryVideoUrls, 
+            cloudinaryDocumentUrls, 
+            cloudinaryAudioUrls, 
+            receiverEmail,
+            ...emailData 
+        } = value;
+
+        let receiverId: string | null = null;
+        let validatedReceiverEmail: string | null = null;
+
+        // Only process receiver for non-draft emails
+        if (!isDraft && receiverEmail) {
+            // Fetch receiver details
+            const receiver = await EmailService.checkUserEmailExists(receiverEmail);
             if (!receiver) {
                 throw new Error('Receiver email not found');
             }
-            // unnecessary fields from the value object (without mutating it)
-            const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls, ...emailData } = value;
-
-            const isDraft = req.body.isDraft || false;
-            // Create email
-            const email = await EmailService.createEmail({ ...emailData, senderId: req.user?.id, receiverId: receiver.userId, attachment, senderEmail, isDraft });
-            if (!email) {
-                return res.status(500).json({ message: "Failed to create email" });
-            }
-            // Notify the recipient in real-time
-            serverInstance.sendToUserEmail(email.receiverEmail, "newEmail", email);
-
-
-            return res.status(201).json({ email });
-
-        } catch (error) {
-            ErrorService.handleError(error, res);
+            receiverId = receiver.userId;
+            validatedReceiverEmail = receiverEmail;
         }
+
+        // Create email
+        const email = await EmailService.createEmail({ 
+            ...emailData, 
+            senderId: req.user?.id, 
+            receiverId,
+            receiverEmail: validatedReceiverEmail,
+            attachment, 
+            senderEmail,    
+        }, isDraft);
+
+        if (!email) {
+            return res.status(500).json({ message: "Failed to create email" });
+        }
+
+        // Only notify recipient for non-draft emails
+        if (!isDraft && validatedReceiverEmail) {
+            serverInstance.sendToUserEmail(validatedReceiverEmail, "newEmail", email);
+        }
+
+        return res.status(201).json({ email });
+
+    } catch (error) {
+        ErrorService.handleError(error, res);
     }
+}
 
     // getUserInbox = async (req: CustomRequest, res: Response) => {
     //     try {

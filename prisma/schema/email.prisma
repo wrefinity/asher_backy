@@ -23,8 +23,8 @@ model Email {
     // Relations
     senderId         String
     sender           users    @relation("SentEmails", fields: [senderId], references: [id])
-    receiverId       String
-    receiver         users    @relation("ReceivedEmails", fields: [receiverId], references: [id])
+    receiverId       String?
+    receiver         users?    @relation("ReceivedEmails", fields: [receiverId], references: [id])
     
     // Corrected threading relations
     parentEmail      Email?   @relation("EmailReplies", fields: [parentEmailId], references: [id])
