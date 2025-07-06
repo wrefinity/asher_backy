@@ -29,4 +29,25 @@ model Email {
     // Corrected threading relations
     parentEmail      Email?   @relation("EmailReplies", fields: [parentEmailId], references: [id])
     replies          Email[]  @relation("EmailReplies")
+    // NEW: Per-user state tracking
+    states           UserEmailState[]
+}
+
+model UserEmailState {
+    id        String  @id @default(cuid())
+    emailId   String
+    email     Email   @relation(fields: [emailId], references: [id])
+    userId    String
+    user      users   @relation(fields: [userId], references: [id])
+    
+    // Per-user state flags
+    isRead    Boolean @default(false)
+    isStarred Boolean @default(false)
+    isDraft Boolean @default(false)
+    isArchived Boolean @default(false)
+    isSpam    Boolean @default(false)
+    isDeleted Boolean @default(false)
+    
+    // Unique constraint per user per email
+    @@unique([emailId, userId])
 }

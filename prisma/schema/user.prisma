@@ -76,6 +76,8 @@ model users {
     assignedTemplates   UserDocuTemplate[]
     DocuTemplate        DocuTemplate[]
     DocuTemplateVersion DocuTemplateVersion[]
+
+    UserEmailState UserEmailState[]
 }
 
 model UserLikedProperty {

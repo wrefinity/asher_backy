@@ -43,25 +43,28 @@ export const EmailSchema = Joi.object({
 export const updateEmailSchema = Joi.object({
   subject: Joi.string().optional().allow('', null),
   body: Joi.string().optional(),
-
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+});
 
+export const updateEmailStateSchema = Joi.object({
   isDraft: Joi.boolean().optional(),
+  isRead: Joi.boolean().optional(),
   isStarred: Joi.boolean().optional(),
   isArchived: Joi.boolean().optional(),
   isSpam: Joi.boolean().optional(),
+  isDeleted: Joi.boolean().optional(),
   isSent: Joi.boolean().optional(),
 })
 .custom((value, helpers) => {
-  const exclusiveFlags = ['isDraft', 'isSent', 'isArchived', 'isSpam'];
+  const exclusiveFlags = ['isDraft', 'isStarred', 'isSent', 'isThrash', 'isArchived', 'isSpam'];
   const trueFlags = exclusiveFlags.filter(flag => value[flag] === true);
 
   if (trueFlags.length > 1) {
     return helpers.error('any.exclusive', {
-      message:  `Only one of [isDraft, isSent, isArchived, isSpam] can be true. You passed: ${trueFlags.join(', ')}`,
+      message:  `Only one of [isDraft, isStarred, isSent, isThrash, isArchived, isSpam] can be true. You passed: ${trueFlags.join(', ')}`,
       details: {
         path: helpers.state.path,
         flags: exclusiveFlags,
@@ -69,7 +72,6 @@ export const updateEmailSchema = Joi.object({
       }
     });
   }
-
   return value;
 })
 .messages({

@@ -2,6 +2,34 @@ import { prismaClient } from "..";
 import loggers from "../utils/loggers";
 import { EmailDataType } from "../utils/types";
 
+interface PaginatedEmails {
+    data: any[];         // Array of email objects
+    pagination: {          // Pagination metadata
+        totalItems: number;   // Total emails matching query
+        totalPages: number;   // Total pages available
+        currentPage: number;  // Current page number
+        itemsPerPage: number; // Number of items per page
+        hasNextPage: boolean; // True if next page exists
+        hasPreviousPage: boolean; // True if previous page exists
+    };
+}
+
+export interface EmailQueryOptions {
+    category?: 'inbox' | 'sent' | 'drafts' | 'starred' | 'spam' | 'archived' | 'trash';
+    state?: {
+        isStarred?: boolean;
+        isSpam?: boolean;
+        isArchived?: boolean;
+        isDeleted?: boolean;
+    };
+    search?: string;
+    page?: number;
+    limit?: number;
+    unread?: boolean,
+    sent?: boolean,
+    received?: boolean,
+
+}
 
 const profileSelect = {
     select: {
@@ -122,113 +150,357 @@ class EmailService {
      * Get paginated user emails
      */
 
-    async getInbox(userEmail: string, page = 1, limit = 10, search = '') {
-        return prismaClient.email.findMany({
-            where: {
-                receiverEmail: userEmail,
-                isDraft: false,
-                isSpam: false,
-                isArchived: false,
-                isSent: true,
+    async getInbox(userId: string, page = 1, limit = 10, search = '') {
+        // Validate pagination values
+        const currentPage = Math.max(1, Math.floor(page));
+        const itemsPerPage = Math.max(1, Math.min(limit, 100));
+
+        // Get user
+        const user = await prismaClient.users.findUnique({
+            where: { id: userId }
+        });
+        if (!user) throw new Error('User not found');
+
+        // Base email conditions
+        const baseWhere: any = {
+            receiverEmail: user.email,
+            isDraft: false,
+            isSent: true,
+            isReply: false,
+            states: {
+                none: {
+                    userId: userId,
+                    OR: [
+                        { isArchived: true },
+                        { isSpam: true },
+                        { isDeleted: true }
+                    ]
+                }
+            }
+        };
+
+        // Add search filters
+        if (search.trim() !== '') {
+            baseWhere.OR = [
+                { subject: { contains: search, mode: 'insensitive' } },
+                { body: { contains: search, mode: 'insensitive' } },
+                { senderEmail: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        // Get total matching emails
+        const totalItems = await prismaClient.email.count({
+            where: baseWhere
+        });
+
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const hasNextPage = currentPage < totalPages;
+        const hasPreviousPage = currentPage > 1;
+
+        // Fetch paginated emails
+        const emails = await prismaClient.email.findMany({
+            where: baseWhere,
+            include: {
+                states: {
+                    where: { userId },
+                    select: {
+                        isRead: true,
+                        isStarred: true,
+                        isArchived: true,
+                        isSpam: true,
+                        isDeleted: true
+                    }
+                },
+                replies: true
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: (currentPage - 1) * itemsPerPage,
+            take: itemsPerPage,
+        });
+
+        const transformedEmails = emails.map(email => {
+            const [userState] = email.states;
+            return {
+                ...email,
+                state: userState || {
+                    isRead: false,
+                    isStarred: false,
+                    isArchived: false,
+                    isSpam: false,
+                    isDeleted: false
+                }
+            };
+        });
+
+        return {
+            data: transformedEmails,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage,
+                itemsPerPage,
+                hasNextPage,
+                hasPreviousPage
+            }
+        };
+    }
+
+    async getEmailsForUser(userId: string, options: EmailQueryOptions = {}): Promise<PaginatedEmails> {
+        const {
+            category,
+            state={},
+            search,
+            page = 1,
+            limit = 10,
+            unread = false,
+            sent = false,
+            received = false,
+        } = options;
+
+        console.log('getEmailsForUser called with options:', options);
+
+        const currentPage = Math.max(1, Math.floor(page));
+        const itemsPerPage = Math.max(1, Math.min(limit, 100));
+
+        // Fetch user
+        const user = await prismaClient.users.findUnique({ where: { id: userId } });
+        if (!user) throw new Error('User not found');
+
+        const baseConditions: any = {
+            isReply: false,
+        };
+
+        switch (category) {
+            case 'inbox':
+                baseConditions.receiverEmail = user.email;
+                break;
+            case 'sent':
+                baseConditions.senderEmail = user.email;
+                baseConditions.NOT = { receiverEmail: null };
+                baseConditions.isDraft = false;
+                break;
+            case 'drafts':
+                baseConditions.senderEmail = user.email;
+                baseConditions.isDraft = category === 'drafts';
+                break;
+            case 'starred':
+            case 'spam':
+            case 'archived':
+            case 'trash':
+                baseConditions.OR = [
+                    { senderEmail: user.email },
+                    { receiverEmail: user.email },
+                ];
+                break;
+        }
+
+        const stateConditions: any = {};
+        if (state.isStarred !== undefined) stateConditions.isStarred = state.isStarred;
+        if (state.isSpam !== undefined) stateConditions.isSpam = state.isSpam;
+        if (state.isArchived !== undefined) stateConditions.isArchived = state.isArchived;
+        if (state.isDeleted !== undefined) stateConditions.isDeleted = state.isDeleted;
+
+        const searchConditions = search
+            ? {
                 OR: [
                     { subject: { contains: search, mode: 'insensitive' } },
                     { body: { contains: search, mode: 'insensitive' } },
                     { senderEmail: { contains: search, mode: 'insensitive' } },
+                    { receiverEmail: { contains: search, mode: 'insensitive' } },
                 ],
-            },
-            orderBy: { createdAt: 'desc' },
-            skip: (page - 1) * limit,
-            take: limit,
-        });
-    }
+            }
+            : {};
 
-    getUserEmails = async (
-        email: string,
-        options: {
-            sent?: boolean;
-            received?: boolean;
-            draft?: boolean;
-            unread?: boolean;
-            threads?: boolean;
-        },
-        pagination: {
-            page: number;
-            limit: number;
-        } = { page: 1, limit: 10 },
-        search: string = '',
-    ) => {
-        const where: any = { isReply: false }; // Default to not showing replies
-        const skip = (pagination.page - 1) * pagination.limit;
 
-        if (options.sent) where.senderEmail = email;
-        if (options.received) where.receiverEmail = email;
-        if (options.draft) where.isDraft = true;
-        // For threads, only show emails that are thread starters
-        if (options.threads) {
-            where.OR = [
-                { threadId: null }, // Original emails
-                { threadId: { equals: prismaClient.email.fields.id } } // Thread starters
-            ];
-        }
 
-        if (search) {
-            where.OR = [
-                { subject: { contains: search, mode: 'insensitive' } },
-                { body: { contains: search, mode: 'insensitive' } },
-                { senderEmail: { contains: search, mode: 'insensitive' } },
-                { receiverEmail: { contains: search, mode: 'insensitive' } }
-            ];
-        }
-        if (options.unread) {
-            if (options.sent) {
+        const where: any = {
+            ...baseConditions,
+            ...searchConditions,
+            ...(baseConditions.isDraft !== true && category != 'sent' && {
+                states: {
+                    some: {
+                        ...(category !== 'drafts' && { userId }),
+                        ...stateConditions,
+                        ...(category === 'inbox' && {
+                            isArchived: false,
+                            isSpam: false,
+                            isDeleted: false,
+                        }),
+                        ...(category === 'spam' && { isSpam: true }),
+                        ...(category === 'archived' && { isArchived: true }),
+                        ...(category === 'trash' && { isDeleted: true }),
+                        ...(category === 'starred' && { isStarred: true }),
+                    }
+                }
+            })
+        };
+
+        // Handle unread filter based on sender or receiver
+        if (unread) {
+            if (sent) {
                 where.isReadBySender = false;
-            } else if (options.received) {
+                where.senderEmail = user.email;
+            } else if (received) {
                 where.isReadByReceiver = false;
+                where.receiverEmail = user.email;
             } else {
                 where.OR = [
-                    { senderEmail: email, isReadBySender: false },
-                    { receiverEmail: email, isReadByReceiver: false }
+                    { senderEmail: user.email, isReadBySender: false },
+                    { receiverEmail: user.email, isReadByReceiver: false },
                 ];
             }
         }
+        console.log('Final where clause:', where);
 
-        try {
-            const [emails, total] = await Promise.all([
-                prismaClient.email.findMany({
-                    where,
-                    skip,
-                    take: pagination.limit,
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        sender: userSelect,
-                        receiver: userSelect,
-                        replies: {
-                            include: {
-                                sender: userSelect,
-                                receiver: userSelect
-                            },
-                            orderBy: { createdAt: 'asc' }
+        // Get total count
+        const totalItems = await prismaClient.email.count({ where });
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const hasNextPage = currentPage < totalPages;
+        const hasPreviousPage = currentPage > 1;
+
+        const emails = await prismaClient.email.findMany({
+            where,
+            include: {
+                states: {
+                    ...(baseConditions.isDraft !== true && {
+                        where: { userId }
+                    }),
+                    select: {
+                        isRead: true,
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                profile: profileSelect,
+                            }
                         },
-                        _count: {
-                            select: { replies: true }
-                        }
-                    }
-                }),
-                prismaClient.email.count({ where })
-            ]);
+                        isStarred: true,
+                        isArchived: true,
+                        isSpam: true,
+                        isDeleted: true,
+                    },
+                },
+                replies:true,
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: (currentPage - 1) * itemsPerPage,
+            take: itemsPerPage,
+        });
 
+        const transformedEmails = emails.map((email) => {
+
+            const [userState] = email.states;
             return {
-                emails,
-                total,
-                page: pagination.page,
-                limit: pagination.limit,
-                totalPages: Math.ceil(total / pagination.limit)
+                ...email,
+                states: userState || {
+                    isRead: false,
+                    isStarred: false,
+                    isArchived: false,
+                    isSpam: false,
+                    isDeleted: false,
+                },
             };
-        } catch (error) {
-            loggers.error(`Error getting emails: ${error}`);
-            throw new Error('Failed to get emails');
-        }
+        });
+
+        return {
+            data: transformedEmails,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage,
+                itemsPerPage,
+                hasNextPage,
+                hasPreviousPage,
+            },
+        };
     }
+    // getUserEmails = async (
+    //     email: string,
+    //     options: {
+    //         sent?: boolean;
+    //         received?: boolean;
+    //         draft?: boolean;
+    //         unread?: boolean;
+    //         threads?: boolean;
+    //     },
+    //     pagination: {
+    //         page: number;
+    //         limit: number;
+    //     } = { page: 1, limit: 10 },
+    //     search: string = '',
+    // ) => {
+    //     const where: any = { isReply: false }; // Default to not showing replies
+    //     const skip = (pagination.page - 1) * pagination.limit;
+
+    //     if (options.sent) where.senderEmail = email;
+    //     if (options.received) where.receiverEmail = email;
+    //     if (options.draft) where.isDraft = true;
+    //     // For threads, only show emails that are thread starters
+    //     if (options.threads) {
+    //         where.OR = [
+    //             { threadId: null }, // Original emails
+    //             { threadId: { equals: prismaClient.email.fields.id } } // Thread starters
+    //         ];
+    //     }
+
+    //     if (search) {
+    //         where.OR = [
+    //             { subject: { contains: search, mode: 'insensitive' } },
+    //             { body: { contains: search, mode: 'insensitive' } },
+    //             { senderEmail: { contains: search, mode: 'insensitive' } },
+    //             { receiverEmail: { contains: search, mode: 'insensitive' } }
+    //         ];
+    //     }
+    //     if (options.unread) {
+    //         if (options.sent) {
+    //             where.isReadBySender = false;
+    //         } else if (options.received) {
+    //             where.isReadByReceiver = false;
+    //         } else {
+    //             where.OR = [
+    //                 { senderEmail: email, isReadBySender: false },
+    //                 { receiverEmail: email, isReadByReceiver: false }
+    //             ];
+    //         }
+    //     }
+
+    //     try {
+    //         const [emails, total] = await Promise.all([
+    //             prismaClient.email.findMany({
+    //                 where,
+    //                 skip,
+    //                 take: pagination.limit,
+    //                 orderBy: { createdAt: 'desc' },
+    //                 include: {
+    //                     sender: userSelect,
+    //                     receiver: userSelect,
+    //                     replies: {
+    //                         include: {
+    //                             sender: userSelect,
+    //                             receiver: userSelect
+    //                         },
+    //                         orderBy: { createdAt: 'asc' }
+    //                     },
+    //                     _count: {
+    //                         select: { replies: true }
+    //                     }
+    //                 }
+    //             }),
+    //             prismaClient.email.count({ where })
+    //         ]);
+
+    //         return {
+    //             emails,
+    //             total,
+    //             page: pagination.page,
+    //             limit: pagination.limit,
+    //             totalPages: Math.ceil(total / pagination.limit)
+    //         };
+    //     } catch (error) {
+    //         loggers.error(`Error getting emails: ${error}`);
+    //         throw new Error('Failed to get emails');
+    //     }
+    // }
 
     /**
      * Reply to an existing email (creates a threaded reply)
@@ -418,6 +690,8 @@ class EmailService {
         originalEmailId: string,
         senderId: string,
         receiverId: string,
+        senderEmail: string,
+        receiverEmail: string,
         additionalMessage: string = ""
     ) {
         const originalEmail = await this.getEmailById(originalEmailId);
@@ -444,8 +718,8 @@ class EmailService {
         return this.createEmail({
             senderId,
             receiverId,
-            senderEmail: originalEmail.senderEmail,
-            receiverEmail: originalEmail.receiverEmail,
+            senderEmail: senderEmail,
+            receiverEmail: receiverEmail,
             subject: forwardedSubject,
             body: forwardedBody,
             attachment: originalEmail.attachment,
@@ -520,38 +794,50 @@ class EmailService {
     }
 
 
-    // async getFolderEmails(userEmail: string, folder: string, page = 1, limit = 10, search = '') {
-    //     const baseWhere = {
-    //         receiverEmail: userEmail,
-    //         isDraft: false,
-    //         isSent: true,
-    //         OR: [
-    //             { subject: { contains: search, mode: 'insensitive' } },
-    //             { body: { contains: search, mode: 'insensitive' } },
-    //             { senderEmail: { contains: search, mode: 'insensitive' } },
-    //         ],
-    //     };
+    updateEmailState = async (emailId: string, userId: string, updateData: {
+        isRead?: boolean,
+        isStarred?: boolean,
+        isDraft?: boolean,
+        isArchived?: boolean,
+        isSpam?: boolean,
+        isDeleted?: boolean
+    }) => {
+        // Define exclusive state flags
+        const exclusiveFlags = ['isStarred', 'isArchived', 'isSpam', 'isDeleted', 'isDraft'];
 
-    //     const folderFilters: Record<string, object> = {
-    //         archived: { isArchived: true },
-    //         starred: { isStarred: true },
-    //         spam: { isSpam: true },
-    //         trash: { isReadByReceiver: true, isArchived: false },
-    //         drafts: { isDraft: true, senderEmail: userEmail },
-    //         sent: { senderEmail: userEmail, isSent: true },
-    //     };
+        // Check if more than one exclusive flag is being set to true
+        const trueFlags = exclusiveFlags.filter(flag => updateData[flag] === true);
 
-    //     return prismaClient.email.findMany({
-    //         where: {
-    //             ...baseWhere,
-    //             ...(folderFilters[folder] || {}),
-    //         },
-    //         orderBy: { createdAt: 'desc' },
-    //         skip: (page - 1) * limit,
-    //         take: limit,
-    //     });
-    // }
+        if (trueFlags.length > 1) {
+            throw new Error(`Only one state flag can be true at a time. Attempted to set: ${trueFlags.join(', ')}`);
+        }
 
+        // If setting an exclusive flag to true, ensure others are false
+        if (trueFlags.length === 1) {
+            for (const flag of exclusiveFlags) {
+                if (flag !== trueFlags[0]) {
+                    // Only set to false if not explicitly set in updateData
+                    if (updateData[flag] === undefined) {
+                        updateData[flag] = false;
+                    }
+                }
+            }
+        }
 
+        return await prismaClient.userEmailState.upsert({
+            where: {
+                emailId_userId: {
+                    emailId,
+                    userId
+                }
+            },
+            update: updateData,
+            create: {
+                emailId,
+                userId,
+                ...updateData
+            }
+        });
+    }
 }
 export default new EmailService();
