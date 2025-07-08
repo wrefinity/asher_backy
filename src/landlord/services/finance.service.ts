@@ -299,6 +299,8 @@ class FinanceService {
                     userId,
                     createdAt: { gte: startDate, lt: endDate },
                     reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
+                    status: TransactionStatus.COMPLETED,
+                    type: TransactionType.CREDIT,
                 },
             });
             let rent = 0, late_fees = 0, charges = 0;
@@ -323,6 +325,8 @@ class FinanceService {
                     userId,
                     createdAt: { gte: startDate, lt: endDate },
                     reference: { in: [TransactionReference.MAINTENANCE_FEE, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS] },
+                    status: TransactionStatus.COMPLETED,
+                    type: TransactionType.DEBIT,
                 },
             });
             let maintenance = 0, supplies = 0, equipment = 0;
@@ -346,6 +350,8 @@ class FinanceService {
                 userId,
                 reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
                 createdAt: { gte: startDate, lt: endDate },
+                status: TransactionStatus.COMPLETED,
+                type: TransactionType.CREDIT,
             },
         });
         const expenses = await prismaClient.transaction.aggregate({
@@ -354,6 +360,8 @@ class FinanceService {
                 userId,
                 reference: { in: [TransactionReference.MAINTENANCE_FEE, TransactionReference.BILL_PAYMENT, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
                 createdAt: { gte: startDate, lt: endDate },
+                status: TransactionStatus.COMPLETED,
+                type: TransactionType.DEBIT,
             },
         });
         const outstanding = await prismaClient.transaction.aggregate({
