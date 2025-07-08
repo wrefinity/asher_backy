@@ -20,8 +20,9 @@ class DocuSignRoutes {
         this.router.get('/templates/:id', DocusignController.getTemplate);
         this.router.patch('/templates/:id', DocusignController.updateTemplate);
         this.router.delete('/templates/:id', DocusignController.deleteTemplate);
-
+        
         // Version operations
+        this.router.delete('/templates/version/:id', DocusignController.deleteTemplateVersion);
         this.router.post('/templates/:id/versions', DocusignController.createVersion);
         this.router.get('/templates/:id/versions', DocusignController.getTemplateVersions);
         this.router.get('/templates/:id/versions/:version', DocusignController.getTemplateVersion);

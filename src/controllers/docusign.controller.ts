@@ -222,6 +222,28 @@ class DocuTemplateController {
   }
 
   // Delete template (soft delete)
+  async deleteTemplateVersion(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await docuTemplateService.deleteTemplateVersion(id);
+      if(!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Template version not found'
+        });
+      }
+      res.status(200).json({
+        success: true,
+        message: 'Template version deactivated successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+  // Delete template (soft delete)
   async deleteTemplate(req: Request, res: Response) {
     try {
       const { id } = req.params;

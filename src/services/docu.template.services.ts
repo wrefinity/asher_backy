@@ -1,8 +1,8 @@
 
 import { prismaClient } from "..";
-import { 
-  CreateDocuTemplateDto, 
-  UpdateDocuTemplateDto, 
+import {
+  CreateDocuTemplateDto,
+  UpdateDocuTemplateDto,
   AssignDocuTemplateDto,
   CreateVersionDto
 } from '../validations/interfaces/docusign.interface';
@@ -41,7 +41,7 @@ class DocuTemplateService {
     const template = await prismaClient.docuTemplate.findUnique({
       where: { id: templateId }
     });
-    
+
     if (!template) {
       throw new Error('Template not found');
     }
@@ -109,12 +109,22 @@ class DocuTemplateService {
   // Get templates for a specific user
   async getUserTemplates(userId: string) {
     return prismaClient.userDocuTemplate.findMany({
-      where: {  userId, template: { isActive: true } },
+      where: {
+        userId,
+        template: {
+          isActive: true,
+        }
+      },
       include: {
         template: {
           include: {
             versions: {
-              orderBy: { version: 'desc' },
+              where: {
+                isDeleted: false,
+              },
+              orderBy: {
+                version: 'desc',
+              },
               take: 1
             }
           }
@@ -166,7 +176,8 @@ class DocuTemplateService {
       where: {
         templateId_version: {
           templateId,
-          version
+          version,
+
         }
       },
       include: {
@@ -188,6 +199,21 @@ class DocuTemplateService {
     });
   }
 
+  // Delete a template (soft delete)
+  async deleteTemplateVersion(id: string) {
+    const existingVersion = await prismaClient.docuTemplateVersion.findUnique({
+      where: { id },
+    });
+
+    if (!existingVersion) {
+      throw new Error('Template version not found');
+    }
+    // Delete the template version
+    return await prismaClient.docuTemplateVersion.update({
+      where: { id },
+      data: { isDeleted: true }
+    });
+  }
   // Delete a template (soft delete)
   async deleteTemplate(id: string) {
     return prismaClient.docuTemplate.update({
