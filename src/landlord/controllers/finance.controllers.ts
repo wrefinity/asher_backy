@@ -23,34 +23,32 @@ class FinanceController {
     }
 
     async getFInanceIncome(req: CustomRequest, res: Response) {
-        const { landlords } = req.user
-        const landlordId = landlords.id
-        const { propertyId } = req.params
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         try {
-            const income = await financeService.getFinanceIncome(landlordId)
+            const income = await financeService.getFinanceIncome(landlordId, year);
             if (income.length < 1) {
-                return res.status(200).json({ message: "No income found" })
+                return res.status(200).json({ message: "No income found" });
             }
-            return res.status(200).json(income)
-
+            return res.status(200).json(income);
         } catch (error) {
-            errorService.handleError(error, res)
+            errorService.handleError(error, res);
         }
     }
 
     async getFinancialExpenses(req: CustomRequest, res: Response) {
-        const { landlords } = req.user
-        const landlordId = landlords.id
-        const { propertyId } = req.params
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         try {
-            const expenses = await financeService.getFInanceExpense(landlordId)
+            const expenses = await financeService.getFInanceExpense(landlordId, year);
             if (expenses.length < 1) {
-                return res.status(200).json({ message: "No expenses found" })
+                return res.status(200).json({ message: "No expenses found" });
             }
-            return res.status(200).json(expenses)
-
+            return res.status(200).json(expenses);
         } catch (error) {
-            errorService.handleError(error, res)
+            errorService.handleError(error, res);
         }
     }
 
@@ -120,7 +118,7 @@ class FinanceController {
             const budget = await financeService.createBudget(propertyId, transactionType, budgetAmount, frequency);
             res.status(201).json(budget);
         } catch (error) {
-             errorService.handleError(error, res)
+            errorService.handleError(error, res)
         }
     }
 
@@ -132,7 +130,73 @@ class FinanceController {
             await financeService.updateBudget(id, amount);
             res.status(200).json({ message: 'Budget updated successfully' });
         } catch (error) {
-             errorService.handleError(error, res)
+            errorService.handleError(error, res)
+        }
+    }
+
+    async getIncomeBreakdown(req: CustomRequest, res: Response) {
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        try {
+            const breakdown = await financeService.getIncomeBreakdown(landlordId, year);
+            return res.status(200).json(breakdown);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getExpenseBreakdown(req: CustomRequest, res: Response) {
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        try {
+            const breakdown = await financeService.getExpenseBreakdown(landlordId, year);
+            return res.status(200).json(breakdown);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getStats(req: CustomRequest, res: Response) {
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        try {
+            const stats = await financeService.getStats(landlordId, year);
+            console.log(stats, "Logging Stats")
+            return res.status(200).json(stats);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getRecentTransactions(req: CustomRequest, res: Response) {
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+        try {
+            const txs = await financeService.getRecentTransactions(landlordId, limit);
+            return res.status(200).json({
+                message: "No recent transactions",
+                txs
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getUpcomingPayments(req: CustomRequest, res: Response) {
+        const { landlords } = req.user;
+        const landlordId = landlords.id;
+        try {
+            const txs = await financeService.getUpcomingPayments(landlordId);
+            return res.status(200).json({
+                message: "No recent upcoming payments",
+                txs
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
         }
     }
 
