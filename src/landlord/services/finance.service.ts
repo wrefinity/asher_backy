@@ -389,7 +389,7 @@ class FinanceService {
         });
     }
 
-    async getUpcomingPayments(userId: string) {
+    async getUpcomingPayments(userId: string, limit = 5) {
         const now = new Date();
         return await prismaClient.transaction.findMany({
             where: {
@@ -398,6 +398,7 @@ class FinanceService {
                 status: TransactionStatus.PENDING,
                 createdAt: { gte: now },
             },
+            take: limit,
             orderBy: { createdAt: 'asc' },
         });
     }
