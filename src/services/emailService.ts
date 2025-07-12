@@ -138,7 +138,8 @@ class EmailService {
                 where: { id: emailId },
                 include: {
                     sender: userSelect,
-                    receiver: userSelect
+                    receiver: userSelect,
+                    replies: true
                 }
             })
         } catch (error) {
@@ -248,7 +249,7 @@ class EmailService {
     async getEmailsForUser(userId: string, options: EmailQueryOptions = {}): Promise<PaginatedEmails> {
         const {
             category,
-            state={},
+            state = {},
             search,
             page = 1,
             limit = 10,
@@ -380,18 +381,32 @@ class EmailService {
                         isDeleted: true,
                     },
                 },
-                replies:true,
+                replies: true,
             },
             orderBy: { createdAt: 'desc' },
             skip: (currentPage - 1) * itemsPerPage,
             take: itemsPerPage,
         });
 
-        const transformedEmails = emails.map((email) => {
+        // const transformedEmails = emails.map((email) => {
 
+        //     const [userState] = email.states;
+        //     return {
+        //         ...email,
+        //         states: userState || {
+        //             isRead: false,
+        //             isStarred: false,
+        //             isArchived: false,
+        //             isSpam: false,
+        //             isDeleted: false,
+        //         },
+        //     };
+        // });
+        const transformedEmails = emails.map((email) => {
             const [userState] = email.states;
             return {
                 ...email,
+                replies: email.replies?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
                 states: userState || {
                     isRead: false,
                     isStarred: false,

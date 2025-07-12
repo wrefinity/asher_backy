@@ -61,7 +61,7 @@ class CommunityPostController {
 
             const userId = String(req.user.id)
 
-            if (communityPost.userId !== userId) return res.status(403).json({ message: "Unauthorized to edit this post" })
+            if (communityPost.authorId !== userId) return res.status(403).json({ message: "Unauthorized to edit this post" })
 
             const updatedPost = await communityPostServices.updateCommunityPost(communityPostId, communityPostData)
             return res.status(200).json(updatedPost)
@@ -79,7 +79,7 @@ class CommunityPostController {
             if (!communityPost) return res.status(404).json({ message: "Post not found" })
 
             const userId = String(req.user.id)
-            if (communityPost.userId !== userId) return res.status(403).json({ message: "Unauthorized to delete this post" })
+            if (communityPost.authorId !== userId) return res.status(403).json({ message: "Unauthorized to delete this post" })
 
             await communityPostServices.deleteCommunityPost(communityPostId)
             return res.status(204).json({ message: "Post deleted successfully" })

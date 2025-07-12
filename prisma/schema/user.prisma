@@ -20,15 +20,15 @@ model users {
     VerificationToken      VerificationToken[]
     tenant                 tenants?
     landlords              landlords?
-    community              Community[]
+    // community              Community[]
     communityPost          CommunityPost[]
-    communityPostLikes     CommunityPostLikes[]
-    communityPostViews     CommunityPostViews[]
+    communityPostLikes     CommunityPostLike[]
+    communityPostViews     CommunityPostView[]
     sentEmails             Email[]                  @relation("SentEmails") // Emails sent by this user
     receivedEmails         Email[]                  @relation("ReceivedEmails") // Emails received by this user
     applicantion           application[]
     agents                 agents[]
-    Comments               Comments[]
+    Comments               Comment[]
     ratingsGiven           Rating[]                 @relation("ratedByUser")
     ratingsReceived        Rating[]                 @relation("userRated")
     messagesSent           Message[]                @relation("messagesSent")
@@ -78,6 +78,17 @@ model users {
     DocuTemplateVersion DocuTemplateVersion[]
 
     UserEmailState UserEmailState[]
+
+    Community Community[] @relation("CommunityOwner")
+    CommunityPostShare CommunityPostShare[]
+
+    CommentLike CommentLike[]
+
+    DiscussionThread DiscussionThread[]
+
+    DiscussionComment DiscussionComment[]
+
+    DiscussionCommentLike DiscussionCommentLike[]
 }
 
 model UserLikedProperty {

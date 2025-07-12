@@ -19,7 +19,7 @@ class CommunityController {
             const community = await communityServices.createCommunity({ ...value, communityOwnerId })
             const communityLink = await communityServices.getCommunityInvitationLink(community.id)
 
-            const inviteUrl = getCommunityurl(communityLink.inviteCode)
+            const inviteUrl = getCommunityurl(communityLink.code)
             return res.status(200).json({ ...community, inviteUrl });
 
         } catch (error) {
@@ -33,7 +33,7 @@ class CommunityController {
         try {
             const communityId = req.params.communityId;
             const communityLink = await communityServices.getCommunityInvitationLink(communityId)
-            const inviteUrl = getCommunityurl(communityLink.inviteCode);
+            const inviteUrl = getCommunityurl(communityLink.code);
             return res.status(200).json({ inviteUrl });
         } catch (error) {
             errorService.handleError(error, res)
@@ -93,7 +93,7 @@ class CommunityController {
         try {
             const community = await communityServices.getCommunityById(communityId)
             if (!community) return res.status(404).json({ message: "Community not found" })
-            if (community.communityOwnerId !== communityOwnerId) return res.status(403).json({ message: "Unauthorized to update this community" })
+            if (community.ownerId !== communityOwnerId) return res.status(403).json({ message: "Unauthorized to update this community" })
             const updatedCommunity = await communityServices.updateCommunity(communityId, { ...value })
             return res.status(200).json(updatedCommunity)
         } catch (error) {
@@ -107,7 +107,7 @@ class CommunityController {
         try {
             const community = await communityServices.getCommunityById(communityId)
             if (!community) return res.status(404).json({ message: "Community not found" })
-            if (community.communityOwnerId !== communityOwnerId) return res.status(403).json({ message: "Unauthorized to delete this community" })
+            if (community.ownerId !== communityOwnerId) return res.status(403).json({ message: "Unauthorized to delete this community" })
             await communityServices.deleteCommunity(communityId)
             return res.status(204).json({ message: "Community deleted successfully" })
         } catch (error) {
@@ -120,7 +120,7 @@ class CommunityController {
             const { communityId } = req.params
             const community = await communityServices.getCommunityOwner(communityId)
             if (!community) return res.status(404).json({ message: "Community not found" })
-            return res.status(200).json(community.user)
+            return res.status(200).json(community.owner)
         } catch (error) {
             errorService.handleError(error, res)
         }

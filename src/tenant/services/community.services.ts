@@ -35,7 +35,7 @@ class CommunityService {
         const inviteCode = uuid4()
         const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
 
-        return prismaClient.communityInvitationLink.create({
+        return prismaClient.communityInvitation.create({
             data: {
                 communityId,
                 inviteCode,
@@ -45,7 +45,7 @@ class CommunityService {
     }
 
     async getCommunityInvitationLink(communityId: string) {
-        const link = await prismaClient.communityInvitationLink.findFirst({
+        const link = await prismaClient.communityInvitation.findFirst({
             where: { communityId, expiresAt: { gt: new Date() } },
             orderBy: { createdAt: 'desc' }
         })
@@ -57,8 +57,8 @@ class CommunityService {
     }
 
     async joinCommunityViaInviteLink(inviteCode: string, userId: string) {
-        const link = await prismaClient.communityInvitationLink.findUnique({
-            where: { inviteCode, expiresAt: { gt: new Date() } },
+        const link = await prismaClient.communityInvitation.findUnique({
+            where: { code: inviteCode, expiresAt: { gt: new Date() } },
             include: { community: true }
         })
 
@@ -80,7 +80,7 @@ class CommunityService {
                 visibility: CommunityVisibility.PUBLIC,
             },
             include: {
-                user: this.userSelect,
+                members: this.userSelect,
             }
         })
     }
@@ -113,8 +113,8 @@ class CommunityService {
         return prismaClient.community.findUnique({
             where: { id },
             select: {
-                communityOwnerId: true,
-                user: this.userSelect
+                owner: true,
+                members: this.userSelect
             }
         })
     }
@@ -126,7 +126,7 @@ class CommunityService {
                 status: MembershipStatus.MEMBER,
             },
             include: {
-                user: this.userSelect
+                users: this.userSelect
             }
         })
     }
@@ -134,13 +134,13 @@ class CommunityService {
     async getMemberInCommunity(communityId: string, userId: string) {
         return prismaClient.communityMember.findUnique({
             where: {
-                communityId_userId: {
+                communityId_usersId: {
                     communityId,
-                    userId
+                    usersId: userId
                 }
             },
             include: {
-                user: this.userSelect
+                users: this.userSelect
             }
         })
     }
@@ -149,11 +149,11 @@ class CommunityService {
         return prismaClient.communityMember.create({
             data: {
                 communityId,
-                userId,
+                usersId: userId,
                 status: MembershipStatus.MEMBER
             },
             include: {
-                user: this.userSelect
+                users: this.userSelect
             }
         })
     }
@@ -163,7 +163,7 @@ class CommunityService {
         const community = await this.getCommunityById(communityId)
         if (!community) throw new Error("Community not found");
 
-        if (community.communityOwnerId !== inviterId) throw new Error("Only Community Owner can invite Users");
+        if (community.ownerId !== inviterId) throw new Error("Only Community Owner can invite Users");
 
         const existingMember = await this.getMemberInCommunity(community.id, invitedUserId);
         if (existingMember && existingMember.status === MembershipStatus.MEMBER) throw new Error("User already a member of the community");
@@ -172,15 +172,15 @@ class CommunityService {
 
         return prismaClient.communityMember.upsert({
             where: {
-                communityId_userId: {
+                communityId_usersId: {
                     communityId,
-                    userId: invitedUserId,
+                    usersId: invitedUserId,
                 }
             },
             update: { status: MembershipStatus.INVITED },
             create: {
                 communityId,
-                userId: invitedUserId,
+                usersId: invitedUserId,
                 status: MembershipStatus.INVITED
             }
         })
@@ -205,7 +205,7 @@ class CommunityService {
 
     //clean db
     async removeExpiredInvitationLinks() {
-        return prismaClient.communityInvitationLink.deleteMany({
+        return prismaClient.communityInvitation.deleteMany({
             where: {
                 expiresAt: { lte: new Date() }
             }

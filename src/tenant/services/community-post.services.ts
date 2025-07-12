@@ -37,7 +37,7 @@ class CommunityPostService {
                 id: communityPostId,
             },
             include: {
-                user: this.userSelect,
+                author: this.userSelect,
             },
         })
     }
@@ -48,7 +48,7 @@ class CommunityPostService {
                 communityId: communityId,
             },
             include: {
-                user: this.userSelect,
+                author: this.userSelect,
             },
             orderBy: {
                 createdAt: 'desc',
@@ -63,7 +63,7 @@ class CommunityPostService {
         return prismaClient.communityPost.create({
             data: postData,
             include: {
-                user: this.userSelect,
+                author: this.userSelect,
             },
         })
     }
@@ -72,10 +72,10 @@ class CommunityPostService {
         return prismaClient.communityPost.findUnique({
             where: {
                 id: communityPostId,
-                userId: userId,
+                authorId: userId,
             },
             include: {
-                user: this.userSelect,
+                author: this.userSelect,
             },
         })
     }
@@ -83,10 +83,10 @@ class CommunityPostService {
     async allThePostCreatedByMe(userId: string) {
         return prismaClient.communityPost.findMany({
             where: {
-                userId: userId,
+                authorId: userId,
             },
             include: {
-                user: this.userSelect,
+                author: this.userSelect,
             },
         })
     }
@@ -115,15 +115,15 @@ class CommunityPostService {
             if (!communityPost) {
                 throw new Error(`Community post with ID ${communityPostId} does not exist.`);
             }
-            const exisitingLike = await prisma.communityPostLikes.findFirst({
+            const exisitingLike = await prisma.communityPostLike.findFirst({
                 where: {
                     postId: communityPostId,
-                    userId,
+                    usersId: userId,
                 },
             });
 
             if (exisitingLike) {
-                await prisma.communityPostLikes.delete({
+                await prisma.communityPostLike.delete({
                     where: { id: exisitingLike.id },
                 });
                 await prisma.communityPost.update({
@@ -133,10 +133,10 @@ class CommunityPostService {
                 });
                 return { liked: false };
             } else {
-                await prisma.communityPostLikes.create({
+                await prisma.communityPostLike.create({
                     data: {
                         postId: communityPostId,
-                        userId,
+                        usersId: userId,
                     },
                 });
                 await prisma.communityPost.update({
@@ -151,18 +151,18 @@ class CommunityPostService {
 
     async viewCommunityPost(communityPostId: string, userId: string) {
         return prismaClient.$transaction(async (prisma) => {
-            const exisitingView = await prisma.communityPostViews.findFirst({
+            const exisitingView = await prisma.communityPostView.findFirst({
                 where: {
                     postId: communityPostId,
-                    userId,
+                    usersId: userId,
                 },
             });
 
             if (!exisitingView) {
-                await prisma.communityPostViews.create({
+                await prisma.communityPostView.create({
                     data: {
                         postId: communityPostId,
-                        userId,
+                        usersId: userId,
                     },
                 });
                 await prisma.communityPost.update({
@@ -174,10 +174,10 @@ class CommunityPostService {
                         id: communityPostId,
                     },
                     include: {
-                        user: this.userSelect,
+                        author: this.userSelect,
                         likes: true,
                         views: true,
-                        Comments: true,
+                        comments: true,
                     },
                 })
             }
@@ -187,13 +187,13 @@ class CommunityPostService {
     async getPostLikes(communityPostId: string, page = 1, pageSize = 10) {
         const skip = (pageSize - 1) * pageSize;
         const [likes, totalCount] = await prismaClient.$transaction([
-            prismaClient.communityPostLikes.findMany({
+            prismaClient.communityPostLike.findMany({
                 where: { postId: communityPostId },
                 include: {
-                    user: this.userSelect,
+                    users: this.userSelect,
                 },
             }),
-            prismaClient.communityPostLikes.count({ where: { postId: communityPostId } })
+            prismaClient.communityPostLike.count({ where: { postId: communityPostId } })
         ])
 
         return {
@@ -207,13 +207,13 @@ class CommunityPostService {
     async getPostViews(communityPostId: string, page = 1, pageSize = 10) {
         const skip = (pageSize - 1) * pageSize;
         const [views, totalCount] = await prismaClient.$transaction([
-            prismaClient.communityPostViews.findMany({
+            prismaClient.communityPostView.findMany({
                 where: { postId: communityPostId },
                 include: {
-                    user: this.userSelect,
+                    users: this.userSelect,
                 },
             }),
-            prismaClient.communityPostViews.count({ where: { postId: communityPostId } })
+            prismaClient.communityPostView.count({ where: { postId: communityPostId } })
         ])
         return {
             views,
