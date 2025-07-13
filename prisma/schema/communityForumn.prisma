@@ -94,6 +94,25 @@ model Forum {
   // Indexes
   @@index([slug])
   @@index([communityId])
+  ForumMember ForumMember[]
+}
+
+model ForumMember {
+  id          String           @id @default(cuid())
+  forumId    String
+  usersId      String
+  role        String           @default("MEMBER") // OWNER, MODERATOR, MEMBER
+  status      MembershipStatus @default(MEMBER)
+  joinedAt    DateTime         @default(now())
+
+  // Relations
+  forum       Forum        @relation(fields: [forumId], references: [id])
+  users       users        @relation(fields: [usersId], references: [id])
+
+  // Constraints
+  @@unique([forumId, usersId])
+  @@index([usersId])
+  @@index([status])
 }
 
 // FORUM CATEGORIES MODEL
@@ -281,7 +300,7 @@ model CommentLike {
 // DISCUSSION THREADS
 model DiscussionThread {
   id            String        @id @default(cuid())
-  forumId       String        // Link to forum instead of community
+  forumId       String
   authorId      String
   title         String
   content       String        @db.Text
@@ -293,16 +312,57 @@ model DiscussionThread {
   commentsCount Int           @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  isDeleted     Boolean       @default(false)
 
   // Relations
   forum         Forum         @relation(fields: [forumId], references: [id])
-  author        users          @relation(fields: [authorId], references: [id])
+  author        users         @relation(fields: [authorId], references: [id])
   comments      DiscussionComment[]
+  poll          DiscussionThreadPoll?   // Add poll relation
 
   // Indexes
   @@index([forumId])
   @@index([authorId])
   @@index([slug])
+}
+
+// DISCUSSION THREAD POLL MODELS
+model DiscussionThreadPoll {
+  id           String                 @id @default(cuid())
+  threadId     String                 @unique
+  question     String
+  expiresAt    DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  // Relations
+  thread       DiscussionThread       @relation(fields: [threadId], references: [id])
+  options      DiscussionThreadPollOption[]
+
+  @@index([threadId])
+}
+
+model DiscussionThreadPollOption {
+  id       String                 @id @default(cuid())
+  pollId   String
+  option   String
+  votes    Int                    @default(0)
+
+  poll     DiscussionThreadPoll   @relation(fields: [pollId], references: [id])
+  votesBy  DiscussionThreadPollVote[]
+
+  @@index([pollId])
+}
+
+model DiscussionThreadPollVote {
+  id        String   @id @default(cuid())
+  userId    String
+  optionId  String
+
+  user      users    @relation(fields: [userId], references: [id])
+  option    DiscussionThreadPollOption @relation(fields: [optionId], references: [id])
+
+  @@unique([userId, optionId]) // Prevent multiple votes on same option
 }
 
 // DISCUSSION COMMENTS

@@ -1,17 +1,44 @@
 model Broadcast {
-    id         String        @id @default(cuid())
+    id         String            @id @default(cuid())
     landlordId String
     subject    String
     message    String
     type       BroadcastType
-    recipients String[] // Array of recipient emails
-    category   String
-    createdAt  DateTime      @default(now())
-    updatedAt  DateTime      @updatedAt
-    landlord   landlords     @relation(fields: [landlordId], references: [id])
+    // recipients String[] // Array of recipient emails
+    categoryId String
+    category   BroadcastCategory @relation("BroadcastCategory", fields: [categoryId], references: [id], onDelete: Cascade)
+    scheduledAt DateTime? // when to send the broadcast
+    isDraft    Boolean           @default(false)
+    createdAt  DateTime          @default(now())
+    updatedAt  DateTime          @updatedAt
+    landlord   landlords         @relation(fields: [landlordId], references: [id])
 }
 
 enum BroadcastType {
     EMAIL
     CHAT
+}
+
+model BroadcastCategory {
+    id         String                     @id @default(cuid())
+    name       String
+    members    BroadcastCategoryMembers[]
+    location   String?
+    propertyId String?
+    property   properties?                @relation(fields: [propertyId], references: [id])
+    createdAt  DateTime                   @default(now())
+    updatedAt  DateTime                   @updatedAt
+    Broadcast  Broadcast[]                @relation("BroadcastCategory")
+}
+
+model BroadcastCategoryMembers {
+    id                  String            @id @default(cuid())
+    userId              String
+    broadcastCategoryId String
+    broadcastCategory   BroadcastCategory @relation(fields: [broadcastCategoryId], references: [id], onDelete: Cascade)
+    user                users             @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt           DateTime          @default(now())
+    updatedAt           DateTime          @updatedAt
+
+    @@unique([userId, broadcastCategoryId])
 }

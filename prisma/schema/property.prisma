@@ -364,6 +364,7 @@ model properties {
   TenantLeaseBreach TenantLeaseBreach[]
 
   @@unique([landlordId, name, stateId, city])
+  BroadcastCategory BroadcastCategory[]
 }
 
 model PropertySpecification {

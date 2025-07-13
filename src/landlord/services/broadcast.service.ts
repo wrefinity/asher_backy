@@ -20,11 +20,11 @@ class BroadcastService {
         });
     }
 
-    async getBroadcastByCategory(category: string, landlordId: string) {
-        return await prismaClient.broadcast.findMany({
-            where: { category, landlordId },
-        });
-    }
+    // async getBroadcastByCategory(category: string, landlordId: string) {
+    //     return await prismaClient.broadcast.findMany({
+    //         where: { category, landlordId },
+    //     });
+    // }
 
     // async sendBroadcast(broadcastData, landlordId: string) {
     //     const { type, category, subject, recipients, message } = broadcastData;

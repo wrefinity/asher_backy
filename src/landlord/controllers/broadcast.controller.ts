@@ -24,9 +24,9 @@ class BroadcastController {
         const {landlords} = req.user
         const landlordId = landlords?.id;
         try {
-            const broadcasts = await broadcastService.getBroadcastByCategory(category, landlordId);
-            if (!broadcasts) return res.status(404).json({ message: "Broadcast not found" }); 
-            return res.status(201).json(broadcasts);
+            // const broadcasts = await broadcastService.getBroadcastByCategory(category, landlordId);
+            // if (!broadcasts) return res.status(404).json({ message: "Broadcast not found" }); 
+            return res.status(201).json([]);
         } catch (error) {
             errorService.handleError(error, res)
         }
