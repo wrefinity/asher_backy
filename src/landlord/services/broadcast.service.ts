@@ -17,6 +17,7 @@ class BroadcastService {
     }, landlordId: string) {
         return await prismaClient.broadcastCategory.create({
             data: {
+                landlordId: landlordId,
                 name: data.name,
                 location: data.location,
                 propertyId: data.propertyId,
