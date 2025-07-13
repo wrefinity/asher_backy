@@ -30,8 +30,7 @@ import WalletRouter from "./routes/wallet";
 import UserRouter from "./routes/users";
 import DocuSignRouter from "./routes/docusign";
 import AdsRouter from "./tenant/routes/ads.routes";
-import CommunityPostRouter from "./tenant/routes/community-post.routes";
-import communityRoutes from "./tenant/routes/community.routes";
+import communityRoutes from "./routes/community.routes";
 import TenantRouter from "./tenant/routes/index";
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
@@ -100,8 +99,7 @@ class Server {
         this.app.use("/api/users", UserRouter);
         this.app.use("/api/properties", PropertyRouter);
         this.app.use("/api/maintenance", MaintenanceRouter);
-        this.app.use("/api/community-post", CommunityPostRouter)
-        this.app.use("/api/tenants/community", communityRoutes);
+        this.app.use("/api/community", communityRoutes);
         this.app.use("/api/ads", AdsRouter);
         this.app.use("/api/transactions", TransactionRouter);
         this.app.use("/api/reviews", ReviewsRouter);

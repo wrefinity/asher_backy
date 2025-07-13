@@ -89,6 +89,8 @@ model users {
     DiscussionComment DiscussionComment[]
 
     DiscussionCommentLike DiscussionCommentLike[]
+
+    CommunityPostPollVote CommunityPostPollVote[]
 }
 
 model UserLikedProperty {

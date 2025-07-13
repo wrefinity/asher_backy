@@ -7,7 +7,7 @@ enum CommunityVisibility {
 model Community {
   id                  String                @id @default(cuid())
   name                String                @unique
-  slug                String                @unique
+  slug                String?                @unique
   ownerId             String
   description         String
   visibility          CommunityVisibility   @default(PUBLIC)
@@ -18,7 +18,7 @@ model Community {
   postCount           Int                   @default(0)
   memberCount         Int                   @default(0)
   forumCount          Int                   @default(0)
-
+  isDeleted           Boolean               @default(false)
   // Relations
   owner               users                  @relation("CommunityOwner", fields: [ownerId], references: [id])
   members             CommunityMember[]
@@ -120,13 +120,13 @@ model ForumCategory {
 model CommunityPost {
   id            String               @id @default(cuid())
   categoryId    String?
-  communityId    String?
+  communityId   String?
   authorId      String
   title         String
   content       String               @db.Text
-  slug          String               @unique
   tags          String[]
-  imageUrl      String?
+  imageUrl      String[]
+  videoUrl      String[]
   pinned        Boolean              @default(false)
   locked        Boolean              @default(false)
   likesCount    Int                  @default(0)
@@ -136,23 +136,60 @@ model CommunityPost {
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   engagement    Float                @default(0)
-
   isDeleted     Boolean              @default(false)
+
   // Relations
-  category      ForumCategory?        @relation(fields: [categoryId], references: [id])
-  community     Community?             @relation(fields: [communityId], references: [id])
-  author        users                 @relation(fields: [authorId], references: [id])
+  category      ForumCategory?       @relation(fields: [categoryId], references: [id])
+  community     Community?           @relation(fields: [communityId], references: [id])
+  author        users                @relation(fields: [authorId], references: [id])
   likes         CommunityPostLike[]
   views         CommunityPostView[]
   shares        CommunityPostShare[]
   comments      Comment[]
+  poll          CommunityPostPoll?   // One-to-one poll
 
-  // Indexes
   @@index([categoryId])
   @@index([authorId])
-  @@index([slug])
   @@index([createdAt])
 }
+
+model CommunityPostPoll {
+  id           String                 @id @default(cuid())
+  postId       String                 @unique
+  question     String
+  expiresAt    DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  post         CommunityPost          @relation(fields: [postId], references: [id])
+  options      CommunityPostPollOption[]
+
+  @@index([postId])
+}
+
+model CommunityPostPollOption {
+  id       String                 @id @default(cuid())
+  pollId   String
+  option   String
+  votes    Int                    @default(0)
+
+  poll     CommunityPostPoll      @relation(fields: [pollId], references: [id])
+  votesBy  CommunityPostPollVote[]
+
+  @@index([pollId])
+}
+
+model CommunityPostPollVote {
+  id        String   @id @default(cuid())
+  userId    String
+  optionId  String
+
+  user      users     @relation(fields: [userId], references: [id])
+  option    CommunityPostPollOption @relation(fields: [optionId], references: [id])
+
+  @@unique([userId, optionId]) // Prevent multiple votes on same option
+}
+
 
 model CommunityPostLike {
   id        String        @id @default(cuid())
