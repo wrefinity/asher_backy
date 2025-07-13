@@ -95,6 +95,8 @@ model users {
     DiscussionThreadPollVote DiscussionThreadPollVote[]
     ForumMember ForumMember[]
     BroadcastCategoryMembers BroadcastCategoryMembers[]
+
+    ForumThreadLike ForumThreadLike[]
 }
 
 model UserLikedProperty {
