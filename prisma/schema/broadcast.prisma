@@ -11,7 +11,7 @@ model Broadcast {
     isDraft    Boolean           @default(false)
     createdAt  DateTime          @default(now())
     updatedAt  DateTime          @updatedAt
-    landlord   landlords         @relation(fields: [landlordId], references: [id])
+    landlord   landlords         @relation(fields: [landlordId], references: [id], onDelete: Cascade)
 }
 
 enum BroadcastType {
@@ -21,6 +21,7 @@ enum BroadcastType {
 
 model BroadcastCategory {
     id         String                     @id @default(cuid())
+    landlordId String
     name       String
     members    BroadcastCategoryMembers[]
     location   String?
@@ -29,6 +30,7 @@ model BroadcastCategory {
     createdAt  DateTime                   @default(now())
     updatedAt  DateTime                   @updatedAt
     Broadcast  Broadcast[]                @relation("BroadcastCategory")
+    landlord   landlords                   @relation(fields: [landlordId], references: [id], onDelete: Cascade)
 }
 
 model BroadcastCategoryMembers {

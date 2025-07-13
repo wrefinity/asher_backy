@@ -76,9 +76,7 @@ class BroadcastService {
         return await prismaClient.broadcastCategory.findFirst({
             where: {
                 id: categoryId,
-                property: {
-                    landlordId: landlordId
-                }
+                landlordId: landlordId
             },
             include: {
                 members: {
@@ -243,7 +241,7 @@ class BroadcastService {
 
         // Get all category member emails
         const categoryMemberEmails = category.members.map(member => member.user.email);
-        
+
         // Get extra member emails if provided
         let extraMemberEmails: string[] = [];
         if (data.extraMemberIds && data.extraMemberIds.length > 0) {
@@ -336,7 +334,7 @@ class BroadcastService {
 
     async getDraftBroadcasts(landlordId: string) {
         return await prismaClient.broadcast.findMany({
-            where: { 
+            where: {
                 landlordId,
                 isDraft: true
             },
@@ -368,7 +366,7 @@ class BroadcastService {
         }
 
         // If category is being updated, recalculate recipients
-        let recipients = broadcast.recipients;
+        let recipients = broadcast.category.members.map(member => member.user.id);
         if (data.categoryId || data.extraMemberIds) {
             const categoryId = data.categoryId || broadcast.categoryId;
             const category = await this.getBroadcastCategoryById(categoryId, landlordId);
@@ -378,7 +376,7 @@ class BroadcastService {
 
             const categoryMemberEmails = category.members.map(member => member.user.email);
             let extraMemberEmails: string[] = [];
-            
+
             if (data.extraMemberIds && data.extraMemberIds.length > 0) {
                 const extraMembers = await prismaClient.users.findMany({
                     where: { id: { in: data.extraMemberIds } },
@@ -388,13 +386,15 @@ class BroadcastService {
             }
 
             recipients = [...new Set([...categoryMemberEmails, ...extraMemberEmails])];
+
         }
+
+        await this.addMembersToCategory(broadcast.categoryId, recipients, landlordId);
 
         return await prismaClient.broadcast.update({
             where: { id: broadcastId },
             data: {
                 ...data,
-                recipients,
                 updatedAt: new Date()
             },
             include: {
@@ -470,8 +470,8 @@ class BroadcastService {
 
         try {
             if (broadcast.type === BroadcastType.EMAIL) {
-                // Use the recipients already stored in the broadcast
-                const allRecipients = broadcast.recipients;
+                // Get all recipients from the category
+                const allRecipients = broadcast.category.members.map(member => member.user.email);
 
                 // Send emails in batches
                 const batchSize = 100;
