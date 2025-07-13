@@ -118,7 +118,7 @@ class FinanceController {
             const budget = await financeService.createBudget(propertyId, transactionType, budgetAmount, frequency);
             res.status(201).json(budget);
         } catch (error) {
-            errorService.handleError(error, res)
+             errorService.handleError(error, res)
         }
     }
 
@@ -130,7 +130,7 @@ class FinanceController {
             await financeService.updateBudget(id, amount);
             res.status(200).json({ message: 'Budget updated successfully' });
         } catch (error) {
-            errorService.handleError(error, res)
+             errorService.handleError(error, res)
         }
     }
 

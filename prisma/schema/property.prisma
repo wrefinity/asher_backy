@@ -363,8 +363,9 @@ model properties {
   inspection        inspection[]
   TenantLeaseBreach TenantLeaseBreach[]
 
-  @@unique([landlordId, name, stateId, city])
   BroadcastCategory BroadcastCategory[]
+
+  @@unique([landlordId, name, stateId, city])
 }
 
 model PropertySpecification {
