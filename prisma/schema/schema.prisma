@@ -59,6 +59,7 @@ model landlords {
   maintenanceWhitelist maintenanceWhitelist[]
   stripeCustomerId     String?                @unique
 
+  BroadcastCategory  BroadcastCategory[]
   Broadcast          Broadcast[]
   globalSettings     Settings[]
   propertySettings   propertySettings[]
