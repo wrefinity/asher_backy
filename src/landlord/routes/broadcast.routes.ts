@@ -29,6 +29,7 @@ class BroadcastRouter {
         
         // BROADCAST ROUTES
         this.router.post('/create-and-send', broadcastController.createAndSendBroadcast);
+        this.router.get('/stats', broadcastController.getStats);
         this.router.post('/', broadcastController.createBroadcast);
         this.router.get('/get-all', broadcastController.getBroadcastsByLandlord);
         this.router.get('/drafts', broadcastController.getDraftBroadcasts);

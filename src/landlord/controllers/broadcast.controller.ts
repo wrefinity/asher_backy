@@ -344,10 +344,22 @@ class BroadcastController {
     getBroadcastsByLandlord = async (req: CustomRequest, res: Response) => {
         const { landlords } = req.user;
         const landlordId = landlords?.id;
-        
+
         try {
             const broadcasts = await broadcastService.getBroadcastsByLandlord(landlordId);
             return res.status(200).json(broadcasts);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    getStats = async (req: CustomRequest, res: Response) => {
+        const { landlords } = req.user;
+        const landlordId = landlords?.id;
+
+        try {
+            const stats = await broadcastService.stats(landlordId);
+            return res.status(200).json(stats);
         } catch (error) {
             errorService.handleError(error, res);
         }

@@ -526,6 +526,108 @@ class BroadcastService {
         const results = await Promise.all(emailPromises);
         return results.filter(result => result !== null);
     }
+
+    async stats(landlordId: string) {
+        // Get all broadcasts for the landlord
+        const broadcasts = await this.getBroadcastsByLandlord(landlordId);
+
+        // Get all categories for the landlord
+        const categories = await this.getBroadcastCategories(landlordId);
+
+        // Get all unique recipients across all categories
+        const allRecipients = await prismaClient.broadcastCategoryMembers.findMany({
+            where: {
+                broadcastCategory: {
+                    landlordId: landlordId
+                }
+            },
+            include: {
+                user: this.userSelect,
+                broadcastCategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        // Calculate stats
+        const totalBroadcasts = broadcasts.length || 0;
+        const totalEmails = broadcasts.filter(broadcast => broadcast.type === BroadcastType.EMAIL).length || 0;
+        const totalChats = broadcasts.filter(broadcast => broadcast.type === BroadcastType.CHAT).length || 0;
+        const totalDrafts = broadcasts.filter(broadcast => broadcast.isDraft).length || 0;
+        const totalScheduled = broadcasts.filter(broadcast => broadcast.scheduledAt && broadcast.scheduledAt > new Date()).length || 0;
+        const totalCategories = categories.length || 0;
+        const totalRecipients = allRecipients.length || 0;
+        const uniqueRecipients = new Set(allRecipients.map(recipient => recipient.userId)).size || 0;
+
+        // Group recipients by category
+        const recipientsByCategory = categories.map(category => ({
+            categoryId: category.id,
+            categoryName: category.name,
+            memberCount: category.members.length || 0,
+            members: category.members.map(member => ({
+                userId: member.user.id,
+                email: member.user.email,
+                profile: member.user.profile
+            }))
+        }));
+
+        // Get broadcast stats by type and status
+        const broadcastStats = {
+            total: totalBroadcasts,
+            byType: {
+                email: totalEmails,
+                chat: totalChats
+            },
+            byStatus: {
+                sent: totalBroadcasts - totalDrafts - totalScheduled || 0,
+                drafts: totalDrafts,
+                scheduled: totalScheduled
+            }
+        };
+
+        // Get recent broadcasts (last 10)
+        const recentBroadcasts = broadcasts
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 10)
+            .map(broadcast => ({
+                id: broadcast.id,
+                subject: broadcast.subject,
+                type: broadcast.type,
+                isDraft: broadcast.isDraft,
+                scheduledAt: broadcast.scheduledAt,
+                createdAt: broadcast.createdAt,
+                categoryName: broadcast.category?.name || 'Unknown'
+            }));
+
+        return {
+            overview: {
+                totalBroadcasts,
+                totalCategories,
+                totalRecipients,
+                uniqueRecipients
+            },
+            broadcastStats,
+            categories: {
+                total: totalCategories,
+                list: categories.map(category => ({
+                    id: category.id,
+                    name: category.name,
+                    location: category.location,
+                    memberCount: category.members.length,
+                    createdAt: category.createdAt
+                }))
+            },
+            recipients: {
+                total: totalRecipients,
+                unique: uniqueRecipients,
+                byCategory: recipientsByCategory
+            },
+            recentBroadcasts
+        };
+    }
 }
 
 export default new BroadcastService();
