@@ -364,6 +364,20 @@ class BroadcastController {
             errorService.handleError(error, res);
         }
     }
+
+    getAllUsers = async (req: CustomRequest, res: Response) => {
+        const { landlords, id: userId } = req.user;
+        const landlordId = landlords?.id;
+        if (!landlordId) {
+            return res.status(404).json({ message: "Login as landlord to get all users" }); // TODO: Fix this
+        }
+        try {
+            const users = await broadcastService.getAllUsers();
+            return res.status(200).json(users);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
 }
 
 export default new BroadcastController();

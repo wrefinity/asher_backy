@@ -14,7 +14,7 @@ class BroadcastRouter {
 
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
-        
+        this.router.get('/users/all', broadcastController.getAllUsers);
         // BROADCAST CATEGORY ROUTES
         this.router.post('/categories', broadcastController.createBroadcastCategory);
         this.router.get('/categories', broadcastController.getBroadcastCategories);

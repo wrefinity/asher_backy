@@ -67,6 +67,17 @@ class LandlordRouter {
             '/jobs/completed',
             LandlordControl.getCompletedVendorsJobsForLandordProperties
         );
+
+        this.router.get(
+            '/locations/list',
+            LandlordControl.getCurrentLocations
+        );
+
+        this.router.get(
+            '/properties/list',
+            LandlordControl.getLandlordProperties
+        );
+
         // complaints modules under landlord
         this.router.use("/complaints", ComplaintRouterRouter)
         // document modules under landlord

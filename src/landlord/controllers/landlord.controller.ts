@@ -37,7 +37,7 @@ class LandlordController {
             }
             const landlordId = req.user?.landlords?.id;
 
-            const landlord = await UserServices.updateLandlordOrTenantOrVendorInfo(value, landlordId, userRoles.LANDLORD );
+            const landlord = await UserServices.updateLandlordOrTenantOrVendorInfo(value, landlordId, userRoles.LANDLORD);
             return res.status(200).json(landlord);
         } catch (err) {
             return res.status(500).json({ error: err.message });
@@ -54,8 +54,10 @@ class LandlordController {
         }
     }
 
+
+
     // Delete a landlord
-    deleteLandlord = async (req: CustomRequest, res: Response) =>{
+    deleteLandlord = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.params.id;
             if (!landlordId) {
@@ -67,9 +69,9 @@ class LandlordController {
             return res.status(500).json({ error: err.message });
         }
     }
-    
+
     // Get all landlords
-    getAllLandlords = async (req: Request, res: Response) =>{
+    getAllLandlords = async (req: Request, res: Response) => {
         try {
             const landlords = await this.landlordService.getAllLandlords();
             return res.status(200).json(landlords);
@@ -118,6 +120,34 @@ class LandlordController {
             }
             const maintenances = await this.landlordService.getCurrentVendorsByLandlord(landlordId);
             return res.status(200).json({ maintenances });
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+    }
+
+    // Current locations
+    getCurrentLocations = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord to get your locations' });
+            }
+            const locations = await this.landlordService.getLandlordLocations(landlordId);
+            return res.status(200).json({ locations });
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+    }
+
+    // Get Landlord Properties
+    getLandlordProperties = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(404).json({ error: 'kindly login as landlord to get your properties' });
+            }
+            const properties = await this.landlordService.getLandlordProperties(landlordId);
+            return res.status(200).json({ properties });
         } catch (err) {
             return res.status(500).json({ error: err.message });
         }

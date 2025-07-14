@@ -628,6 +628,25 @@ class BroadcastService {
             recentBroadcasts
         };
     }
+
+
+    // TODO: Fix Users, currently get all users
+    async getAllUsers() {
+        return await prismaClient.users.findMany({
+            select: {
+                id: true,
+                email: true,
+                profile: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        profileUrl: true,
+                    }
+                }
+            }
+        });
+    }
 }
 
 export default new BroadcastService();
