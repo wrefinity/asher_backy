@@ -36,7 +36,7 @@ class CommunityRoutes {
         // this.router.get('/:communityId/invitations', CommunityController.getInvitationLink);
 
         // post session
-        this.router.post('/post/:communityId', upload.array('files'), uploadToCloudinary, communityPostControllers.createPost);
+        this.router.post('/post/:landlordId', upload.array('files'), uploadToCloudinary, communityPostControllers.createPost);
         this.router.get('/post/:communityId', communityPostControllers.getCommunityPost);
         this.router.get('/post/:communityId/:postId', communityPostControllers.getSingleCommunityPost);
         this.router.get('/post-mine/all', communityPostControllers.getCurrentUserPost);

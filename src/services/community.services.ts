@@ -30,12 +30,57 @@ class CommunityService {
     private communitySelect = {
         users: this.userSelect
     }
+    async createCommunity(userId: string, data: any) {
+        const existing = await prismaClient.community.findFirst({
+            where: {
+                ownerId: userId,
+                isDeleted: false,
+            },
+        });
 
-    async createCommunity(communityData: any) {
-        const community = await prismaClient.community.create({
-            data: { ...communityData, }
-        })
-        return community
+        if (existing) {
+            return existing
+        }
+
+        return prismaClient.community.create({
+            data: {
+                ...data,
+                owner: {
+                    connect: { id: userId }
+                }
+            }
+        });
+    }
+
+    async getLandlordCommunity(userId: string) {
+        return await prismaClient.community.findFirst({
+            where: {
+                ownerId: userId,
+                isDeleted: false,
+            },
+            include: {
+                forums: true,
+                members: {
+                    include: {
+                        users: {
+                            select: {
+                                id: true,
+                                email: true,
+                                role: true,
+                                profile: {
+                                    select: {
+                                        id: true,
+                                        firstName: true,
+                                        lastName: true,
+                                        profileUrl: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
     }
 
     async createCommunityPost(data: any) {

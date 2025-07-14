@@ -9,17 +9,14 @@ class ForumRoutes {
     public router: Router;
     protected authenticateService: Authorize;
 
-
     constructor() {
         this.router = Router();
         this.authenticateService = new Authorize();
-
         this.initializeRoutes();
     }
-    
-
+    // Apply authentication middleware to all routes
     private initializeRoutes(): void {
-        this.router.post('/:communityId', this.authenticateService.authorizeRole(userRoles.ADMIN), ForumController.createForum);  
+        this.router.post('/', this.authenticateService.authorizeRole(userRoles.ADMIN), ForumController.createForum);  
         this.router.get('/all', ForumController.getFilteredForums);
         this.router.post('/:forumId/members', ForumController.addMembersToForum)
         this.router.get('/:forumId/members', ForumController.getForumMembers)

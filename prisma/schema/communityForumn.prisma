@@ -7,7 +7,7 @@ model Community {
   id          String                @id @default(cuid())
   name        String                @unique
   slug        String?               @unique
-  ownerId     String
+  ownerId     String                @unique
   description String
   visibility  CommunityVisibility   @default(PUBLIC)
   avatarUrl   String?
@@ -88,7 +88,7 @@ model Forum {
 
   // Relations
   community   Community          @relation("CommunityForums", fields: [communityId], references: [id])
-  owner       users               @relation("ForumOwner", fields: [ownerId], references: [id])
+  owner       users              @relation("ForumOwner", fields: [ownerId], references: [id])
   categories  ForumCategory[]
   threads     DiscussionThread[]
   isDeleted   Boolean            @default(false)
@@ -316,15 +316,15 @@ model DiscussionThread {
   isDeleted     Boolean  @default(false)
 
   // Relations
-  forum    Forum                 @relation(fields: [forumId], references: [id])
-  author   users                 @relation(fields: [authorId], references: [id])
-  comments DiscussionComment[]
-  poll     DiscussionThreadPoll? // Add poll relation
+  forum           Forum                 @relation(fields: [forumId], references: [id])
+  author          users                 @relation(fields: [authorId], references: [id])
+  comments        DiscussionComment[]
+  poll            DiscussionThreadPoll? // Add poll relation
+  ForumThreadLike ForumThreadLike[]
 
   // Indexes
   @@index([forumId])
   @@index([authorId])
-  ForumThreadLike ForumThreadLike[]
 }
 
 model ForumThreadLike {
@@ -334,8 +334,8 @@ model ForumThreadLike {
   createdAt DateTime @default(now())
 
   // Relations
-  thread  DiscussionThread @relation(fields: [threadId], references: [id])
-  users   users             @relation(fields: [usersId], references: [id])
+  thread DiscussionThread @relation(fields: [threadId], references: [id])
+  users  users            @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([threadId, usersId])
@@ -386,7 +386,7 @@ model DiscussionComment {
   threadId        String
   authorId        String
   content         String   @db.Text
-  parentCommentId String?          // This is set if it's a reply
+  parentCommentId String? // This is set if it's a reply
   depth           Int      @default(0)
   likesCount      Int      @default(0)
   shareCount      Int      @default(0)
@@ -394,12 +394,12 @@ model DiscussionComment {
   updatedAt       DateTime @updatedAt
 
   // Relations
-  thread          DiscussionThread     @relation(fields: [threadId], references: [id])
-  author          users                @relation(fields: [authorId], references: [id]) // Links to user
-  parentComment   DiscussionComment?   @relation("DiscussionCommentReplies", fields: [parentCommentId], references: [id]) // Link to parent
-  replies         DiscussionComment[]  @relation("DiscussionCommentReplies") // Self-referencing replies
+  thread        DiscussionThread    @relation(fields: [threadId], references: [id])
+  author        users               @relation(fields: [authorId], references: [id]) // Links to user
+  parentComment DiscussionComment?  @relation("DiscussionCommentReplies", fields: [parentCommentId], references: [id]) // Link to parent
+  replies       DiscussionComment[] @relation("DiscussionCommentReplies") // Self-referencing replies
 
-  likes           DiscussionCommentLike[]
+  likes                  DiscussionCommentLike[]
   discussionCommentShare DiscussionCommentShare[]
 
   // Indexes
@@ -407,7 +407,6 @@ model DiscussionComment {
   @@index([authorId])
   @@index([parentCommentId])
 }
-
 
 // DISCUSSION COMMENT LIKES
 model DiscussionCommentLike {
@@ -423,6 +422,7 @@ model DiscussionCommentLike {
   // Constraints
   @@unique([commentId, usersId])
 }
+
 model DiscussionCommentShare {
   id        String   @id @default(cuid())
   commentId String

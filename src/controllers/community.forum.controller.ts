@@ -3,6 +3,7 @@ import errorService from "../services/error.service";
 import { CustomRequest } from "../utils/types"
 import { Request, Response } from "express";
 import forumServices from "../services/forum.services";
+import communityServices from "../services/community.services";
 
 
 class ForumController {
@@ -10,9 +11,13 @@ class ForumController {
 
     async createForum(req: CustomRequest, res: Response) {
 
-        const communityId = req.params.communityId
+        const landlordId = req.user.id
 
-        console.log("Creating forum with data:", req.body);
+        const community = await communityServices.getLandlordCommunity(landlordId)
+        if (!community) {
+            return res.status(404).json({ message: "No community found for this landlord." });
+        }
+        
         // Validate the request body against the schema
         const { error, value } = forumInformationSchema.validate(req.body)
         if (error) {
@@ -25,7 +30,7 @@ class ForumController {
                 data.avatarUrl = cloudinaryImageUrls || [];
             }
             const ownerId = String(req.user.id)
-            const forum = await forumServices.createForum({ ...data, ownerId, communityId })
+            const forum = await forumServices.createForum({ ...data, ownerId, communityId: community.id })
             return res.status(200).json({ forum, message: "Forum created successfully" });
 
         } catch (error) {
