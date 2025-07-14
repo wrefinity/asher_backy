@@ -1,30 +1,29 @@
-
 enum CommunityVisibility {
   PUBLIC
   PRIVATE
 }
 
 model Community {
-  id                  String                @id @default(cuid())
-  name                String                @unique
-  slug                String?                @unique
-  ownerId             String
-  description         String
-  visibility          CommunityVisibility   @default(PUBLIC)
-  avatarUrl           String?
-  bannerUrl           String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  postCount           Int                   @default(0)
-  memberCount         Int                   @default(0)
-  forumCount          Int                   @default(0)
-  isDeleted           Boolean               @default(false)
+  id          String                @id @default(cuid())
+  name        String                @unique
+  slug        String?               @unique
+  ownerId     String
+  description String
+  visibility  CommunityVisibility   @default(PUBLIC)
+  avatarUrl   String?
+  bannerUrl   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  postCount   Int                   @default(0)
+  memberCount Int                   @default(0)
+  forumCount  Int                   @default(0)
+  isDeleted   Boolean               @default(false)
   // Relations
-  owner               users                  @relation("CommunityOwner", fields: [ownerId], references: [id])
-  members             CommunityMember[]
-  posts               CommunityPost[]
-  invitations         CommunityInvitation[]
-  forums              Forum[]               @relation("CommunityForums")
+  owner       users                 @relation("CommunityOwner", fields: [ownerId], references: [id])
+  members     CommunityMember[]
+  posts       CommunityPost[]
+  invitations CommunityInvitation[]
+  forums      Forum[]               @relation("CommunityForums")
 
   // Indexes
   @@index([slug])
@@ -42,14 +41,14 @@ enum MembershipStatus {
 model CommunityMember {
   id          String           @id @default(cuid())
   communityId String
-  usersId      String
+  usersId     String
   role        String           @default("MEMBER") // OWNER, MODERATOR, MEMBER
   status      MembershipStatus @default(MEMBER)
   joinedAt    DateTime         @default(now())
 
   // Relations
-  community   Community        @relation(fields: [communityId], references: [id])
-  users        users             @relation(fields: [usersId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+  users     users     @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([communityId, usersId])
@@ -58,16 +57,16 @@ model CommunityMember {
 }
 
 model CommunityInvitation {
-  id          String     @id @default(cuid())
+  id          String    @id @default(cuid())
   communityId String
-  code        String     @unique
-  maxUses     Int?       @default(1)
-  uses        Int        @default(0)
+  code        String    @unique
+  maxUses     Int?      @default(1)
+  uses        Int       @default(0)
   expiresAt   DateTime?
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime  @default(now())
 
   // Relations
-  community   Community  @relation(fields: [communityId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
 
   // Indexes
   @@index([code])
@@ -75,39 +74,41 @@ model CommunityInvitation {
 
 // FORUM MODEL
 model Forum {
-  id            String         @id @default(cuid())
-  communityId   String
-  name          String
-  slug          String
-  description   String?
-  order         Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  postCount     Int            @default(0)
-  threadCount   Int            @default(0)
+  id          String   @id @default(cuid())
+  communityId String
+  name        String
+  slug        String
+  description String?
+  imageUrl    String[]
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  postCount   Int      @default(0)
+  threadCount Int      @default(0)
 
   // Relations
-  community     Community      @relation("CommunityForums", fields: [communityId], references: [id])
-  categories    ForumCategory[]
-  threads       DiscussionThread[]
-  isDeleted        Boolean              @default(false)
+  community   Community          @relation("CommunityForums", fields: [communityId], references: [id])
+  categories  ForumCategory[]
+  threads     DiscussionThread[]
+  isDeleted   Boolean            @default(false)
+  ForumMember ForumMember[]
+
   // Indexes
   @@index([slug])
   @@index([communityId])
-  ForumMember ForumMember[]
 }
 
 model ForumMember {
-  id          String           @id @default(cuid())
-  forumId    String
-  usersId      String
-  role        String           @default("MEMBER") // OWNER, MODERATOR, MEMBER
-  status      MembershipStatus @default(MEMBER)
-  joinedAt    DateTime         @default(now())
+  id       String           @id @default(cuid())
+  forumId  String
+  usersId  String
+  role     String           @default("MEMBER") // OWNER, MODERATOR, MEMBER
+  status   MembershipStatus @default(MEMBER)
+  joinedAt DateTime         @default(now())
 
   // Relations
-  forum       Forum        @relation(fields: [forumId], references: [id])
-  users       users        @relation(fields: [usersId], references: [id])
+  forum Forum @relation(fields: [forumId], references: [id])
+  users users @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([forumId, usersId])
@@ -117,19 +118,19 @@ model ForumMember {
 
 // FORUM CATEGORIES MODEL
 model ForumCategory {
-  id            String         @id @default(cuid())
-  forumId       String
-  name          String
-  slug          String
-  description   String?
-  order         Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  postCount     Int            @default(0)
+  id          String   @id @default(cuid())
+  forumId     String
+  name        String
+  slug        String
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  postCount   Int      @default(0)
 
   // Relations
-  forum         Forum          @relation(fields: [forumId], references: [id])
-  posts         CommunityPost[]
+  forum Forum           @relation(fields: [forumId], references: [id])
+  posts CommunityPost[]
 
   // Indexes
   @@index([slug])
@@ -137,35 +138,35 @@ model ForumCategory {
 }
 
 model CommunityPost {
-  id            String               @id @default(cuid())
+  id            String   @id @default(cuid())
   categoryId    String?
   communityId   String?
   authorId      String
   title         String
-  content       String               @db.Text
+  content       String   @db.Text
   tags          String[]
   imageUrl      String[]
   videoUrl      String[]
-  pinned        Boolean              @default(false)
-  locked        Boolean              @default(false)
-  likesCount    Int                  @default(0)
-  viewsCount    Int                  @default(0)
-  sharesCount   Int                  @default(0)
-  commentsCount Int                  @default(0)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  engagement    Float                @default(0)
-  isDeleted     Boolean              @default(false)
+  pinned        Boolean  @default(false)
+  locked        Boolean  @default(false)
+  likesCount    Int      @default(0)
+  viewsCount    Int      @default(0)
+  sharesCount   Int      @default(0)
+  commentsCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  engagement    Float    @default(0)
+  isDeleted     Boolean  @default(false)
 
   // Relations
-  category      ForumCategory?       @relation(fields: [categoryId], references: [id])
-  community     Community?           @relation(fields: [communityId], references: [id])
-  author        users                @relation(fields: [authorId], references: [id])
-  likes         CommunityPostLike[]
-  views         CommunityPostView[]
-  shares        CommunityPostShare[]
-  comments      Comment[]
-  poll          CommunityPostPoll?   // One-to-one poll
+  category  ForumCategory?       @relation(fields: [categoryId], references: [id])
+  community Community?           @relation(fields: [communityId], references: [id])
+  author    users                @relation(fields: [authorId], references: [id])
+  likes     CommunityPostLike[]
+  views     CommunityPostView[]
+  shares    CommunityPostShare[]
+  comments  Comment[]
+  poll      CommunityPostPoll? // One-to-one poll
 
   @@index([categoryId])
   @@index([authorId])
@@ -173,68 +174,67 @@ model CommunityPost {
 }
 
 model CommunityPostPoll {
-  id           String                 @id @default(cuid())
-  postId       String                 @unique
-  question     String
-  expiresAt    DateTime?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+  id        String    @id @default(cuid())
+  postId    String    @unique
+  question  String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  post         CommunityPost          @relation(fields: [postId], references: [id])
-  options      CommunityPostPollOption[]
+  post    CommunityPost             @relation(fields: [postId], references: [id])
+  options CommunityPostPollOption[]
 
   @@index([postId])
 }
 
 model CommunityPostPollOption {
-  id       String                 @id @default(cuid())
-  pollId   String
-  option   String
-  votes    Int                    @default(0)
+  id     String @id @default(cuid())
+  pollId String
+  option String
+  votes  Int    @default(0)
 
-  poll     CommunityPostPoll      @relation(fields: [pollId], references: [id])
-  votesBy  CommunityPostPollVote[]
+  poll    CommunityPostPoll       @relation(fields: [pollId], references: [id])
+  votesBy CommunityPostPollVote[]
 
   @@index([pollId])
 }
 
 model CommunityPostPollVote {
-  id        String   @id @default(cuid())
-  userId    String
-  optionId  String
+  id       String @id @default(cuid())
+  userId   String
+  optionId String
 
-  user      users     @relation(fields: [userId], references: [id])
-  option    CommunityPostPollOption @relation(fields: [optionId], references: [id])
+  user   users                   @relation(fields: [userId], references: [id])
+  option CommunityPostPollOption @relation(fields: [optionId], references: [id])
 
   @@unique([userId, optionId]) // Prevent multiple votes on same option
 }
 
-
 model CommunityPostLike {
-  id        String        @id @default(cuid())
+  id        String   @id @default(cuid())
   postId    String
-  usersId    String
-  createdAt DateTime      @default(now())
+  usersId   String
+  createdAt DateTime @default(now())
 
   // Relations
-  post      CommunityPost @relation(fields: [postId], references: [id])
-  users      users          @relation(fields: [usersId], references: [id])
+  post  CommunityPost @relation(fields: [postId], references: [id])
+  users users         @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([postId, usersId])
 }
 
 model CommunityPostView {
-  id        String        @id @default(cuid())
-  postId    String
+  id         String   @id @default(cuid())
+  postId     String
   usersId    String?
-  ipAddress String?
+  ipAddress  String?
   usersAgent String?
-  createdAt DateTime      @default(now())
+  createdAt  DateTime @default(now())
 
   // Relations
-  post      CommunityPost @relation(fields: [postId], references: [id])
-  users      users?         @relation(fields: [usersId], references: [id])
+  post  CommunityPost @relation(fields: [postId], references: [id])
+  users users?        @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([postId, usersId])
@@ -243,15 +243,15 @@ model CommunityPostView {
 
 // POST SHARES TRACKING
 model CommunityPostShare {
-  id          String        @id @default(cuid())
-  postId      String
-  usersId      String
-  platform    String?       // e.g., 'twitter', 'facebook', 'link'
-  sharedAt    DateTime      @default(now())
+  id       String   @id @default(cuid())
+  postId   String
+  usersId  String
+  platform String? // e.g., 'twitter', 'facebook', 'link'
+  sharedAt DateTime @default(now())
 
   // Relations
-  post        CommunityPost @relation(fields: [postId], references: [id])
-  users        users          @relation(fields: [usersId], references: [id])
+  post  CommunityPost @relation(fields: [postId], references: [id])
+  users users         @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@index([postId])
@@ -259,22 +259,22 @@ model CommunityPostShare {
 }
 
 model Comment {
-  id              String        @id @default(cuid())
+  id              String   @id @default(cuid())
   postId          String
   authorId        String
-  content         String        @db.Text
+  content         String   @db.Text
   parentCommentId String?
-  depth           Int           @default(0)
-  likesCount      Int           @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  depth           Int      @default(0)
+  likesCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  post            CommunityPost @relation(fields: [postId], references: [id])
-  author          users          @relation(fields: [authorId], references: [id])
-  parentComment   Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id])
-  replies         Comment[]     @relation("CommentReplies")
-  likes           CommentLike[]
+  post          CommunityPost @relation(fields: [postId], references: [id])
+  author        users         @relation(fields: [authorId], references: [id])
+  parentComment Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies       Comment[]     @relation("CommentReplies")
+  likes         CommentLike[]
 
   // Indexes
   @@index([postId])
@@ -286,12 +286,12 @@ model Comment {
 model CommentLike {
   id        String   @id @default(cuid())
   commentId String
-  usersId    String
+  usersId   String
   createdAt DateTime @default(now())
 
   // Relations
-  comment   Comment  @relation(fields: [commentId], references: [id])
-  users      users     @relation(fields: [usersId], references: [id])
+  comment Comment @relation(fields: [commentId], references: [id])
+  users   users   @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([commentId, usersId])
@@ -299,90 +299,105 @@ model CommentLike {
 
 // DISCUSSION THREADS
 model DiscussionThread {
-  id            String        @id @default(cuid())
+  id            String   @id @default(cuid())
   forumId       String
   authorId      String
   title         String
-  content       String        @db.Text
-  slug          String        @unique
+  imageUrl      String[]
+  content       String   @db.Text
   tags          String[]
-  pinned        Boolean       @default(false)
-  locked        Boolean       @default(false)
-  viewsCount    Int           @default(0)
-  commentsCount Int           @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  isDeleted     Boolean       @default(false)
+  pinned        Boolean  @default(false)
+  locked        Boolean  @default(false)
+  viewsCount    Int      @default(0)
+  likesCount    Int      @default(0)
+  commentsCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  isDeleted     Boolean  @default(false)
 
   // Relations
-  forum         Forum         @relation(fields: [forumId], references: [id])
-  author        users         @relation(fields: [authorId], references: [id])
-  comments      DiscussionComment[]
-  poll          DiscussionThreadPoll?   // Add poll relation
+  forum    Forum                 @relation(fields: [forumId], references: [id])
+  author   users                 @relation(fields: [authorId], references: [id])
+  comments DiscussionComment[]
+  poll     DiscussionThreadPoll? // Add poll relation
 
   // Indexes
   @@index([forumId])
   @@index([authorId])
-  @@index([slug])
+  ForumThreadLike ForumThreadLike[]
+}
+
+model ForumThreadLike {
+  id        String   @id @default(cuid())
+  threadId  String
+  usersId   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  thread  DiscussionThread @relation(fields: [threadId], references: [id])
+  users   users             @relation(fields: [usersId], references: [id])
+
+  // Constraints
+  @@unique([threadId, usersId])
 }
 
 // DISCUSSION THREAD POLL MODELS
 model DiscussionThreadPoll {
-  id           String                 @id @default(cuid())
-  threadId     String                 @unique
-  question     String
-  expiresAt    DateTime?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+  id        String    @id @default(cuid())
+  threadId  String    @unique
+  question  String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   // Relations
-  thread       DiscussionThread       @relation(fields: [threadId], references: [id])
-  options      DiscussionThreadPollOption[]
+  thread  DiscussionThread             @relation(fields: [threadId], references: [id])
+  options DiscussionThreadPollOption[]
 
   @@index([threadId])
 }
 
 model DiscussionThreadPollOption {
-  id       String                 @id @default(cuid())
-  pollId   String
-  option   String
-  votes    Int                    @default(0)
+  id     String @id @default(cuid())
+  pollId String
+  option String
+  votes  Int    @default(0)
 
-  poll     DiscussionThreadPoll   @relation(fields: [pollId], references: [id])
-  votesBy  DiscussionThreadPollVote[]
+  poll    DiscussionThreadPoll       @relation(fields: [pollId], references: [id])
+  votesBy DiscussionThreadPollVote[]
 
   @@index([pollId])
 }
 
 model DiscussionThreadPollVote {
-  id        String   @id @default(cuid())
-  userId    String
-  optionId  String
+  id       String @id @default(cuid())
+  userId   String
+  optionId String
 
-  user      users    @relation(fields: [userId], references: [id])
-  option    DiscussionThreadPollOption @relation(fields: [optionId], references: [id])
+  user   users                      @relation(fields: [userId], references: [id])
+  option DiscussionThreadPollOption @relation(fields: [optionId], references: [id])
 
   @@unique([userId, optionId]) // Prevent multiple votes on same option
 }
 
 // DISCUSSION COMMENTS
 model DiscussionComment {
-  id              String            @id @default(cuid())
+  id              String   @id @default(cuid())
   threadId        String
   authorId        String
-  content         String            @db.Text
+  content         String   @db.Text
   parentCommentId String?
-  depth           Int               @default(0)
-  likesCount      Int               @default(0)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  depth           Int      @default(0)
+  likesCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  thread          DiscussionThread  @relation(fields: [threadId], references: [id])
-  author          users              @relation(fields: [authorId], references: [id])
-  parentComment   DiscussionComment? @relation("DiscussionCommentReplies", fields: [parentCommentId], references: [id])
-  replies         DiscussionComment[] @relation("DiscussionCommentReplies")
-  likes           DiscussionCommentLike[]
+  thread        DiscussionThread        @relation(fields: [threadId], references: [id])
+  author        users                   @relation(fields: [authorId], references: [id])
+  parentComment DiscussionComment?      @relation("DiscussionCommentReplies", fields: [parentCommentId], references: [id])
+  replies       DiscussionComment[]     @relation("DiscussionCommentReplies")
+  likes         DiscussionCommentLike[]
 
   // Indexes
   @@index([threadId])
@@ -392,14 +407,14 @@ model DiscussionComment {
 
 // DISCUSSION COMMENT LIKES
 model DiscussionCommentLike {
-  id        String            @id @default(cuid())
+  id        String   @id @default(cuid())
   commentId String
-  usersId    String
-  createdAt DateTime          @default(now())
+  usersId   String
+  createdAt DateTime @default(now())
 
   // Relations
-  comment   DiscussionComment @relation(fields: [commentId], references: [id])
-  users      users              @relation(fields: [usersId], references: [id])
+  comment DiscussionComment @relation(fields: [commentId], references: [id])
+  users   users             @relation(fields: [usersId], references: [id])
 
   // Constraints
   @@unique([commentId, usersId])

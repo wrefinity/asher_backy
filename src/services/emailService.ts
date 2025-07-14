@@ -258,8 +258,6 @@ class EmailService {
             received = false,
         } = options;
 
-        console.log('getEmailsForUser called with options:', options);
-
         const currentPage = Math.max(1, Math.floor(page));
         const itemsPerPage = Math.max(1, Math.min(limit, 100));
 

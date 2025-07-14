@@ -128,7 +128,6 @@ class EmailController {
         }
     }
 
-
     /**
   * Get paginated emails with thread support
   */

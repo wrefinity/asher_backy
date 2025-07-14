@@ -21,540 +21,590 @@ class ForumThreadService {
         },
     }
 
-    // async createCommunityPost(userId: string, data: ICommunityPostCreateDTO) {
-    //     const { poll, communityId, categoryId, ...postData } = data;
+    async createForumThread(userId: string, data: any) {
+        const { poll, title, content, tags, forumId, categoryId, ...postData } = data;
 
-    //     // Verify user is community member
+        // Verify user is forum member
+        const forum = await prismaClient.forum.findUnique({
+            where: { id: forumId },
+            include: {
+                community: true
+            }
+        });
 
-    //     const community = await prismaClient.community.findUnique({
-    //         where: { id: communityId },
-    //     });
+        if (!forum) throw new Error('Forum not found');
 
-    //     if (!community) throw new Error('Community not found');
+        if (forum.community.ownerId !== userId) {
+            const membership = await prismaClient.forumMember.findUnique({
+                where: {
+                    forumId_usersId: {
+                        forumId: forumId,
+                        usersId: userId
+                    },
+                    status: 'MEMBER'
+                }
+            });
 
-    //     if (community.ownerId !== userId) {
-    //         const membership = await prismaClient.communityMember.findUnique({
-    //             where: {
-    //                 communityId_usersId: {
-    //                     communityId: data.communityId,
-    //                     usersId: userId
-    //                 },
-    //                 status: 'MEMBER'
-    //             }
-    //         });
+            if (!membership) throw new Error('User is not a community member');
+        }
 
-    //         if (!membership) throw new Error('User is not a community member');
-    //     }
+        const thread = await prismaClient.discussionThread.create({
+            data: {
+                ...postData,
+                title,
+                content,
+                tags,
+                forum: {
+                    connect: {
+                        id: forumId,
+                    }
+                },
+                author: {
+                    connect: {
+                        id: userId,
+                    },
+                },
+                ...(categoryId && {
+                    category: {
+                        connect: {
+                            id: categoryId,
+                        },
+                    }
+                }),
+                poll: poll
+                    ? {
+                        create: {
+                            question: poll.question,
+                            expiresAt: poll.expiresAt,
+                            options: {
+                                create: poll.options.map(opt => ({
+                                    option: opt
+                                }))
+                            }
 
-    //     const post = await prismaClient.communityPost.create({
-    //         data: {
-    //             ...postData,
-    //             community: {
-    //                 connect: {
-    //                     id: communityId,
-    //                 }
-    //             },
-    //             author: {
-    //                 connect: {
-    //                     id: userId,
-    //                 },
-    //             },
-    //             ...(categoryId && {
-    //                 category: {
-    //                     connect: {
-    //                         id: categoryId,
-    //                     },
-    //                 }
-    //             }),
-    //             poll: poll
-    //                 ? {
-    //                     create: {
-    //                         question: poll.question,
-    //                         expiresAt: poll.expiresAt,
-    //                         options: {
-    //                             create: poll.options.map(opt => ({
-    //                                 option: opt
-    //                             }))
-    //                         }
+                        },
+                    }
+                    : undefined,
+            },
+            include: {
+                poll: {
+                    include: { options: true },
+                },
+            },
+        });
 
-    //                     },
-    //                 }
-    //                 : undefined,
-    //         },
-    //         include: {
-    //             poll: {
-    //                 include: { options: true },
-    //             },
-    //         },
-    //     });
+        return thread;
+    }
 
-    //     return post;
-    // }
+    async getSingleForumThread(forumId: string, threadId: string) {
+        return prismaClient.discussionThread.findMany({
+            where: {
+                forumId: forumId,
+                id: threadId,
+            },
+            include: {
+                author: this.userSelect,
+                comments: true,
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        })
+    }
 
-    // async getSingleCommunityPost(communityId: string, communityPostId: string) {
-    //     return prismaClient.communityPost.findMany({
-    //         where: {
-    //             communityId: communityId,
-    //             id: communityPostId,
-    //         },
-    //         include: {
-    //             author: this.userSelect,
-    //             likes: true,
-    //             views: true,
-    //             comments: true,
-    //         },
-    //         orderBy: {
-    //             createdAt: 'desc',
-    //         },
-    //     })
-    // }
+    async getForumPostById(id: string) {
+        return prismaClient.discussionThread.findUnique({
+            where: { id },
+            include: {
 
-    // async getForumPostById(id: string) {
-    //     return prismaClient.discussionThread.findUnique({
-    //         where: { id },
-    //         include: {
-        
-    //             comments: {
-    //                 include: {
-    //                     author: this.userSelect,
-    //                 },
-    //             },
-    //             poll: {
-    //                 include: {
-    //                     options: {
-    //                         include: {
-    //                             votesBy: {
-    //                                 select: {
-    //                                     userId: true,
-    //                                     optionId: true,
-    //                                     user: this.userSelect,
-    //                                 }
-    //                             },
-    //                         },
-    //                     },
-    //                 },
-    //             },
-    //             author: this.userSelect
-    //         },
-    //     });
-    // }
+                comments: {
+                    include: {
+                        author: this.userSelect,
+                    },
+                },
+                poll: {
+                    include: {
+                        options: {
+                            include: {
+                                votesBy: {
+                                    select: {
+                                        userId: true,
+                                        optionId: true,
+                                        user: this.userSelect,
+                                    }
+                                },
+                            },
+                        },
+                    },
+                },
+                author: this.userSelect
+            },
+        });
+    }
 
-    // async getAllPosts(communityId: string, page = 1, limit = 10, search = '') {
-    //     const skip = (page - 1) * limit;
+    async getForumDiscussion(forumId: string, page = 1, limit = 10, search = '') {
+        const skip = (page - 1) * limit;
 
-    //     const [posts, total] = await Promise.all([
-    //         prismaClient.communityPost.findMany({
-    //             where: {
-    //                 communityId: communityId,
-    //                 isDeleted: false,
-    //                 OR: search
-    //                     ? [
-    //                         { title: { contains: search, mode: 'insensitive' } },
-    //                         { content: { contains: search, mode: 'insensitive' } },
-    //                     ]
-    //                     : undefined,
-    //             },
-    //             include: {
-    //                 poll: {
-    //                     include: {
-    //                         options: {
-    //                             include: {
-    //                                 votesBy: {
-    //                                     select: {
-    //                                         userId: true,
-    //                                         optionId: true,
-    //                                         user: this.userSelect,
-    //                                     }
-    //                                 }
+        const [discussion, total] = await Promise.all([
+            prismaClient.discussionThread.findMany({
+                where: {
+                    forumId: forumId,
+                    isDeleted: false,
+                    OR: search
+                        ? [
+                            { title: { contains: search, mode: 'insensitive' } },
+                            { content: { contains: search, mode: 'insensitive' } },
+                        ]
+                        : undefined,
+                },
+                include: {
+                    poll: {
+                        include: {
+                            options: {
+                                include: {
+                                    votesBy: {
+                                        select: {
+                                            userId: true,
+                                            optionId: true,
+                                            user: this.userSelect,
+                                        }
+                                    }
 
-    //                             },
-    //                         },
-    //                     },
-    //                 },
-    //                 author: this.userSelect
-    //             },
-    //             orderBy: { createdAt: 'desc' },
-    //             skip,
-    //             take: limit,
-    //         }),
-    //         prismaClient.communityPost.count({
-    //             where: {
-    //                 isDeleted: false,
-    //                 OR: search
-    //                     ? [
-    //                         { title: { contains: search, mode: 'insensitive' } },
-    //                         { content: { contains: search, mode: 'insensitive' } },
-    //                     ]
-    //                     : undefined,
-    //             },
-    //         }),
-    //     ]);
+                                },
+                            },
+                        },
+                    },
+                    author: this.userSelect
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prismaClient.discussionThread.count({
+                where: {
+                    isDeleted: false,
+                    OR: search
+                        ? [
+                            { title: { contains: search, mode: 'insensitive' } },
+                            { content: { contains: search, mode: 'insensitive' } },
+                        ]
+                        : undefined,
+                },
+            }),
+        ]);
 
-    //     return {
-    //         data: posts,
-    //         pagination: {
-    //             totalItems: total,
-    //             currentPage: page,
-    //             totalPages: Math.ceil(total / limit),
-    //         },
-    //     };
-    // }
+        return {
+            data: discussion,
+            pagination: {
+                totalItems: total,
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
 
-    // async getCommunityPostCreator(communityPostId: string, userId: string) {
-    //     return prismaClient.communityPost.findUnique({
-    //         where: {
-    //             id: communityPostId,
-    //             authorId: userId,
-    //         },
-    //         include: {
-    //             author: this.userSelect,
-    //         },
-    //     })
-    // }
+    async getForumDiscussionCreator(discussionId: string, userId: string) {
+        return prismaClient.discussionThread.findUnique({
+            where: {
+                id: discussionId,
+                authorId: userId,
+            },
+            include: {
+                author: this.userSelect,
+            },
+        })
+    }
 
-    // async allThePostCreatedByMe(userId: string, page = 1, limit = 10, search = '') {
+    async allDiscussionCreatedByMe(userId: string, page = 1, limit = 10, search = '') {
 
-    //     console.log(`Fetching posts created by user ${userId} with page ${page}, limit ${limit}, search "${search}"`);
-    //     const skip = (page - 1) * limit;
+        const skip = (page - 1) * limit;
 
-    //     // Build where clause with proper type assertions
-    //     const whereClause: Prisma.CommunityPostWhereInput = {
-    //         authorId: userId,
-    //         isDeleted: false,
-    //     };
+        // Build where clause with proper type assertions
+        const whereClause: Prisma.DiscussionThreadWhereInput = {
+            authorId: userId,
+            isDeleted: false,
+        };
 
-    //     if (search) {
-    //         whereClause.OR = [
-    //             { title: { contains: search, mode: 'insensitive' } },
-    //             { content: { contains: search, mode: 'insensitive' } }
-    //         ];
-    //     }
+        if (search) {
+            whereClause.OR = [
+                { title: { contains: search, mode: 'insensitive' } },
+                { content: { contains: search, mode: 'insensitive' } }
+            ];
+        }
 
-    //     const [posts, total] = await Promise.all([
-    //         prismaClient.communityPost.findMany({
-    //             where: whereClause,
-    //             include: {
-    //                 likes: true,
-    //                 views: true,
-    //                 comments: {
-    //                     include: {
-    //                         author: this.userSelect,
-    //                     },
-    //                 },
-    //                 poll: {
-    //                     include: {
-    //                         options: {
-    //                             include: {
-    //                                 votesBy: {
-    //                                     select: {
-    //                                         userId: true,
-    //                                         optionId: true,
-    //                                         user: this.userSelect,
-    //                                     }
-    //                                 },
-    //                             },
-    //                         },
-    //                     },
-    //                 },
-    //                 author: this.userSelect
-    //             },
-    //             orderBy: {
-    //                 createdAt: 'desc'
-    //             },
+        const [discussion, total] = await Promise.all([
+            prismaClient.discussionThread.findMany({
+                where: whereClause,
+                include: {
+                    comments: {
+                        include: {
+                            author: this.userSelect,
+                        },
+                    },
+                    poll: {
+                        include: {
+                            options: {
+                                include: {
+                                    votesBy: {
+                                        select: {
+                                            userId: true,
+                                            optionId: true,
+                                            user: this.userSelect,
+                                        }
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    author: this.userSelect
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
 
-    //             skip,
-    //             take: limit
-    //         }),
+                skip,
+                take: limit
+            }),
 
-    //         prismaClient.communityPost.count({ where: whereClause })
-    //     ]);
+            prismaClient.discussionThread.count({ where: whereClause })
+        ]);
 
-    //     return {
-    //         data: posts,
-    //         pagination: {
-    //             totalItems: total,
-    //             currentPage: page,
-    //             totalPages: Math.ceil(total / limit),
-    //         }
-    //     };
-    // }
-
-
-    // async deleteCommunityPost(communityPostId: string) {
-    //     return await prismaClient.communityPost.update({
-    //         where: {
-    //             id: communityPostId,
-    //         },
-    //         data: {
-    //             isDeleted: true,
-    //         },
-    //     })
-    // }
-
-    // async updateCommunityPost(postId: string, data: ICommunityPostCreateDTO) {
-    //     const {
-    //         title,
-    //         content,
-    //         tags,
-    //         imageUrl,
-    //         videoUrl,
-    //         pinned,
-    //         locked,
-    //         poll
-    //     } = data;
-
-    //     // Update base post data
-    //     const updatedPost = await prismaClient.communityPost.update({
-    //         where: { id: postId },
-    //         data: {
-    //             title,
-    //             content,
-    //             tags,
-    //             imageUrl,
-    //             videoUrl,
-    //             pinned,
-    //             locked,
-    //             updatedAt: new Date(),
-    //         }
-    //     });
-
-    //     // If poll exists, handle poll update
-    //     if (poll) {
-    //         // Upsert the poll for the post
-    //         await prismaClient.communityPostPoll.upsert({
-    //             where: { postId },
-    //             create: {
-    //                 postId,
-    //                 question: poll.question,
-    //                 expiresAt: poll.expiresAt,
-    //                 options: {
-    //                     create: poll.options.map(opt => ({
-    //                         option: opt
-    //                     }))
-    //                 }
-    //             },
-    //             update: {
-    //                 question: poll.question,
-    //                 expiresAt: poll.expiresAt,
-    //                 updatedAt: new Date(),
-    //                 options: {
-    //                     deleteMany: {}, // delete old options
-    //                     create: poll.options.map(opt => ({
-    //                         option: opt
-    //                     }))
-    //                 }
-    //             }
-    //         });
-    //     }
-
-    //     return updatedPost;
-    // }
-    // likeForumPost = async (postId: string, userId: string) => {
-    //     return prismaClient.$transaction(async (prisma) => {
-    //         const forumPost = await this.getForumPostById(postId);
-
-    //         if (!forumPost) {
-    //             throw new Error(`Forum post with ID ${postId} does not exist.`);
-    //         }
+        return {
+            data: discussion,
+            pagination: {
+                totalItems: total,
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+            }
+        };
+    }
 
 
-    //         const existingLike = await prisma.forumPostLike.findUnique({
-    //             where: { postId_usersId: { postId, usersId: userId } }
-    //         });
+    async deleteDiscussionThread(discussionId: string) {
+        return await prismaClient.discussionThread.update({
+            where: {
+                id: discussionId,
+            },
+            data: {
+                isDeleted: true,
+            },
+        })
+    }
 
-    //         if (existingLike) {
-    //             await prisma.communityPostLike.delete({
-    //                 where: { id: existingLike.id },
-    //             });
-    //             await prisma.communityPost.update({
-    //                 where: { id: postId },
-    //                 data: { likesCount: { decrement: 1 } }
+    async updateDiscussionThread(threadId: string, data: ICommunityPostCreateDTO) {
+        const {
+            title,
+            content,
+            tags,
+            imageUrl,
+            pinned,
+            locked,
+            poll
+        } = data;
 
-    //             });
-    //             return { liked: false };
-    //         } else {
-    //             await prisma.communityPostLike.create({
-    //                 data: {
-    //                     postId: postId,
-    //                     usersId: userId,
-    //                 },
-    //             });
-    //             await prisma.communityPost.update({
-    //                 where: { id: postId },
-    //                 data: { likesCount: { increment: 1 } }
-    //             });
-    //             return { liked: true };
-    //         }
-    //     });
-    // }
-    // sharePost = async (postId: string, userId: string) => {
-    //     return prismaClient.$transaction(async (prisma) => {
-    //         // Record share
-    //         await prisma.communityPostShare.create({
-    //             data: {
-    //                 postId,
-    //                 usersId: userId,
-    //                 sharedAt: new Date()
-    //             }
-    //         });
+        // Update base post data
+        const updateDiscussionThread = await prismaClient.discussionThread.update({
+            where: { id: threadId },
+            data: {
+                title,
+                content,
+                tags,
+                imageUrl,
+                pinned,
+                locked,
+                updatedAt: new Date(),
+            }
+        });
 
-    //         // Update counters
-    //         await prisma.communityPost.update({
-    //             where: { id: postId },
-    //             data: {
-    //                 sharesCount: { increment: 1 },
-    //                 engagement: { increment: 3 }
-    //             }
-    //         });
-    //     });
-    // };
+        // If poll exists, handle poll update
+        if (poll) {
+            // Upsert the poll for the post
+            await prismaClient.discussionThreadPoll.upsert({
+                where: { threadId },
+                create: {
+                    threadId,
+                    question: poll.question,
+                    expiresAt: poll.expiresAt,
+                    options: {
+                        create: poll.options.map(opt => ({
+                            option: opt
+                        }))
+                    }
+                },
+                update: {
+                    question: poll.question,
+                    expiresAt: poll.expiresAt,
+                    updatedAt: new Date(),
+                    options: {
+                        deleteMany: {}, // delete old options
+                        create: poll.options.map(opt => ({
+                            option: opt
+                        }))
+                    }
+                }
+            });
+        }
 
-    // async viewCommunityPost(postId: string,
-    //     usersId?: string,
-    //     ipAddress?: string,
-    //     userAgent?: string) {
-    //     return prismaClient.$transaction(async (prisma) => {
-    //         const existingView = await prisma.communityPostView.findFirst({
-    //             where: {
-    //                 OR: [
-    //                     { postId, usersId: usersId || undefined },
-    //                     { postId, ipAddress }
-    //                 ]
-    //             }
-    //         });
+        return updateDiscussionThread;
+    }
+    async getThreadCommentById(commentId: string) {
+        return prismaClient.discussionComment.findUnique({
+            where: { id: commentId },
+            include: {
+                author: this.userSelect,
+                likes: true,
+                replies: {
+                    include: {
+                        author: this.userSelect,
+                        likes: true
+                    }
+                }
+            }
+        });
+    }
 
-    //         if (!existingView) {
-    //             await prisma.communityPostView.create({
-    //                 data: {
-    //                     postId,
-    //                     usersId: usersId,
-    //                     ipAddress,
-    //                     usersAgent: userAgent,
-    //                 },
-    //             });
-    //             await prisma.communityPost.update({
-    //                 where: { id: postId },
-    //                 data: {
-    //                     viewsCount: { increment: 1 },
-    //                     engagement: { increment: 0.5 }
-    //                 }
-    //             });
-    //             return prisma.communityPost.findUnique({
-    //                 where: {
-    //                     id: postId,
-    //                 },
-    //                 include: {
-    //                     author: this.userSelect,
-    //                     likes: true,
-    //                     views: true,
-    //                     comments: true,
-    //                 },
-    //             })
-    //         }
-    //     })
-    // }
+    likeDiscussionThread = async (threadId: string, usersId: string) => {
+        return prismaClient.$transaction(async (prisma) => {
+            const thread = await this.getForumPostById(threadId);
 
-    // async getPostLikes(communityPostId: string, page = 1, pageSize = 10) {
-    //     const skip = (pageSize - 1) * pageSize;
-    //     const [likes, totalCount] = await prismaClient.$transaction([
-    //         prismaClient.communityPostLike.findMany({
-    //             where: { postId: communityPostId },
-    //             include: {
-    //                 users: this.userSelect,
-    //             },
-    //         }),
-    //         prismaClient.communityPostLike.count({ where: { postId: communityPostId } })
-    //     ])
+            if (!thread) {
+                throw new Error(`Thread with ID ${threadId} does not exist.`);
+            }
 
-    //     return {
-    //         likes,
-    //         totalCount,
-    //         currentPage: page,
-    //         totalPages: Math.ceil(totalCount / pageSize),
-    //     }
-    // }
-    // async getPostShares(communityPostId: string, page = 1, pageSize = 10) {
-    //     const skip = (pageSize - 1) * pageSize;
-    //     const [shares, totalCount] = await prismaClient.$transaction([
-    //         prismaClient.communityPostShare.findMany({
-    //             where: { postId: communityPostId },
-    //             include: {
-    //                 users: this.userSelect,
-    //             },
-    //         }),
-    //         prismaClient.communityPostShare.count({ where: { postId: communityPostId } })
-    //     ])
+            const existingLike = await prisma.forumThreadLike.findUnique({
+                where: { threadId_usersId: { threadId, usersId } }
+            });
 
-    //     return {
-    //         shares,
-    //         totalCount,
-    //         currentPage: page,
-    //         totalPages: Math.ceil(totalCount / pageSize),
-    //     }
-    // }
+            if (existingLike) {
+                await prisma.forumThreadLike.delete({
+                    where: { id: existingLike.id },
+                });
+                await prisma.discussionThread.update({
+                    where: { id: existingLike.id},
+                    data: { likesCount: { decrement: 1 } }
+                });
+                return { liked: false };
+            } else {
+                await prisma.forumThreadLike.create({
+                    data: {
+                        threadId: threadId,
+                        usersId: usersId,
+                    },
+                });
+                await prisma.discussionThread.update({
+                    where: { id: threadId },
+                    data: { likesCount: { increment: 1 } }
+                });
+                return { liked: true };
+            }
+        });
+    }
+    likeThreadComment = async (commentId: string, usersId: string) => {
+        return prismaClient.$transaction(async (prisma) => {
+            const threadComment = await this.getThreadCommentById(commentId);
 
-    // async getDiscussionViews(communityPostId: string, page = 1, pageSize = 10) {
-    //     const skip = (pageSize - 1) * pageSize;
-    //     const [views, totalCount] = await prismaClient.$transaction([
-    //         prismaClient.communityPostView.findMany({
-    //             where: { postId: communityPostId },
-    //             include: {
-    //                 users: this.userSelect,
-    //             },
-    //         }),
-    //         prismaClient.communityPostView.count({ where: { postId: communityPostId } })
-    //     ])
-    //     return {
-    //         views,
-    //         totalCount,
-    //         currentPage: page,
-    //         totalPages: Math.ceil(totalCount / pageSize),
-    //     }
-    // }
+            if (!threadComment) {
+                throw new Error(`Thread comment with ID ${commentId} does not exist.`);
+            }
 
-    // async voteOnPoll(userId: string, optionId: string) {
 
-    //     const poll = await prismaClient.communityPostPoll.findFirst({
-    //         where: {
-    //             options: { some: { id: optionId } },
-    //             expiresAt: { lt: new Date() } // Check if poll has expired
-    //         }
-    //     });
-    //     if (poll?.expiresAt && poll.expiresAt < new Date()) {
-    //         throw new Error('This poll has expired');
-    //     }
+            const existingLike = await prisma.discussionCommentLike.findUnique({
+                where: { commentId_usersId: { commentId, usersId } }
+            });
 
-    //     const pollOption = await prismaClient.communityPostPollOption.findUnique({
-    //         where: { id: optionId }
-    //     });
-    //     if (!pollOption) {
-    //         throw new Error('Poll option not found.');
-    //     }
+            if (existingLike) {
+                await prisma.discussionCommentLike.delete({
+                    where: { id: existingLike.id },
+                });
+                await prisma.discussionComment.update({
+                    where: { id: existingLike.id},
+                    data: { likesCount: { decrement: 1 } }
 
-    //     const existingVote = await prismaClient.communityPostPollVote.findFirst({
-    //         where: {
-    //             userId,
-    //             optionId,
-    //         },
-    //     });
+                });
+                return { liked: false };
+            } else {
+                await prisma.discussionCommentLike.create({
+                    data: {
+                        commentId: commentId,
+                        usersId: usersId,
+                    },
+                });
+                await prisma.discussionComment.update({
+                    where: { id: commentId },
+                    data: { likesCount: { increment: 1 } }
+                });
+                return { liked: true };
+            }
+        });
+    }
+    sharePost = async (postId: string, userId: string) => {
+        return prismaClient.$transaction(async (prisma) => {
+            // Record share
+            await prisma.communityPostShare.create({
+                data: {
+                    postId,
+                    usersId: userId,
+                    sharedAt: new Date()
+                }
+            });
 
-    //     if (existingVote) {
-    //         throw new Error('You have already voted for this option.');
-    //     }
+            // Update counters
+            await prisma.communityPost.update({
+                where: { id: postId },
+                data: {
+                    sharesCount: { increment: 1 },
+                    engagement: { increment: 3 }
+                }
+            });
+        });
+    };
 
-    //     return await prismaClient.$transaction(async (prisma) => {
-    //         const vote = await prisma.communityPostPollVote.create({
-    //             data: { userId, optionId }
-    //         });
+    async viewCommunityPost(postId: string,
+        usersId?: string,
+        ipAddress?: string,
+        userAgent?: string) {
+        return prismaClient.$transaction(async (prisma) => {
+            const existingView = await prisma.communityPostView.findFirst({
+                where: {
+                    OR: [
+                        { postId, usersId: usersId || undefined },
+                        { postId, ipAddress }
+                    ]
+                }
+            });
 
-    //         await prisma.communityPostPollOption.update({
-    //             where: { id: optionId },
-    //             data: { votes: { increment: 1 } }
-    //         });
+            if (!existingView) {
+                await prisma.communityPostView.create({
+                    data: {
+                        postId,
+                        usersId: usersId,
+                        ipAddress,
+                        usersAgent: userAgent,
+                    },
+                });
+                await prisma.communityPost.update({
+                    where: { id: postId },
+                    data: {
+                        viewsCount: { increment: 1 },
+                        engagement: { increment: 0.5 }
+                    }
+                });
+                return prisma.communityPost.findUnique({
+                    where: {
+                        id: postId,
+                    },
+                    include: {
+                        author: this.userSelect,
+                        likes: true,
+                        views: true,
+                        comments: true,
+                    },
+                })
+            }
+        })
+    }
 
-    //         return vote;
-    //     });
-    // }
+    async getThreadLikes(threadId: string, page = 1, pageSize = 10) {
+        const skip = (pageSize - 1) * pageSize;
+        const [likes, totalCount] = await prismaClient.$transaction([
+            prismaClient.discussionThread.findMany({
+                where: { id: threadId },
+                include: {
+                    author: this.userSelect,
+                },
+            }),
+            prismaClient.forumThreadLike.count({ where: { threadId } })
+        ])
+
+        return {
+            likes,
+            totalCount,
+            currentPage: page,
+            totalPages: Math.ceil(totalCount / pageSize),
+        }
+    }
+    async getPostShares(communityPostId: string, page = 1, pageSize = 10) {
+        const skip = (pageSize - 1) * pageSize;
+        const [shares, totalCount] = await prismaClient.$transaction([
+            prismaClient.communityPostShare.findMany({
+                where: { postId: communityPostId },
+                include: {
+                    users: this.userSelect,
+                },
+            }),
+            prismaClient.communityPostShare.count({ where: { postId: communityPostId } })
+        ])
+
+        return {
+            shares,
+            totalCount,
+            currentPage: page,
+            totalPages: Math.ceil(totalCount / pageSize),
+        }
+    }
+
+    async getDiscussionViews(communityPostId: string, page = 1, pageSize = 10) {
+        const skip = (pageSize - 1) * pageSize;
+        const [views, totalCount] = await prismaClient.$transaction([
+            prismaClient.communityPostView.findMany({
+                where: { postId: communityPostId },
+                include: {
+                    users: this.userSelect,
+                },
+            }),
+            prismaClient.communityPostView.count({ where: { postId: communityPostId } })
+        ])
+        return {
+            views,
+            totalCount,
+            currentPage: page,
+            totalPages: Math.ceil(totalCount / pageSize),
+        }
+    }
+
+    async voteOnPoll(userId: string, optionId: string) {
+
+        const poll = await prismaClient.discussionThreadPoll.findFirst({
+            where: {
+                options: { some: { id: optionId } },
+                expiresAt: { lt: new Date() } // Check if poll has expired
+            }
+        });
+        if (poll?.expiresAt && poll.expiresAt < new Date()) {
+            throw new Error('This poll has expired');
+        }
+
+        const pollOption = await prismaClient.discussionThreadPollOption.findUnique({
+            where: { id: optionId }
+        });
+        if (!pollOption) {
+            throw new Error('Poll option not found.');
+        }
+
+        const existingVote = await prismaClient.discussionThreadPollVote.findFirst({
+            where: {
+                userId,
+                optionId,
+            },
+        });
+
+        if (existingVote) {
+            throw new Error('You have already voted for this option.');
+        }
+
+        return await prismaClient.$transaction(async (prisma) => {
+            const vote = await prisma.discussionThreadPollVote.create({
+                data: { userId, optionId }
+            });
+
+            await prisma.discussionThreadPollOption.update({
+                where: { id: optionId },
+                data: { votes: { increment: 1 } }
+            });
+
+            return vote;
+        });
+    }
 
 }
 
