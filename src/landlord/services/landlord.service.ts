@@ -201,4 +201,47 @@ export class LandlordService {
 
     return currentVendors;
   }
+
+  // TODO: Get current locations
+  getLandlordLocations = async (landlordId: string) => {
+    const currentLocations = await prismaClient.landlords.findUnique({
+      where: { id: landlordId },
+      select: {
+        property: {
+          select: {
+            id: true,
+            state: true,
+            address: true,
+            city: true,
+            zipcode: true,
+            country: true,
+            landlordId: true,
+          },
+        },
+      },
+    });
+    return currentLocations;
+  }
+
+  // Get Landlord Properties
+  getLandlordProperties = async (landlordId: string) => {
+    const properties = await prismaClient.properties.findMany({
+      where: { landlordId: landlordId, isDeleted: false },
+      select: {
+        id: true,
+        name: true,
+        // description: true,
+        // shortDescription: true,
+        propertySize: true,
+        // address: true,
+        city: true,
+        country: true,
+        zipcode: true,
+        state: true,
+        landlordId: true,
+      },
+    });
+    return properties;
+  }
+
 }

@@ -7,6 +7,21 @@ class BroadcastService {
 
     constructor() { }
 
+    private userSelect = {
+        select: {
+            id: true,
+            role: true,
+            email: true,
+            profile: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    profileUrl: true,
+                },
+            },
+        },
+    }
+
     // BROADCAST METHODS
 
     async createBroadcastCategory(data: {
@@ -30,13 +45,7 @@ class BroadcastService {
             include: {
                 members: {
                     include: {
-                        user: {
-                            include: {
-                                tenant: true,
-                                landlords: true,
-                                agents: true
-                            }
-                        }
+                        user: this.userSelect
                     }
                 },
                 property: true
@@ -47,20 +56,12 @@ class BroadcastService {
     async getBroadcastCategories(landlordId: string) {
         return await prismaClient.broadcastCategory.findMany({
             where: {
-                property: {
-                    landlordId: landlordId
-                }
+                landlordId: landlordId
             },
             include: {
                 members: {
                     include: {
-                        user: {
-                            include: {
-                                tenant: true,
-                                landlords: true,
-                                agents: true
-                            }
-                        }
+                        user: this.userSelect
                     }
                 },
                 property: true,
@@ -82,13 +83,7 @@ class BroadcastService {
             include: {
                 members: {
                     include: {
-                        user: {
-                            include: {
-                                tenant: true,
-                                landlords: true,
-                                agents: true
-                            }
-                        }
+                        user: this.userSelect
                     }
                 },
                 property: true
@@ -104,9 +99,7 @@ class BroadcastService {
         return await prismaClient.broadcastCategory.updateMany({
             where: {
                 id: categoryId,
-                property: {
-                    landlordId: landlordId
-                }
+                landlordId: landlordId
             },
             data: {
                 name: data.name,
@@ -120,9 +113,7 @@ class BroadcastService {
         return await prismaClient.broadcastCategory.deleteMany({
             where: {
                 id: categoryId,
-                property: {
-                    landlordId: landlordId
-                }
+                landlordId: landlordId
             }
         });
     }
@@ -177,6 +168,8 @@ class BroadcastService {
     // BROADCAST METHODS
 
     async getBroadcastsByLandlord(landlordId: string) {
+        console.log('getBroadcastsByLandlord');
+        console.log(landlordId);
         return await prismaClient.broadcast.findMany({
             where: { landlordId },
             include: {
@@ -198,7 +191,7 @@ class BroadcastService {
                     include: {
                         members: {
                             include: {
-                                user: true
+                                user: this.userSelect
                             }
                         },
                         property: true
@@ -233,7 +226,7 @@ class BroadcastService {
         extraMemberIds?: string[];
         scheduledAt?: Date;
         isDraft?: boolean;
-    }, landlordId: string) {
+    }, landlordId: string, userId: string) {
         // Verify the category belongs to the landlord
         const category = await this.getBroadcastCategoryById(data.categoryId, landlordId);
         if (!category) {
@@ -241,22 +234,24 @@ class BroadcastService {
         }
 
         // Get all category member emails
-        const categoryMemberEmails = category.members.map(member => member.user.email);
+        const categoryMembers = category.members.map(member => member.userId);
 
         // Get extra member emails if provided
-        let extraMemberEmails: string[] = [];
+        let extraMembersIds: string[] = [];
         if (data.extraMemberIds && data.extraMemberIds.length > 0) {
             const extraMembers = await prismaClient.users.findMany({
                 where: {
                     id: { in: data.extraMemberIds }
                 },
-                select: { email: true }
+                select: { id: true }
             });
-            extraMemberEmails = extraMembers.map(user => user.email);
+            extraMembersIds = extraMembers.map(user => user.id);
         }
 
-        // Combine all recipient emails (category members + extra members)
-        const allRecipients = [...new Set([...categoryMemberEmails, ...extraMemberEmails])];
+        // Combine all recipient ids (category members + extra members)
+        const allRecipients = [...new Set([...categoryMembers, ...extraMembersIds])];
+
+        await this.addMembersToCategory(data.categoryId, allRecipients, landlordId);
 
         const broadcastData: any = {
             landlordId,
@@ -264,7 +259,6 @@ class BroadcastService {
             message: data.message,
             type: data.type,
             categoryId: data.categoryId,
-            recipients: allRecipients,
             isDraft: data.isDraft || false
         };
 
@@ -280,7 +274,7 @@ class BroadcastService {
                     include: {
                         members: {
                             include: {
-                                user: true
+                                user: this.userSelect
                             }
                         }
                     }
@@ -290,7 +284,7 @@ class BroadcastService {
 
         // If not a draft and no scheduledAt, send immediately
         if (!data.isDraft && !data.scheduledAt) {
-            await this.sendBroadcast(broadcast.id, landlordId);
+            await this.sendBroadcast(broadcast.id, landlordId, userId);
         }
 
         return broadcast;
@@ -304,7 +298,7 @@ class BroadcastService {
         extraMemberIds?: string[];
         scheduledAt?: Date;
         action: 'send' | 'schedule' | 'draft';
-    }, landlordId: string) {
+    }, landlordId: string, userId: string) {
         const isDraft = data.action === 'draft';
         const scheduledAt = data.action === 'schedule' ? data.scheduledAt : undefined;
 
@@ -312,10 +306,10 @@ class BroadcastService {
             ...data,
             isDraft,
             scheduledAt
-        }, landlordId);
+        }, landlordId, userId);
     }
 
-    async sendDraftBroadcast(broadcastId: string, landlordId: string) {
+    async sendDraftBroadcast(broadcastId: string, landlordId: string, userId: string) {
         const broadcast = await this.getBroadcastById(broadcastId, landlordId);
         if (!broadcast) {
             throw new Error('Broadcast not found');
@@ -330,7 +324,7 @@ class BroadcastService {
             data: { isDraft: false }
         });
 
-        return await this.sendBroadcast(broadcastId, landlordId);
+        return await this.sendBroadcast(broadcastId, landlordId, userId);
     }
 
     async getDraftBroadcasts(landlordId: string) {
@@ -367,7 +361,7 @@ class BroadcastService {
         }
 
         // If category is being updated, recalculate recipients
-        let recipients = broadcast.category.members.map(member => member.user.id);
+        let recipients = broadcast.category.members.map(member => member.userId);
         if (data.categoryId || data.extraMemberIds) {
             const categoryId = data.categoryId || broadcast.categoryId;
             const category = await this.getBroadcastCategoryById(categoryId, landlordId);
@@ -375,18 +369,18 @@ class BroadcastService {
                 throw new Error('Category not found or access denied');
             }
 
-            const categoryMemberEmails = category.members.map(member => member.user.email);
-            let extraMemberEmails: string[] = [];
+            const categoryMembers = category.members.map(member => member.userId);
+            let extraMembersIds: string[] = [];
 
             if (data.extraMemberIds && data.extraMemberIds.length > 0) {
                 const extraMembers = await prismaClient.users.findMany({
                     where: { id: { in: data.extraMemberIds } },
-                    select: { email: true }
+                    select: { id: true }
                 });
-                extraMemberEmails = extraMembers.map(user => user.email);
+                extraMembersIds = extraMembers.map(user => user.id);
             }
 
-            recipients = [...new Set([...categoryMemberEmails, ...extraMemberEmails])];
+            recipients = [...new Set([...categoryMembers, ...extraMembersIds])];
 
         }
 
@@ -403,7 +397,7 @@ class BroadcastService {
                     include: {
                         members: {
                             include: {
-                                user: true
+                                user: this.userSelect
                             }
                         }
                     }
@@ -431,7 +425,7 @@ class BroadcastService {
         });
     }
 
-    async sendScheduledBroadcast(broadcastId: string, landlordId: string) {
+    async sendScheduledBroadcast(broadcastId: string, landlordId: string, userId: string) {
         const broadcast = await this.getBroadcastById(broadcastId, landlordId);
         if (!broadcast) {
             throw new Error('Broadcast not found');
@@ -445,7 +439,7 @@ class BroadcastService {
             throw new Error('Broadcast is scheduled for a future time');
         }
 
-        return await this.sendBroadcast(broadcastId, landlordId);
+        return await this.sendBroadcast(broadcastId, landlordId, userId);
     }
 
     async cancelScheduledBroadcast(broadcastId: string, landlordId: string) {
@@ -463,7 +457,7 @@ class BroadcastService {
         });
     }
 
-    async sendBroadcast(broadcastId: string, landlordId: string) {
+    async sendBroadcast(broadcastId: string, landlordId: string, userId: string) {
         const broadcast = await this.getBroadcastById(broadcastId, landlordId);
         if (!broadcast) {
             throw new Error('Broadcast not found');
@@ -478,7 +472,7 @@ class BroadcastService {
                 const batchSize = 100;
                 for (let i = 0; i < allRecipients.length; i += batchSize) {
                     const batch = allRecipients.slice(i, i + batchSize);
-                    await this.sendBatchEmails(batch, broadcast.subject, broadcast.message, broadcast.landlordId);
+                    await this.sendBatchEmails(batch, broadcast.subject, broadcast.message, userId);
                 }
             } else if (broadcast.type === BroadcastType.CHAT) {
                 // TODO: Implement chat broadcast functionality
@@ -493,6 +487,10 @@ class BroadcastService {
 
     async sendBatchEmails(recipientEmails: string[], subject: string, message: string, userId: string) {
         // Get the landlord user ID (you might want to store this in config)
+        console.log('recipientEmails', recipientEmails);
+        console.log('subject', subject);
+        console.log('message', message);
+        console.log('userId', userId);
         const systemUser = await prismaClient.users.findFirst({
             where: { id: userId }
         });
@@ -527,6 +525,127 @@ class BroadcastService {
 
         const results = await Promise.all(emailPromises);
         return results.filter(result => result !== null);
+    }
+
+    async stats(landlordId: string) {
+        // Get all broadcasts for the landlord
+        const broadcasts = await this.getBroadcastsByLandlord(landlordId);
+
+        // Get all categories for the landlord
+        const categories = await this.getBroadcastCategories(landlordId);
+
+        // Get all unique recipients across all categories
+        const allRecipients = await prismaClient.broadcastCategoryMembers.findMany({
+            where: {
+                broadcastCategory: {
+                    landlordId: landlordId
+                }
+            },
+            include: {
+                user: this.userSelect,
+                broadcastCategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        // Calculate stats
+        const totalBroadcasts = broadcasts.length || 0;
+        const totalEmails = broadcasts.filter(broadcast => broadcast.type === BroadcastType.EMAIL).length || 0;
+        const totalChats = broadcasts.filter(broadcast => broadcast.type === BroadcastType.CHAT).length || 0;
+        const totalDrafts = broadcasts.filter(broadcast => broadcast.isDraft).length || 0;
+        const totalScheduled = broadcasts.filter(broadcast => broadcast.scheduledAt && broadcast.scheduledAt > new Date()).length || 0;
+        const totalCategories = categories.length || 0;
+        const totalRecipients = allRecipients.length || 0;
+        const uniqueRecipients = new Set(allRecipients.map(recipient => recipient.userId)).size || 0;
+
+        // Group recipients by category
+        const recipientsByCategory = categories.map(category => ({
+            categoryId: category.id,
+            categoryName: category.name,
+            memberCount: category.members.length || 0,
+            members: category.members.map(member => ({
+                userId: member.user.id,
+                email: member.user.email,
+                profile: member.user.profile
+            }))
+        }));
+
+        // Get broadcast stats by type and status
+        const broadcastStats = {
+            total: totalBroadcasts,
+            byType: {
+                email: totalEmails,
+                chat: totalChats
+            },
+            byStatus: {
+                sent: totalBroadcasts - totalDrafts - totalScheduled || 0,
+                drafts: totalDrafts,
+                scheduled: totalScheduled
+            }
+        };
+
+        // Get recent broadcasts (last 10)
+        const recentBroadcasts = broadcasts
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 10)
+            .map(broadcast => ({
+                id: broadcast.id,
+                subject: broadcast.subject,
+                type: broadcast.type,
+                isDraft: broadcast.isDraft,
+                scheduledAt: broadcast.scheduledAt,
+                createdAt: broadcast.createdAt,
+                categoryName: broadcast.category?.name || 'Unknown'
+            }));
+
+        return {
+            overview: {
+                totalBroadcasts,
+                totalCategories,
+                totalRecipients,
+                uniqueRecipients
+            },
+            broadcastStats,
+            categories: {
+                total: totalCategories,
+                list: categories.map(category => ({
+                    id: category.id,
+                    name: category.name,
+                    location: category.location,
+                    memberCount: category.members.length,
+                    createdAt: category.createdAt
+                }))
+            },
+            recipients: {
+                total: totalRecipients,
+                unique: uniqueRecipients,
+                byCategory: recipientsByCategory
+            },
+            recentBroadcasts
+        };
+    }
+
+
+    // TODO: Fix Users, currently get all users
+    async getAllUsers() {
+        return await prismaClient.users.findMany({
+            select: {
+                id: true,
+                email: true,
+                profile: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        profileUrl: true,
+                    }
+                }
+            }
+        });
     }
 }
 

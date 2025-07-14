@@ -14,7 +14,7 @@ class BroadcastRouter {
 
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
-        
+        this.router.get('/users/all', broadcastController.getAllUsers);
         // BROADCAST CATEGORY ROUTES
         this.router.post('/categories', broadcastController.createBroadcastCategory);
         this.router.get('/categories', broadcastController.getBroadcastCategories);
@@ -29,7 +29,9 @@ class BroadcastRouter {
         
         // BROADCAST ROUTES
         this.router.post('/create-and-send', broadcastController.createAndSendBroadcast);
+        this.router.get('/stats', broadcastController.getStats);
         this.router.post('/', broadcastController.createBroadcast);
+        this.router.get('/get-all', broadcastController.getBroadcastsByLandlord);
         this.router.get('/drafts', broadcastController.getDraftBroadcasts);
         this.router.put('/drafts/:broadcastId', broadcastController.updateDraftBroadcast);
         this.router.post('/drafts/:broadcastId/send', broadcastController.sendDraftBroadcast);
@@ -40,7 +42,7 @@ class BroadcastRouter {
         
         this.router.get('/category/:categoryId', broadcastController.getBroadcastsByCategory);
         this.router.get('/:broadcastId', broadcastController.getBroadcastById);
-        this.router.get('/', broadcastController.getBroadcastsByLandlord);
+
     }
 }
 
