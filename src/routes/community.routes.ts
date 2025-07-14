@@ -5,6 +5,7 @@ import communityPostControllers from "../controllers/community-post.controllers"
 import upload from "../configs/multer";
 import { uploadToCloudinary } from "../middlewares/multerCloudinary";
 import { userRoles } from "@prisma/client";
+import forumRoutes from "./forum.routes";
 class CommunityRoutes {
     public router: Router;
     protected authenticateService: Authorize;
@@ -50,6 +51,7 @@ class CommunityRoutes {
         this.router.get('/post-likes/:postId', communityPostControllers.getPostLikes);
         this.router.get('/post-views/:postId', communityPostControllers.getPostViews);
         this.router.get('/post-shares/:postId', communityPostControllers.getPostShares);
+        this.router.use("/forums", forumRoutes )
     }
 }
 

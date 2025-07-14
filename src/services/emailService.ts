@@ -310,8 +310,6 @@ class EmailService {
             }
             : {};
 
-
-
         const where: any = {
             ...baseConditions,
             ...searchConditions,
