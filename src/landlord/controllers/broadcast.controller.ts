@@ -144,7 +144,7 @@ class BroadcastController {
     // BROADCAST METHODS
 
     createAndSendBroadcast = async (req: CustomRequest, res: Response) => {
-        const { landlords } = req.user;
+        const { landlords, id: userId } = req.user;
         const landlordId = landlords?.id;
         const { subject, message, type, categoryId, extraMemberIds, scheduledAt, action } = req.body;
 
@@ -175,7 +175,7 @@ class BroadcastController {
                 extraMemberIds,
                 scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
                 action
-            }, landlordId);
+            }, landlordId, userId);
 
             return res.status(201).json(broadcast);
         } catch (error) {
@@ -184,7 +184,7 @@ class BroadcastController {
     }
 
     createBroadcast = async (req: CustomRequest, res: Response) => {
-        const { landlords } = req.user;
+        const { landlords, id: userId } = req.user;
         const landlordId = landlords?.id;
         const { subject, message, type, categoryId, extraMemberIds, scheduledAt, isDraft } = req.body;
 
@@ -207,7 +207,7 @@ class BroadcastController {
                 extraMemberIds,
                 scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
                 isDraft
-            }, landlordId);
+            }, landlordId, userId);
 
             return res.status(201).json(broadcast);
         } catch (error) {
@@ -251,12 +251,12 @@ class BroadcastController {
     }
 
     sendDraftBroadcast = async (req: CustomRequest, res: Response) => {
-        const { landlords } = req.user;
+        const { landlords, id: userId } = req.user;
         const landlordId = landlords?.id;
         const { broadcastId } = req.params;
 
         try {
-            const result = await broadcastService.sendDraftBroadcast(broadcastId, landlordId);
+            const result = await broadcastService.sendDraftBroadcast(broadcastId, landlordId, userId);
             return res.status(200).json(result);
         } catch (error) {
             errorService.handleError(error, res);
@@ -264,12 +264,12 @@ class BroadcastController {
     }
 
     sendBroadcast = async (req: CustomRequest, res: Response) => {
-        const { landlords } = req.user;
+        const { landlords, id: userId } = req.user;
         const landlordId = landlords?.id;
         const { broadcastId } = req.params;
 
         try {
-            const result = await broadcastService.sendBroadcast(broadcastId, landlordId);
+            const result = await broadcastService.sendBroadcast(broadcastId, landlordId, userId);
             return res.status(200).json(result);
         } catch (error) {
             errorService.handleError(error, res);
@@ -289,12 +289,12 @@ class BroadcastController {
     }
 
     sendScheduledBroadcast = async (req: CustomRequest, res: Response) => {
-        const { landlords } = req.user;
+        const { landlords, id: userId } = req.user;
         const landlordId = landlords?.id;
         const { broadcastId } = req.params;
 
         try {
-            const result = await broadcastService.sendScheduledBroadcast(broadcastId, landlordId);
+            const result = await broadcastService.sendScheduledBroadcast(broadcastId, landlordId, userId);
             return res.status(200).json(result);
         } catch (error) {
             errorService.handleError(error, res);
@@ -321,7 +321,7 @@ class BroadcastController {
 
         try {
             const broadcast = await broadcastService.getBroadcastById(id, landlordId);
-            if (!broadcast) return res.status(404).json({ message: "Broadcast not found" }); 
+            if (!broadcast) return res.status(404).json({ message: "Broadcast not found" });
             return res.status(200).json(broadcast);
         } catch (error) {
             errorService.handleError(error, res);
@@ -344,7 +344,7 @@ class BroadcastController {
     getBroadcastsByLandlord = async (req: CustomRequest, res: Response) => {
         const { landlords } = req.user;
         const landlordId = landlords?.id;
-
+        
         try {
             const broadcasts = await broadcastService.getBroadcastsByLandlord(landlordId);
             return res.status(200).json(broadcasts);
