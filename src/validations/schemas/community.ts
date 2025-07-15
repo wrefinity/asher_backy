@@ -10,6 +10,14 @@ const communityInformationSchema = Joi.object({
     cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
     cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
 })
+const forumInformationSchema = Joi.object({
+    name: Joi.string().required(),
+    description: Joi.string().required(),
+    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+})
 
 
 const communityPostSchema = Joi.object({
@@ -48,29 +56,35 @@ const createCommunityPostSchema = Joi.object({
 });
 
 const updateCommunityPostSchema = Joi.object({
-  title: Joi.string().optional().max(200),
-  content: Joi.string().optional(),
-  tags: Joi.array().items(Joi.string()),
-  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-  pinned: Joi.boolean().optional(),
-  locked: Joi.boolean().optional(),
-  poll: Joi.object({
-    question: Joi.string().required().max(255),
-    expiresAt: Joi.date().optional(),
-    options: Joi.array()
-      .items(
-        Joi.object({
-          option: Joi.string().required().max(100),
-        })
-      )
-      .min(2)
-      .required(),
-  }).optional(),
+    title: Joi.string().optional().max(200),
+    content: Joi.string().optional(),
+    tags: Joi.array().items(Joi.string()),
+    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+    pinned: Joi.boolean().optional(),
+    locked: Joi.boolean().optional(),
+    poll: Joi.object({
+        question: Joi.string().required().max(255),
+        expiresAt: Joi.date().optional(),
+        options: Joi.array()
+            .items(
+                Joi.object({
+                    option: Joi.string().required().max(100),
+                })
+            )
+            .min(2)
+            .required(),
+    }).optional(),
 });
 
 
 
-export { communityInformationSchema, updateCommunityPostSchema, createCommunityPostSchema, communityPostSchema };
+export {
+    communityInformationSchema,
+    forumInformationSchema,
+    updateCommunityPostSchema,
+    createCommunityPostSchema,
+    communityPostSchema
+};

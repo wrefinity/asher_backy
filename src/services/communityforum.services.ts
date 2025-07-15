@@ -4,18 +4,25 @@ import { Forum, ForumCategory, DiscussionComment } from '@prisma/client';
 class ForumService {
 
     async createForum(data: {
+        ownerId: string;
         communityId: string;
         name: string;
         description?: string;
     }): Promise<Forum> {
+        const { communityId, ownerId, ...forumData } = data;
+
         return prismaClient.forum.create({
             data: {
-                ...data,
-                slug: this.generateSlug(data.name),
+                ...forumData,
+                owner: {
+                    connect: { id: ownerId },
+                },
+                community: {
+                    connect: { id: communityId },
+                },
             },
         });
     }
-
     async createCategory(data: {
         forumId: string;
         name: string;

@@ -30,12 +30,55 @@ class CommunityService {
     private communitySelect = {
         users: this.userSelect
     }
+    async createCommunity(userId: string, data: any) {
+        const existing = await prismaClient.community.findFirst({
+            where: {
+                ownerId: userId,
+                isDeleted: false,
+            },
+        });
+        if (existing) {
+            return existing
+        }
+        return prismaClient.community.create({
+            data: {
+                ...data,
+                owner: {
+                    connect: { id: userId }
+                }
+            }
+        });
+    }
 
-    async createCommunity(communityData: any) {
-        const community = await prismaClient.community.create({
-            data: { ...communityData, }
-        })
-        return community
+    async getLandlordCommunity(userId: string) {
+        return await prismaClient.community.findFirst({
+            where: {
+                ownerId: userId,
+                isDeleted: false,
+            },
+            include: {
+                forums: true,
+                members: {
+                    include: {
+                        users: {
+                            select: {
+                                id: true,
+                                email: true,
+                                role: true,
+                                profile: {
+                                    select: {
+                                        id: true,
+                                        firstName: true,
+                                        lastName: true,
+                                        profileUrl: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
     }
 
     async createCommunityPost(data: any) {
@@ -166,7 +209,6 @@ class CommunityService {
         })
     }
 
-
     joinCommunity = async (communityId: string, userId: string, code?: string) => {
         const community = await prismaClient.community.findUnique({ where: { id: communityId } });
         if (!community) {
@@ -185,7 +227,6 @@ class CommunityService {
                 throw new Error('Invalid or expired invitation code');
             }
         }
-
         return prismaClient.communityMember.create({
             data: {
                 community: {

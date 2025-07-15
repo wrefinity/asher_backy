@@ -3,17 +3,23 @@ import errorService from "../services/error.service"
 import { CustomRequest } from "../utils/types"
 import communityPostServices from "../services/community.post.services"
 import { createCommunityPostSchema } from "../validations/schemas/community"
+import communityServices from "../services/community.services"
 
 class CommunityPostController {
     constructor() { }
 
     async createPost(req: CustomRequest, res: Response) {
+
+        const communityId = req.params.communityId || String(req.user.id);
+        const community = await communityServices.getCommunityById(communityId)
+        if (!community) {
+            return res.status(404).json({ message: "No community found for this landlord." });
+        }
         const { error, value } = createCommunityPostSchema.validate(req.body)
         if (error) return res.status(400).json({ error: error.details[0].message })
 
         try {
             const userId = String(req.user.id)
-            const communityId = req.params.communityId
             const { cloudinaryAudioUrls, cloudinaryImageUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, ...data } = value
 
             const imageUrl = cloudinaryAudioUrls || [];
@@ -21,7 +27,7 @@ class CommunityPostController {
 
             const post = await communityPostServices.createCommunityPost(userId, {
                 ...data,
-                communityId,
+                communityId: community.id,
                 imageUrl,
                 videoUrl,
             })
@@ -33,6 +39,16 @@ class CommunityPostController {
         }
     }
 
+    getRecentPosts = async (req: CustomRequest, res: Response) => {
+        try {
+            const { communityId } = req.params;
+            const posts = await communityPostServices.getRecentPosts(communityId);
+            res.status(200).json(posts);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    };
+    
     async getCommunityPost(req: CustomRequest, res: Response) {
         console.log(req.params)
         try {

@@ -76,27 +76,22 @@ model users {
     assignedTemplates   UserDocuTemplate[]
     DocuTemplate        DocuTemplate[]
     DocuTemplateVersion DocuTemplateVersion[]
-
     UserEmailState UserEmailState[]
-
     Community Community[] @relation("CommunityOwner")
     CommunityPostShare CommunityPostShare[]
-
     CommentLike CommentLike[]
-
     DiscussionThread DiscussionThread[]
-
     DiscussionComment DiscussionComment[]
-
     DiscussionCommentLike DiscussionCommentLike[]
-
     CommunityPostPollVote CommunityPostPollVote[]
-
     DiscussionThreadPollVote DiscussionThreadPollVote[]
     ForumMember ForumMember[]
     BroadcastCategoryMembers BroadcastCategoryMembers[]
-
     ForumThreadLike ForumThreadLike[]
+    DiscussionCommentShare DiscussionCommentShare[]
+    Forum Forum[] @relation("ForumOwner")
+
+    ForumThreadPin ForumThreadPin[]
 }
 
 model UserLikedProperty {

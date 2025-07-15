@@ -15,20 +15,18 @@ class CommunityController {
             return res.status(400).json({ message: error.details[0].message })
         }
         try {
-
             const { cloudinaryImageUrls, cloudinaryAudioUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, ...data } = value;
             if (cloudinaryImageUrls && cloudinaryImageUrls.length > 0) {
                 data.avatarUrl = cloudinaryImageUrls[0] || null;
                 data.bannerUrl = cloudinaryImageUrls[1] || null;
             }
             const ownerId = String(req.user.id)
-            const community = await communityServices.createCommunity({ ...data, ownerId })
-            return res.status(200).json({ community, message: "Community created successfully" });
+            const community = await communityServices.createCommunity(ownerId, { ...data })
+            return res.status(200).json({ community});
 
         } catch (error) {
             errorService.handleError(error, res)
         }
-
     }
     async getLandlordCommunities(req: CustomRequest, res: Response) {
         try {

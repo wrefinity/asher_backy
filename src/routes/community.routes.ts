@@ -5,6 +5,7 @@ import communityPostControllers from "../controllers/community-post.controllers"
 import upload from "../configs/multer";
 import { uploadToCloudinary } from "../middlewares/multerCloudinary";
 import { userRoles } from "@prisma/client";
+import forumRoutes from "./forum.routes";
 class CommunityRoutes {
     public router: Router;
     protected authenticateService: Authorize;
@@ -20,7 +21,7 @@ class CommunityRoutes {
 
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize);
-        this.router.post('/', CommunityController.createCommunity);
+        this.router.post('/', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.createCommunity);
         this.router.get('/landlord', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.getLandlordCommunities);
         this.router.get('/', CommunityController.getFilteredCommunities);
         this.router.get('/owner/:communityId', CommunityController.getCommunityOwner);
@@ -37,6 +38,7 @@ class CommunityRoutes {
         // post session
         this.router.post('/post/:communityId', upload.array('files'), uploadToCloudinary, communityPostControllers.createPost);
         this.router.get('/post/:communityId', communityPostControllers.getCommunityPost);
+        this.router.get('/post/recent/:communityId', communityPostControllers.getRecentPosts);
         this.router.get('/post/:communityId/:postId', communityPostControllers.getSingleCommunityPost);
         this.router.get('/post-mine/all', communityPostControllers.getCurrentUserPost);
         this.router.post('/poll-vote', communityPostControllers.voteOnPoll);
@@ -50,6 +52,7 @@ class CommunityRoutes {
         this.router.get('/post-likes/:postId', communityPostControllers.getPostLikes);
         this.router.get('/post-views/:postId', communityPostControllers.getPostViews);
         this.router.get('/post-shares/:postId', communityPostControllers.getPostShares);
+        this.router.use("/forums", forumRoutes )
     }
 }
 
