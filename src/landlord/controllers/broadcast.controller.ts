@@ -378,6 +378,19 @@ class BroadcastController {
             errorService.handleError(error, res);
         }
     }
+
+    resendBroadcast = async (req: CustomRequest, res: Response) => {
+        const { landlords, id: userId } = req.user;
+        const landlordId = landlords?.id;
+        const { broadcastId } = req.body;
+
+        try {
+            const result = await broadcastService.resendBroadcast(broadcastId, landlordId, userId);
+            return res.status(200).json(result);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
 }
 
 export default new BroadcastController();

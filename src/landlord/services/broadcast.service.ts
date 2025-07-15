@@ -457,6 +457,19 @@ class BroadcastService {
         });
     }
 
+    async resendBroadcast(broadcastId: string, landlordId: string, userId: string) {
+        const broadcast = await this.getBroadcastById(broadcastId, landlordId);
+        if (!broadcast) {
+            throw new Error('Broadcast not found');
+        }
+
+        if (broadcast.isDraft) {
+            throw new Error('This broadcast is a draft');
+        }
+
+        return await this.sendBroadcast(broadcastId, landlordId, userId);
+    }
+
     async sendBroadcast(broadcastId: string, landlordId: string, userId: string) {
         const broadcast = await this.getBroadcastById(broadcastId, landlordId);
         if (!broadcast) {
