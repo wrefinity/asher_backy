@@ -6,7 +6,6 @@ import { Prisma } from "@prisma/client";
 class ForumThreadService {
     constructor() { }
 
-
     private userSelect = {
         select: {
             id: true,
@@ -484,7 +483,6 @@ class ForumThreadService {
         });
     };
 
-
     async getThreadLikes(threadId: string) {
         const [likes, totalCount] = await prismaClient.$transaction([
             prismaClient.discussionThread.findMany({
@@ -638,7 +636,6 @@ class ForumThreadService {
         return updateThread;
     }
 
-
     async getForumThreadCreator(threadId: string, userId: string) {
         return prismaClient.discussionThread.findUnique({
             where: {
@@ -758,12 +755,38 @@ class ForumThreadService {
     }
 
     async getTopContributors(threadId: string, limit = 5) {
-        return prismaClient.discussionComment.groupBy({
+        const contributors = await prismaClient.discussionComment.groupBy({
             by: ['authorId'],
             where: { threadId },
             _count: { id: true },
             orderBy: { _count: { id: 'desc' } },
             take: limit,
+        });
+        // Get user info for each contributor
+        const authorIds = contributors.map(c => c.authorId);
+        const users = await prismaClient.users.findMany({
+            where: { id: { in: authorIds } },
+            select: {
+                id: true,
+                profile: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        profileUrl: true,
+                    },
+                },
+            },
+        });
+
+        // Merge user data with contribution count
+        return contributors.map(contributor => {
+            const user = users.find(u => u.id === contributor.authorId);
+            return {
+                authorId: contributor.authorId,
+                fullName: `${user?.profile.firstName ?? ''} ${user?.profile.lastName ?? ''}`,
+                profileUrl: user?.profile.profileUrl,
+                contributionCount: contributor._count.id,
+            };
         });
     }
 

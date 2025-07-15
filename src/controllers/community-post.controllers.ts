@@ -10,8 +10,8 @@ class CommunityPostController {
 
     async createPost(req: CustomRequest, res: Response) {
 
-        const landlordId = req.params.landlordId || String(req.user.id);
-        const community = await communityServices.getLandlordCommunity(landlordId)
+        const communityId = req.params.communityId || String(req.user.id);
+        const community = await communityServices.getCommunityById(communityId)
         if (!community) {
             return res.status(404).json({ message: "No community found for this landlord." });
         }
