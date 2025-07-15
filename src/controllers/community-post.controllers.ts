@@ -39,6 +39,16 @@ class CommunityPostController {
         }
     }
 
+    getRecentPosts = async (req: CustomRequest, res: Response) => {
+        try {
+            const { communityId } = req.params;
+            const posts = await communityPostServices.getRecentPosts(communityId);
+            res.status(200).json(posts);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    };
+    
     async getCommunityPost(req: CustomRequest, res: Response) {
         console.log(req.params)
         try {

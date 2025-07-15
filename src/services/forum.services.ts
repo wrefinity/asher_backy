@@ -43,7 +43,39 @@ class ForumService {
         return prismaClient.forum.findUnique({ where: { id }, include: { ForumMember: { include: { users: this.userSelect } } } });
     }
 
-
+    async getRecentForums(communityId, limit: number = 10) {
+        return prismaClient.forum.findMany({
+            where: {
+                communityId,
+                isDeleted: false,
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+            take: limit,
+            include: {
+                community: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                owner: {
+                    select: {
+                        id: true,
+                        email: true,
+                        profile: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                profileUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
 
 
     joinForum = async (forumId: string, userId: string, code?: string) => {

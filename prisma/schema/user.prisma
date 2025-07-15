@@ -90,6 +90,8 @@ model users {
     ForumThreadLike ForumThreadLike[]
     DiscussionCommentShare DiscussionCommentShare[]
     Forum Forum[] @relation("ForumOwner")
+
+    ForumThreadPin ForumThreadPin[]
 }
 
 model UserLikedProperty {

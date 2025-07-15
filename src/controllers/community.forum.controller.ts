@@ -17,7 +17,7 @@ class ForumController {
         if (!community) {
             return res.status(404).json({ message: "No community found for this landlord." });
         }
-        
+
         // Validate the request body against the schema
         const { error, value } = forumInformationSchema.validate(req.body)
         if (error) {
@@ -38,6 +38,15 @@ class ForumController {
         }
 
     }
+    getRecentForums = async (req: CustomRequest, res: Response) => {
+        try {
+            const { communityId } = req.params;
+            const forums = await forumServices.getRecentForums(communityId);
+            res.status(200).json(forums);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    };
 
     async getFilteredForums(req: Request, res: Response) {
         try {

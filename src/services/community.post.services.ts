@@ -410,6 +410,27 @@ class CommunityService {
         });
     };
 
+    async getRecentPosts(communityId: string, limit = 5) {
+        return prismaClient.communityPost.findMany({
+            where: {
+                communityId,
+                isDeleted: false,
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+            take: limit,
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        profile: { select: { firstName: true, profileUrl: true } },
+                    },
+                },
+            },
+        });
+    }
+
     async viewCommunityPost(postId: string,
         usersId?: string,
         ipAddress?: string,

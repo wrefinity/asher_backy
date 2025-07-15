@@ -121,6 +121,7 @@ class ForumThreadService {
                     include: {
                         author: this.userSelect,
                     },
+
                 },
                 poll: {
                     include: {
@@ -174,7 +175,12 @@ class ForumThreadService {
                             },
                         },
                     },
-                    author: this.userSelect
+                    author: this.userSelect,
+                    ForumThreadPin: {
+                        include: {
+                            users: this.userSelect,
+                        },
+                    },
                 },
                 orderBy: { createdAt: 'desc' },
                 skip,
@@ -210,6 +216,11 @@ class ForumThreadService {
                 authorId: userId,
             },
             include: {
+                ForumThreadPin: {
+                    include: {
+                        users: this.userSelect,
+                    },
+                },
                 author: this.userSelect,
             },
         })
@@ -236,6 +247,11 @@ class ForumThreadService {
             prismaClient.discussionThread.findMany({
                 where: whereClause,
                 include: {
+                    ForumThreadPin: {
+                        include: {
+                            users: this.userSelect,
+                        },
+                    },
                     comments: {
                         include: {
                             author: this.userSelect,
@@ -363,52 +379,52 @@ class ForumThreadService {
     }
 
 
-likeDiscussionThread = async (threadId: string, usersId: string) => {
-    return prismaClient.$transaction(async (prisma) => {
-        // Verify thread exists first
-        const thread = await prisma.discussionThread.findUnique({
-            where: { id: threadId }
+    likeDiscussionThread = async (threadId: string, usersId: string) => {
+        return prismaClient.$transaction(async (prisma) => {
+            // Verify thread exists first
+            const thread = await prisma.discussionThread.findUnique({
+                where: { id: threadId }
+            });
+
+            if (!thread) {
+                throw new Error(`Thread with ID ${threadId} does not exist.`);
+            }
+
+            const existingLike = await prisma.forumThreadLike.findUnique({
+                where: { threadId_usersId: { threadId, usersId } }
+            });
+
+            if (existingLike) {
+                // DELETE LIKE
+                await prisma.forumThreadLike.delete({
+                    where: { id: existingLike.id },
+                });
+
+                // FIXED: Use threadId instead of existingLike.id
+                await prisma.discussionThread.update({
+                    where: { id: threadId }, // CORRECTED
+                    data: { likesCount: { decrement: 1 } }
+                });
+
+                return { liked: false };
+            } else {
+                // CREATE LIKE
+                await prisma.forumThreadLike.create({
+                    data: { threadId, usersId },
+                });
+
+                await prisma.discussionThread.update({
+                    where: { id: threadId },
+                    data: { likesCount: { increment: 1 } }
+                });
+
+                return { liked: true };
+            }
+        }, {
+            timeout: 15000,
+            maxWait: 15000
         });
-
-        if (!thread) {
-            throw new Error(`Thread with ID ${threadId} does not exist.`);
-        }
-
-        const existingLike = await prisma.forumThreadLike.findUnique({
-            where: { threadId_usersId: { threadId, usersId } }
-        });
-
-        if (existingLike) {
-            // DELETE LIKE
-            await prisma.forumThreadLike.delete({
-                where: { id: existingLike.id },
-            });
-            
-            // FIXED: Use threadId instead of existingLike.id
-            await prisma.discussionThread.update({
-                where: { id: threadId }, // CORRECTED
-                data: { likesCount: { decrement: 1 } }
-            });
-            
-            return { liked: false };
-        } else {
-            // CREATE LIKE
-            await prisma.forumThreadLike.create({
-                data: { threadId, usersId },
-            });
-            
-            await prisma.discussionThread.update({
-                where: { id: threadId },
-                data: { likesCount: { increment: 1 } }
-            });
-            
-            return { liked: true };
-        }
-    }, {
-        timeout: 15000,
-        maxWait: 15000
-    });
-}
+    }
     likeThreadComment = async (commentId: string, usersId: string) => {
         return prismaClient.$transaction(async (prisma) => {
             const threadComment = await this.getThreadCommentById(commentId);
@@ -468,50 +484,6 @@ likeDiscussionThread = async (threadId: string, usersId: string) => {
         });
     };
 
-    async viewCommunityPost(postId: string,
-        usersId?: string,
-        ipAddress?: string,
-        userAgent?: string) {
-        return prismaClient.$transaction(async (prisma) => {
-            const existingView = await prisma.communityPostView.findFirst({
-                where: {
-                    OR: [
-                        { postId, usersId: usersId || undefined },
-                        { postId, ipAddress }
-                    ]
-                }
-            });
-
-            if (!existingView) {
-                await prisma.communityPostView.create({
-                    data: {
-                        postId,
-                        usersId: usersId,
-                        ipAddress,
-                        usersAgent: userAgent,
-                    },
-                });
-                await prisma.communityPost.update({
-                    where: { id: postId },
-                    data: {
-                        viewsCount: { increment: 1 },
-                        engagement: { increment: 0.5 }
-                    }
-                });
-                return prisma.communityPost.findUnique({
-                    where: {
-                        id: postId,
-                    },
-                    include: {
-                        author: this.userSelect,
-                        likes: true,
-                        views: true,
-                        comments: true,
-                    },
-                })
-            }
-        })
-    }
 
     async getThreadLikes(threadId: string) {
         const [likes, totalCount] = await prismaClient.$transaction([
@@ -526,7 +498,7 @@ likeDiscussionThread = async (threadId: string, usersId: string) => {
 
         return {
             likes,
-            totalCount,       
+            totalCount,
         }
     }
     async getDiscussionCommentShares(commentId: string) {
@@ -681,7 +653,7 @@ likeDiscussionThread = async (threadId: string, usersId: string) => {
 
 
     async createDiscussionThreadComment(userId: string, threadId: string, content: string) {
-      
+
         // Create reply
         return prismaClient.discussionComment.create({
             data: {
@@ -782,6 +754,83 @@ likeDiscussionThread = async (threadId: string, usersId: string) => {
             orderBy: {
                 createdAt: 'asc',
             }
+        });
+    }
+
+    async getTopContributors(threadId: string, limit = 5) {
+        return prismaClient.discussionComment.groupBy({
+            by: ['authorId'],
+            where: { threadId },
+            _count: { id: true },
+            orderBy: { _count: { id: 'desc' } },
+            take: limit,
+        });
+    }
+
+    async togglePinThread(threadId: string, usersId: string) {
+        const existingPin = await prismaClient.forumThreadPin.findUnique({
+            where: {
+                threadId_usersId: {
+                    threadId,
+                    usersId
+                }
+            }
+        });
+
+        if (existingPin) {
+            // Unpin
+            await prismaClient.forumThreadPin.delete({
+                where: {
+                    threadId_usersId: {
+                        threadId,
+                        usersId
+                    }
+                }
+            });
+            return { pinned: false, message: 'Thread unpinned successfully' };
+        } else {
+            // Pin
+            await prismaClient.forumThreadPin.create({
+                data: {
+                    threadId,
+                    usersId
+                }
+            });
+            return { pinned: true, message: 'Thread pinned successfully' };
+        }
+    }
+
+    //  Get all pinned threads for a user
+    async getPinnedThreads(usersId: string) {
+        return prismaClient.forumThreadPin.findMany({
+            where: { usersId },
+            include: {
+                thread: true
+            }
+        });
+    }
+
+
+    async getRelatedDiscussionThreads(threadId: string, limit = 5) {
+        const currentThread = await prismaClient.discussionThread.findUnique({
+            where: { id: threadId },
+            select: { tags: true },
+        });
+
+        if (!currentThread || currentThread.tags.length === 0) return [];
+
+        return prismaClient.discussionThread.findMany({
+            where: {
+                tags: {
+                    hasSome: currentThread.tags,
+                },
+                isDeleted: false,
+                NOT: { id: threadId },
+            },
+            take: limit,
+            orderBy: {
+                createdAt: 'desc',
+            },
         });
     }
 

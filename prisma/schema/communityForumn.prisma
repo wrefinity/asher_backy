@@ -325,7 +325,21 @@ model DiscussionThread {
   // Indexes
   @@index([forumId])
   @@index([authorId])
+  ForumThreadPin ForumThreadPin[]
 }
+
+model ForumThreadPin {
+  id        String   @id @default(cuid())
+  threadId  String
+  usersId   String
+  pinnedAt  DateTime @default(now())
+
+  thread    DiscussionThread @relation(fields: [threadId], references: [id])
+  users     users            @relation(fields: [usersId], references: [id])
+
+  @@unique([threadId, usersId]) // A user can pin a thread only once
+}
+
 
 model ForumThreadLike {
   id        String   @id @default(cuid())

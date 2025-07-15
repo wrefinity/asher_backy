@@ -21,7 +21,7 @@ class CommunityRoutes {
 
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize);
-        this.router.post('/', CommunityController.createCommunity);
+        this.router.post('/', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.createCommunity);
         this.router.get('/landlord', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.getLandlordCommunities);
         this.router.get('/', CommunityController.getFilteredCommunities);
         this.router.get('/owner/:communityId', CommunityController.getCommunityOwner);
@@ -38,6 +38,7 @@ class CommunityRoutes {
         // post session
         this.router.post('/post/:landlordId', upload.array('files'), uploadToCloudinary, communityPostControllers.createPost);
         this.router.get('/post/:communityId', communityPostControllers.getCommunityPost);
+        this.router.get('/post/recent/:communityId', communityPostControllers.getRecentPosts);
         this.router.get('/post/:communityId/:postId', communityPostControllers.getSingleCommunityPost);
         this.router.get('/post-mine/all', communityPostControllers.getCurrentUserPost);
         this.router.post('/poll-vote', communityPostControllers.voteOnPoll);

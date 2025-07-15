@@ -37,11 +37,9 @@ class CommunityService {
                 isDeleted: false,
             },
         });
-
         if (existing) {
             return existing
         }
-
         return prismaClient.community.create({
             data: {
                 ...data,
@@ -211,7 +209,6 @@ class CommunityService {
         })
     }
 
-
     joinCommunity = async (communityId: string, userId: string, code?: string) => {
         const community = await prismaClient.community.findUnique({ where: { id: communityId } });
         if (!community) {
@@ -230,7 +227,6 @@ class CommunityService {
                 throw new Error('Invalid or expired invitation code');
             }
         }
-
         return prismaClient.communityMember.create({
             data: {
                 community: {

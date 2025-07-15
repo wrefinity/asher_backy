@@ -18,6 +18,7 @@ class ForumRoutes {
     private initializeRoutes(): void {
         this.router.post('/', this.authenticateService.authorizeRole(userRoles.ADMIN), ForumController.createForum);  
         this.router.get('/all', ForumController.getFilteredForums);
+        this.router.get('/recent/:communityId', ForumController.getRecentForums);
         this.router.post('/:forumId/members', ForumController.addMembersToForum)
         this.router.get('/:forumId/members', ForumController.getForumMembers)
         this.router.delete('/:forumId/members', ForumController.removeForumMembers)
@@ -33,7 +34,11 @@ class ForumRoutes {
         this.router.get('/thread/:forumId', ForumThreadControllers.getForumThread);
         this.router.get('/thread/:forumId/:threadId', ForumThreadControllers.getSingleForumThread);
         this.router.get('/thread-mine/all', ForumThreadControllers.getCurrentUserThread);
+        this.router.get('/thread-contributors/:threadId', ForumThreadControllers.getTopContributors);
+        this.router.get('/thread-related/:threadId', ForumThreadControllers.getRelatedThreads);
         this.router.patch('/thread/:threadId', ForumThreadControllers.updateForumThread);
+        this.router.get('/thread-pinned/mine', ForumThreadControllers.getMyPinnedThreads);
+        this.router.patch('/thread/:threadId/pin-toggle', ForumThreadControllers.togglePin);
         this.router.delete('/thread/:threadId', ForumThreadControllers.deleteForumThread);
 
         //likes and views

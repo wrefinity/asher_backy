@@ -43,6 +43,26 @@ class ForumThreadController {
         }
     }
 
+    getTopContributors = async (req: Request, res: Response) => {
+        try {
+            const { threadId } = req.params;
+            const contributors = await ForumThreadServices.getTopContributors(threadId);
+            res.status(200).json(contributors);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    };
+
+    getRelatedThreads = async (req: Request, res: Response) => {
+        try {
+            const { threadId } = req.params;
+            const threads = await ForumThreadServices.getRelatedDiscussionThreads(threadId);
+            res.status(200).json(threads);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    };
+
     async getSingleForumThread(req: CustomRequest, res: Response) {
         try {
             const { forumId, threadId } = req.params
@@ -90,6 +110,28 @@ class ForumThreadController {
             errorService.handleError(error, res)
         }
 
+    }
+
+    async togglePin(req: CustomRequest, res: Response) {
+        try {
+            const { threadId } = req.params;
+            const usersId = req.user.id;
+
+            const result = await ForumThreadServices.togglePinThread(threadId, usersId);
+            return res.status(200).json(result);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getMyPinnedThreads(req: CustomRequest, res: Response) {
+        try {
+            const usersId = req.user.id;
+            const threads = await ForumThreadServices.getPinnedThreads(usersId);
+            return res.status(200).json(threads);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
     }
 
     async deleteForumThread(req: CustomRequest, res: Response) {
