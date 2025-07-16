@@ -6,30 +6,37 @@ enum TicketStatus {
   CLOSED
 }
 
-model landlordSupportTicket {
-  id                  String       @id @default(cuid())
-  landlordId          String
-  landlord            landlords    @relation(fields: [landlordId], references: [id])
-  supportTicketNumber String
-  subject             String
-  description         String
-  status              TicketStatus @default(OPEN)
-  attachment          String[]
-  assignedTo          String //(Landlord | Support)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+enum TicketType {
+  SUPPORT
+  SUGGESTION
 }
 
-model tenantSupportTicket {
-  id                  String       @id @default(cuid())
-  tenantId            String
-  tenant              tenants      @relation(fields: [tenantId], references: [id])
-  supportTicketNumber String
-  subject             String
-  description         String
-  status              TicketStatus @default(OPEN)
-  attachment          String[]
-  assignedTo          String //(Landlord | Support)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+enum TicketPriority {
+  HIGH
+  MEDIUM
+  LOW
+  PENDING
+}
+
+
+
+model SupportTicket {
+  id           String         @id @default(cuid())
+  raisedById   String         // Who submitted the ticket
+  assignedToId String?        // Optional: Assigned support user
+  type         TicketType     @default(SUPPORT)
+  subject      String
+  description  String         @db.Text
+  priority     TicketPriority @default(PENDING)
+  status       TicketStatus   @default(OPEN)
+  attachments  String[]       // File URLs
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  raisedBy     landlords          @relation("TicketRaisedBy", fields: [raisedById], references: [id])
+  assignedTo   users?         @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+
+  @@index([raisedById])
+  @@index([assignedToId])
 }
