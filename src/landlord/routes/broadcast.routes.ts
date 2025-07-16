@@ -39,6 +39,7 @@ class BroadcastRouter {
         this.router.post('/:broadcastId/send', broadcastController.sendBroadcast);
         this.router.post('/:broadcastId/send-scheduled', broadcastController.sendScheduledBroadcast);
         this.router.delete('/:broadcastId/cancel', broadcastController.cancelScheduledBroadcast);
+        this.router.post('/resend', broadcastController.resendBroadcast);
         
         this.router.get('/category/:categoryId', broadcastController.getBroadcastsByCategory);
         this.router.get('/:broadcastId', broadcastController.getBroadcastById);
