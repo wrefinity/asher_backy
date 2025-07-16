@@ -30,6 +30,7 @@ class EmailRouter {
         this.router.get('/user/unread', EmailController.getUserUnreadEmails);
         this.router.patch('/read/:emailId/', EmailController.markEmailAsRead);
         this.router.patch('/:emailId/send', EmailController.sendDraftEmail);
+        // email recovery
         this.router.patch('/recover/:emailId', EmailController.recoverUserEmail);
 
     }
