@@ -53,11 +53,16 @@ class BroadcastService {
         });
     }
 
-    async getBroadcastCategories(landlordId: string) {
+    async getBroadcastCategories(landlordId: string, query?: string) {
+        const whereClause = query ? {
+            OR: [
+                { name: { contains: query, mode: 'insensitive' as const } },
+                { location: { contains: query, mode: 'insensitive' as const } }
+            ]
+        } : {};
+
         return await prismaClient.broadcastCategory.findMany({
-            where: {
-                landlordId: landlordId
-            },
+            where: { landlordId, ...whereClause },
             include: {
                 members: {
                     include: {
@@ -167,11 +172,16 @@ class BroadcastService {
 
     // BROADCAST METHODS
 
-    async getBroadcastsByLandlord(landlordId: string) {
-        console.log('getBroadcastsByLandlord');
-        console.log(landlordId);
+    async getBroadcastsByLandlord(landlordId: string, query?: string) {
+        const whereClause = query ? {
+            OR: [
+                { subject: { contains: query, mode: 'insensitive' as const } },
+                { message: { contains: query, mode: 'insensitive' as const } }
+            ]
+        } : {};
+
         return await prismaClient.broadcast.findMany({
-            where: { landlordId },
+            where: { landlordId, ...whereClause },
             include: {
                 category: {
                     include: {
@@ -307,6 +317,72 @@ class BroadcastService {
             isDraft,
             scheduledAt
         }, landlordId, userId);
+    }
+
+    async updateBroadcast(broadcastId: string, data: {
+        subject?: string;
+        message?: string;
+        type?: BroadcastType;
+        categoryId?: string;
+        extraMemberIds?: string[];
+    }, landlordId: string) {
+        const broadcast = await this.getBroadcastById(broadcastId, landlordId);
+        if (!broadcast) {
+            throw new Error('Broadcast not found');
+        }
+
+        if (broadcast.isDraft) {
+            throw new Error('This broadcast is a draft');
+        }
+
+        if (data.categoryId) {
+            const category = await this.getBroadcastCategoryById(data.categoryId, landlordId);
+            if (!category) {
+                throw new Error('Category not found or access denied');
+            }
+
+            const categoryMembers = category.members.map(member => member.userId);
+            let extraMembersIds: string[] = [];
+
+            if (data.extraMemberIds && data.extraMemberIds.length > 0) {
+                const extraMembers = await prismaClient.users.findMany({
+                    where: { id: { in: data.extraMemberIds } },
+                    select: { id: true }
+                });
+                extraMembersIds = extraMembers.map(user => user.id);
+            }
+
+            const allRecipients = [...new Set([...categoryMembers, ...extraMembersIds])];
+
+            await this.addMembersToCategory(data.categoryId, allRecipients, landlordId);
+        }
+
+        if (data.extraMemberIds) {
+            const extraMembers = await prismaClient.users.findMany({
+                where: { id: { in: data.extraMemberIds } },
+                select: { id: true }
+            });
+            const extraMembersIds = extraMembers.map(user => user.id);
+            await this.addMembersToCategory(broadcast.categoryId, extraMembersIds, landlordId);
+        }
+
+        if (data.subject) {
+            broadcast.subject = data.subject;
+        }
+
+        if (data.message) {
+            broadcast.message = data.message;
+        }
+
+        if (data.type) {
+            broadcast.type = data.type;
+        }
+
+
+        return await prismaClient.broadcast.update({
+            where: { id: broadcastId },
+            data: { ...data, updatedAt: new Date() }
+        });
     }
 
     async sendDraftBroadcast(broadcastId: string, landlordId: string, userId: string) {
@@ -455,6 +531,19 @@ class BroadcastService {
         return await prismaClient.broadcast.delete({
             where: { id: broadcastId }
         });
+    }
+
+    async resendBroadcast(broadcastId: string, landlordId: string, userId: string) {
+        const broadcast = await this.getBroadcastById(broadcastId, landlordId);
+        if (!broadcast) {
+            throw new Error('Broadcast not found');
+        }
+
+        if (broadcast.isDraft) {
+            throw new Error('This broadcast is a draft');
+        }
+
+        return await this.sendBroadcast(broadcastId, landlordId, userId);
     }
 
     async sendBroadcast(broadcastId: string, landlordId: string, userId: string) {
