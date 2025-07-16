@@ -34,9 +34,10 @@ class BroadcastController {
     getBroadcastCategories = async (req: CustomRequest, res: Response) => {
         const { landlords } = req.user;
         const landlordId = landlords?.id;
+        const { query } = req.query;
 
         try {
-            const categories = await broadcastService.getBroadcastCategories(landlordId);
+            const categories = await broadcastService.getBroadcastCategories(landlordId, query as string);
             return res.status(200).json(categories);
         } catch (error) {
             errorService.handleError(error, res);
@@ -344,9 +345,10 @@ class BroadcastController {
     getBroadcastsByLandlord = async (req: CustomRequest, res: Response) => {
         const { landlords } = req.user;
         const landlordId = landlords?.id;
+        const { query } = req.query;
 
         try {
-            const broadcasts = await broadcastService.getBroadcastsByLandlord(landlordId);
+            const broadcasts = await broadcastService.getBroadcastsByLandlord(landlordId, query as string);
             return res.status(200).json(broadcasts);
         } catch (error) {
             errorService.handleError(error, res);
@@ -387,6 +389,26 @@ class BroadcastController {
         try {
             const result = await broadcastService.resendBroadcast(broadcastId, landlordId, userId);
             return res.status(200).json(result);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    updateBroadcast = async (req: CustomRequest, res: Response) => {
+        const { landlords } = req.user;
+        const landlordId = landlords?.id;
+        const { broadcastId } = req.params;
+        const { subject, message, type, categoryId, extraMemberIds } = req.body;
+
+        try {
+            const broadcast = await broadcastService.updateBroadcast(broadcastId, {
+                subject,
+                message,
+                type,
+                categoryId,
+                extraMemberIds
+            }, landlordId);
+            return res.status(200).json(broadcast);
         } catch (error) {
             errorService.handleError(error, res);
         }
