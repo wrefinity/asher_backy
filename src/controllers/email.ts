@@ -430,6 +430,22 @@ class EmailController {
             return res.status(500).json({ message: "Couldn't send email" })
         }
     }
+
+    async recoverUserEmail(req: CustomRequest, res: Response) {
+        try {
+            const { emailId } = req.params;
+            const userId = req.user.id;
+
+            const updatedState = await EmailService.recoverEmail(emailId, userId);
+
+            res.status(200).json({
+                message: 'Email recovered successfully',
+                state: updatedState
+            });
+        } catch (error) {
+            res.status(400).json({ message: error.message });
+        }
+    }
 }
 
 export default new EmailController()
