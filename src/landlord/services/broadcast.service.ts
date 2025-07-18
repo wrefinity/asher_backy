@@ -220,7 +220,12 @@ class BroadcastService {
             include: {
                 category: {
                     include: {
-                        property: true
+                        property: true,
+                        _count: {
+                            select: {
+                                members: true
+                            }
+                        }
                     }
                 }
             },
