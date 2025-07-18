@@ -17,6 +17,7 @@ class BroadcastService {
                     id: true,
                     firstName: true,
                     profileUrl: true,
+                    lastName: true,
                 },
             },
         },
