@@ -14,6 +14,7 @@ import TaskRouter from './task.routes';
 import InventoryRouter from './inventory.routes';
 import BillRouter from './bill.routes';
 import BroadcastRouter from './broadcast.routes';
+import SupportRouter from './support.routes';
 
 import FinanceRouter from './finance.routes';
 import LandlordTransactionRouter from './landlord-transaction.routes';
@@ -97,6 +98,7 @@ class LandlordRouter {
         this.router.use("/inventory", InventoryRouter);
         // bills routes routes
         this.router.use("/bills", BillRouter);
+        this.router.use("/supports", SupportRouter);
 
         this.router.use("/transactions", LandlordTransactionRouter);
         this.router.use("/finance", FinanceRouter);

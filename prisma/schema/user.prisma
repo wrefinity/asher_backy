@@ -92,6 +92,7 @@ model users {
     Forum Forum[] @relation("ForumOwner")
 
     ForumThreadPin ForumThreadPin[]
+    SupportTicketAssigned SupportTicket[] @relation("TicketAssignedTo")
 }
 
 model UserLikedProperty {

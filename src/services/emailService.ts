@@ -162,31 +162,36 @@ class EmailService {
         });
         if (!user) throw new Error('User not found');
 
-        // Base email conditions
         const baseWhere: any = {
-            receiverEmail: user.email,
-            isDraft: false,
-            isSent: true,
-            isReply: false,
-            states: {
-                none: {
-                    userId: userId,
-                    OR: [
-                        { isArchived: true },
-                        { isSpam: true },
-                        { isDeleted: true }
-                    ]
+            AND: [
+                {
+                    receiverEmail: user.email,
+                    isDraft: false,
+                    isSent: true,
+                    isReply: false,
+                    states: {
+                        none: {
+                            userId: userId,
+                            OR: [
+                                { isArchived: true },
+                                { isSpam: true },
+                                { isDeleted: true }
+                            ]
+                        }
+                    }
                 }
-            }
+            ]
         };
 
         // Add search filters
         if (search.trim() !== '') {
-            baseWhere.OR = [
-                { subject: { contains: search, mode: 'insensitive' } },
-                { body: { contains: search, mode: 'insensitive' } },
-                { senderEmail: { contains: search, mode: 'insensitive' } },
-            ];
+            baseWhere.AND.push({
+                OR: [
+                    { subject: { contains: search, mode: 'insensitive' } },
+                    { body: { contains: search, mode: 'insensitive' } },
+                    { senderEmail: { contains: search, mode: 'insensitive' } }
+                ]
+            });
         }
 
         // Get total matching emails
@@ -425,93 +430,33 @@ class EmailService {
             },
         };
     }
-    // getUserEmails = async (
-    //     email: string,
-    //     options: {
-    //         sent?: boolean;
-    //         received?: boolean;
-    //         draft?: boolean;
-    //         unread?: boolean;
-    //         threads?: boolean;
-    //     },
-    //     pagination: {
-    //         page: number;
-    //         limit: number;
-    //     } = { page: 1, limit: 10 },
-    //     search: string = '',
-    // ) => {
-    //     const where: any = { isReply: false }; // Default to not showing replies
-    //     const skip = (pagination.page - 1) * pagination.limit;
+    async recoverEmail(emailId: string, userId: string) {
+        const email = await prismaClient.userEmailState.findUnique({
+            where: {
+                emailId_userId: {
+                    emailId,
+                    userId
+                }
+            }
+        });
 
-    //     if (options.sent) where.senderEmail = email;
-    //     if (options.received) where.receiverEmail = email;
-    //     if (options.draft) where.isDraft = true;
-    //     // For threads, only show emails that are thread starters
-    //     if (options.threads) {
-    //         where.OR = [
-    //             { threadId: null }, // Original emails
-    //             { threadId: { equals: prismaClient.email.fields.id } } // Thread starters
-    //         ];
-    //     }
+        if (!email) throw new Error('Email state not found for user');
 
-    //     if (search) {
-    //         where.OR = [
-    //             { subject: { contains: search, mode: 'insensitive' } },
-    //             { body: { contains: search, mode: 'insensitive' } },
-    //             { senderEmail: { contains: search, mode: 'insensitive' } },
-    //             { receiverEmail: { contains: search, mode: 'insensitive' } }
-    //         ];
-    //     }
-    //     if (options.unread) {
-    //         if (options.sent) {
-    //             where.isReadBySender = false;
-    //         } else if (options.received) {
-    //             where.isReadByReceiver = false;
-    //         } else {
-    //             where.OR = [
-    //                 { senderEmail: email, isReadBySender: false },
-    //                 { receiverEmail: email, isReadByReceiver: false }
-    //             ];
-    //         }
-    //     }
+        return prismaClient.userEmailState.update({
+            where: {
+                emailId_userId: {
+                    emailId,
+                    userId
+                }
+            },
+            data: {
+                isDeleted: false,
+                isArchived: false,
+                isSpam: false
+            }
+        });
+    }
 
-    //     try {
-    //         const [emails, total] = await Promise.all([
-    //             prismaClient.email.findMany({
-    //                 where,
-    //                 skip,
-    //                 take: pagination.limit,
-    //                 orderBy: { createdAt: 'desc' },
-    //                 include: {
-    //                     sender: userSelect,
-    //                     receiver: userSelect,
-    //                     replies: {
-    //                         include: {
-    //                             sender: userSelect,
-    //                             receiver: userSelect
-    //                         },
-    //                         orderBy: { createdAt: 'asc' }
-    //                     },
-    //                     _count: {
-    //                         select: { replies: true }
-    //                     }
-    //                 }
-    //             }),
-    //             prismaClient.email.count({ where })
-    //         ]);
-
-    //         return {
-    //             emails,
-    //             total,
-    //             page: pagination.page,
-    //             limit: pagination.limit,
-    //             totalPages: Math.ceil(total / pagination.limit)
-    //         };
-    //     } catch (error) {
-    //         loggers.error(`Error getting emails: ${error}`);
-    //         throw new Error('Failed to get emails');
-    //     }
-    // }
 
     /**
      * Reply to an existing email (creates a threaded reply)
