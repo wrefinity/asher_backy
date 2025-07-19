@@ -11,7 +11,6 @@ class CommunityService {
             profileUrl: true,
         }
     }
-
     private userSelect = {
         select: {
             id: true,
@@ -26,9 +25,6 @@ class CommunityService {
         },
     }
 
-    private communitySelect = {
-        users: this.userSelect
-    }
     async createCommunity(userId: string, data: any) {
         const existing = await prismaClient.community.findFirst({
             where: {
