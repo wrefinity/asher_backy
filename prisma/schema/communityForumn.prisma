@@ -7,7 +7,7 @@ model Community {
   id          String                @id @default(cuid())
   name        String                @unique
   slug        String?               @unique
-  ownerId     String                @unique
+  ownerId     String                
   description String
   visibility  CommunityVisibility   @default(PUBLIC)
   avatarUrl   String?

@@ -184,6 +184,7 @@ model tenants {
   @@unique([userId])
   inspection inspection[]
   TenantLeaseBreach TenantLeaseBreach[]
+  SupportTicket SupportTicket[] @relation("TicketTenantRaisedBy")
 }
 
 // user information definition 

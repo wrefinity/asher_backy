@@ -26,7 +26,6 @@ class CommunityService {
         },
     }
 
-
     private communitySelect = {
         users: this.userSelect
     }
