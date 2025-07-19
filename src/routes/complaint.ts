@@ -2,7 +2,7 @@ import { Router } from "express";
 import ComplaintController from '../controllers/complaint.controller';
 import { Authorize } from "../middlewares/authorize";
 
-class ChatRoutes {
+class ComplaintRoutes {
     public router: Router;
     protected authenticateService: Authorize
 
@@ -22,4 +22,4 @@ class ChatRoutes {
    
 }
 
-export default new ChatRoutes().router;
+export default new ComplaintRoutes().router;
