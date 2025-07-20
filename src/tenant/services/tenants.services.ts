@@ -23,7 +23,7 @@ class TenantService {
             property: true,
             history: true,
             landlord: true,
-            tenantSupportTicket: true,
+            SupportTicket: true,
             // PropertyTransactions: true,
         }
     }
@@ -36,7 +36,7 @@ class TenantService {
                     include: {
                         profile: true,
                         nextOfKin: true,
-                        applicantion: {
+                        application: {
                             include: {
                                 applicationQuestions: true,
                                 employmentInfo: true,
@@ -100,7 +100,6 @@ class TenantService {
     }
 
     getAllTenants = async (landlordId: string) => {
-
         return prismaClient.tenants.findMany({
             where: {
                 landlordId: landlordId,
@@ -112,21 +111,6 @@ class TenantService {
         });
     }
 
-    // getTenantByUserIdAndLandlordId = async (userId: string, landlordId: string) => {
-    //     // Query the tenant based on the userId
-    //     const tenant = await prismaClient.tenants.findFirst({
-    //         where: {
-    //             userId: userId, // Filtering by userId
-    //             property:{
-    //                 landlordId,
-    //             }
-    //         },
-    //         include: {
-    //             property: true, // Include related property data
-    //         },
-    //     });
-    //     return tenant
-    // }
     getTenantByUserIdAndLandlordId = async (userId?: string, landlordId?: string, tenantId?: string) => {
         const tenant = await prismaClient.tenants.findFirst({
             where: {
@@ -191,27 +175,6 @@ class TenantService {
 
         return tenant;
     };
-
-    // getApplicationRequests = async (landlordId: string) => {
-
-    //     return await prismaClient.application.findMany({
-    //       where: {
-    //         userId: userId,
-    //         status,
-    //         isDeleted: false,
-    //       },
-    //       include: {
-    //         user: true,
-    //         residentialInfo: true,
-    //         emergencyInfo: true,
-    //         employmentInfo: true,
-    //         documents: true,
-    //         properties: true,
-    //         personalDetails: true,
-    //         guarantorInformation: true,
-    //       },
-    //     });
-    //   }
 }
 
 export default new TenantService();
