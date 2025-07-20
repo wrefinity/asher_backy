@@ -6,8 +6,6 @@ import { SupportService } from "../../services/support.services";
 class SupportController {
     createTicket = async (req: CustomRequest, res: Response) => {
         try {
-            const landlordId = req.user.landlords.id;
-
             const { error, value } = CreateSupportTicketSchema.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
@@ -31,13 +29,25 @@ class SupportController {
                 ...cloudinaryDocumentUrls,
             ];
 
-            // Assign merged attachments
             data.attachments = mergedAttachments;
 
-            const ticket = await SupportService.createTicket(landlordId, data);
-            res.status(201).json(ticket);
+            // Detect if user is landlord or tenant
+            const isLandlord = req.user?.landlords?.id;
+            const isTenant = req.user?.tenant?.id;
+
+            if (!isLandlord && !isTenant) {
+                return res.status(403).json({ message: "Only landlords or tenants can raise support tickets." });
+            }
+
+            const ticket = await SupportService.createTicket({
+                landlordId: isLandlord || null,
+                tenantId: isTenant || null,
+                payload: data,
+            });
+
+            return res.status(201).json(ticket);
         } catch (error: any) {
-            res.status(400).json({ error: error.message });
+            res.status(500).json({ error: error.message });
         }
     };
 
@@ -60,6 +70,25 @@ class SupportController {
             errorService.handleError(error, res);
         }
     };
+    getLandlordTenantTickets = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user.landlords.id;
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 10;
+            const search = req.query.search?.toString() || "";
+
+            const result = await SupportService.getTenantSupportTicketsForLandlord(
+                landlordId,
+                page,
+                limit,
+                search
+            );
+
+            res.json(result);
+        } catch (error: any) {
+            errorService.handleError(error, res);
+        }
+    }
 
     getAllTickets = async (req: CustomRequest, res: Response) => {
         try {

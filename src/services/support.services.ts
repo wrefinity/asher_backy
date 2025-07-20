@@ -2,10 +2,15 @@ import { prismaClient } from "..";
 import { TicketStatus } from "@prisma/client";
 export class SupportService {
   // Create ticket — expect landlord ID now
-  static async createTicket(landlordId: string, payload: any) {
+  static async createTicket({ landlordId, tenantId, payload }: {
+    landlordId?: string | null,
+    tenantId?: string | null,
+    payload: any
+  }) {
     return prismaClient.supportTicket.create({
       data: {
-        raisedById: landlordId,
+        raisedById: landlordId ?? undefined,
+        raisedByTenantId: tenantId ?? undefined,
         subject: payload.subject,
         type: payload.type,
         description: payload.description,
@@ -14,6 +19,73 @@ export class SupportService {
       },
     });
   }
+
+ static async getTenantSupportTicketsForLandlord  (
+  landlordId: string,
+  page: number,
+  limit: number,
+  search: string
+) {
+  const skip = (page - 1) * limit;
+
+  const [tickets, totalCount] = await Promise.all([
+    prismaClient.supportTicket.findMany({
+      where: {
+        raisedByTenant: {
+          landlordId: landlordId,
+          user: {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' } },
+              { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+            ],
+          },
+        },
+      },
+      include: {
+        raisedByTenant: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                profile: true,
+              },
+            },
+            property: true,
+          },
+        },
+        assignedTo: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip,
+      take: limit,
+    }),
+
+    prismaClient.supportTicket.count({
+      where: {
+        raisedByTenant: {
+          landlordId: landlordId,
+          user: {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' } },
+              { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+            ],
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    data: tickets,
+    currentPage: page,
+    totalPages: Math.ceil(totalCount / limit),
+    totalItems: totalCount,
+  };
+};
+
 
   // Fetch all tickets by a landlord
   static async getLandlordTickets(

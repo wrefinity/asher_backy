@@ -18,6 +18,7 @@ class SupportRouter {
         this.router.post("/", upload.array("files"), uploadToCloudinary, SupportController.createTicket);
         this.router.post("/assign/:ticketId", SupportController.assignTicket);
         this.router.get("/user-tickets", SupportController.getLandlordTickets);
+        this.router.get("/tenants-tickets", SupportController.getLandlordTenantTickets);
         this.router.get("/:ticketId", SupportController.getTicket);
         this.router.get("/all-tickets", SupportController.getAllTickets);
         this.router.patch("/:ticketId", upload.array("files"), uploadToCloudinary, SupportController.updateTicket);
