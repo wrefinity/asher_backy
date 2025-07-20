@@ -93,6 +93,8 @@ model users {
 
     ForumThreadPin ForumThreadPin[]
     SupportTicketAssigned SupportTicket[] @relation("TicketAssignedTo")
+
+    ComplaintMessage ComplaintMessage[]
 }
 
 model UserLikedProperty {

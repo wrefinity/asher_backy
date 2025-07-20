@@ -17,6 +17,9 @@ class ComplaintRoutes {
         this.router.post('/',  this.authenticateService.authorize, ComplaintController.createComplaint.bind(ComplaintController));
         this.router.get('/',  this.authenticateService.authorize, ComplaintController.getAllComplaints.bind(ComplaintController),);
         this.router.get('/:id',  this.authenticateService.authorize, ComplaintController.getComplaintById.bind(ComplaintController),);
+        this.router.patch('/:id',  this.authenticateService.authorize, ComplaintController.updateComplaint.bind(ComplaintController),);
+        this.router.get('/:complaintId/messages',  this.authenticateService.authorize, ComplaintController.getMessages.bind(ComplaintController),);
+        this.router.post('/:complaintId/messages',  this.authenticateService.authorize, ComplaintController.postMessage.bind(ComplaintController),);
     }
 
    

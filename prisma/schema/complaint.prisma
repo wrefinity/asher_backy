@@ -12,11 +12,24 @@ model Complaint {
     propertyId  String?
     priority    ComplaintPriority          @default(LOW)
     status      ComplaintStatus            @default(IN_PROGRESS)
+
+    ComplaintMessage ComplaintMessage[]
 }
 
 enum ComplaintCategory {
     MAINTENANCE
     NOISY
+}
+
+
+model ComplaintMessage {
+  id           String      @id @default(cuid())
+  complaint    Complaint   @relation(fields: [complaintId], references: [id])
+  complaintId  String
+  sender       users        @relation(fields: [senderId], references: [id])
+  senderId     String
+  message      String
+  createdAt    DateTime    @default(now())
 }
 
 enum ComplaintPriority {
@@ -28,4 +41,5 @@ enum ComplaintPriority {
 enum ComplaintStatus {
     IN_PROGRESS
     RESOLVED
+    URGENT
 }

@@ -14,6 +14,7 @@ class ComplaintRoute {
     }
     private initializeRoutes(): void {
         this.router.get('/all', ComplainControls.getAllComplaints);
+        this.router.get('/statistics', ComplainControls.getComplaintStatistics);
         this.router.patch('/complain/:id', ComplainControls.updateComplaint);
     }
 

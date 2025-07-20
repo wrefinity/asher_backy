@@ -1,4 +1,5 @@
 
+import { ComplaintCategory, ComplaintPriority, ComplaintStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { IComplaintService, IComplaint } from "../validations/interfaces/complaint.interface";
 
@@ -37,11 +38,96 @@ class ComplaintServices implements IComplaintService {
                 property: {
                     landlordId
                 },
-                createdById:tenantUserId
+                createdById: tenantUserId
             },
             include: { createdBy: true, property: true },
         });
     };
+
+    // Get stats for landlord (group by status/category/priority)
+    async getComplaintStats(landlordId: string) {
+        const complaints = await prismaClient.complaint.findMany({
+            where: {
+                property: {
+                    landlordId,
+                },
+                isDeleted: false,
+            },
+        });
+
+        const totalComplaints = complaints.length;
+
+        const statusCount = Object.values(ComplaintStatus).reduce((acc, status) => {
+            acc[status] = complaints.filter(c => c.status === status).length;
+            return acc;
+        }, {} as Record<ComplaintStatus, number>);
+
+        const categoryCount = Object.values(ComplaintCategory).reduce((acc, category) => {
+            acc[category] = complaints.filter(c => c.category === category).length;
+            return acc;
+        }, {} as Record<ComplaintCategory, number>);
+
+        const priorityCount = Object.values(ComplaintPriority).reduce((acc, priority) => {
+            acc[priority] = complaints.filter(c => c.priority === priority).length;
+            return acc;
+        }, {} as Record<ComplaintPriority, number>);
+
+        return {
+            totalComplaints,
+            statusCount,
+            categoryCount,
+            priorityCount,
+        };
+    }
+
+    // Paginated complaints for current landlord
+    async getLandlordComplaints(
+        landlordId: string,
+        page: number = 1,
+        limit: number = 10,
+        filters?: {
+            status?: ComplaintStatus;
+            category?: ComplaintCategory;
+            priority?: ComplaintPriority;
+        }
+    ) {
+        const skip = (page - 1) * limit;
+
+        const whereClause = {
+            isDeleted: false,
+            property: {
+                landlordId,
+            },
+            ...(filters?.status && { status: filters.status }),
+            ...(filters?.category && { category: filters.category }),
+            ...(filters?.priority && { priority: filters.priority }),
+        };
+
+        const [complaints, total] = await Promise.all([
+            prismaClient.complaint.findMany({
+                where: whereClause,
+                include: {
+                    property: true,
+                    createdBy: true,
+                },
+                skip,
+                take: limit,
+                orderBy: {
+                    createdAt: 'desc',
+                },
+            }),
+            prismaClient.complaint.count({
+                where: whereClause,
+            }),
+        ]);
+
+        return {
+            complaints,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+        };
+    }
 
     getAllLandlordComplaints = async (landlordId: string): Promise<IComplaint[]> => {
         try {
@@ -102,6 +188,31 @@ class ComplaintServices implements IComplaintService {
             throw new Error(`Failed to delete complaint: ${error.message}`);
         }
     };
+    // Get all messages for a complaint
+    getMessages = async (complaintId: string) => {
+        return prismaClient.complaintMessage.findMany({
+            where: { complaintId },
+            include: {
+                sender: {
+                    select: { id: true, email: true, role: true, profile: true },
+                },
+            },
+            orderBy: {
+                createdAt: 'asc',
+            },
+        });
+    }
+
+    // Post a new message in a complaint chat
+    postMessage = async (complaintId: string, senderId: string, message: string) => {
+        return prismaClient.complaintMessage.create({
+            data: {
+                complaintId,
+                senderId,
+                message,
+            },
+        });
+    }
 }
 
 export default new ComplaintServices();
