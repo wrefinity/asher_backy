@@ -31,56 +31,89 @@ class PropertyController {
         const landlordId = req.user?.landlords?.id;
         try {
             if (!landlordId) {
-                return res.status(403).json({ error: 'kindly login' });
+                return res.status(403).json({ error: 'Kindly login' });
             }
+
             const { error, value } = IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
             if (error) {
                 return res.status(400).json({ error: error.details });
             }
-            const state = await stateServices.getStateByName(value?.state)
 
-
-            const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
-                landlordId,
-                value?.name,
-                state?.id,
-                value.city
-            );
-
-            if (existance) {
-                return res.status(400).json({ error: 'property exist for the state and city' });
+            const state = await stateServices.getStateByName(value?.state);
+            if (!state) {
+                return res.status(400).json({ error: 'State not found' });
             }
-            const {
-                uploadedFiles,
-                specificationType,
-                propertySubType,
-                otherTypeSpecific,
-                count,
-                commercial,
-                shortlet,
-                residential, ...data
-            } = value
 
-            delete data['documentName']
-            delete data['docType']
-            delete data['idType']
-            delete data['uploadedFiles']
+            const count = value.count || 1;
+            const results = {
+                created: [] as any[],
+                failed: [] as { name: string, error: string }[]
+            };
 
-            const specification: IPropertySpecificationDTO = {
-                propertySubType: propertySubType,
-                specificationType: specificationType,
-                otherTypeSpecific,
-                commercial,
-                shortlet,
-                residential
+            for (let i = 1; i <= count; i++) {
+                try {
+                    // Create numbered property name
+                    const numberedName = `${value.name} ${i.toString().padStart(2, '0')}`;
+
+                    // Check if this specific numbered property already exists
+                    const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
+                        landlordId,
+                        numberedName,
+                        state.id,
+                        value.city
+                    );
+
+                    if (existance) {
+                        results.failed.push({
+                            name: numberedName,
+                            error: 'Property already exists for this state and city'
+                        });
+                        continue;
+                    }
+
+                    const {
+                        uploadedFiles,
+                        specificationType,
+                        propertySubType,
+                        otherTypeSpecific,
+                        count: _, // Remove count from the rest of the data
+                        commercial,
+                        shortlet,
+                        residential,
+                        ...data
+                    } = value;
+
+                    const specification: IPropertySpecificationDTO = {
+                        propertySubType: propertySubType,
+                        specificationType: specificationType,
+                        otherTypeSpecific,
+                        commercial,
+                        shortlet,
+                        residential
+                    };
+
+                    const property = await PropertyServices.createProperties(
+                        { ...data, name: numberedName, stateId: state.id, landlordId },
+                        specification,
+                        uploadedFiles,
+                        req.user?.id
+                    );
+
+                    results.created.push(property);
+                } catch (error) {
+                    const numberedName = `${value.name} ${i.toString().padStart(2, '0')}`;
+                    results.failed.push({
+                        name: numberedName,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                }
             }
-            // const lateFee = rentalFee * 0.01;
-            const property = await PropertyServices.createProperties({ ...data, stateId: state?.id, landlordId }, specification, uploadedFiles, req.user?.id)
-            return res.status(201).json({ property })
+
+            return res.status(results.created.length > 0 ? 201 : 400).json(results);
         } catch (error) {
-            ErrorService.handleError(error, res)
+            ErrorService.handleError(error, res);
         }
-    }
+    };
 
     createRoom = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
@@ -413,7 +446,7 @@ class PropertyController {
             // get listing
             // const activePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId);
             const activePropsListing = await PropertyServices.getPropertyListingDetails(landlordId);
-         
+
             // Return the ative and inactive property listing
             return res.status(200).json({ activePropsListing });
 
@@ -434,7 +467,7 @@ class PropertyController {
                 return res.status(400).json({ message: "Landlord not found" });
             }
             // get listing
-           // const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false, AvailabilityStatus.OCCUPIED);
+            // const inActivePropsListing = await PropertyServices.getActiveOrInactivePropsListing(landlordId, false, AvailabilityStatus.OCCUPIED);
             const inActivePropsListing = await PropertyServices.getInactiveListings(landlordId);
 
             // Return the ative and inactive property listing

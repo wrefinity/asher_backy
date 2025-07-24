@@ -726,6 +726,9 @@ export const commercialPropertySchema = Joi.object({
 
 export const IBasePropertyDTOSchema = Joi.object({
 
+  count: Joi.number().integer().min(1).max(100).default(1)
+    .description('Number of properties to create (will append numbers to name)'),
+  
   // media files attachement for middlewares
   documentName: Joi.array().items(Joi.string()).optional(),
   docType: Joi.array().items(Joi.string()).optional(),
