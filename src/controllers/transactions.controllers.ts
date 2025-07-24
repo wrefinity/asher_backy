@@ -4,7 +4,7 @@ import errorService from "../services/error.service";
 import transactionServices from "../services/transaction.services";
 import walletService from "../services/wallet.service";
 import { CustomRequest } from "../utils/types";
-import transactionScheam from "../validations/schemas/transaction.scheam";
+import transactionScheam, { TransactionQuerySchema } from "../validations/schemas/transaction.schema";
 import { getCurrentCountryCurrency } from "../utils/helpers";
 import PropertyServices from "../services/propertyServices";
 
@@ -56,89 +56,30 @@ class TransactionController {
         }
     }
     getTransaction = async (req: CustomRequest, res: Response) => {
-        const userId = String(req.user.id);
+
+        // Get userId from authenticated user or params
+        const userId =  req.params.userId || req.user?.id
 
         try {
-   
-            // if(value.gateWayType == GateWayType.STRIPE){
-            const transactions = await transactionServices.getTransactionsByUser(userId)
-            // }
-            return res.status(201).json({ transactions })
+
+            // Validate query parameters (reuse the same schema from earlier)
+            const { error, value } = TransactionQuerySchema.validate(req.query);
+            if (error) throw new Error(`Invalid query parameters: ${error.message}`);
+            const result = await transactionServices.getTransactionsByUser(
+                userId,
+                value
+            );
+
+            return res.status(200).json({
+                success: true,
+                data: result.data,
+                pagination: result.pagination
+            });
 
         } catch (error) {
             errorService.handleError(error, res)
         }
     }
-
-    // async verifyPayment(req: CustomRequest, res: Response) {
-    //     const { referenceId } = req.params
-    //     if (!referenceId) return res.status(404).json({ message: 'No refrenceId provided' })
-    //     const userId = String(req.user.id)
-    //     try {
-    //         const verificationResult = await paystackServices.verifyPayment(referenceId);
-    //         if (verificationResult.status) {
-    //             await transactionServices.updateReferneceTransaction(referenceId, userId)
-    //             return res.status(200).json({
-    //                 message: "Payment successful",
-    //                 transaction: verificationResult.data,
-    //             });
-    //         } else {
-    //             return res.status(400).json({
-    //                 message: "Payment Failed",
-    //                 transaction: verificationResult.data,
-    //             });
-    //         }
-    //     } catch (error) {
-    //         errorService.handleError(error, res)
-    //     }
-    // }
-
-    // async verifyFlutterWave(req: CustomRequest, res: Response) {
-    //     const { referenceId } = req.params
-    //     if (!referenceId) return res.status(404).json({ message: 'No refrenceId provided' })
-    //     // const userId = String(req.user.id)
-    //     try {
-    //         const verificationResult = await flutterWaveService.verifyPayment(referenceId);
-
-    //         if (verificationResult.data.status === 'successful') {
-    //             await flutterWaveService.handleSuccessfulPayment(referenceId)
-    //             return res.status(200).json({
-    //                 message: "Payment successful",
-    //                 transaction: verificationResult.data,
-    //             });
-    //         } else {
-    //             return res.status(400).json({
-    //                 message: "Payment Failed",
-    //                 transaction: verificationResult.data,
-    //             });
-    //         }
-    //     } catch (error) {
-    //         errorService.handleError(error, res)
-    //     }
-    // }
-
-    // async verifyStripe(req: CustomRequest, res: Response) {
-    //     const { referenceId } = req.params
-    //     if (!referenceId) return res.status(404).json({ message: 'No refrenceId provided' })
-    //     // const userId = String(req.user.id)
-    //     try {
-    //         const verificationResult = await stripeService.verifyPaymentIntent(referenceId);
-    //         if (verificationResult.status) {
-    //             await stripeService.handleSuccessfulPayment(referenceId)
-    //             return res.status(200).json({
-    //                 message: "Payment successful",
-    //                 transaction: verificationResult,
-    //             });
-    //         } else {
-    //             return res.status(400).json({
-    //                 message: "Payment Failed",
-    //                 transaction: verificationResult,
-    //             });
-    //         }
-    //     } catch (error) {
-    //         errorService.handleError(error, res)
-    //     }
-    // }
 }
 
 export default new TransactionController();

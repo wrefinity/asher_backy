@@ -1847,21 +1847,6 @@ class PropertyService {
                         other: sharedFacilities?.other || "",
                     },
                 },
-                // unitConfigurations: {
-                //     create: unitConfigurations?.map((unit: any) => ({
-                //         unitType: unit.unitType,
-                //         unitNumber: unit.unitNumber,
-                //         floorNumber: unit.floorNumber,
-                //         count: unit.count,
-                //         bedrooms: unit.bedrooms,
-                //         bathrooms: unit.bathrooms,
-                //         price: unit.price,
-                //         PriceFrequency: unit.PriceFrequency,
-                //         area: unit.area,
-                //         description: unit.description,
-                //         availability: unit.availability,
-                //     })) || [],
-                // },
                 unitConfigurations: {
                     create: unitConfigurations?.flatMap((unit: any) =>
                         Array.from({ length: unit.count || 1 }, (_, i) => ({
@@ -1919,9 +1904,6 @@ class PropertyService {
         const commercial = await tx.commercialProperty.create({
             data: {
                 ...rest,
-                // property: { connect: { id: propertyId } }, // Ensure connection to parent property
-
-
                 // All array fields with set operations
                 securityFeatures: securityFeatures ? { set: securityFeatures } : undefined,
                 safetyFeatures: safetyFeatures ? { set: safetyFeatures } : undefined,

@@ -576,7 +576,6 @@ export const residentialPropertySchema = Joi.object({
   furnished: Joi.boolean().optional(),
   renovationYear: Joi.string().optional(),
   councilTaxBand: Joi.string().optional(),
-  parkingSpaces: Joi.number().default(0),
   garageType: Joi.string().valid(...Object.values(GarageType)).messages({
     'any.only': `Garage type must be one of: ${Object.values(GarageType).join(',')}`,
     'string.base': 'Garage type must be a string'
@@ -589,7 +588,6 @@ export const residentialPropertySchema = Joi.object({
     'any.only': `areaUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,
     'string.base': 'areaUnit type must be a string'
   }).optional(),
-  petPolicy: Joi.string().optional(),
   rentalTerms: Joi.string().optional(),
   utilities: Joi.array().items(Joi.string()).optional(),
 
@@ -737,7 +735,6 @@ export const IBasePropertyDTOSchema = Joi.object({
 
   name: Joi.string().required(),
   description: Joi.string().optional(),
-  shortDescription: Joi.string().optional(),
   propertySize: Joi.number().optional(),
   areaUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
     'any.only': `AreaUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,

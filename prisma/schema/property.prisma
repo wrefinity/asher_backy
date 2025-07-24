@@ -268,7 +268,6 @@ model properties {
   // Features and Description
   name             String
   description      String?
-  shortDescription String?
   propertySize     Int?
   isDeleted        Boolean @default(false)
 
@@ -504,7 +503,6 @@ model ResidentialProperty {
   furnished      Boolean?
   renovationYear String?
   councilTaxBand String?
-  parkingSpaces  Int          @default(0)
   garageType     GarageType?
   yearBuilt      Int?
   floorLevel     Int?
@@ -512,7 +510,6 @@ model ResidentialProperty {
   // Additional details
   totalArea   String?
   areaUnit    AreaUnit?
-  petPolicy   String?
   rentalTerms String?
   utilities   String[]
 

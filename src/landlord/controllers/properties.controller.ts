@@ -108,7 +108,6 @@ class PropertyController {
                     });
                 }
             }
-
             return res.status(results.created.length > 0 ? 201 : 400).json(results);
         } catch (error) {
             ErrorService.handleError(error, res);

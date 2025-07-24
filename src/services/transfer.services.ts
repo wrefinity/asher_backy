@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto';
 import transactionServices from "./transaction.services";
 
 class TransferService {
+    
     transferFunds = async (senderId: string, data: any, currency: Currency) => {
         const senderWallet = await walletService.getOrCreateWallet(senderId, currency);
         const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId, currency);

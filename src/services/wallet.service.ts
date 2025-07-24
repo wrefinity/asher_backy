@@ -214,8 +214,6 @@ class WalletService {
         return await paystackServices.verifyPayment(paymentIntent);
     }
 
-
-
     fundWalletGeneral = async (userId: string, amount: number, currency: Currency = Currency.USD, countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) => {
         const wallet = await this.getOrCreateWallet(userId, currency);
         const user = await prismaClient.users.findUnique({

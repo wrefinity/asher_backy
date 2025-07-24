@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { CustomRequest } from "../utils/types";
-import TransactionSchema from "../validations/schemas/transaction.scheam";
+import TransactionSchema from "../validations/schemas/transaction.schema";
 import errorService from "../services/error.service";
 import transferServices from "../services/transfer.services";
 import { getCurrentCountryCurrency } from "../utils/helpers";

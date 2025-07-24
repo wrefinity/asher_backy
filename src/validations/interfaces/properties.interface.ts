@@ -68,7 +68,6 @@ export interface CommercialPropertyFloor {
 export interface IBasePropertyDTO {
     name: string;
     description?: string;
-    shortDescription?: string;
     landlordId?: string;
     agencyId?: string;
 
@@ -229,12 +228,10 @@ export interface IResidentialDTO {
     bathrooms?: number;
     receiptionRooms?: number;
     toilets?: number;
-
     tenure?: TensureType;
     furnished?: boolean;
     renovationYear?: string;
     councilTaxBand?: String;
-    parkingSpaces?: number;
     garageType?: GarageType;
     yearBuilt?: number;
     floorLevel?: number;
@@ -242,7 +239,6 @@ export interface IResidentialDTO {
     // Additional details
     totalArea?: string;
     areaUnit?: AreaUnit;
-    petPolicy?: string;
     rentalTerms?: string;
     utilities?: string[];
 
