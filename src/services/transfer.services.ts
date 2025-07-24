@@ -1,4 +1,4 @@
-import { TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
+import { Currency, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 import { Prisma } from "@prisma/client";
 import walletService from "./wallet.service";
@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 import transactionServices from "./transaction.services";
 
 class TransferService {
-    transferFunds = async (senderId: string, data: any, currency: string) => {
+    transferFunds = async (senderId: string, data: any, currency: Currency) => {
         const senderWallet = await walletService.getOrCreateWallet(senderId, currency);
         const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId, currency);
 
@@ -55,7 +55,7 @@ class TransferService {
         })
     }
 
-    payBill = async (data: any, tenantId: string, currency: string) => {
+    payBill = async (data: any, tenantId: string, currency: Currency) => {
         //get tenant information
         const tenant = await prismaClient.tenants.findUnique({
             where: { id: tenantId },
@@ -138,7 +138,7 @@ class TransferService {
         return transaction;
     }
 
-    async makeAdsPayments(amount: any, userId: string, currency: string) {
+    async makeAdsPayments(amount: any, userId: string, currency: Currency) {
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
         })

@@ -1,4 +1,4 @@
-import { TransactionStatus, TransactionType, PaymentGateway, TransactionReference, PrismaClient } from "@prisma/client";
+import { TransactionStatus, TransactionType, PaymentGateway, TransactionReference, PrismaClient, Transaction } from "@prisma/client";
 import { prismaClient } from "..";
 import { WebHookData } from "../utils/types";
 import { randomBytes } from 'crypto';
@@ -9,20 +9,21 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 
 export interface TransactionIF {
-    id: string;
+    id?: string;
     description?: string | null;
-    amount: number; // Decimal is typically represented as a number in TypeScript
+    amount: Decimal; // Decimal is typically represented as a number in TypeScript
     userId: string;
     walletId?: string | null;
     type?: TransactionType;
     reference: TransactionReference;
-    status?: TransactionStatus; 
+    status?: TransactionStatus;
     referenceId: string;
     paymentGateway?: PaymentGateway | null; // Assuming `PaymentGateway` is an enum or union type
     stripePaymentIntentId?: string | null;
     propertyId?: string | null;
     billId?: string | null;
     currency?: string | null;
+    metadata?: object
 }
 
 class TransactionService {
@@ -34,10 +35,10 @@ class TransactionService {
 
         // 2. check if the landlord has an account for this transaction same with the tenant
         const landlordWalletExitForSameCurrency = await WalletService.getUserWallet(landlordId, data.currency)
-        
-        if(!landlordWalletExitForSameCurrency) 
+
+        if (!landlordWalletExitForSameCurrency)
             throw new Error("The landlord does not have same currency wallet, contact the landlord for the exact currency exchange wallet to use")
-        
+
         // Map TransactionIF to Prisma's TransactionCreateInput
         const prismaData: Prisma.TransactionCreateInput = {
             id: data.id,
@@ -48,7 +49,7 @@ class TransactionService {
             type: data.type ? data.type : TransactionType.DEBIT,
             reference: data.reference,
             status: data.status ? data.status : TransactionStatus.PENDING, // Initial status (e.g., PENDING)
-            referenceId: data.referenceId? data.referenceId : generateIDs(`RF-${data.reference}`),
+            referenceId: data.referenceId ? data.referenceId : generateIDs(`RF-${data.reference}`),
             paymentGateway: data.paymentGateway,
             stripePaymentIntentId: data.stripePaymentIntentId,
             property: data.propertyId ? { connect: { id: data.propertyId } } : undefined,
@@ -219,6 +220,20 @@ class TransactionService {
                 status: TransactionStatus.COMPLETED,
                 referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
             }
+        });
+    }
+
+    async updateTransactionStatus(
+        reference: string,
+        status: TransactionStatus,
+        metadata?: any
+    ): Promise<Transaction> {
+        return prismaClient.transaction.update({
+            where: { referenceId: reference },
+            data: {
+                status,
+                metadata: metadata ? { ...metadata } : undefined,
+            },
         });
     }
 }

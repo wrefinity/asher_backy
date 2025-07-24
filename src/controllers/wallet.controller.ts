@@ -3,32 +3,39 @@ import { CustomRequest } from "../utils/types";
 import errorService from "../services/error.service";
 import walletService from "../services/wallet.service";
 import { getCountryCodeFromIp } from "../utils/helpers";
-import { PaymentGateway } from '@prisma/client';
+import { Currency, PaymentGateway } from '@prisma/client';
 import { getCurrentCountryCurrency } from "../utils/helpers";
-import { Decimal } from '@prisma/client/runtime/library';
+import paystackServices from "../services/paystack.services";
+import stripeService from "../services/stripe.service";
 
 class WalletController {
-    getUserWallet = async (req: CustomRequest, res: Response) =>{
-        let locationCur = req.query.locationCurrency as string;
-        if (!locationCur) {
-            let _, locationCurrency = await getCurrentCountryCurrency();
-            locationCur = locationCurrency?.toString()?.toUpperCase();
-        }
-        const userId = String(req.user.id)
-        try {
-            const userWallet = await walletService.getOrCreateWallet(userId, locationCur);
-            res.status(200).json({userWallet})
+    getUserWallet = async (req: CustomRequest, res: Response) => {
+        const userId = req.user.id;
+        // Parse the currency from query params, default to NGN if not provided
+        const currencyParam = req.query.locationCurrency as string;
 
+        // Validate and set the currency
+        let currency: Currency;
+        if (currencyParam === 'GBP') {
+            currency = Currency.GBP;
+        } else {
+            // Default to NGN if not specified or invalid
+            currency = Currency.NGN;
+        }
+
+        try {
+            const userWallet = await walletService.getOrCreateWallet(userId, currency);
+            res.status(200).json({ userWallet });
         } catch (error) {
             errorService.handleError(error, res);
         }
     }
-    getUserWallets = async (req: CustomRequest, res: Response) =>{
-    
+    getUserWallets = async (req: CustomRequest, res: Response) => {
+
         const userId = String(req.user.id)
         try {
             const userWallets = await walletService.getUserWallets(userId);
-            res.status(200).json({userWallets})
+            res.status(200).json({ userWallets })
 
         } catch (error) {
             errorService.handleError(error, res);
@@ -37,13 +44,17 @@ class WalletController {
 
     async fundWallet(req: CustomRequest, res: Response) {
         const userId = String(req.user.id)
-        console.log('Funding wallet for user:', userId);
-        const { amount, paymentGateway,  currency,  payment_method } = req.body
+        const { amount, paymentGateway, currency, payment_method } = req.body
+
+        if (!['NGN', 'GBP'].includes(currency)) {
+            return res.status(400).json({ error: 'Unsupported currency' });
+        }
+
         if (!Object.values(PaymentGateway).includes(paymentGateway)) {
             return res.status(400).json({ message: 'Invalid payment gateway' });
         }
 
-        if(!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
             return res.status(400).json({ message: 'Invalid amount provided' });
         }
         if (!currency) {
@@ -69,56 +80,89 @@ class WalletController {
         if (!paymentIntent) {
             return res.status(400).json({ message: 'No payment intent provided' });
         }
-        const {paymentGateway } = req.body;
+        const { paymentGateway } = req.body;
         if (!Object.values(PaymentGateway).includes(paymentGateway)) {
             return res.status(400).json({ message: 'Invalid payment gateway' });
-        }   
+        }
         try {
-            const fundWallet = await walletService.verifyStripePayment(paymentIntent)
-            res.status(200).json(fundWallet)
+            let transaction;
+
+            if (paymentGateway === PaymentGateway.STRIPE) {
+                transaction = await walletService.verifyStripePayment(paymentIntent);
+            } else if (paymentGateway === PaymentGateway.PAYSTACK) {
+                transaction = await walletService.verifyPaystackPayment(paymentIntent);
+            } else {
+                return res.status(400).json({ error: 'Invalid payment provider' });
+            }
+
+            res.json({ success: true, transaction });
         } catch (error) {
             errorService.handleError(error, res);
         }
     }
-        // Transfer balance between wallets
+    // async verifyPayment(req: CustomRequest, res: Response) {
+    //     const paymentIntent = req.params.paymentIntent;
+    //     if (!paymentIntent) {
+    //         return res.status(400).json({ message: 'No payment intent provided' });
+    //     }
+    //     const { paymentGateway } = req.body;
+    //     if (!Object.values(PaymentGateway).includes(paymentGateway)) {
+    //         return res.status(400).json({ message: 'Invalid payment gateway' });
+    //     }
+    //     try {
+    //         const fundWallet = await walletService.verifyStripePayment(paymentIntent)
+    //         res.status(200).json(fundWallet)
+    //     } catch (error) {
+    //         errorService.handleError(error, res);
+    //     }
+    // }
+    // Transfer balance between wallets
     async transferBalance(req: CustomRequest, res: Response) {
         try {
 
             const { senderWalletId, receiverWalletId, amount } = req.body;
-            const userId = req.user.id; 
-            
+            const userId = req.user.id;
+
             // Validate input
             if (!senderWalletId || !receiverWalletId || amount === undefined) {
                 return res.status(400).json({ message: 'Missing required parameters' });
             }
 
-            // Convert amount to Decimal
-            const decimalAmount = new Decimal(amount.toString());
-            
+
             // Verify sender wallet belongs to user
             const senderWallet = await walletService.getWalletById(senderWalletId);
             if (!senderWallet || senderWallet.userId !== userId) {
                 return res.status(403).json({ message: 'Invalid sender wallet' });
             }
-            
+
             // Perform transfer
-            const result = await walletService.transferBalance(
+            const result = await walletService.transferBetweenWallets(
+                userId,
                 senderWalletId,
                 receiverWalletId,
-                decimalAmount
+                amount
             );
-            
-            res.json({
-                message: 'Transfer successful',
-                senderWallet: result.senderWallet,
-                receiverWallet: result.receiverWallet,
-                transactions: {
-                    sender: result.senderTransaction,
-                    receiver: result.receiverTransaction
-                }
-            });
+
+            res.json(result);
         } catch (error) {
             res.status(400).json({ message: error.message });
+        }
+    }
+    async initiatePayout(req: CustomRequest, res: Response) {
+        const userId = req.user.id;
+        const { walletId, amount, bankDetails, currency } = req.body;
+
+        try {
+            await walletService.initiatePayout(
+                userId,
+                walletId,
+                amount,
+                bankDetails,
+                currency
+            );
+            res.json({ success: true });
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
         }
     }
 }

@@ -10,6 +10,15 @@ const communityInformationSchema = Joi.object({
     cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
     cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
 })
+const createCommentSchema = Joi.object({
+  postId: Joi.string().required(),
+  content: Joi.string().required(),
+  parentCommentId: Joi.string().optional()
+});
+const toggleCommentLikeSchema = Joi.object({
+  commentId: Joi.string().required(),
+  isLike: Joi.boolean().required()
+});
 const forumInformationSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
@@ -82,6 +91,8 @@ const updateCommunityPostSchema = Joi.object({
 
 
 export {
+    createCommentSchema,
+    toggleCommentLikeSchema,
     communityInformationSchema,
     forumInformationSchema,
     updateCommunityPostSchema,

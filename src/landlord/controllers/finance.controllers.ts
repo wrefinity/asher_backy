@@ -4,6 +4,7 @@ import errorService from "../../services/error.service";
 import financeService from "../services/finance.service";
 import { getCountryCodeFromIp } from "../../utils/helpers";
 import { budgetSchema } from "../validations/schema/financeSceham";
+import { Currency } from "@prisma/client";
 
 class FinanceController {
 
@@ -55,21 +56,28 @@ class FinanceController {
     async generatePaymentLink(req: CustomRequest, res: Response) {
         const userId = req.user.id;
 
-        const { amount, expirationDate, email, description, payeeId } = req.body;
-        if (!payeeId || !amount) {
-            return res.status(400).json({ message: "Please provide payeeId and amount" });
+        const { amount, expirationDate, email, description, payeeId, countryCode, currency } = req.body;
+        if (!payeeId || !amount || ! countryCode || !currency) {
+            return res.status(400).json({ message: "Please provide payeeId, currency type, country code, and amount" });
         }
         //NOTE: Get the userId from user table using the email
-        const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        // const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-        // Get country code from IP address
-        const countryCode = await getCountryCodeFromIp(userIpAddress);
+        // // Get country code from IP address
+        // const countryCode = await getCountryCodeFromIp(userIpAddress);
 
+        // Validate currency is one of the enum values
+        if (!Object.values(Currency).includes(currency)) {
+            return res.status(400).json({
+                message: "Invalid currency",
+                validCurrencies: Object.values(Currency)
+            });
+        }
         try {
             const validAmount = Number(amount);
 
             // Generate payment link
-            const fundWallet = await financeService.generatePaymentLink(payeeId, userId, validAmount, 'usd', countryCode, expirationDate, description, email);
+            const fundWallet = await financeService.generatePaymentLink(payeeId, userId, validAmount, currency, countryCode, expirationDate, description, email);
 
             res.status(200).json(fundWallet);
         } catch (error) {
@@ -118,7 +126,7 @@ class FinanceController {
             const budget = await financeService.createBudget(propertyId, transactionType, budgetAmount, frequency);
             res.status(201).json(budget);
         } catch (error) {
-             errorService.handleError(error, res)
+            errorService.handleError(error, res)
         }
     }
 
@@ -130,7 +138,7 @@ class FinanceController {
             await financeService.updateBudget(id, amount);
             res.status(200).json({ message: 'Budget updated successfully' });
         } catch (error) {
-             errorService.handleError(error, res)
+            errorService.handleError(error, res)
         }
     }
 

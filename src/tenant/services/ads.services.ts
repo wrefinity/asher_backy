@@ -1,6 +1,6 @@
 import { prismaClient } from "../..";
 import transferServices from "../../services/transfer.services";
-
+import { Currency } from "@prisma/client";
 class AdService {
 
     private profileSelect = {
@@ -19,7 +19,7 @@ class AdService {
         }
     }
 
-    async createAd(adData: any, userId: string, currency: string) {
+    async createAd(adData: any, userId: string, currency: Currency) {
 
         const transaction = await prismaClient.$transaction(async (prisma) => {
             const ads = await prisma.ads.create({

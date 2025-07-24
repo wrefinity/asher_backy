@@ -265,9 +265,11 @@ model Comment {
   content         String   @db.Text
   parentCommentId String?
   depth           Int      @default(0)
-  likesCount      Int      @default(0)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  isDeleted     Boolean  @default(false)
 
   // Relations
   post          CommunityPost @relation(fields: [postId], references: [id])
@@ -286,15 +288,17 @@ model Comment {
 model CommentLike {
   id        String   @id @default(cuid())
   commentId String
-  usersId   String
+  userId   String
   createdAt DateTime @default(now())
+
+  isLike    Boolean
 
   // Relations
   comment Comment @relation(fields: [commentId], references: [id])
-  users   users   @relation(fields: [usersId], references: [id])
+  users   users   @relation(fields: [userId], references: [id])
 
   // Constraints
-  @@unique([commentId, usersId])
+  @@unique([commentId, userId])
 }
 
 // DISCUSSION THREADS

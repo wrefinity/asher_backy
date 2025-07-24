@@ -1,4 +1,4 @@
-import { TransactionReference, maintenanceStatus, chatType, TransactionStatus } from "@prisma/client";
+import { TransactionReference, maintenanceStatus, chatType, TransactionStatus, Currency } from "@prisma/client";
 import { prismaClient } from "..";
 import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
@@ -239,7 +239,7 @@ class MaintenanceService {
     });
   }
 
-  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string, currency: string) => {
+  processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string, currency: Currency) => {
 
     // Deduct amount from user's wallet -> Also add transaction type to track expenses
     await transferServices.transferFunds(userId, { receiverId, amount, reference: TransactionReference.MAINTENANCE_FEE, description: `Payment for maintenance #${maintenanceId}` }, currency);

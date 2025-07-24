@@ -54,7 +54,7 @@ model Transaction {
   type                      TransactionType
   reference                 TransactionReference
   status                    TransactionStatus
-  referenceId               String
+  referenceId               String               @unique
   paymentGateway            PaymentGateway?
   stripePaymentIntentId     String?              @unique
   propertyId                String?
@@ -72,6 +72,7 @@ model Transaction {
   Ads                       Ads[]
   securityDepositPercentage Int?
   Log                       Log[]                @relation("transactions")
+  metadata                  Json?
 }
 
 model tenantPaymentHistory {

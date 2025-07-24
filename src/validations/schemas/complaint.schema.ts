@@ -5,6 +5,7 @@ const statusType = Object.values(ComplaintStatus);
 const priorType = Object.values(ComplaintPriority);
 
 
+
 export const createComplaintSchema = Joi.object({
   category: Joi.string().valid(...catType).default(ComplaintCategory.MAINTENANCE).required(),
   subject: Joi.string().required(),

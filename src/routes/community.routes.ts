@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
 import CommunityController from "../controllers/community.controller"
 import communityPostControllers from "../controllers/community-post.controllers";
+import communityPostCommentControllers from "../controllers/community.post.comment.controllers";
 import upload from "../configs/multer";
 import { uploadToCloudinary } from "../middlewares/multerCloudinary";
 import { userRoles } from "@prisma/client";
@@ -17,7 +18,7 @@ class CommunityRoutes {
 
         this.initializeRoutes();
     }
-    
+
 
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize);
@@ -52,7 +53,12 @@ class CommunityRoutes {
         this.router.get('/post-likes/:postId', communityPostControllers.getPostLikes);
         this.router.get('/post-views/:postId', communityPostControllers.getPostViews);
         this.router.get('/post-shares/:postId', communityPostControllers.getPostShares);
-        this.router.use("/forums", forumRoutes )
+        this.router.post('/post-comment', communityPostCommentControllers.create);
+        this.router.get('/post-comment/:postId', communityPostCommentControllers.getByPost);
+        this.router.get('/post-comment/comment/:commentId', communityPostCommentControllers.getById);
+        this.router.post('/post-comment/like-dislike/toggle', communityPostCommentControllers.toggleCommentLike);
+        this.router.delete('/post-comment/:commentId', communityPostCommentControllers.delete);
+        this.router.use("/forums", forumRoutes)
     }
 }
 

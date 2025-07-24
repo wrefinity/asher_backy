@@ -1,4 +1,4 @@
-import { BudgetFrequency, PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from '@prisma/client';
+import { BudgetFrequency, Currency, PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from '@prisma/client';
 import { prismaClient } from "../..";
 import transactionServices from '../../services/transaction.services';
 // import paystackServices from '../../services/paystack.services';
@@ -49,7 +49,7 @@ class FinanceService {
     }
 
 
-    async generatePaymentLink(payeeId: string, creatorId: string, amount: number, currency: string = 'usd', countryCode: string, expirationDate: Date, description: string, email: string) {
+    async generatePaymentLink(payeeId: string, creatorId: string, amount: number, currency: Currency = Currency.NGN, countryCode: string, expirationDate: Date, description: string, email: string) {
         const creator = await prismaClient.users.findUnique({ where: { id: creatorId } });
         const payee = await prismaClient.users.findUnique({ where: { id: payeeId } });
 

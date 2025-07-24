@@ -2,6 +2,9 @@ import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { prismaClient } from '..';
 import { TransactionStatus, TransactionType } from '@prisma/client';
+import walletService from './wallet.service';
+import transactionServices from './transaction.services';
+import { Decimal } from '@prisma/client/runtime/library';
 
 // Types
 type StripeCustomer = {
@@ -65,14 +68,17 @@ class StripeService {
         }
     }
 
-    async createPaymentIntent(amount: number, currency: string, customerId: string, payment_method?: string): Promise<StripePaymentIntent> {
+    async createPaymentIntent(userId: string, amount: number, currency: string, customerId: string, walletId?: string): Promise<StripePaymentIntent> {
         try {
             const paymentIntent = await stripe.paymentIntents.create({
-                amount,
+                amount: Math.round(amount * 100),
                 currency,
                 customer: customerId,
                 payment_method_types: ['card'],
-                // payment_method
+                metadata: {
+                    userId,
+                    walletId: walletId,
+                },
             });
             return {
                 id: paymentIntent.id,
@@ -109,12 +115,16 @@ class StripeService {
     async verifyPaymentIntent(paymentIntentId: string): Promise<StripePaymentIntent | null> {
         try {
             const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-            console.log(paymentIntent)
 
-            if(paymentIntent.status === 'succeeded') {
+            if (paymentIntent.status !== 'succeeded') {
+                throw new Error('Payment not succeeded');
+            }
+
+
+            if (paymentIntent.status === 'succeeded') {
                 this.handleSuccessfulPayment(paymentIntent as StripePaymentIntent);
             }
-            
+
             return {
                 id: paymentIntent.id,
                 amount: paymentIntent.amount,
@@ -176,47 +186,48 @@ class StripeService {
             res.status(500).send('Error processing webhook');
         }
     }
-    
+
     async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
         // Ensure the session is paid
         if (session.payment_status === 'paid') {
-          // Extract the session ID
-          const sessionId = session.id;
-          // Call your existing handleLinkSuccessfulPayment method
-          await this.handleLinkSuccessfulPayment(sessionId);
+            // Extract the session ID
+            const sessionId = session.id;
+            // Call your existing handleLinkSuccessfulPayment method
+            await this.handleLinkSuccessfulPayment(sessionId);
         } else {
-          console.log(`Checkout session ${session.id} was not paid`);
+            console.log(`Checkout session ${session.id} was not paid`);
         }
-      }
-    async handleSuccessfulPayment(paymentIntent: StripePaymentIntent): Promise<void> {
+    }
+    async handleSuccessfulPayment(paymentIntent: StripePaymentIntent) {
 
-        console.log(paymentIntent);
-        console.log(`Handling successful payment for PaymentIntent: ${paymentIntent.id}`);
         const transaction = await prismaClient.transaction.findUnique({
-            where: { stripePaymentIntentId: paymentIntent.id },
+            where: { referenceId: paymentIntent.id },
         });
 
         if (!transaction) {
             console.error(`Transaction not found for PaymentIntent: ${paymentIntent.id}`);
             return;
         }
+        if (transaction.status === 'COMPLETED') {
+            return transaction; // Already processed
+        }
+        const amount = paymentIntent.amount / 100; // Convert to major units
+
 
         await prismaClient.$transaction(async (prisma) => {
-            await prisma.transaction.update({
+            const updatedTransaction = await prisma.transaction.update({
                 where: { id: transaction.id },
                 data: {
                     status: TransactionStatus.COMPLETED,
+                    metadata: { ...(transaction.metadata as object), paymentIntent }
                 },
             });
 
             await prisma.wallet.update({
-                where: { id: transaction.walletId},
-                data: {
-                    balance: {
-                        increment: transaction.amount,
-                    },
-                },
-            }); 
+                where: { id: transaction.walletId },
+                data: { balance: { increment: new Decimal(amount) } },
+            });
+            return updatedTransaction;
         });
     }
 
@@ -266,7 +277,7 @@ class StripeService {
 
     }
 
-    createOrGetStripeCustomer = async (userId: string): Promise<StripeCustomer> =>{
+    createOrGetStripeCustomer = async (userId: string): Promise<StripeCustomer> => {
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: { profile: true },
@@ -308,48 +319,48 @@ class StripeService {
 
     async handleLinkSuccessfulPayment(sessionId: string): Promise<void> {
         const payeeTransaction = await prismaClient.transaction.findFirst({
-          where: { 
-            stripePaymentIntentId: sessionId,
-            type: TransactionType.DEBIT
-          },
+            where: {
+                stripePaymentIntentId: sessionId,
+                type: TransactionType.DEBIT
+            },
         });
-      
+
         const creatorTransaction = await prismaClient.transaction.findFirst({
-          where: { 
-            stripePaymentIntentId: sessionId,
-            type: TransactionType.CREDIT
-          },
+            where: {
+                stripePaymentIntentId: sessionId,
+                type: TransactionType.CREDIT
+            },
         });
-      
+
         if (!payeeTransaction || !creatorTransaction) {
-          console.error(`Transactions not found for PaymentIntent: ${sessionId}`);
-          return;
+            console.error(`Transactions not found for PaymentIntent: ${sessionId}`);
+            return;
         }
-      
+
         await prismaClient.$transaction(async (prisma) => {
-          // Update payee's transaction status
-          await prisma.transaction.update({
-            where: { id: payeeTransaction.id },
-            data: { status: TransactionStatus.COMPLETED },
-          });
-      
-          // Update creator's transaction status
-          await prisma.transaction.update({
-            where: { id: creatorTransaction.id },
-            data: { status: TransactionStatus.COMPLETED },
-          });
-      
-          // Update payee's wallet (debit)
-          await prisma.wallet.update({
-            where: { id: payeeTransaction.walletId },
-            data: { balance: { decrement: payeeTransaction.amount } },
-          });
-      
-          // Update creator's wallet (credit)
-          await prisma.wallet.update({
-            where: { id: creatorTransaction.walletId },
-            data: { balance: { increment: creatorTransaction.amount } },
-          });
+            // Update payee's transaction status
+            await prisma.transaction.update({
+                where: { id: payeeTransaction.id },
+                data: { status: TransactionStatus.COMPLETED },
+            });
+
+            // Update creator's transaction status
+            await prisma.transaction.update({
+                where: { id: creatorTransaction.id },
+                data: { status: TransactionStatus.COMPLETED },
+            });
+
+            // Update payee's wallet (debit)
+            await prisma.wallet.update({
+                where: { id: payeeTransaction.walletId },
+                data: { balance: { decrement: payeeTransaction.amount } },
+            });
+
+            // Update creator's wallet (credit)
+            await prisma.wallet.update({
+                where: { id: creatorTransaction.walletId },
+                data: { balance: { increment: creatorTransaction.amount } },
+            });
         });
     }
 
@@ -400,6 +411,30 @@ class StripeService {
             console.error('Error creating Stripe payment link:', error);
             throw new Error('Failed to create Stripe payment link');
         }
+    }
+
+    async processStripePayout(
+        walletId: string,
+        amount: number,
+        bankDetails: any,
+        reference: string
+    ) {
+        // First create a Stripe payout
+        const payout = await stripe.payouts.create({
+            amount: Math.round(amount * 100),
+            currency: 'gbp',
+            metadata: {
+                walletId,
+                reference,
+            },
+            destination: bankDetails.accountId, // Assuming this is a Stripe bank account ID
+        });
+
+        // Deduct from wallet only after successful payout creation
+        await walletService.updateWalletBalance(walletId, new Decimal(amount), 'decrement');
+        await transactionServices.updateTransactionStatus(reference, TransactionStatus.COMPLETED, {
+            stripePayout: payout,
+        });
     }
 
 }
