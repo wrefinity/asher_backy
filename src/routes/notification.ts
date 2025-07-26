@@ -4,7 +4,6 @@ import { Authorize } from "../middlewares/authorize";
 class NotificationRoutes {
     public router: express.Router;
     authenticateService: Authorize
-    
 
     constructor() {
         this.router = express.Router();
@@ -18,6 +17,23 @@ class NotificationRoutes {
         this.router.get('/:id', this.authenticateService.authorize, NotificationController.getNotificationById);
         this.router.patch('/:id', this.authenticateService.authorize, NotificationController.updateNotification);
         this.router.delete('/:id', this.authenticateService.authorize, NotificationController.deleteNotification);
+        this.router.get(
+            '/preferences/mine',
+            this.authenticateService.authorize,
+            NotificationController.getPreferences
+        );
+
+        this.router.post(
+            '/preferences',
+            this.authenticateService.authorize,
+            NotificationController.updatePreferences
+        );
+
+        this.router.get(
+            '/preferences/:category',
+            this.authenticateService.authorize,
+            NotificationController.getCategoryPreference
+        );
     }
 }
 

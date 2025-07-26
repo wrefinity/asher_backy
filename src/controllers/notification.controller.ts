@@ -2,6 +2,7 @@ import { Response } from 'express';
 import NotificationService from '../services/notification.service';
 import { createNotificationSchema } from '../validations/schemas/notificationValidation';
 import { CustomRequest } from '../utils/types';
+import { notificationPreferenceSchema } from '../validations/schemas/profile';
 
 class NotificationController {
 
@@ -13,7 +14,7 @@ class NotificationController {
             }
 
             const sourceId = req.user.id;
-            const notification = await NotificationService.createNotification({...req.body, sourceId});
+            const notification = await NotificationService.createNotification({ ...req.body, sourceId });
             res.status(201).json(notification);
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -68,6 +69,57 @@ class NotificationController {
             res.status(500).json({ error: err.message });
         }
     };
+
+    public getPreferences = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.user.id;
+            const preferences = await NotificationService.getUserNotificationPreferences(
+                userId
+            );
+            res.json(preferences);
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ error: 'Failed to fetch notification preferences' });
+        }
+    }
+
+    public updatePreferences = async (req: CustomRequest, res: Response) =>{
+        try {
+
+            const userId = req.user.id;
+            const { error, value } = notificationPreferenceSchema.validate(
+                req.body
+            );
+
+            if (error) {
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    details: error.details.map((d) => d.message),
+                });
+            }
+
+            const updatedPreferences =
+                await NotificationService.updateNotificationPreferences(userId, value);
+            res.json(updatedPreferences);
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to update notification preferences' });
+        }
+    }
+
+    public getCategoryPreference = async (req: CustomRequest, res: Response) =>{
+        try {
+            const userId = req.user.id;
+            const { category } = req.params;
+            const preference =
+                await NotificationService.getNotificationPreferenceByCategory(
+                    userId,
+                    category
+                );
+            res.json(preference || {});
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to fetch category preference' });
+        }
+    }
 }
 
 export default new NotificationController();

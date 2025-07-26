@@ -12,4 +12,26 @@ export interface ProfileIF {
     taxPayerId?: string,
     taxType?: string,
 }
+export interface NotificationPreferenceInput {
+  category: string;
+  notifyOnLoginActivity?: boolean;
+  notifyOnNewMessages?: boolean;
+  notifyPaymentInitiated?: boolean;
+  notifyPaymentSuccess?: boolean;
+  notifyPaymentFailed?: boolean;
+  notifyNewMaintenanceRequest?: boolean;
+  notifyRequestStatusChange?: boolean;
+  notifyRequestMessage?: boolean;
+  notifyRequestResolved?: boolean;
+  notifyNewInvoice?: boolean;
+  notifyTenantMoveOut?: boolean;
+  notifyPropertyMatch?: boolean;
+  notifyNewInquiry?: boolean;
+  notifyNewSupportTicket?: boolean;
+  receiveMarketingEmails?: boolean;
+  channels?: string[];
+}
 
+export interface UpdateNotificationPreferencesInput {
+  preferences: NotificationPreferenceInput[];
+}

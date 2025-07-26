@@ -20,6 +20,7 @@ import MaintenanceRouter from "./routes/maintenance";
 import NotificationRouter from "./routes/notification";
 import ProfileRouter from "./routes/profile";
 import PropertyRouter from "./routes/property";
+import PreferenceRoute from "./routes/preference";
 import ReviewsRouter from "./routes/reviews";
 import VendorServiceRouter from "./routes/services";
 import StatusRouter from "./routes/status";
@@ -38,8 +39,7 @@ import flutterWaveService from './services/flutterWave.service';
 
 // WebSocket tracking
 export const prismaClient = new PrismaClient({ log: ['query'] });
-export const userSockets = new Map<string, WebSocket>(); // for WSS (emails)
-
+export const userSockets = new Map<string, WebSocket>(); 
 class Server {
     private app: Express;
     private port: number;
@@ -97,6 +97,7 @@ class Server {
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
         this.app.use("/api/users", UserRouter);
+        this.app.use("/api/preferences", PreferenceRoute);
         this.app.use("/api/properties", PropertyRouter);
         this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community", communityRoutes);

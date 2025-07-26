@@ -95,6 +95,10 @@ model users {
     SupportTicketAssigned SupportTicket[] @relation("TicketAssignedTo")
 
     ComplaintMessage ComplaintMessage[]
+
+    UserPreferences UserPreferences[]
+
+    NotificationPreference NotificationPreference[]
 }
 
 model UserLikedProperty {

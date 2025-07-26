@@ -1,0 +1,102 @@
+
+
+enum TimeFormat {
+  H12
+  H24
+}
+
+enum DateFormat {
+  MM_DD_YYYY
+  DD_MM_YYYY
+  YYYY_MM_DD
+}
+
+enum Language {
+  ENGLISH
+  SPANISH
+  FRENCH
+  GERMAN
+}
+
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+  PUSH
+}
+
+enum NotificationCategory {
+  SECURITY
+  COMMUNICATION
+  ONLINE_PAYMENTS
+  MAINTENANCE_REQUESTS
+  MOVE_OUT
+  PROPERTY_MATCH
+  WEBSITE_INQUIRY
+  SUPPORT_TICKET
+  MARKETING_EMAILS
+}
+
+
+model UserPreferences {
+  id          String     @id @default(cuid())
+  
+  // Payment Account
+  defaultPaymentAccountId String?
+
+  // Display Preferences
+  currency    Currency?
+  timeZone    String?
+  timeFormat  TimeFormat?
+  dateFormat  DateFormat?
+  region      String? 
+  language    Language   @default(ENGLISH)
+  
+  // Privacy Settings
+  showBasicProfile Boolean @default(true)
+  showContactDetails Boolean @default(false)
+  
+  // Relations
+  userId      String     @unique
+  user        users      @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model NotificationPreference {
+  id               String             @id @default(cuid())
+  
+  // Notification Categories
+  category         NotificationCategory
+  
+  // Notification Types (category-specific)
+  notifyOnLoginActivity       Boolean @default(true)  // SECURITY
+  notifyOnNewMessages         Boolean @default(true)  // COMMUNICATION
+  notifyPaymentInitiated      Boolean @default(true)  // ONLINE_PAYMENTS
+  notifyPaymentSuccess       Boolean @default(true)
+  notifyPaymentFailed        Boolean @default(true)
+  notifyNewMaintenanceRequest Boolean @default(true)  // MAINTENANCE_REQUESTS
+  notifyRequestStatusChange   Boolean @default(true)
+  notifyRequestMessage       Boolean @default(true)
+  notifyRequestResolved      Boolean @default(true)
+  notifyNewInvoice           Boolean @default(true)
+  notifyTenantMoveOut        Boolean @default(true)   // MOVE_OUT
+  notifyPropertyMatch        Boolean @default(true)   // PROPERTY_MATCH
+  notifyNewInquiry           Boolean @default(true)   // WEBSITE_INQUIRY
+  notifyNewSupportTicket     Boolean @default(true)   // SUPPORT_TICKET
+  receiveMarketingEmails     Boolean @default(true)   // MARKETING_EMAILS
+  
+  // Channel Preferences
+  channels         NotificationChannel[]
+  
+  // Relations
+  userId           String
+  users             users             @relation(fields: [userId], references: [id])
+  
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([userId, category])
+}
