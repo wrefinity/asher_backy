@@ -1,5 +1,5 @@
 import Joi from "joi";
-import {PayableBy, PaymentFrequency} from '@prisma/client';
+import { PayableBy, PaymentFrequency } from '@prisma/client';
 const payableByValues = Object.values(PayableBy);
 const paymentFreq = Object.values(PaymentFrequency);
 
@@ -9,6 +9,7 @@ const billCategorySchema = Joi.object({
 })
 const billSchema = Joi.object({
     billName: Joi.string().required(),
+    notify: Joi.boolean().optional(),
     billCategoryId: Joi.string().required(),
     description: Joi.string().required(),
     amount: Joi.number().required(),
@@ -21,6 +22,7 @@ const billSchema = Joi.object({
 })
 const billUpdateSchema = Joi.object({
     billName: Joi.string().optional(),
+    notify: Joi.boolean().optional(),
     description: Joi.string().optional(),
     amount: Joi.number().optional(),
     billFrequency: Joi.string().valid(...paymentFreq).optional(),

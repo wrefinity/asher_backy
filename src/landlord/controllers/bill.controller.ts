@@ -13,7 +13,11 @@ class BillController {
         if (error) return res.status(400).json({ message: error.details[0].message });
         const landlordId = req.user?.landlords?.id;
         try {
-            const bill = await billServices.createSubBills(value, landlordId);
+            const {notify, ...data} = value
+            const bill = await billServices.createSubBills(data, landlordId);
+            if(notify){
+                //TODO:
+            }
             return res.status(201).json({ bill });
         } catch (error) {
             errorService.handleError(error, res)
@@ -35,8 +39,11 @@ class BillController {
         const { value, error } = billUpdateSchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
         try {
-            const bill = await billServices.updateBill(billId, value);
-            // NOTE: When we create a new bill we want to alert tenants and show on their side too
+            const {notify, ...data} = value
+            const bill = await billServices.updateBill(billId, data);
+            if(notify){
+                // NOTE: When we create a new bill we want to alert tenants and show on their side too
+            }
             return res.status(201).json({ bill });
 
         } catch (error) {
