@@ -1,6 +1,7 @@
-import { categorySchema } from "../validations/schemas/category";
+import { CategoryQuerySchema, categorySchema } from "../validations/schemas/category";
 import categoryService from "../services/category.service";
 import ErrorService from "../services/error.service";
+import { Request, Response } from "express";
 import { CategoryType } from "@prisma/client";
 
 class CategoryControls {
@@ -23,15 +24,23 @@ class CategoryControls {
         }
     };
 
-    getAllCategories = async (req, res) => {
+    getCategories = async (req: Request, res: Response) =>{
         try {
-            const categories = await categoryService.getAllCategories();
-            console.log(categories)
-            res.status(200).json({ categories });
-        } catch (err) {
-            ErrorService.handleError(err, res);
+            const { error, value } = CategoryQuerySchema.validate(req.query);
+            if (error) {
+                return res.status(400).json({ error: error.details });
+            }
+            const result = await categoryService.getCategories(value);
+
+            return res.status(200).json({
+                success: true,
+                data: result.data,
+                pagination: result.pagination
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
         }
-    };
+    }
     getAllCategoriesType = async (req, res) => {
         try {
             const type = req.query.type;

@@ -59,7 +59,7 @@ class ResidentialPropertyService {
             include:{
                 unitConfigurations: true,
                 sharedFacilities: true,
-                bills: true,
+                billsSubCategory: true,
             }
         })
     }

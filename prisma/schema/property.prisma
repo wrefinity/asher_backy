@@ -312,7 +312,6 @@ model properties {
   application          application[]
   maintenance          maintenance[]
   reviews              reviews[]
-  bills                bills[]
   taskManagement       taskManagement[]
   inventoryManageMent  inventoryManageMent[]
   maintenanceWhitelist maintenanceWhitelist[]
@@ -365,6 +364,7 @@ model properties {
   BroadcastCategory BroadcastCategory[]
 
   @@unique([landlordId, name, stateId, city])
+  billsSubCategory billsSubCategory[]
 }
 
 model PropertySpecification {
@@ -552,9 +552,9 @@ model ResidentialProperty {
   glazingTypes              GlazingType?
 
   additionalNotes String?
-  bills           bills[]
-
   PropertySpecification PropertySpecification[]
+
+  billsSubCategory billsSubCategory[]
 }
 
 // Commercial Property specific fields

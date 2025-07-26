@@ -104,7 +104,7 @@ class PerformanceCalculator {
             where: { userId },
             include: {
                 property: true,
-                bills: {
+                billsSubCategory: {
                     // where: { billCategory: 'UTILITY' },
                     include: {
                         transactions: {
@@ -144,7 +144,7 @@ class PerformanceCalculator {
             totalTenancyDuration += tenancyDuration;
 
             // Process utility bills for this tenancy
-            tenancy.bills.forEach(bill => {
+            tenancy.billsSubCategory.forEach(bill => {
                 totalUtilityBills++;
 
                 // Count paid bills
@@ -200,7 +200,7 @@ class PerformanceCalculator {
         const allTenancies = await prismaClient.tenants.findMany({
             where: { userId },
             include: {
-                bills: {
+                billsSubCategory: {
                     include: {
                         transactions: {
                             where: {
@@ -264,7 +264,7 @@ class PerformanceCalculator {
             }
 
             // Calculate bill obligations and payments with frequency consideration
-            for (const bill of tenancy.bills) {
+            for (const bill of tenancy.billsSubCategory) {
                 const billAmount = bill.amount;
                 const frequencyDays = this.getFrequencyDays(bill.billFrequency);
                 const billStartDate = new Date(bill.createdAt);

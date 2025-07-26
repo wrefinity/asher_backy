@@ -11,9 +11,10 @@ class BillRouter {
 
     private initializeRoutes() {
         this.router.post('/', billController.createBill)
+        this.router.post('/category', billController.createBillCategory)
+        this.router.get('/categories', billController.getBillsCategories)
         this.router.get('/list', billController.getAllBills)
         this.router.get('/:billId', billController.getSingleBill)
-        this.router.get('/properties/:propertyId', billController.getBillByPropertyId)
         this.router.patch('/:billId', billController.updateBill)
         this.router.delete('/:billId', billController.deleteBill)
     }

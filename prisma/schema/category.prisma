@@ -4,6 +4,7 @@ enum CategoryType {
   BILL
 }
 
+
 model category {
   id                   String                 @id @default(cuid())
   name                 String

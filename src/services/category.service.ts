@@ -1,6 +1,6 @@
 import { prismaClient } from "..";
 import { CategoryIF } from "../validations/interfaces/categories.interface";
-import { CategoryType } from "@prisma/client";
+import { CategoryType, Prisma } from "@prisma/client";
 class categoryService {
     protected inclusion;
 
@@ -14,21 +14,79 @@ class categoryService {
             data,
         });
     };
-
-    getAllCategories = async () => {
+    getAllCategoriesWithoutFilters = async () => {
         return await prismaClient.category.findMany({
-            where: {
-                isDeleted: false,
+            include:{
+                subCategory:true
+            }
+        });
+    };
+
+    async getCategories(value?: any) {
+        const {
+            page,
+            limit,
+            type,
+            search,
+            isDeleted,
+            sortBy,
+            sortOrder
+        } = value;
+
+        const where: Prisma.categoryWhereInput = {
+            isDeleted
+        };
+        // Apply type filter
+        if (type) {
+            where.subCategory = {
+                some: {
+                    type,
+                    isDeleted: false
+                }
+            };
+        }
+        // Apply search filter
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+                { labels: { hasSome: [search] } }
+            ];
+        }
+
+        // Get total count for pagination
+        const total = await prismaClient.category.count({ where });
+
+        // Get paginated results
+        const categories = await prismaClient.category.findMany({
+            where,
+            skip: (page - 1) * limit,
+            take: limit,
+            orderBy: {
+                [sortBy]: sortOrder
             },
             include: {
                 subCategory: {
-                    where: {
-                        isDeleted: false,
-                    },
-                },
-            },
+                    where: { isDeleted: false },
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
+            }
         });
-    };
+
+        return {
+            data: categories,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasNextPage: page * limit < total,
+                hasPreviousPage: page > 1
+            }
+        };
+    }
 
     getCategoryById = async (id: string) => {
         return await prismaClient.category.findUnique({
@@ -65,7 +123,6 @@ class categoryService {
             },
         });
     }
-
 
     updateCategory = async (id, data) => {
         return await prismaClient.category.update({

@@ -19,7 +19,6 @@ import { LogType, Prisma } from "@prisma/client"
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
 import { LoginSchema, userLandlordSchema } from "../validations/schemas/auth";
-import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
 import { CustomRequest } from "../utils/types";
 import logsServices from "../services/logs.services";
 

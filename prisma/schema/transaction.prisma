@@ -63,8 +63,6 @@ model Transaction {
   unit                      UnitConfiguration?   @relation(fields: [unitId], references: [id])
   roomId                    String?
   room                      RoomDetail?          @relation(fields: [roomId], references: [id])
-  billId                    String?
-  bill                      bills?               @relation(fields: [billId], references: [id])
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
   currency                  String?
@@ -73,6 +71,8 @@ model Transaction {
   securityDepositPercentage Int?
   Log                       Log[]                @relation("transactions")
   metadata                  Json?
+
+  billsSubCategory billsSubCategory[]
 }
 
 model tenantPaymentHistory {
@@ -88,33 +88,7 @@ model tenantPaymentHistory {
   tenant   tenants? @relation(fields: [tenantId], references: [id])
 }
 
-enum PayableBy {
-  LANDLORD
-  TENANT
-}
 
-model bills {
-  id            String           @id @default(cuid())
-  billId        String           @unique
-  billName      String
-  billCategory  String
-  description   String
-  amount        Decimal          @db.Decimal(18, 2)
-  billFrequency PaymentFrequency
-  dueDate       DateTime
-  payableBy     PayableBy?       @default(LANDLORD)
-  propertyId    String?
-  property      properties?      @relation(fields: [propertyId], references: [id])
-  landlordId    String?
-  landlord      landlords?       @relation(fields: [landlordId], references: [id])
-  tenantId      String?
-  tenant        tenants?         @relation(fields: [tenantId], references: [id])
-  transactions  Transaction[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  ResidentialProperty ResidentialProperty[]
-}
 
 // New Subscription model
 model Subscription {

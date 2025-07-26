@@ -100,22 +100,7 @@ class WalletController {
             errorService.handleError(error, res);
         }
     }
-    // async verifyPayment(req: CustomRequest, res: Response) {
-    //     const paymentIntent = req.params.paymentIntent;
-    //     if (!paymentIntent) {
-    //         return res.status(400).json({ message: 'No payment intent provided' });
-    //     }
-    //     const { paymentGateway } = req.body;
-    //     if (!Object.values(PaymentGateway).includes(paymentGateway)) {
-    //         return res.status(400).json({ message: 'Invalid payment gateway' });
-    //     }
-    //     try {
-    //         const fundWallet = await walletService.verifyStripePayment(paymentIntent)
-    //         res.status(200).json(fundWallet)
-    //     } catch (error) {
-    //         errorService.handleError(error, res);
-    //     }
-    // }
+
     // Transfer balance between wallets
     async transferBalance(req: CustomRequest, res: Response) {
         try {
@@ -127,7 +112,6 @@ class WalletController {
             if (!senderWalletId || !receiverWalletId || amount === undefined) {
                 return res.status(400).json({ message: 'Missing required parameters' });
             }
-
 
             // Verify sender wallet belongs to user
             const senderWallet = await walletService.getWalletById(senderWalletId);

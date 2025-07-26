@@ -2,7 +2,7 @@ import { prismaClient } from "../..";
 
 class TenantBills {
     async getTenantBills(tenantId: string) {
-        return prismaClient.bills.findMany({
+        return prismaClient.billsSubCategory.findMany({
           where: {
             tenantId
           },
@@ -16,7 +16,7 @@ class TenantBills {
         const today = new Date();
         const futureDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
     
-        return prismaClient.bills.findMany({
+        return prismaClient.billsSubCategory.findMany({
           where: {
             tenantId,
             dueDate: {
@@ -33,7 +33,7 @@ class TenantBills {
       async getOverdueBills(tenantId: string) {
         const today = new Date();
     
-        return prismaClient.bills.findMany({
+        return prismaClient.billsSubCategory.findMany({
           where: {
             tenantId,
             dueDate: {

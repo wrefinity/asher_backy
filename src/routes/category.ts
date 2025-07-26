@@ -28,7 +28,7 @@ class CategoryRoutes {
         //categories
         this.router.post('/', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, CategoryControls.createCategory);
         this.router.get('/type',  CategoryControls.getAllCategoriesType);
-        this.router.get('/',  CategoryControls.getAllCategories);
+        this.router.get('/',  CategoryControls.getCategories);
         this.router.get('/:id',  CategoryControls.getCategoryById);
         this.router.patch('/:id',  CategoryControls.updateCategory);
         this.router.delete('/:id', this.authenticateService.authorize,  CategoryControls.deleteCategory);

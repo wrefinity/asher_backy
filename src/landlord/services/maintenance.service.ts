@@ -198,22 +198,6 @@ class LandlordMaintenanceService {
       },
     });
   }
-  // changeLandlordPropertiesMaintenanceDecisionState = async (landlordId: string, status?: maintenanceDecisionStatus) => {
-  //   return await prismaClient.maintenance.findMany({
-  //     where: {
-  //       property: {
-  //         landlordId: landlordId,
-  //       },
-  //       ...(status && { landlordDecision: status as any }),
-  //       isDeleted: false,
-  //     },
-  //     include: {
-  //       landlord: true,
-  //       tenant: true,
-  //       ...this.inclusion,
-  //     },
-  //   });
-  // }
 
   createWhitelist = async (data: MaintenanceWhitelistInput, landlordId: string) => {
     try {
@@ -255,10 +239,10 @@ class LandlordMaintenanceService {
 
 
   getMaintenanceCategoriesWithWhitelistStatus = async (landlordId: string) => {
-    // Step 1: Fetch all categories with their subcategories
-    const categories = await categoryService.getAllCategories();
+    // Fetch all categories with their subcategories
+    const categories = await categoryService.getAllCategoriesWithoutFilters();
 
-    // Step 2: Fetch whitelisted categories and subcategories for the landlord
+    // Fetch whitelisted categories and subcategories for the landlord
     const whitelistedEntries = await prismaClient.maintenanceWhitelist.findMany({
       where: {
         landlordId,
@@ -280,7 +264,7 @@ class LandlordMaintenanceService {
         .map((entry) => entry.subcategoryId as string)
     );
 
-    // Step 3: Combine and structure the data
+    // combine and structure the data
     const result = categories.map((category) => ({
       ...category,
       // isEnabled: whitelistedCategoryIds.has(category.id),

@@ -61,7 +61,7 @@ class TransactionService {
             paymentGateway: data.paymentGateway,
             stripePaymentIntentId: data.stripePaymentIntentId,
             property: data.propertyId ? { connect: { id: data.propertyId } } : undefined,
-            bill: data.billId ? { connect: { id: data.billId } } : undefined,
+            billsSubCategory: data.billId ? { connect: { id: data.billId } } : undefined,
             currency: data.currency,
         };
 
@@ -308,7 +308,7 @@ class TransactionService {
         if (propertyId) where.propertyId = propertyId;
         if (unitId) where.unitId = unitId;
         if (roomId) where.roomId = roomId;
-        if (billId) where.billId = billId;
+        // if (billId) where.billId = billId;
         if (walletId) where.walletId = walletId;
 
         // Date range filter
@@ -349,7 +349,7 @@ class TransactionService {
             include: {
                 property: true,
                 wallet: true,
-                bill: true,
+                billsSubCategory: true,
                 unit: true,
             }
         });
@@ -435,7 +435,7 @@ class TransactionService {
         if (isDue !== null) where.isDue = isDue;
         if (unitId) where.unitId = unitId;
         if (roomId) where.roomId = roomId;
-        if (billId) where.billId = billId;
+        // if (billId) where.billId = billId;
         if (walletId) where.walletId = walletId;
         if (userId) where.userId = userId;
 
@@ -464,12 +464,12 @@ class TransactionService {
         }
 
         // Bill-related filters
-        if (frequency || payableBy) {
-            where.bill = {
-                ...(frequency ? { billFrequency: frequency } : {}),
-                ...(payableBy ? { payableBy: payableBy } : {}),
-            };
-        }
+        // if (frequency || payableBy) {
+        //     where.billsSubCategory = {
+        //         ...(frequency ? { billFrequency: frequency } : {}),
+        //         ...(payableBy ? { payableBy: payableBy } : {}),
+        //     };
+        // }
 
         // Get total count for pagination
         const total = await prismaClient.transaction.count({ where });
@@ -502,7 +502,7 @@ class TransactionService {
                         profile: true
                     }
                 },
-                bill: {
+                billsSubCategory: {
                     select: {
                         id: true,
                         billName: true,

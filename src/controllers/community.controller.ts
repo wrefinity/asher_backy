@@ -3,7 +3,6 @@ import errorService from "../services/error.service";
 import { CustomRequest } from "../utils/types"
 import { Request, Response } from "express";
 import communityServices from "../services/community.services";
-import { getCommunityurl } from "../utils/helpers";
 import { CommunityVisibility } from "@prisma/client";
 
 class CommunityController {
@@ -34,9 +33,7 @@ class CommunityController {
             const page = parseInt(String(req.query.page)) || 1;
             const limit = parseInt(String(req.query.limit)) || 10;
             const search = String(req.query.search || '');
-
             const result = await communityServices.getLandlordCommunities(ownerId, page, limit, search);
-
             return res.status(200).json(result);
         } catch (error) {
             errorService.handleError(error, res);

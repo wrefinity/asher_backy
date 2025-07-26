@@ -1,5 +1,4 @@
-// controllers/bankInfoController.ts
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { BankInfoService } from '../services/bank.services';
 import { bankInfoSchema } from '../validations/schemas/banks.schema';
 import { CustomRequest } from '../utils/types';

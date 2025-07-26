@@ -5,7 +5,6 @@ import { CustomRequest } from "../utils/types";
 import { postComplaintMessageSchema } from "../landlord/validations/schema/complaintSchema";
 
 
-
 class ComplaintController {
     createComplaint = async (req: CustomRequest, res: Response) => {
         try {
@@ -15,7 +14,6 @@ class ComplaintController {
             const complaint = await ComplaintService.createComplaint({ ...value, createdById });
             res.status(201).json(complaint);
         } catch (error) {
-            console.log(error)
             res.status(500).json({ message: "Error creating complaint" });
         }
     }
@@ -23,8 +21,6 @@ class ComplaintController {
     getAllComplaints = async (req: CustomRequest, res: Response) => {
         try {
             const createdBy = String(req.user.id);
-            console.log("current user=======")
-            console.log(createdBy)
             const complaints = await ComplaintService.getAllComplaints(createdBy);
             res.status(200).json(complaints);
         } catch (error) {
@@ -89,7 +85,6 @@ class ComplaintController {
         if (!complaintId) {
             return res.status(400).json({ error: 'Complaint ID is required' });
         }
-
 
         if (!senderId) {
             return res.status(400).json({ error: 'Sender ID is required' });

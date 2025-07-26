@@ -1,0 +1,36 @@
+model bills {
+  id               String             @id @default(cuid())
+  name             String
+  description      String?
+  isDeleted        Boolean            @default(false)
+  billsSubCategory billsSubCategory[]
+}
+
+enum PayableBy {
+  LANDLORD
+  TENANT
+}
+
+model billsSubCategory {
+  id                  String                @id @default(cuid())
+  billId              String                @unique
+  billName            String
+  billCategoryId      String
+  description         String
+  amount              Decimal               @db.Decimal(18, 2)
+  billFrequency       PaymentFrequency
+  dueDate             DateTime
+  payableBy           PayableBy?            @default(LANDLORD)
+  isDeleted           Boolean               @default(false)
+  propertyId          String?
+  property            properties?           @relation(fields: [propertyId], references: [id])
+  landlordId          String?
+  landlord            landlords?            @relation(fields: [landlordId], references: [id])
+  tenantId            String?
+  tenants            tenants?            @relation(fields: [tenantId], references: [id])
+  bills               bills?                @relation(fields: [billCategoryId], references: [id])
+  transactions        Transaction[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  ResidentialProperty ResidentialProperty[]
+}
