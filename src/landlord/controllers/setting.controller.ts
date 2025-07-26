@@ -8,7 +8,7 @@ import {
 import { CustomRequest } from '../../utils/types';
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import {SettingType} from "@prisma/client";
+import { SettingType } from '../validations/interfaces/propsSettings';
 import { LandlordService } from '../services/landlord.service';
 class SettingsController {
 
@@ -95,7 +95,7 @@ class SettingsController {
             const landlordId = req.user?.landlords?.id;
 
             // Call the service to create the setting, passing in landlordId and validated data
-            const createdSettings = await LandlordSettingsService.createGlobalSetting({ ...value, landlordId });
+            const createdSettings = await LandlordSettingsService.updateLandlordSettings(landlordId, { ...value });
 
             // Respond with the newly created setting data
             return res.status(201).json(createdSettings);
@@ -108,6 +108,7 @@ class SettingsController {
     // Retrieve all global settings associated with the landlord
     getAllGlobalSettings = async (req: CustomRequest, res: Response): Promise<void> => {
         try {
+            console.log("was called===========")
             // Get landlord ID from authenticated user
             const landlordId = req.user?.landlords?.id;
 

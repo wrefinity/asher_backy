@@ -68,7 +68,6 @@ class WalletService {
             where: { userId, currency, isActive: true },
         });
 
-
         if (!wallet) {
             wallet = await prismaClient.wallet.create({
                 data: {

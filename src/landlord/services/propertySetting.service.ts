@@ -1,4 +1,4 @@
-import { SettingType } from "@prisma/client";
+import { ReminderMethodType } from "@prisma/client";
 import { prismaClient } from "../..";
 import { IPropApartmentSettings, IGlobalSetting } from '../validations/interfaces/propsSettings';
 
@@ -6,7 +6,7 @@ class LandlordSettingsService {
 
     createOrUpdate = async (data: IPropApartmentSettings) => {
         return prismaClient.propertySettings.upsert({
-            where: { 
+            where: {
                 propertyId_settingType: {
                     propertyId: data.propertyId,
                     settingType: data.settingType,
@@ -32,7 +32,7 @@ class LandlordSettingsService {
     }
     getLandlordPropsSetting = async (landlordId) => {
         return prismaClient.propertySettings.findMany({
-            where:{landlordId}
+            where: { landlordId }
         });
     }
 
@@ -43,6 +43,37 @@ class LandlordSettingsService {
         });
     }
 
+    // Update landlord settings with enum validation
+    async updateLandlordSettings(landlordId: string, updateData: IGlobalSetting) {
+        // Validate reminderMethods if provided
+        if (updateData.reminderMethods) {
+            const validMethods = Object.values(ReminderMethodType);
+            updateData.reminderMethods = updateData.reminderMethods
+                .filter((method: string) => validMethods.includes(method as ReminderMethodType))
+                .map(method => method.toUpperCase() as ReminderMethodType);
+        }
+
+        // First check if settings exist for this landlord
+        const existingSettings = await prismaClient.settings.findFirst({
+            where: { landlordId }
+        });
+
+        if (existingSettings) {
+            // Update existing settings
+            return await prismaClient.settings.update({
+                where: { id: existingSettings.id },
+                data: updateData
+            });
+        } else {
+            // Create new settings
+            return await prismaClient.settings.create({
+                data: {
+                    landlordId,
+                    ...updateData
+                }
+            });
+        }
+    }
     delete = async (id: string) => {
         return prismaClient.propertySettings.delete({
             where: { id },
@@ -57,15 +88,16 @@ class LandlordSettingsService {
         return prismaClient.settings.findUnique({ where: { id } });
     }
 
-    getAllGlobalSettings = async (landlordId:string): Promise<IGlobalSetting[]> => {
-        return prismaClient.settings.findMany({where: {landlordId}});
+    getAllGlobalSettings = async (landlordId: string): Promise<IGlobalSetting> => {
+        return prismaClient.settings.findFirst({ where: { landlordId } });
     }
-    getLandlordGlobalSettingWithStatus = async (landlordId:string, type: SettingType): Promise<IGlobalSetting|null> => {
+    getLandlordGlobalSettingWithStatus = async (landlordId: string, type: string): Promise<IGlobalSetting | null> => {
         return prismaClient.settings.findFirst({
             where: {
                 ...(type ? { type } : {}),
                 landlordId
-            }}
+            }
+        }
         );
     }
 
@@ -76,7 +108,7 @@ class LandlordSettingsService {
         });
     }
     deleteGlobalSetting = async (id: string): Promise<IGlobalSetting | null> => {
-        return prismaClient.settings.update({ where: { id }, data: {isDeleted: true} });
+        return prismaClient.settings.update({ where: { id }, data: { isDeleted: true } });
     }
 }
 

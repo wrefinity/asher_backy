@@ -70,7 +70,7 @@ class PropertyService {
                         unitConfigurations: true,
                         sharedFacilities: true,
                         roomDetails: true,
-                        bills: true,
+                        billsSubCategory: true,
                     }
                 },
                 commercial: {
@@ -1812,7 +1812,7 @@ class PropertyService {
                 outdoorsSpacesFeatures: outdoorsSpacesFeature ? { set: outdoorsSpacesFeature } : undefined,
                 buildingAmenityFeatures: buildingAmenityFeatures ? { set: buildingAmenityFeatures } : undefined,
                 safetyFeatures: safetyFeatures ? { set: safetyFeatures } : undefined,
-                bills: {
+                billsSubCategory: {
                     connect: bills?.length ? bills?.map((id) => ({ id })) : undefined,
                 },
                 // roomDetails: {

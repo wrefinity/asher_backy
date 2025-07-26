@@ -1,5 +1,11 @@
-import { LatePaymentFeeType, SettingType, PropsSettingType, Refundability, PropertyType, PriceFrequency, PropertySpecificationType } from "@prisma/client";
+import { LatePaymentFeeType, PropsSettingType, Refundability, PropertyType, PriceFrequency, PropertySpecificationType, RefundPolicyType, ReminderMethodType, FrequencyType } from "@prisma/client";
 import { ListingType,  } from "@prisma/client";
+
+export enum SettingType {
+    SECURITY_DEPOSIT = "SECURITY_DEPOSIT",
+    APPLICATION_FEE = "APPLICATION_FEE",
+    RECURRING_FEE = "RECURRING_FEE"
+}
 export interface IPropApartmentSettings {
     id?: string;
     propertyId: string;
@@ -23,10 +29,22 @@ export interface IPropApartmentSettings {
 }
 
 export interface IGlobalSetting {
-    id: string;
-    percentageOrAmount?: number;
-    type: SettingType;
-    landlordId?: string | null;
+  id: string;
+  lateFeeEnabled: boolean;
+  lateFeePercentage?: number;
+  lateFeeGracePeriod?: number;
+  lateFeeFrequency?: FrequencyType;
+  depositPercentage?: number;
+  refundTimeframe?: FrequencyType;
+  refundPolicy?: RefundPolicyType;
+  applicationFeePercentage?: number;
+  notificationEnabled: boolean;
+  notificationFrequency?: number;
+  reminderMethods: ReminderMethodType[];
+  landlordId?: string;
+  isDeleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface PropertyListingDTO {

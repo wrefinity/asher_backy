@@ -4,17 +4,57 @@ enum SettingType {
     RECURRING_FEE
 }
 
+enum FrequencyType {
+    DAILY
+    WEEKLY
+    MONTHLY
+    QUARTERLY
+    YEARLY
+}
+
+enum RefundPolicyType {
+    FULL
+    PARTIAL
+    NONE
+}
+
+enum ReminderMethodType {
+    SMS
+    EMAIL
+    IN_APP
+    PUSH
+    WHATSAPP
+}
+
 model Settings {
     id String @id @default(cuid())
 
-    percentageOrAmount Int?
-    type               SettingType @default(SECURITY_DEPOSIT)
+    // Late Fee Settings
+    lateFeeEnabled     Boolean        @default(false)
+    lateFeePercentage  Float?
+    lateFeeGracePeriod Int? // in days
+    lateFeeFrequency   FrequencyType?
 
+    // Deposit Settings
+    depositPercentage Float?
+
+    // Refund Settings
+    refundTimeframe FrequencyType?
+    refundPolicy    RefundPolicyType?
+
+    // Application Fee Settings
+    applicationFeePercentage Float?
+
+    // Notification Settings
+    notificationEnabled   Boolean              @default(false)
+    notificationFrequency Int? // in days
+    reminderMethods       ReminderMethodType[]
+
+    // Relations
     landlordId String?
     landlord   landlords? @relation(fields: [landlordId], references: [id])
 
-    isDeleted Boolean @default(false)
-
+    isDeleted Boolean  @default(false)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 }

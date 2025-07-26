@@ -1,5 +1,6 @@
 import Joi from 'joi';
-import {PayableBy, PropsSettingType, LatePaymentFeeType, SettingType, AvailabilityStatus} from '@prisma/client';
+import { PropsSettingType, LatePaymentFeeType, AvailabilityStatus, FrequencyType, RefundPolicyType, ReminderMethodType} from '@prisma/client';
+import { SettingType } from '../interfaces/propsSettings';
 const propsSettingsType = Object.values(PropsSettingType);
 const latePaymentFeeType = Object.values(LatePaymentFeeType);
 
@@ -22,8 +23,29 @@ export const propApartmentSettingsSchema = Joi.object({
 
 
 export const GlobalSettingsSchema = Joi.object({
-    percentageOrAmount: Joi.number().required(),
-    type: Joi.string().valid(...Object.keys(SettingType)).required(),
+  id: Joi.string().optional(),
+  // Late Fee Settings
+  lateFeeEnabled: Joi.boolean().default(false),
+  lateFeePercentage: Joi.number().min(0).max(100).precision(2).optional(),
+  lateFeeGracePeriod: Joi.number().integer().min(0).max(365).optional(),
+  lateFeeFrequency: Joi.string().valid(...Object.values(FrequencyType)).optional(),
+  
+  // Deposit Settings
+  depositPercentage: Joi.number().min(0).max(100).precision(2).optional(),
+  
+  // Refund Settings
+  refundTimeframe: Joi.string().valid(...Object.values(FrequencyType)).optional(),
+  refundPolicy: Joi.string().valid(...Object.values(RefundPolicyType)).optional(),
+  
+  // Application Fee Settings
+  applicationFeePercentage: Joi.number().min(0).max(100).precision(2).optional(),
+  
+  // Notification Settings
+  notificationEnabled: Joi.boolean().default(false),
+  notificationFrequency: Joi.number().integer().min(1).max(365).optional(),
+  reminderMethods: Joi.array().items(
+    Joi.string().valid(...Object.values(ReminderMethodType))
+  ).default([]),
 });
 
 export const propApartmentSettingsUpdateSchema = Joi.object({

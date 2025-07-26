@@ -125,17 +125,13 @@ class BillController {
         }
     }
     getBillsCategories = async (req: CustomRequest, res: Response) => {
-        
         try {
             const bill = await billServices.getBillsCategories();
             return res.status(200).json(bill);
-
         } catch (error) {
             errorService.handleError(error, res)
         }
     }
-
-  
 }
 
 export default new BillController();
