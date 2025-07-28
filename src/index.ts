@@ -14,6 +14,7 @@ import ApplicationRouter from "./routes/applicant";
 import ComplaintRoutes from "./routes/complaint";
 import FileUploads from './routes/fileuploads';
 import CategoryRouter from "./routes/category";
+import TodoRouter from "./routes/todo";
 import ChatRoomRouter from "./routes/chats";
 import EmailRouter from "./routes/email";
 import MaintenanceRouter from "./routes/maintenance";
@@ -89,6 +90,7 @@ class Server {
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/state", StateRouter);
         this.app.use("/api/logs/", LogRouter);
+        this.app.use("/api/todos/", TodoRouter);
         this.app.use("/api/notification", NotificationRouter)
         this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);

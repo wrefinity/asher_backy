@@ -1,4 +1,4 @@
-import { ListingType, PriceFrequency, Prisma, PrismaClient, PropertySpecificationType } from "@prisma/client";
+import { IdType, ListingType, PriceFrequency, Prisma, PrismaClient, PropertySpecificationType } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
@@ -1223,7 +1223,7 @@ class PropertyService {
     //         });
     //     }
 
-   
+
 
     //     if (listings.length === 0) {
     //         throw new Error('No valid listings were created - check your unitIds and roomIds');
@@ -1255,7 +1255,7 @@ class PropertyService {
             alreadyListed: { units: [], rooms: [] },
             newlyListed: { units: [], rooms: [] }
         };
-    
+
         // Check for existing ENTIRE_PROPERTY listing
         if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
             const existing = await prismaClient.propertyListingHistory.findFirst({
@@ -1265,7 +1265,7 @@ class PropertyService {
                     onListing: true
                 }
             });
-    
+
             if (existing) {
                 response.alreadyListed.property = true;
                 response.message = 'Property is already listed as entire property';
@@ -1273,54 +1273,54 @@ class PropertyService {
                 return response;
             }
         }
-    
+
         // Check unit listings
         for (const unitId of unitIds) {
             if (!unitId) continue;
-    
+
             const existing = await prismaClient.propertyListingHistory.findFirst({
                 where: {
                     unitId,
                     onListing: true
                 }
             });
-    
+
             if (existing) {
                 response.alreadyListed.units.push(unitId);
             } else {
                 response.newlyListed.units.push(unitId);
             }
         }
-    
+
         // Check room listings
         for (const roomId of roomIds) {
             if (!roomId) continue;
-    
+
             const existing = await prismaClient.propertyListingHistory.findFirst({
                 where: {
                     roomId,
                     onListing: true
                 }
             });
-    
+
             if (existing) {
                 response.alreadyListed.rooms.push(roomId);
             } else {
                 response.newlyListed.rooms.push(roomId);
             }
         }
-    
+
         // Create listings for new units
         for (const unitId of response.newlyListed.units) {
             const created = await prismaClient.propertyListingHistory.create({
                 data: {
                     ...baseData,
                     propertyId: propertyId,
-                    unitId:unitId,
+                    unitId: unitId,
                     roomId: null,
                     type: ListingType.SINGLE_UNIT
                 }
-                
+
             });
             response.listings.push(created);
             await prismaClient.unitConfiguration.update({
@@ -1328,14 +1328,14 @@ class PropertyService {
                 data: { isListed: true }
             });
         }
-    
+
         // Create listings for new rooms
         for (const roomId of response.newlyListed.rooms) {
             const created = await prismaClient.propertyListingHistory.create({
                 data: {
                     ...baseData,
-                    propertyId:propertyId,
-                    roomId:roomId,
+                    propertyId: propertyId,
+                    roomId: roomId,
                     unitId: null,
                     type: ListingType.ROOM
                 }
@@ -1346,7 +1346,7 @@ class PropertyService {
                 data: { isListed: true }
             });
         }
-    
+
         // Create ENTIRE_PROPERTY listing if applicable
         if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
             const created = await prismaClient.propertyListingHistory.create({
@@ -1364,7 +1364,7 @@ class PropertyService {
                 where: { id: propertyId },
                 data: { isListed: true }
             });
-        } 
+        }
         // Set appropriate message
         if (response.listings.length > 0) {
             response.message = 'Successfully created listings for new items';
@@ -1375,7 +1375,7 @@ class PropertyService {
             response.message = 'No new listings created - all specified items were already listed';
             response.success = false;
         }
-    
+
         return response;
     }
 
@@ -1687,8 +1687,7 @@ class PropertyService {
             if (!specificationType) {
                 throw new Error("Specification type is required.");
             }
-
-
+            
             // Separate media by type
             const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
             const videos = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.VIDEO);
@@ -1740,8 +1739,12 @@ class PropertyService {
                             documentUrl: doc?.documentUrl,
                             size: doc?.size,
                             type: doc?.type,
-                            idType: doc?.idType,
-                            docType: doc?.docType,
+                            ...(doc?.docType && {
+                                docType: doc?.docType,
+                            }),
+                            ...(doc?.idType && {
+                                idType: doc?.idType,
+                            }),
                             users: {
                                 connect: { id: userId }
                             }

@@ -9,7 +9,7 @@ import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
-import { PropertySpecificationType, PropertyType, AvailabilityStatus } from "@prisma/client"
+import { PropertySpecificationType, PropertyType  } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 import profileServices from '../../services/profileServices';

@@ -129,7 +129,6 @@ export const handlePropertyUploads = async (
   next: NextFunction
 ) => {
 
-  console.log("=====================");
   if(req.body.residential) {
     req.body.residential = JSON.parse(req.body.residential);
   }
@@ -142,8 +141,6 @@ export const handlePropertyUploads = async (
   if(req.body.typeSpecific) {
     req.body.typeSpecific = JSON.parse(req.body.typeSpecific);
   }
-  console.log(req.body);
-  console.log("=====================");
   try {
     const files: Express.Multer.File[] = Object.values(req.files || {}).flat();
     if (!files.length) return res.status(400).json({ error: "No files provided" });
