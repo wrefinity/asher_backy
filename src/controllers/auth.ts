@@ -11,18 +11,16 @@ import {
     getTokensByUserId,
     validateVerificationToken
 } from "../services/verification_token.service";
-// import { SignUpIF } from "../interfaces/authInt";
-// import { GoogleService } from "../middlewares/google";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
 import { LogType, Prisma } from "@prisma/client"
 import { generateOtp } from "../utils/helpers";
 import ErrorService from "../services/error.service";
-import { LoginSchema, userLandlordSchema } from "../validations/schemas/auth";
+import { LoginSchema, ConfirmationSchema, RegisterSchema } from "../validations/schemas/auth";
 import { CustomRequest } from "../utils/types";
 import logsServices from "../services/logs.services";
 
-import {onlineStatus} from '@prisma/client'
+import { onlineStatus } from '@prisma/client'
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -38,13 +36,21 @@ class AuthControls {
     }
 
     register = async (req: Request, res: Response) => {
-        const { email } = req.body;
-
+        
         try {
+            const { error, value } = ConfirmationSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({
+                    message: 'Validation failed',
+                    errors: error.details.map(d => d.message)
+                });
+            }
+            const { email } = value;
+
             let user = await UserServices.findUserByEmail(email);
             if (user) return res.status(400).json({ message: "user exists" });
 
-            let newUser = await UserServices.createUser(req.body);
+            let newUser = await UserServices.createUser(value);
             // Create verification token
             await this.verificationTokenCreator(newUser.id, email);
 
@@ -63,9 +69,17 @@ class AuthControls {
     }
 
     confirmation = async (req: Request, res: Response) => {
-        const { email, token } = req.body;
-
         try {
+
+            const { error, value } = ConfirmationSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({
+                    message: 'Validation failed',
+                    errors: error.details.map(d => d.message)
+                });
+            }
+
+            const { email, token } = value;
             // Find user by email
             const user = await UserServices.findUserByEmail(email);
             if (!user) {
@@ -186,7 +200,7 @@ class AuthControls {
     }
 
     login = async (req: Request, res: Response) => {
-        
+
         try {
             const { error, value } = LoginSchema.validate(req.body);
             if (error) {
@@ -282,61 +296,5 @@ class AuthControls {
         }
 
     }
-
-    //I need access to the this keyword that's why i chnaged it to arrow function
-    // sendGoogleUrl = async (req: Request, res: Response) => {
-    //     try {
-    //         // logger.info("Initialize send Google Url control", this.googleService);
-    //         const googleUrl = await this.googleService.getGoogleOauthConsentUrl();
-    //         return res.status(200).json(googleUrl);
-    //     } catch (error) {
-    //         logger.error("Error in sendGoogleUrl:", error);
-    //         return res.status(500).json({ message: "Internal Server Error" });
-    //     }
-    // }
-
-
-    // githubLogin = async (req: Request, res: Response) => {
-
-    //     const redirect_url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    //     console.log(redirect_url)
-    //     if (!redirect_url) return res.status(400).json({ message: "Redirect Url not provided" })
-    //     const code = redirect_url.searchParams.get("code")
-    //     const state = redirect_url.searchParams.get("state")
-
-    //     if (!code || !state) {
-    //         console.log("No code or state")
-    //         return res.status(400).json({ message: "Invalid Request" })
-    //     }
-
-    //     if (state.toString().toLowerCase() !== this.googleService.state.toString().toLowerCase()) {
-    //         console.log("state and code verifier dont match")
-    //         return res.status(400).json({ message: "Invalid Request" })
-    //     }
-
-    //     const accessToken = await this.googleService.getAccessToken(code)
-
-    //     if (!accessToken) {
-    //         console.log("No access token")
-    //         return res.status(400).json({ message: "Invalid Request" })
-    //     }
-
-    //     const userProfile = await this.googleService.getUserProfile(accessToken)
-
-    //     if (!userProfile) {
-    //         console.log("No user profile")
-    //         return res.status(400).json({ message: "Invalid Request" })
-    //     }
-
-    //     let user = await UserServices.createGoogleUser(userProfile)
-    //     if ("error" in user) {
-    //         return res.status(400).json({ message: user.error })
-    //     }
-    //     console.log(user)
-
-    //     const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
-    //     return res.status(200).json({ access_token: token })
-
-    // }
 }
 export default new AuthControls();

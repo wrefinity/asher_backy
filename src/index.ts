@@ -8,7 +8,6 @@ import { Server as IOServer } from "socket.io";
 import { PrismaClient } from "@prisma/client";
 import { APP_SECRET, PORT } from "./secrets";
 
-// Import Routes
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/applicant";
 import ComplaintRoutes from "./routes/complaint";
