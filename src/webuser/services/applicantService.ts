@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-import { Prisma } from "@prisma/client";
+import { AgreementDocument, AgreementStatus, Prisma } from "@prisma/client";
 import { ApplicationStatus, InvitedResponse, ApplicationSaveState, userRoles } from '@prisma/client';
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
@@ -62,6 +62,8 @@ class ApplicantService {
       },
     },
     emergencyInfo: true,
+    rooms: true,
+    units: true,
     employmentInfo: true,
     documents: true,
     properties: {
@@ -75,6 +77,7 @@ class ApplicantService {
     guarantorInformation: true,
     applicationQuestions: true,
     declaration: true,
+    agreementDocument: true,
     referenceForm: {
       include: {
         tenancyReferenceHistory: true,
@@ -581,6 +584,7 @@ class ApplicantService {
     });
   }
 
+
   checkApplicationExistance = async (applicationId: string) => {
     // Check if the application exists
     return await prismaClient.application.findUnique({
@@ -640,7 +644,7 @@ class ApplicantService {
       where: { id },
       include: {
         enquires: true,
-        units:true,
+        units: true,
         rooms: true,
         propertyListing: true,
         userInvited: this.userInclusion,
@@ -688,7 +692,7 @@ class ApplicantService {
       where: whereClause,
       include: {
         enquires: true,
-        units:true,
+        units: true,
         rooms: true,
         propertyListing: true,
         userInvited: this.userInclusion,
@@ -708,16 +712,153 @@ class ApplicantService {
   async updateInvites(id, updateData: ApplicationInvite) {
     return await applicationServices.updateInvite(id, updateData);
   }
-  async updateAgreementDocs(applicationId, documentUrl: any) {
-    // Update agreement document
-    return await prismaClient.application.update({
+
+  async upsertAgreementDocument(
+    value: {
+      templateId: string;
+      templateVersion: number;
+      documentUrl?: string | string[];
+      processedContent?: string;
+      variables: any;
+      applicationId: string;
+      metadata?: any;
+    },
+    userId: string,
+    agreementId?: string
+  ) {
+    // Process document URLs - ensure we always have an array
+    const documentUrls = this.processDocumentUrls(value.documentUrl);
+
+    // Check template existence
+    const templateExists = await prismaClient.docuTemplate.findUnique({
+      where: { id: value.templateId }
+    });
+    if (!templateExists) throw new Error('Template not found');
+
+    // Verify application exists
+    const application = await prismaClient.application.findUnique({
+      where: { id: value.applicationId }
+    });
+    if (!application) throw new Error(`Application ${value.applicationId} not found`);
+
+    // Get existing document URLs if updating
+    const existingDoc = agreementId ? await prismaClient.agreementDocument.findUnique({
+      where: { id: agreementId }
+    }) : null;
+
+    // Prepare data with proper type handling
+    const baseData: Prisma.AgreementDocumentCreateInput | Prisma.AgreementDocumentUpdateInput = {
+      templateVersion: value.templateVersion,
+      documentUrl: { set: documentUrls },
+      processedContent: value.processedContent,
+      variables: value.variables,
+      metadata: value.metadata,
+      updatedAt: new Date()
+    };
+
+    return await prismaClient.agreementDocument.upsert({
+      where: { id: agreementId || '' },
+      create: {
+        ...baseData as Prisma.AgreementDocumentCreateInput,
+        documentTemplate: { connect: { id: value.templateId } },
+        application: { connect: { id: value.applicationId } },
+        createdBy: userId,
+        sentAt: new Date()
+      },
+      update: {
+        ...baseData as Prisma.AgreementDocumentUpdateInput,
+        documentTemplate: { connect: { id: value.templateId } }
+      },
+      include: {
+        documentTemplate: true,
+        application: true
+      }
+    });
+  }
+
+  async signTenantAgreementDocument(
+    value: {
+      documentUrl?: string | string[];
+      processedContent: string;
+      metadata: any;
+    },
+    userId: string,
+    agreementId: string
+  ): Promise<AgreementDocument> {
+    const documentUrls = this.processDocumentUrls(value.documentUrl);
+
+    const currentAgreement = await prismaClient.agreementDocument.findUnique({
+      where: { id: agreementId }
+    });
+
+    if (!currentAgreement) {
+      throw new Error('Agreement not found');
+    }
+
+    const updateData: Prisma.AgreementDocumentUpdateInput = {
+      signedByTenantAt: new Date(),
+      processedContent: value.processedContent,
+      // documentUrl: { set: documentUrls },
+      documentUrl: { set: this.mergeDocumentUrls(documentUrls, currentAgreement.documentUrl) },
+      metadata: {
+        ...(value.metadata as object),
+        tenantSignature: {
+          signedAt: new Date(),
+          ipAddress: value.metadata.ipAddress,
+          userAgent: value.metadata.userAgent,
+          signature: value.metadata.signature
+        }
+      },
+      agreementStatus: await this.getUpdatedAgreementStatus(agreementId, 'TENANT')
+    };
+
+    return await prismaClient.agreementDocument.update({
+      where: { id: agreementId },
+      data: updateData,
+      include: {
+        application: true,
+        documentTemplate: true
+      }
+    });
+  }
+
+  // Helper methods with proper typing
+  private processDocumentUrls(urls?: string | string[]): string[] {
+    if (!urls) return [];
+    return Array.isArray(urls) ? urls : [urls];
+  }
+
+  private mergeDocumentUrls(newUrls: string[], existingUrls: string[]): string[] {
+    return [...new Set([...newUrls, ...existingUrls])];
+  }
+  private async getUpdatedAgreementStatus(agreementId: string, signedBy: 'TENANT' | 'LANDLORD') {
+    const agreement = await prismaClient.agreementDocument.findUnique({
+      where: { id: agreementId },
+      select: { signedByTenantAt: true, signedByLandlordAt: true }
+    });
+    if (!agreement) return AgreementStatus.PENDING;
+
+    if (signedBy === 'TENANT' && agreement.signedByLandlordAt) return 'COMPLETED';
+    if (signedBy === 'LANDLORD' && agreement.signedByTenantAt) return 'COMPLETED';
+    return signedBy === 'TENANT' ? AgreementStatus.SIGNED_BY_TENANT : AgreementStatus.SIGNED_BY_LANDLORD;
+  }
+  getAgreementById = async (applicationId: string) => {
+    return await prismaClient.agreementDocument.findUnique({
       where: { id: applicationId },
-      data: {
-        agreementDocumentUrl: {
-          push: documentUrl
-        },
-        agreementVersion: { increment: 1 },
-        lastAgreementUpdate: new Date(),
+      include: {
+        application: {
+          include: {
+            properties: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                profile: true
+              }
+            }
+          }
+        }
       }
     });
   }

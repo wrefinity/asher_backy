@@ -3,26 +3,15 @@ import { profileSchema } from '../schemas/profile';
 import { userRoles } from "@prisma/client";
 
 export const LoginSchema = Joi.object({
-    password: Joi.string().required(),
-    email: Joi.string()
-        .email()
-        .lowercase()  // Convert email to lowercase
-        .when('tenantCode', {
-            is: Joi.not().exist(),  // When tenantCode doesn't exist
-            then: Joi.required(),   // Then email is required
-            otherwise: Joi.optional()
-        }),
-    tenantCode: Joi.string()
-        .when('email', {
-            is: Joi.not().exist(),  // When email doesn't exist
-            then: Joi.required(),   // Then tenantCode is required
-            otherwise: Joi.optional()
-        })
-}).xor('email', 'tenantCode')
-    .messages({
-        'object.xor': 'Must provide either email or tenantCode, but not both',
-        'any.required': 'Either email or tenantCode is required'
-    });
+  password: Joi.string().required(),
+  email: Joi.string().email().lowercase(),
+  tenantCode: Joi.string()
+})
+  .xor('email', 'tenantCode') 
+  .messages({
+    'object.missing': 'Either email or tenantCode is required',
+    'object.xor': 'Cannot provide both email and tenantCode'
+  });
 
 
 // Joi schema for validating landlord creation data

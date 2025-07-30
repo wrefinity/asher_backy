@@ -37,9 +37,47 @@ export const applicationReminderSchema = Joi.object({
   status: Joi.string().valid(...Object.values(ReminderType)).required(),
 });
 
-export const createAgreementDocSchema = Joi.object({
-  documentUrls: Joi.string().uri().required()
-})
+export const agreementDocumentSchema = Joi.object({
+  templateId: Joi.string().required().messages({
+    'string.empty': 'Template ID is required',
+    'any.required': 'Template ID is required'
+  }),
+  templateVersion: Joi.number().integer().min(1).required().messages({
+    'number.base': 'Template version must be a number',
+    'number.integer': 'Template version must be an integer',
+    'number.min': 'Template version must be at least 1',
+    'any.required': 'Template version is required'
+  }),
+  documentUrl: Joi.string().uri().optional().messages({
+    'string.uri': 'Document URL must be a valid URI'
+  }),
+  processedContent: Joi.string().required(),
+  variables: Joi.object().required().messages({
+    'object.base': 'Variables must be an object',
+    'any.required': 'Variables are required, (meaning the replaced variables)'
+  }),
+  metadata: Joi.object().optional(),
+  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+});
+
+export const updateAgreementSchema = Joi.object({
+  templateId: Joi.string().optional(),
+  templateVersion: Joi.number().integer().min(1).optional(),
+  documentUrl: Joi.string().uri().optional(),
+  processedContent: Joi.string().optional(),
+  variables: Joi.object().optional(),
+  metadata: Joi.object().optional(),
+  signedByTenantAt: Joi.date().optional(),
+  signedByLandlordAt: Joi.date().optional(),
+  completedAt: Joi.date().optional(),
+  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+});
 
 export const createAgreementDocSchemaFuture = Joi.object({
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),

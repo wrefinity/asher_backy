@@ -80,24 +80,59 @@ model applicationInvites {
   responseStepsCompleted InvitedResponse[]
 
   // relation ship fields
-  properties         properties?        @relation(fields: [propertiesId], references: [id])
+  properties         properties?             @relation(fields: [propertiesId], references: [id])
   propertiesId       String?
-  propertyListing         propertyListingHistory?        @relation(fields: [propertyListingId], references: [id])
-  propertyListingId       String?
-  units              UnitConfiguration? @relation(fields: [unitId], references: [id])
+  propertyListing    propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
+  propertyListingId  String?
+  units              UnitConfiguration?      @relation(fields: [unitId], references: [id])
   unitId             String?
-  rooms              RoomDetail?        @relation(fields: [roomId], references: [id])
+  rooms              RoomDetail?             @relation(fields: [roomId], references: [id])
   roomId             String?
   invitedByLandordId String?
-  landlords          landlords?         @relation(fields: [invitedByLandordId], references: [id])
-  tenants            tenants?           @relation(fields: [tenantsId], references: [id])
+  landlords          landlords?              @relation(fields: [invitedByLandordId], references: [id])
+  tenants            tenants?                @relation(fields: [tenantsId], references: [id])
   tenantsId          String?
-  userInvited        users?             @relation(fields: [userInvitedId], references: [id])
+  userInvited        users?                  @relation(fields: [userInvitedId], references: [id])
   userInvitedId      String?
-  enquires           Log?               @relation(fields: [enquiryId], references: [id])
+  enquires           Log?                    @relation(fields: [enquiryId], references: [id])
   enquiryId          String?
 
   application application?
+}
+
+model AgreementDocument {
+  id               String  @id @default(cuid())
+  documentUrl      String[]
+  processedContent String? // Stores the processed template with variables
+  variables        Json // Stores the variable mappings used
+  metadata         Json? // Additional metadata (IP, device, etc.)
+
+  // Signing Information
+  sentAt             DateTime?
+  signedByTenantAt   DateTime?
+  signedByLandlordAt DateTime?
+  completedAt        DateTime?
+
+  // Relationships
+  application   application @relation(fields: [applicationId], references: [id])
+  applicationId String
+
+  templateId      String
+  templateVersion Int
+  documentTemplate   DocuTemplate @relation(fields: [templateId], references: [id])
+
+
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String // User ID who created/sent
+  agreementStatus AgreementStatus?
+}
+enum AgreementStatus {
+  SIGNED_BY_TENANT
+  SIGNED_BY_LANDLORD
+  PENDING
+  COMPLETED
 }
 
 model application {
@@ -186,9 +221,7 @@ model application {
   employeeReference            EmployeeReferenceForm?
 
   users                users[]
-  agreementDocumentUrl String[] // Array to maintain version history
-  agreementVersion     Int       @default(1)
-  lastAgreementUpdate  DateTime?
+  agreementDocument AgreementDocument[]
 }
 
 model applicantPersonalDetails {

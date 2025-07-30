@@ -16,7 +16,7 @@ import {
   refreeSchema,
   declarationSchema
 } from '../schemas';
-import { createAgreementDocSchemaFuture } from "../../landlord/validations/schema/applicationInvitesSchema"
+import { createAgreementDocSchemaFuture, updateAgreementSchema } from "../../landlord/validations/schema/applicationInvitesSchema"
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
@@ -764,34 +764,33 @@ class ApplicantControls {
     }
   }
 
-  signAgreementForm = async (req: CustomRequest, res: Response) => {
+ signAgreementForm = async (req: CustomRequest, res: Response) => {
     const userId = req.user?.id;
-    const applicationId = req.params.id;
+    const agreementId = req.params.id;
     try {
-      const { error, value } = createAgreementDocSchemaFuture.validate(req.body);
+      const { error, value } = updateAgreementSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
-      // Validate application ID
-      if (!applicationId) {
+      // Validate agreement ID
+      if (!agreementId) {
         return res.status(400).json({
-          error: "Application ID is required",
-          details: ["Missing application ID in URL parameters"]
+          error: "Agreement ID is required",
+          details: ["Missing agreement ID in URL parameters"]
         });
       }
 
-      // Fetch application
-      const application = await ApplicantService.getApplicationById(applicationId);
-      if (!application) {
+      // Fetch agreement
+      const agreement = await ApplicantService.getAgreementById(agreementId);
+      if (!agreement) {
         return res.status(404).json({
-          error: "Application not found",
-          details: [`Application with ID ${applicationId} does not exist`]
+          error: "Agreement not found",
+          details: [`Agreement with ID ${agreementId} does not exist`]
         });
       }
 
-
-      // Get recipient email
-      const landlordId = application.properties?.landlordId;
+      // Get landlord info
+      const landlordId = agreement.application?.properties?.landlordId;
       const landlord = await new LandlordService().getLandlordById(landlordId);
       if (!landlord) {
         return res.status(400).json({
@@ -800,6 +799,7 @@ class ApplicantControls {
         });
       }
 
+      // Get user info
       const user = await userServices.getUserById(userId);
       if (!user) {
         return res.status(400).json({
@@ -808,29 +808,34 @@ class ApplicantControls {
         });
       }
 
-      const actualId = application.user?.id;
-      if (user.id !== actualId) {
+      // Authorization check
+      const actualUserId = agreement.application.user?.id;
+      if (user.id !== actualUserId) {
         return res.status(403).json({
           error: "Unauthorized",
-          message: "You can only update agreement forms for applications you applied"
+          message: "You can only sign agreement forms for applications you applied for"
         });
       }
+
       // Combine all provided URLs into a single array
-      const documentUrlModified = [
+      const documentUrls = [
         ...(value.cloudinaryUrls || []),
         ...(value.cloudinaryAudioUrls || []),
         ...(value.cloudinaryVideoUrls || []),
         ...(value.cloudinaryDocumentUrls || [])
       ];
 
-      // Clean up
-      delete value.cloudinaryUrls;
-      delete value.cloudinaryAudioUrls;
-      delete value.cloudinaryVideoUrls;
-      delete value.cloudinaryDocumentUrls;
+      // Extract needed values
+      const { documentUrl = documentUrls[0], processedContent, metadata, ...data } = value;
 
-      const agreement = await ApplicantService.updateAgreementDocs(applicationId, documentUrlModified[0])
-      if (!agreement) {
+      // Update agreement
+      const created = await ApplicantService.signTenantAgreementDocument(
+        { metadata, documentUrl, processedContent }, 
+        userId, 
+        agreementId
+      );
+      
+      if (!created) {
         return res.status(400).json({ message: "Agreement letter not updated" });
       }
 
@@ -844,38 +849,47 @@ class ApplicantControls {
         </div>
       `;
 
-      //send inhouse inbox
+      // Send in-house inbox message
       const mailBox = await emailService.createEmail({
         senderEmail: user.email,
         receiverEmail: landlord.user.email,
-        body: `kindly check your email inbox for the agreement form signed by the applicant`,
-        attachment: documentUrlModified,
-        subject: `Asher - ${application?.properties?.name} Agreement Form SignUp`,
+        body: `Kindly check your email inbox for the agreement form signed by the applicant`,
+        attachment: documentUrls,
+        subject: `Asher - ${agreement?.application.properties?.name} Agreement Form SignUp`,
         senderId: req.user.id,
-        receiverId: application.user.id,
-      })
+        receiverId: agreement.application.user.id,
+      });
 
       if (!mailBox) {
-        return res.status(400).json({ message: "mail not sent" })
+        return res.status(400).json({ message: "Mail not sent" });
       }
-      // Send email
-      await sendMail(landlord.user.email, `Asher - ${application?.properties?.name} Agreement Form`, htmlContent);
 
+      // Send email notification
+      await sendMail(
+        landlord.user.email, 
+        `Asher - ${agreement.application?.properties?.name} Agreement Form`, 
+        htmlContent
+      );
+
+      // Create audit log
       await logsServices.createLog({
-        applicationId,
+        applicationId: agreement.applicationId,
         subjects: "Asher Agreement Letter SignUp",
-        events: `agreement letter signed for the property: ${application?.properties?.name}`,
+        events: `Agreement letter signed for the property: ${agreement.application?.properties?.name}`,
         createdById: userId,
         type: LogType.EMAIL,
-      })
+      });
 
+      // Update application status
       await ApplicantService.updateApplicationStatusStep(
-        applicationId, ApplicationStatus?.AGREEMENTS_SIGNED)
+        agreement.applicationId, 
+        ApplicationStatus.AGREEMENTS_SIGNED
+      );
 
       return res.status(200).json({
-        message: "Agreement letter sent successfully",
+        message: "Agreement letter signed and sent successfully",
         recipient: landlord.user.email,
-        agreementDocument: documentUrlModified
+        agreementDocument: documentUrls
       });
     } catch (error) {
       ErrorService.handleError(error, res);

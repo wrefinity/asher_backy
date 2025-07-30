@@ -36,7 +36,7 @@ class AuthControls {
     }
 
     register = async (req: Request, res: Response) => {
-        
+
         try {
             const { error, value } = ConfirmationSchema.validate(req.body);
             if (error) {
@@ -110,18 +110,27 @@ class AuthControls {
 
     sendPasswordResetCode = async (req: CustomRequest, res: Response) => {
         const { email } = req.body;
+
+        // Convert email to lowercase
+        const normalizedEmail = email.toLowerCase();
+
         try {
-            const user = await UserServices.findUserByEmail(email);
-            if (!user) res.status(400).json({ message: "user does exists" });
+            const user = await UserServices.findUserByEmail(normalizedEmail);
+            if (!user) {
+                return res.status(400).json({ message: "User does not exist" });
+            }
 
             // Ensure user is not null
             if (user && typeof user !== 'boolean' && 'id' in user) {
-                // Create verification token
-                await this.verificationTokenCreator(user.id, email);
+                // Create verification token with normalized email
+                await this.verificationTokenCreator(user.id, normalizedEmail);
             }
-            return res.status(201).json({ message: "password reset code sent, check your email for verification code" });
+
+            return res.status(201).json({
+                message: "Password reset code sent, check your email for verification code"
+            });
         } catch (error: unknown) {
-            ErrorService.handleError(error, res)
+            ErrorService.handleError(error, res);
         }
     }
 

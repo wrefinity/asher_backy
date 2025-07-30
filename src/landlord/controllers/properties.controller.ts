@@ -9,7 +9,7 @@ import { CustomRequest } from "../../utils/types";
 import propertyPerformance from "../services/property-performance";
 import { PropertyListingDTO } from "../validations/interfaces/propsSettings";
 import { parseCSV } from "../../utils/filereader";
-import { PropertySpecificationType, PropertyType  } from "@prisma/client"
+import { PropertySpecificationType, PropertyType } from "@prisma/client"
 import TenantService from '../../services/tenant.service';
 import stateServices from '../../services/state.services';
 import profileServices from '../../services/profileServices';
@@ -24,7 +24,6 @@ import residentialServices from '../../services/residential.services';
 
 class PropertyController {
     constructor() { }
-
 
 
     createProperties = async (req: CustomRequest, res: Response) => {
@@ -52,10 +51,9 @@ class PropertyController {
 
             for (let i = 1; i <= count; i++) {
                 try {
-                    // Create numbered property name
                     const numberedName = `${value.name} ${i.toString().padStart(2, '0')}`;
 
-                    // Check if this specific numbered property already exists
+                    // Check property existence
                     const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
                         landlordId,
                         numberedName,
@@ -72,11 +70,11 @@ class PropertyController {
                     }
 
                     const {
-                        uploadedFiles,
+                        uploadedFiles = [],
                         specificationType,
                         propertySubType,
                         otherTypeSpecific,
-                        count: _, // Remove count from the rest of the data
+                        count: _,
                         commercial,
                         shortlet,
                         residential,
@@ -84,8 +82,8 @@ class PropertyController {
                     } = value;
 
                     const specification: IPropertySpecificationDTO = {
-                        propertySubType: propertySubType,
-                        specificationType: specificationType,
+                        propertySubType,
+                        specificationType,
                         otherTypeSpecific,
                         commercial,
                         shortlet,

@@ -16,6 +16,8 @@ model DocuTemplate {
   isActive      Boolean               @default(true)
   versions      DocuTemplateVersion[]
   userTemplates UserDocuTemplate[]
+
+  AgreementDocument AgreementDocument[]
 }
 
 model DocuTemplateVersion {

@@ -1687,14 +1687,14 @@ class PropertyService {
             if (!specificationType) {
                 throw new Error("Specification type is required.");
             }
-            
+
             // Separate media by type
             const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
             const videos = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.VIDEO);
             const virtualTours = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.VIRTUAL_TOUR);
             const documents = uploadedFiles?.filter(file => file?.identifier === 'DocTable');
 
-            // Create the main property
+            // Create the main property - REMOVE documentName from here
             const property = await tx.properties.create({
                 data: {
                     ...rest,
@@ -1736,18 +1736,12 @@ class PropertyService {
                     propertyDocument: {
                         create: documents?.map(doc => ({
                             documentName: doc?.documentName,
-                            documentUrl: doc?.documentUrl,
+                            documentUrl: doc?.url || doc?.documentUrl,
                             size: doc?.size,
                             type: doc?.type,
-                            ...(doc?.docType && {
-                                docType: doc?.docType,
-                            }),
-                            ...(doc?.idType && {
-                                idType: doc?.idType,
-                            }),
-                            users: {
-                                connect: { id: userId }
-                            }
+                            ...(doc?.docType && { docType: doc?.docType }),
+                            ...(doc?.idType && { idType: doc?.idType }),
+                            users: { connect: { id: userId } }
                         }))
                     },
                 }

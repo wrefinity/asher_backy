@@ -421,20 +421,20 @@ class TenantControls {
               const application = tenantWithApplication.application;
 
               // Serialize agreement documents from application.agreementDocumentUrl
-              const agreementDocuments = application.agreementDocumentUrl.map((url, index) => ({
-                id: `agreement-${application.id}-${index}`,
-                documentName: `Tenant Agreement v${application.agreementVersion - index}`,
-                documentUrl: [url], // Wrap in array to match propertyDocument structure
-                docType: DocumentType.AGREEMENT_DOC,
-                createdAt: application.lastAgreementUpdate || application.createdAt,
-                updatedAt: application.lastAgreementUpdate || application.updatedAt,
-                type: getMimeTypeFromUrl(url), // Adjust based on actual file type
-                size: null, // Add actual size if available
-              }));
+            //   const agreementDocuments = application.agreementDocumentUrl.map((url, index) => ({
+            //     id: `agreement-${application.id}-${index}`,
+            //     documentName: `Tenant Agreement v${application.agreementVersion - index}`,
+            //     documentUrl: [url], // Wrap in array to match propertyDocument structure
+            //     docType: DocumentType.AGREEMENT_DOC,
+            //     createdAt: application.lastAgreementUpdate || application.createdAt,
+            //     updatedAt: application.lastAgreementUpdate || application.updatedAt,
+            //     type: getMimeTypeFromUrl(url), // Adjust based on actual file type
+            //     size: null, // Add actual size if available
+            //   }));
               
               // Combine with other application documents
               const allDocuments = [
-                ...agreementDocuments,
+                // ...agreementDocuments,
                 ...application.documents.map(doc => ({
                   ...doc,
                   documentUrl: doc.documentUrl,
