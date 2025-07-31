@@ -388,7 +388,7 @@ class PropertyController {
 
     getPropsRoom = async (req: CustomRequest, res: Response) => {
         try {
-            const roomId = req.params.propertyId;
+            const roomId = req.params.id;
             const room = await propertyRoomService.getRoomById(roomId)
             if (!room) {
                 return res.status(404).json({ message: 'Property room not found' });
