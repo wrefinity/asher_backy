@@ -153,8 +153,6 @@ class PropertyController {
                     const numberedName = count > 1
                         ? `${prop.name} ${i.toString().padStart(2, '0')}`
                         : prop.name;
-
-
                     const exist = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
                         landlordId,
                         numberedName,

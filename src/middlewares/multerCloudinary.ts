@@ -142,10 +142,15 @@ export const handlePropertyUploads = async (
       (f) => !f.mimetype.startsWith("image/") && !f.mimetype.startsWith("video/")
     );
 
-    // Validate count match
-    if (documentNames.length && documentNames.length !== documentFiles.length) {
+    // Validate count match only when documentNames are provided
+    if (documentNames && documentNames.length > 0 && documentNames.length !== files.length) {
       return res.status(400).json({
-        error: `Number of documentNames (${documentNames.length}) does not match number of document files (${documentFiles.length})`,
+        error: `Number of documentNames (${documentNames.length}) does not match number of uploaded files (${files.length})`,
+        details: {
+          documentNamesCount: documentNames.length,
+          filesCount: files.length,
+          message: "Please provide names for all uploaded files or leave documentNames empty"
+        }
       });
     }
     let documentIndex = 0;

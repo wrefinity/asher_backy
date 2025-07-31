@@ -1,0 +1,50 @@
+model tenants {
+    id                    String                 @id @default(cuid())
+    tenantId              String?                @unique
+    landlordId            String
+    tenantCode            String?                @unique
+    password              String?
+    // rentstatus String?
+    rentstatus            Int?
+    leaseStartDate        DateTime?
+    leaseEndDate          DateTime?
+    isCurrentLease        Boolean                @default(true)
+    initialDeposit        Decimal?               @default(0.00) @db.Decimal(18, 2)
+    // isexisted                    Int?
+    dateOfFirstRent       DateTime?              @default(now()) @db.Timestamptz(6)
+    apartmentOrFlatNumber Int?
+    stripeCustomerId      String?                @unique
+    // tenantwebUserEmail
+    tenantWebUserEmail    String?
+    // relationships definitions
+    userId                String
+    user                  users                  @relation(fields: [userId], references: [id])
+    landlord              landlords              @relation(fields: [landlordId], references: [id])
+    agentId               String?
+    agent                 agents?                @relation(fields: [agentId], references: [id])
+    propertyId            String
+    property              properties             @relation(fields: [propertyId], references: [id])
+    unitId                String?
+    unit                  UnitConfiguration?      @relation(fields: [unitId], references: [id])
+    roomId                String?
+    room                  RoomDetail?      @relation(fields: [roomId], references: [id])
+    history               tenantPaymentHistory[]
+
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+    reviews   reviews[]
+    services  services[]
+
+    maintenances       maintenance[]        @relation("tenantUser")
+    applicationInvites applicationInvites[]
+    violation          violation[]          @relation("tenant")
+    applicationId      String?              @unique
+    application        application?         @relation("ApplicationTenant", fields: [applicationId], references: [id])
+    inspection         inspection[]
+    TenantLeaseBreach  TenantLeaseBreach[]
+    SupportTicket      SupportTicket[]      @relation("TicketTenantRaisedBy")
+    billsSubCategory   billsSubCategory[]
+
+    @@unique([userId, propertyId])
+    @@unique([userId])
+}

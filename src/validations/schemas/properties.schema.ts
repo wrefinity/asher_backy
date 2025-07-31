@@ -757,9 +757,6 @@ export const IBasePropertyDTOSchema = Joi.object({
 
   keyFeatures: Joi.array().items(Joi.string()).required(),
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
-  // nearbyAmenities: Joi.array().items(Joi.string()).optional(),
-  // customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
-  // amenityDistances: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
 
   propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
