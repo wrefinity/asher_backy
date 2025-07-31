@@ -5,8 +5,9 @@ import {
   OfficeLayout, CancellationPolicy, Currency, VatStatus, LeaseTermUnit, GlazingType,
   MediaType, TensureType,
   BookingStatus,
-  
+
 } from '@prisma/client';
+import { uploadSchema } from './upload.schema';
 const propertyType = Object.values(PropertyType);
 const documentType = Object.values(DocumentType);
 const idType = Object.values(IdType);
@@ -44,11 +45,7 @@ export const createPropertySchema = Joi.object({
   yearBuilt: Joi.number().integer().optional(),
   amenities: Joi.array().items(Joi.string()).optional(),
   totalApartments: Joi.number().integer().optional(),
-  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-});
+}).concat(uploadSchema);;
 
 // Joi schema for validating property update data
 export const updatePropertySchema = Joi.object({
@@ -86,16 +83,12 @@ export const updatePropertySchema = Joi.object({
 
 export const createPropertyDocumentSchema = Joi.object({
   documentName: Joi.string().required(),
-  cloudinaryDocumentUrls: Joi.array().items(Joi.string()).optional(),
-  cloudinaryUrls: Joi.array().items(Joi.string()).optional(),
-  cloudinaryVideoUrls: Joi.array().items(Joi.string()).optional(),
-  cloudinaryAudioUrls: Joi.array().items(Joi.string()).optional(),
   propertyId: Joi.string().optional(),
   size: Joi.string().required(),
   type: Joi.string().required(),
   docType: Joi.string().valid(...documentType).optional(),
   idType: Joi.string().valid(...idType).optional(),
-});
+}).concat(uploadSchema);;
 
 
 export const documentUploadSchema = Joi.object({
@@ -114,32 +107,6 @@ export const updatePropertyDocumentSchema = Joi.object({
   size: Joi.string().optional(),
   type: Joi.string().optional(),
 });
-
-
-
-// export const featureSchema = Joi.object({
-//   name: Joi.string().required().messages({
-//     'string.empty': 'Feature name cannot be empty',
-//     'any.required': 'Feature name is required'
-//   }),
-//   type: Joi.string().valid(...Object.values(PropertyFeatureType)).required()
-//     .messages({
-//       'any.only': `Type must be one of ${Object.values(PropertyFeatureType).join(', ')}`,
-//       'any.required': 'Feature type is required'
-//     })
-// });
-
-
-// export const createFeaturesSchema = Joi.array()
-//   .items(featureSchema)
-//   .min(1)
-//   .required()
-//   .messages({
-//     'array.base': 'Input must be an array of features',
-//     'array.min': 'At least one feature is required',
-//     'any.required': 'Features array is required'
-//   });
-
 
 
 
@@ -281,9 +248,6 @@ export const commercialPropertyUnitSchema = Joi.object({
 });
 
 
-
-
-
 /// ========== new work
 const propertyDocumentSchema = Joi.object({
   id: Joi.string().optional(),
@@ -346,7 +310,7 @@ export const unitConfigurationSchema = Joi.object({
   idType: Joi.array().items(Joi.string()).optional(),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
-    
+
   unitType: Joi.string().required(),
   unitNumber: Joi.string().optional(),
   floorNumber: Joi.number().optional(),
@@ -376,8 +340,8 @@ export const roomDetailSchema = Joi.object({
   docType: Joi.array().items(Joi.string()).optional(),
   idType: Joi.array().items(Joi.string()).optional(),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
-  images: Joi.array().items(propertyMediaFilesSchema).optional(),    
-  count: Joi.number().optional(), 
+  images: Joi.array().items(propertyMediaFilesSchema).optional(),
+  count: Joi.number().optional(),
   roomName: Joi.string().required(),
   roomSize: Joi.string().required(),
   ensuite: Joi.boolean().default(false).optional(),
@@ -451,21 +415,43 @@ export const suitableUseSchema = Joi.object({
   commercialPropertyId: Joi.string().optional(),
 });
 
-// const propertyFeatureType = Object.values(PropertyFeatureType);
-// export const propertyFeatureSchema = Joi.object({
-//   name: Joi.string().required(),
-//   type: Joi.string()
-//     .valid(...propertyFeatureType)
-//     .default(PropertyFeatureType.KEY)
-//     .required(),
-// });
-
-
-
+// Common across schemas
+const commonFields = {
+  bedrooms: Joi.number().optional(),
+  bathrooms: Joi.number().optional(),
+  yearBuilt: Joi.number().optional(),
+  floorLevel: Joi.number().optional(),
+  totalFloors: Joi.number().optional(),
+  renovationYear: Joi.string().optional(),
+  furnished: Joi.boolean().optional(),
+  safetyFeatures: Joi.array().items(Joi.string()).optional(),
+  customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
+  epcRating: Joi.string().allow('', null).optional(),
+  energyEfficiencyRating: Joi.number().optional(),
+  environmentalImpactRating: Joi.number().optional(),
+  heatingTypes: Joi.array().items(Joi.string()).optional(),
+  coolingTypes: Joi.array().items(Joi.string()).optional(),
+  roomDetails: Joi.array().items(roomDetailSchema).optional(),
+  sharedFacilities: sharedFacilitiesSchema.optional(),
+  otherSharedFacilities: Joi.array().items(Joi.string()).optional(),
+  houseRule: Joi.string().optional(),
+  maxOccupant: Joi.number().optional(),
+  isHMO: Joi.boolean().optional(),
+  isShareHouse: Joi.boolean().optional(),
+  isHMOLicenced: Joi.boolean().optional(),
+  hmoLicenceNumber: Joi.string().optional(),
+  hmoLicenceExpiryDate: Joi.date().optional(),
+  totalOccupants: Joi.number().optional(),
+  occupantsDetails: Joi.string().optional(),
+  buildingAmenityFeatures: Joi.array().items(Joi.string()).optional(),
+  outdoorsSpacesFeatures: Joi.array().items(Joi.string()).optional()
+};
+export const commonPropertyFields = Joi.object({
+  ...commonFields
+});
 
 
 export const shortletPropertySchema = Joi.object({
-
   // House type specifics
   lotSize: Joi.number().integer().optional(),
   garageSpaces: Joi.number().integer().optional(),
@@ -619,8 +605,8 @@ export const residentialPropertySchema = Joi.object({
   totalUnits: Joi.number().optional(),
 
   customSafetyFeatures: Joi.array().items(Joi.string()),
+  epcRating: Joi.string().allow('', null).optional(),
 
-  epcRating: Joi.string().optional(),
   energyEfficiencyRating: Joi.number().optional(),
   environmentalImpactRating: Joi.number().optional(),
   heatingTypes: Joi.array().items(Joi.string()).optional(),
@@ -686,7 +672,8 @@ export const commercialPropertySchema = Joi.object({
   safetyFeatures: Joi.array().items(Joi.string()),
   customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
 
-  epcRating: Joi.string().optional(),
+  epcRating: Joi.string().allow('', null).optional(),
+
   energyEfficiencyRating: Joi.number().optional(),
   environmentalImpactRating: Joi.number().optional(),
   heatingTypes: Joi.array().items(Joi.string()),
@@ -721,18 +708,10 @@ export const commercialPropertySchema = Joi.object({
   occupantsDetails: Joi.string().optional(),
 });
 
-
 export const IBasePropertyDTOSchema = Joi.object({
-
   count: Joi.number().integer().min(1).max(100).default(1)
     .description('Number of properties to create (will append numbers to name)'),
-  
-  // media files attachement for middlewares
-  documentName: Joi.array().items(Joi.string()).optional(),
-  docType: Joi.array().items(Joi.string()).optional(),
-  idType: Joi.array().items(Joi.string()).optional(),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
-
   name: Joi.string().required(),
   description: Joi.string().optional(),
   propertySize: Joi.number().optional(),
@@ -786,7 +765,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
   videos: Joi.array().items(propertyMediaFilesSchema).optional(),
   virtualTours: Joi.array().items(propertyMediaFilesSchema).optional(),
-  
+
   propertySubType: Joi.string().valid(...Object.values(propertyType)).messages({
     'any.required': 'Property type is required',
     'any.only': `Property type must be one of: ${propertyType.join(',')}`,
@@ -828,342 +807,3 @@ export const IBasePropertyDTOSchema = Joi.object({
     otherwise: Joi.forbidden()
   }),
 });
-
-
-
-
-// {
-//   "status": "FOR_RENT",
-//   "bedrooms": 4,
-//   "bathrooms": 3,
-//   "receiptionRooms": 2,
-//   "toilets": 4,
-//   "tenure": "LEASE_HOLD",
-//   "furnished": true,
-//   "renovationYear": "2020",
-//   "councilTaxBand": "Band D",
-//   "parkingSpaces": 2,
-//   "garageType": "SHARED_HOUSE",
-//   "yearBuilt": 2010,
-//   "floorLevel": 1,
-
-//   "totalArea": "200",
-//   "areaUnit": "SQM",
-//   "petPolicy": "Pets allowed with conditions",
-//   "rentalTerms": "Minimum 12-month lease",
-//   "utilities": ["Water", "Electricity", "Gas"],
-
-
-//   "outdoorsSpacesFeatures": ["cm9vtear30001jdrejsx7u84t", "cm9vtear30000jdre0i5nlcfl"],
-//   "buildingAmenityFeatures": ["cm9vt1q6o0003qa22bz6k1dpb", "cm9vt1q6o0004qa22nxvu5srh"],
-//   "safetyFeatures": ["cm9vt9igv000198ar7fiirbs1", "cm9vt9igv000098ar7z6s3uaj"],
-
-//   "roomDetails": [
-//     {
-//       "roomName": "Master Bedroom",
-//       "roomSize": "25 sqm",
-//       "ensuite": true,
-//       "price": "1000"
-//     },
-//     {
-//       "roomName": "Bedroom 2",
-//       "roomSize": "18 sqm",
-//       "ensuite": false,
-//       "price": "800"
-//     }
-//   ],
-//   "SharedFacilities": [
-//     {
-//       "kitchen": true,
-//       "bathroom": true,
-//       "livingRoom": true,
-//       "garden": true,
-//       "garage": true,
-//       "laundry": true,
-//       "parking": true,
-//       "others": "Shared storage"
-//     }
-//   ],
-//   "otherSharedFacilities": ["Bicycle Rack", "Terrace Lounge"],
-//   "houseRule": "No smoking indoors",
-//   "maxOccupant": 5,
-//   "isShareHouse": true,
-//   "totalOccupants": 4,
-//   "occupantsDetails": "All occupants are professionals",
-
-//   "unitconfiguration": [
-//     {
-//       "unitType": "Flat",
-//       "unitCount": 2,
-//       "floor": 1
-//     },
-//     {
-//       "unitType": "Studio",
-//       "unitCount": 1,
-//       "floor": 2
-//     }
-//   ],
-//   "totalFloors": 3,
-//   "unitPerFloors": 2,
-//   "totalUnits": 5,
-
-//   "customSafetyFeatures": ["Emergency Exit", "Carbon Monoxide Alarm"],
-
-//   "epcRating": "B",
-//   "energyEfficiencyRating": 85,
-//   "environmentalImpactRating": 70,
-//   "heatingTypes": ["Central Heating"],
-//   "coolingTypes": ["Gas Central Heating", "Heat Pump", "Solid Fuel"],
-//   "glazingTypes": "DOUBLE_GLAZING",
-
-//   "additionalNotes": "Located near public transport and shopping centers."
-// }
-
-
-// {
-//   "totalArea": "5000",
-//   "areaUnit": "SQFT",
-//   "businessRates": "£12,000 per annum",
-//   "serviceCharge": 5.50,
-//   "leaseTermUnit": "YEARS",
-//   "minimumLeaseTerm": 24,
-//   "maximumLeaseTerm": 60,
-//   "buildingClass": "A",
-//   "lastRefurbished": "2022",
-//   "totalFloors": 10,
-//   "zoning": "Commercial",
-//   "yearBuilt": 2015,
-//   "totalRooms": 25,
-//   "parkingSpaces": 50,
-//   "floorLevel": 3,
-//   "availableFrom": "2025-06-01T00:00:00Z",
-  
-
-//     "floorNumber": 3,
-//     "workstations": 80,
-//     "meetingRooms": 5,
-//     "officeLayout": "OPEN_PLAN",
-  
-
-  
-//   "safetyFeatures": ["cm9vm5qpa000luiq72q9ywku8", "cm9vt9igv000098ar7z6s3uaj"],
-//   "customSafetyFeatures": ["24/7 Security Patrol", "Biometric Access"],
-  
-
-//     "epcRating": "B",
-//     "energyEfficiencyRating": 75,
-//     "environmentalImpactRating": 65,
-//     "heatingTypes": ["Central Heating"],
-//     "coolingTypes": ["Gas Central Heating", "Heat Pump", "Solid Fuel"],
-//     "hasGreenCertification": true,
-//     "greenCertificationType": "BREEAM",
-//     "greenCertificationLevel": "Excellent",
-
-  
-
-//     "leaseTerm": "5 years",
-//     "leaseTermNegotiable": true,
-//     "rentReviewPeriod": "Annual",
-//     "breakClause": "After 3 years",
-//     "rentFreeOffered": true,
-//     "rentFreePeriod": "3 months",
-
-//  "securityFeatures": ["cm9vt9igv000098ar7z6s3uaj", "cm9vt9igv000198ar7fiirbs1"],
-//   "customSafetyFeatures": ["Emergency Exit", "Carbon Monoxide Alarm"],
-
-//   "suitableFor": ["OFFICE", "CO_WORKING", "TECH_STARTUP"],
-// highRiseFloors: 10,
-//   "floorAvailability": [
-//     {
-//       "floorNumber": 5,
-//       "area": "1200",
-//       "price": "£35,000",
-//       "available": true,
-//       "partialFloor": false,
-//       "description": "Corner office with panoramic views",
-//       "amenities": ["cm9vt1q6o0006qa22kfp9myit", "cm9vt1q6o0004qa22nxvu5srh"]
-//     },
-//     {
-//       "floorNumber": 6,
-//       "area": "1500",
-//       "price": "£42,000",
-//       "available": true,
-//       "partialFloor": true,
-//       "description": "Partitioned floor available",
-// "amenities": ["cm9vt1q6o0006qa22kfp9myit", "cm9vt1q6o0004qa22nxvu5srh"]
-//     }
-//   ],
-// totalUnits: 2,
-//   "unitConfigurations": [
-//     {
-//       "unitType": "PRIVATE_OFFICE",
-//       "unitNumber": "301",
-//       "floorNumber": 3,
-//       "count": 1,
-//       "bedrooms": 0,
-//       "bathrooms": 1,
-//       "price": "2,500,000",
-//       "area": "80",
-//       "description": "Executive private office",
-//       "availability": "AVAILABLE"
-//     },
-//     {
-//       "unitType": "GENERAL_OFFICE",
-//       "unitNumber": "302",
-//       "floorNumber": 2,
-//       "count": 1,
-//       "bedrooms": 0,
-//       "bathrooms": 2,
-//       "price": "2,100,000",
-//       "area": "80",
-//       "description": "Executive private office",
-//       "availability": "AVAILABLE"
-//     }
-//   ],
-  
-//   "roomDetails": [
-//     {
-//       "roomName": "Board Room",
-//       "roomSize": "50",
-//       "ensuite": true,
-//       "price": "500,000",
-//       "availability": "VACANT"
-//     }
-//   ],
-  
-//   "sharedFacilities": {
-//     "kitchen": true,
-//     "bathroom": true,
-//     "livingRoom": false,
-//     "garden": false,
-//     "garage": true,
-//     "laundry": true,
-//     "parking": true,
-//     "other": "Bike storage"
-//   },
-  
-//   "otherSharedFacilities": ["Conference Room", "Breakout Area"],
-//   "houseRule": "No smoking in common areas",
-//   "maxOccupant": 100,
-//   "isHMO": false,
-//   "isShareHouse": false,
-//   "occupantsDetails": "Professional tenants only"
-// }
-
-// {
-
-  
-//   "lotSize": 1200,
-//   "garageSpaces": 2,
-//   "outdoorsSpacesFeatures": ["cm9vtear30001jdrejsx7u84t", "cm9vtear30000jdre0i5nlcfl"],
-  
-//   "buildingName": "Luxury Towers",
-//   "unitNumber": 42,
-//   "buildingAmenityFeatures": ["cm9vt1q6o0003qa22bz6k1dpb", "cm9vt1q6o0004qa22nxvu5srh"], 
-// "safetyFeatures": ["cm9vm5qpa000luiq72q9ywku8", "cm9vt9igv000098ar7z6s3uaj"], 
-//   "customSafetyFeatures": ["24/7 Security", "Fire extinguishers"],
-//   "bedrooms": 3,
-//   "beds": 4,
-//   "bathrooms": 2,
-//   "maxGuests": 6,
-//   "propertySize": "120",
-//   "sizeUnit": "SQM",
-//   "floorLevel": 5,
-//   "totalFloors": 10,
-//   "renovationYear": "2021",
-//   "yearBuilt": 2018,
-//   "furnished": true,
-  
-//   // Availability & Pricing
-//   "minStayDays": 2,
-//   "maxStayDays": 30,
-//   "availableFrom": "2023-06-01T00:00:00Z",
-//   "availableTo": "2023-12-31T00:00:00Z",
-//   "basePrice": 150,
-//   "cleaningFee": 50,
-//   "weeklyDiscount": 10,
-//   "monthlyDiscount": 15,
-  
-//   // House Rules
-//   "checkInTime": "14:00",
-//   "checkOutTime": "11:00",
-//   "instantBooking": true,
-//   "allowChildren": true,
-//   "allowInfants": true,
-//   "allowPets": false,
-//   "allowSmoking": false,
-//   "allowParties": false,
-//   "quietHours": true,
-//   "quietHoursStart": "22:00",
-//   "quietHoursEnd": "07:00",
-  
-//   // Booking & Policies
-//   "cancellationPolicy": "FLEXIBLE",
-//   "houseManual": "Please treat our home with respect...",
-//   "checkInInstructions": "Use keypad code 1234# at main entrance",
-//   "localRecommendations": "Great restaurants nearby...",
-//   "emergencyContact": "+1234567890",
-  
-//   // Host info
-//   "hostName": "John Doe",
-//   "hostPhotoUrl": "https://example.com/host.jpg",
-//   "responseRate": 95,
-//   "responseTime": "within 1 hour",
-//   "isSuperhost": true,
-//   "joinedDate": "2020-01-15T00:00:00Z",
-  
-//   // Room details
-//   "roomDetails": [
-//     {
-//       "roomName": "Master Bedroom",
-//       "roomSize": "25",
-//       "ensuite": true,
-//       "price": "200",
-//       "availability": "VACCANT"
-//     },
-//     {
-//       "roomName": "Guest Room",
-//       "roomSize": "18",
-//       "ensuite": false,
-//       "price": "150",
-//       "availability": "VACCANT"
-//     }
-//   ],
-  
-//   // Shared facilities
-//   "SharedFacilities": [
-//     {
-//       "kitchen": true,
-//       "bathroom": true,
-//       "livingRoom": true,
-//       "garden": false,
-//       "garage": true,
-//       "laundry": true,
-//       "parking": true,
-//       "other": "Bicycle storage"
-//     }
-//   ],
-  
-//   "otherSharedFacilities": ["Swimming pool", "Gym"],
-//   "houseRule": "No shoes inside please",
-//   "maxOccupant": 8,
-  
-//   // Unit configurations (for multi-unit properties)
-//   "unitConfigurations": [
-//     {
-//       "unitType": "STUDIO",
-//       "unitNumber": "A1",
-//       "floorNumber": 1,
-//       "bedrooms": 0,
-//       "bathrooms": 1,
-//       "price": "1200",
-//       "area": "45",
-//       "description": "Cozy studio with kitchenette",
-//       "availability": "AVAILABLE"
-//     }
-//   ],
-  
-//   // Additional rules and languages
-//   "additionalRules": ["No loud music after 10pm", "Recycling mandatory"],
-//   "hostLanguages": ["English", "French"]
-// }

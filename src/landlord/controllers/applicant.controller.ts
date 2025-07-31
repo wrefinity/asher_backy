@@ -7,23 +7,20 @@ import ApplicationInvitesService from '../../services/application.services';
 import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType } from "@prisma/client"
-import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, agreementDocumentSchema, updateApplicationStatusSchema } from '../validations/schema/applicationInvitesSchema';
+import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, agreementDocumentSchema, updateApplicationStatusSchema, updateAgreementSchema } from '../validations/schema/applicationInvitesSchema';
 import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
 import sendMail from "../../utils/emailer"
 import applicantService from "../../webuser/services/applicantService"
-import { landlordScreener, guarantorScreener, employmentScreener } from "../../utils/screener"
 import { PropertyDocumentService } from "../../services/propertyDocument.service"
 import emailService from "../../services/emailService"
 
 class ApplicationControls {
     private landlordService: LandlordService;
 
-    constructor() {
-        this.landlordService = new LandlordService();
-    }
+    constructor() {this.landlordService = new LandlordService();}
 
     getApplicationStatistics = async (req: CustomRequest, res: Response) => {
         try {
@@ -50,27 +47,7 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
-    // getApplicationsWithInvites = async (req: CustomRequest, res: Response) => {
-    //     try {
-    //         const landlordId = req.user.landlords.id;
-    //         const completedStatuses = [
-    //             InvitedResponse.PENDING,
-    //             InvitedResponse.ACCEPTED,
-    //             InvitedResponse.SCHEDULED,
-    //             InvitedResponse.FEEDBACK,
-    //             InvitedResponse.APPLY,
-    //             // InvitedResponse.REJECTED,
-    //             // InvitedResponse.APPLICATION_NOT_STARTED,
-    //             // InvitedResponse.APPLICATION_STARTED,
-    //             // InvitedResponse.VISITED,
-    //             // InvitedResponse.NOT_VISITED,
-    //         ];
-    //         const application = await ApplicationInvitesService.getInvitesWithStatus(landlordId, completedStatuses);
-    //         return res.status(200).json({ application });
-    //     } catch (error) {
-    //         errorService.handleError(error, res)
-    //     }
-    // }
+
     getApplicationsPending = async (req: CustomRequest, res: Response) => {
 
         try {
@@ -174,27 +151,11 @@ class ApplicationControls {
             }
             const { error, value } = createApplicationInviteSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
-            
+
             const invitedByLandordId = req.user?.landlords?.id;
-            const {  ...rest } = value
+            const { ...rest } = value
 
-            const {propertyId, propertyListingId, unitId, roomId} = enquire
-
-            // check for property existance
-            // const propertyExist = await propertyServices.searchPropertyUnitRoom(propertiesId);
-            // if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
-
-
-            // const { type, data } = propertyExist;
-
-            // // Only one of these will be assigned, others remain undefined
-            // const id = data.id;
-            // const propertyId = type === 'property' ? id : undefined;
-            // const unitId = type === 'unit' ? id : undefined;
-            // const roomId = type === 'room' ? id : undefined;
-            // const propertyId = type === 'property' ? id : undefined;
-            // const unitId = type === 'unit' ? id : undefined;
-            // const roomId = type === 'room' ? id : undefined;
+            const { propertyId, propertyListingId, unitId, roomId } = enquire
 
             const invite = await ApplicationInvitesService.createInvite({
                 ...rest,
@@ -232,6 +193,7 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+
     createInviteForExistingUser = async (req: CustomRequest, res: Response) => {
         try {
             const { error, value } = createApplicationInviteSchema.validate(req.body);
@@ -301,6 +263,7 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
+
     getInvites = async (req: CustomRequest, res: Response) => {
         try {
             const invitedByLandordId = req.user?.landlords?.id;
@@ -765,19 +728,19 @@ class ApplicationControls {
                 type: LogType.EMAIL,
             })
 
-                  // Combine all provided URLs into a single array
-      const documentUrls = [
-        ...(value.cloudinaryUrls || []),
-        ...(value.cloudinaryAudioUrls || []),
-        ...(value.cloudinaryVideoUrls || []),
-        ...(value.cloudinaryDocumentUrls || [])
-      ];
+            // Combine all provided URLs into a single array
+            const documentUrls = [
+                ...(value.cloudinaryUrls || []),
+                ...(value.cloudinaryAudioUrls || []),
+                ...(value.cloudinaryVideoUrls || []),
+                ...(value.cloudinaryDocumentUrls || [])
+            ];
 
-      // Extract needed values
-      const { documentUrl = documentUrls[0], cloudinaryVideoUrls, cloudinaryUrls, cloudinaryAudioUrls, cloudinaryDocumentUrls, ...data } = value;
+            // Extract needed values
+            const { documentUrl = documentUrls[0], cloudinaryVideoUrls, cloudinaryUrls, cloudinaryAudioUrls, cloudinaryDocumentUrls, ...data } = value;
 
 
-            await applicantService.upsertAgreementDocument({...data, documentUrl,  applicationId}, req.user.id)
+            await applicantService.upsertAgreementDocument({ ...data, documentUrl, applicationId }, req.user.id)
             // Update the application with the agreement document URL
             await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS);
             return res.status(200).json({
@@ -789,105 +752,138 @@ class ApplicationControls {
             errorService.handleError(error, res);
         }
     };
-    // sendAgreementForm = async (req: CustomRequest, res: Response) => {
-    //     const landlordId = req.user?.landlords?.id;
-    //     try {
-    //         if (!landlordId) {
-    //             return res.status(403).json({ error: 'kindly login' });
-    //         }
-    //         const { error, value } = createAgreementDocSchema.validate(req.body);
-    //         if (error) {
-    //             return res.status(400).json({ error: error.details[0].message });
-    //         }
 
-    //         const applicationId = req.params.id;
+    signAgreementForm = async (req: CustomRequest, res: Response) => {
+        const userId = req.user?.id;
+        const agreementId = req.params.id;
+        try {
+            const { error, value } = updateAgreementSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+            // Validate agreement ID
+            if (!agreementId) {
+                return res.status(400).json({
+                    error: "Agreement ID is required",
+                    details: ["Missing agreement ID in URL parameters"]
+                });
+            }
 
-    //         // Validate application ID
-    //         if (!applicationId) {
-    //             return res.status(400).json({
-    //                 error: "Application ID is required",
-    //                 details: ["Missing application ID in URL parameters"]
-    //             });
-    //         }
+            // Fetch agreement
+            const agreement = await applicantService.getAgreementById(agreementId);
+            if (!agreement) {
+                return res.status(404).json({
+                    error: "Agreement not found",
+                    details: [`Agreement with ID ${agreementId} does not exist`]
+                });
+            }
 
-    //         // Fetch application
-    //         const application = await applicantService.getApplicationById(applicationId);
-    //         if (!application) {
-    //             return res.status(404).json({
-    //                 error: "Application not found",
-    //                 details: [`Application with ID ${applicationId} does not exist`]
-    //             });
-    //         }
-    //         const actualLandlordId = application.properties?.landlordId;
-    //         if (req.user.landlords.id !== actualLandlordId) {
-    //             return res.status(403).json({
-    //                 error: "Unauthorized",
-    //                 message: "You can only send agreement forms for applications on your own properties."
-    //             });
-    //         }
+            // Get landlord info
+            const landlordId = agreement.application?.properties?.landlordId;
+            const landlord = await new LandlordService().getLandlordById(landlordId);
+            if (!landlord) {
+                return res.status(400).json({
+                    error: "Landlord not found",
+                    message: "The landlord associated with this property is not found."
+                });
+            }
 
-    //         // Get recipient email
-    //         const recipientEmail = application.user.email;
-    //         if (!recipientEmail) {
-    //             return res.status(400).json({
-    //                 error: "Missing recipient email",
-    //                 message: "The applicant's email is required to send the agreement form."
-    //             });
-    //         }
-    //         const documentUrlModified = value.documentUrls;
+            // Get user info
+            const user = await userServices.getUserById(userId);
+            if (!user) {
+                return res.status(400).json({
+                    error: "User not found",
+                    message: "The user associated with this application is not found."
+                });
+            }
 
-    //         // Build HTML content
-    //         const htmlContent = `
-    //         <div style="font-family: Arial, sans-serif;">
-    //           <h2>Agreement Form Notification</h2>
-    //           <p>Hello,</p>
-    //           <p>Please find the mail inbox on agreement form in your asher mailing box</p>
-    //           <p>Best regards,<br/>Asher</p>
-    //         </div>
-    //       `;
+            // Authorization check
+            const actualUserId = agreement.application.user?.id;
+            if (user.id !== actualUserId) {
+                return res.status(403).json({
+                    error: "Unauthorized",
+                    message: "You can only sign agreement forms for applications you applied for"
+                });
+            }
 
-    //         //send inhouse inbox
-    //         const mailBox = await emailService.createEmail({
-    //             senderEmail: req.user.email,
-    //             receiverEmail: recipientEmail,
-    //             body: `Hello, please find and complete the agreement form below: ${documentUrlModified}`,
-    //             attachment: [documentUrlModified],
-    //             subject: `${application?.properties?.name} Agreement Form`,
-    //             senderId: req.user.id,
-    //             receiverId: application.user.id,
+            // Combine all provided URLs into a single array
+            const documentUrls = [
+                ...(value.cloudinaryUrls || []),
+                ...(value.cloudinaryAudioUrls || []),
+                ...(value.cloudinaryVideoUrls || []),
+                ...(value.cloudinaryDocumentUrls || [])
+            ];
 
-    //         })
+            // Extract needed values
+            const { documentUrl = documentUrls[0], processedContent, metadata, ...data } = value;
 
-    //         if (!mailBox) {
-    //             return res.status(400).json({ message: "mail not sent" })
-    //         }
-    //         // Send email
-    //         await sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent);
+            // Update agreement
+            const created = await applicantService.signAgreementDocumentLandlord(
+                { metadata, documentUrl, processedContent },
+                userId,
+                agreementId
+            );
 
+            if (!created) {
+                return res.status(400).json({ message: "Agreement letter not updated" });
+            }
 
-    //         await logsServices.createLog({
-    //             applicationId,
-    //             subjects: "Asher Agreement Letter",
-    //             events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
-    //             createdById: application.user.id,
-    //             type: LogType.EMAIL,
-    //         })
+            // Build HTML content
+            const htmlContent = `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Agreement Form Signed Notification</h2>
+          <p>Hello,</p>
+          <p>Please find the mail inbox for the agreement form signed by the applicant</p>
+          <p>Best regards,<br/>Asher</p>
+        </div>
+      `;
 
-    //         await applicantService.updateAgreementDocs(applicationId, documentUrlModified)
-    //         // Update the application with the agreement document URL
-    //         await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS);
-    //         return res.status(200).json({
-    //             message: "Agreement form email sent successfully",
-    //             recipient: recipientEmail,
-    //             agreementDocument: documentUrlModified
-    //         });
-    //     } catch (error) {
-    //         errorService.handleError(error, res);
-    //     }
-    // };
+            // Send in-house inbox message
+            const mailBox = await emailService.createEmail({
+                senderEmail: user.email,
+                receiverEmail: landlord.user.email,
+                body: `Kindly check your email inbox for the agreement form signed by the applicant`,
+                attachment: documentUrls,
+                subject: `Asher - ${agreement?.application.properties?.name} Agreement Form SignUp`,
+                senderId: req.user.id,
+                receiverId: agreement.application.user.id,
+            });
 
-  
+            if (!mailBox) {
+                return res.status(400).json({ message: "Mail not sent" });
+            }
+
+            // Send email notification
+            await sendMail(
+                landlord.user.email,
+                `Asher - ${agreement.application?.properties?.name} Agreement Form`,
+                htmlContent
+            );
+
+            // Create audit log
+            await logsServices.createLog({
+                applicationId: agreement.applicationId,
+                subjects: "Asher Agreement Letter SignUp",
+                events: `Agreement letter signed for the property: ${agreement.application?.properties?.name}`,
+                createdById: userId,
+                type: LogType.EMAIL,
+            });
+
+            // Update application status
+            await applicantService.updateApplicationStatusStep(
+                agreement.applicationId,
+                ApplicationStatus.AGREEMENTS_SIGNED
+            );
+
+            return res.status(200).json({
+                message: "Agreement letter signed and sent successfully",
+                recipient: landlord.user.email,
+                agreementDocument: documentUrls
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
 }
-
-
 export default new ApplicationControls()

@@ -73,6 +73,7 @@ enum PropertyType {
   COMMERICAL_GARAGE
   BUSINESS_PARK_UNIT
   DATA_CENTER
+  FLAT
   OTHER
 }
 

@@ -1,15 +1,13 @@
 import Joi from "joi";
+import { uploadSchema } from "./upload.schema";
 
 const communityInformationSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
     visibility: Joi.string().valid('PUBLIC', 'PRIVATE').optional(),
-    // communityProfileImage: Joi.string().uri().optional(),
-    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-})
+}).concat(
+    uploadSchema
+)
 const createCommentSchema = Joi.object({
   postId: Joi.string().required(),
   content: Joi.string().required(),
@@ -22,30 +20,20 @@ const toggleCommentLikeSchema = Joi.object({
 const forumInformationSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
-    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-})
+}).concat(uploadSchema)
 
 
 const communityPostSchema = Joi.object({
     name: Joi.string().required(),
     // category: Joi.string().required(),
     description: Joi.string().required(),
-    cloudinaryUrls: Joi.array().items(Joi.string().uri().optional()).optional(),
-})
+}).concat(uploadSchema)
 
 
 const createCommunityPostSchema = Joi.object({
     title: Joi.string().required().max(200),
     content: Joi.string().required(),
     tags: Joi.array().items(Joi.string()).default([]),
-    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
-    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-
     categoryId: Joi.string().optional(),
     pinned: Joi.boolean().default(false),
     locked: Joi.boolean().default(false),
@@ -62,7 +50,7 @@ const createCommunityPostSchema = Joi.object({
         //     .min(2)
         //     .required(),
     }).optional(),
-});
+}).concat(uploadSchema);
 
 const updateCommunityPostSchema = Joi.object({
     title: Joi.string().optional().max(200),

@@ -106,42 +106,20 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
 };
 
 
-
-// Example form data usage
-// formData.append("name", "My Property");
-// formData.append("location", "Lagos");
-
-// formData.append("documentName", "Passport");
-// formData.append("docType", "ID");
-// formData.append("idType", "PASSPORT");
-
-// formData.append("documentName", "Tax File");
-// formData.append("docType", "TAX_RETURN");
-// formData.append("idType", ""); // Leave blank if not ID
-
-// formData.append("files", file1);
-// formData.append("files", file2);
-
-
 export const handlePropertyUploads = async (
   req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
 
-  if (req.body.residential) {
-    req.body.residential = JSON.parse(req.body.residential);
-  }
-  if (req.body.commercial) {
-    req.body.commercial = JSON.parse(req.body.commercial);
-  }
-  if (req.body.shortlet) {
-    req.body.shortlet = JSON.parse(req.body.shortlet);
-  }
-  if (req.body.typeSpecific) {
-    req.body.typeSpecific = JSON.parse(req.body.typeSpecific);
-  }
   try {
+
+    // Parse JSON parts if present
+    ['residential', 'commercial', 'shortlet', 'typeSpecific'].forEach((field) => {
+      if (req.body[field]) {
+        req.body[field] = JSON.parse(req.body[field]);
+      }
+    });
     const files: Express.Multer.File[] = Object.values(req.files || {}).flat();
     if (!files.length) return res.status(400).json({ error: "No files provided" });
 
@@ -159,6 +137,18 @@ export const handlePropertyUploads = async (
       ? (Array.isArray(req.body.idType) ? req.body.idType : [req.body.idType])
       : [];
 
+    // Count how many of the files are documents
+    const documentFiles = files.filter(
+      (f) => !f.mimetype.startsWith("image/") && !f.mimetype.startsWith("video/")
+    );
+
+    // Validate count match
+    if (documentNames.length && documentNames.length !== documentFiles.length) {
+      return res.status(400).json({
+        error: `Number of documentNames (${documentNames.length}) does not match number of document files (${documentFiles.length})`,
+      });
+    }
+    let documentIndex = 0;
     const uploadedFiles: any[] = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -169,14 +159,6 @@ export const handlePropertyUploads = async (
         return res.status(500).json({ error: `Upload failed for file ${file.originalname}` });
       }
 
-      const commonMeta = {
-        documentName: documentNames[i] || file.originalname,
-        docType: docTypes[i],
-        idType: idTypes[i],
-        type: file.mimetype,
-        size: file.size,
-        // url: uploadResult.secure_url
-      };
 
       // Check type and validate
       if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
@@ -187,10 +169,17 @@ export const handlePropertyUploads = async (
           fileType: file.mimetype,
           identifier: "MediaTable",
           isPrimary: false,
-          caption: documentNames[i] || "",
+          caption: file.originalname || "",
         });
       } else {
         // DOCUMENT file
+        const commonMeta = {
+          documentName: documentNames[documentIndex] || file.originalname,
+          docType: docTypes[documentIndex],
+          idType: idTypes[documentIndex],
+          type: file.mimetype,
+          size: String(file.size),
+        };
         const { error } = MediaDocumentSchema.validate(commonMeta);
         if (error) {
           return res.status(400).json({
@@ -203,12 +192,18 @@ export const handlePropertyUploads = async (
           identifier: "DocTable",
           documentUrl: [uploadResult.secure_url],
         });
+        documentIndex++;
       }
     }
 
     // Attach to req for controller use
     req.body.uploadedFiles = uploadedFiles;
     console.log("Uploaded files:", uploadedFiles);
+
+    // Clean up extra fields to prevent Prisma errors
+    delete req.body.documentName;
+    delete req.body.docType;
+    delete req.body.idType;
     next();
   } catch (err) {
     console.error("Upload middleware error:", err);

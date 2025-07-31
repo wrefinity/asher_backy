@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { Currency,PropertyType, TimeFormat, DateFormat, Language, NotificationCategory, NotificationChannel } from '@prisma/client';
+import { uploadSchema } from './upload.schema';
 
 export const userSearchPreferenceSchema = Joi.object({
   types: Joi.array().items(Joi.string().valid(...Object.values(PropertyType))).min(1).required(),
@@ -26,12 +27,8 @@ export const profileSchema = Joi.object({
   maritalStatus: Joi.string().optional(),
   timeZone: Joi.string().optional(),
   taxPayerId: Joi.string().optional(),
-  taxType: Joi.string().optional(),
-  cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
-  cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
-});
+  taxType: Joi.string().optional()
+}).concat(uploadSchema);
 
 export const preferencesPrivacySchema = Joi.object({
   // Payment Account

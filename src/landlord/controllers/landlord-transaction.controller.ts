@@ -6,7 +6,6 @@ import { generateIDs } from "../../utils/helpers";
 import { CustomRequest } from "../../utils/types";
 import landlordTransactionSchema from "../validations/schema/landlordTransactionSchema";
 import landlordTransactionServices from "../services/landlord-transaction.services";
-import propertyPerformance from "../services/property-performance";
 import transactionServices from "../../services/transaction.services";
 import { TransactionQuerySchema } from "../../validations/schemas/transaction.schema";
 

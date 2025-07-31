@@ -584,7 +584,6 @@ class ApplicantService {
     });
   }
 
-
   checkApplicationExistance = async (applicationId: string) => {
     // Check if the application exists
     return await prismaClient.application.findUnique({
@@ -657,7 +656,7 @@ class ApplicantService {
 
   getInvitesApplicationCountForLandlordWithStatus = async (
     landlordId: string,
-    response?: InvitedResponse // Make status optional
+    response?: InvitedResponse
   ) => {
     return await prismaClient.applicationInvites.count({
       where: {
@@ -821,6 +820,50 @@ class ApplicantService {
       }
     });
   }
+  async signAgreementDocumentLandlord(
+    value: {
+      documentUrl?: string | string[];
+      processedContent: string;
+      metadata: any;
+    },
+    userId: string,
+    agreementId: string
+  ): Promise<AgreementDocument> {
+    const documentUrls = this.processDocumentUrls(value.documentUrl);
+
+    const currentAgreement = await prismaClient.agreementDocument.findUnique({
+      where: { id: agreementId }
+    });
+
+    if (!currentAgreement) {
+      throw new Error('Agreement not found');
+    }
+
+    const updateData: Prisma.AgreementDocumentUpdateInput = {
+      signedByLandlordAt: new Date(),
+      processedContent: value.processedContent,
+      documentUrl: { set: this.mergeDocumentUrls(documentUrls, currentAgreement.documentUrl) },
+      metadata: {
+        ...(value.metadata as object),
+        landlordSignature: {
+          signedAt: new Date(),
+          ipAddress: value.metadata.ipAddress,
+          userAgent: value.metadata.userAgent,
+          signature: value.metadata.signature
+        }
+      },
+      agreementStatus: await this.getUpdatedAgreementStatus(agreementId, 'LANDLORD')
+    };
+
+    return await prismaClient.agreementDocument.update({
+      where: { id: agreementId },
+      data: updateData,
+      include: {
+        application: true,
+        documentTemplate: true
+      }
+    });
+  }
 
   // Helper methods with proper typing
   private processDocumentUrls(urls?: string | string[]): string[] {
@@ -849,14 +892,7 @@ class ApplicantService {
         application: {
           include: {
             properties: true,
-            user: {
-              select: {
-                id: true,
-                email: true,
-                role: true,
-                profile: true
-              }
-            }
+            user: this.userInclusion
           }
         }
       }

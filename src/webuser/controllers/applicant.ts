@@ -296,9 +296,7 @@ class ApplicantControls {
           error: "Application requires completion of APPLY, FEEDBACK, and PENDING steps"
         });
       }
-
       const { type, data } = propertyExist;
-
       // Only one of these will be assigned, others remain undefined
       const id = data.id;
       const propertyId = type === 'property' ? id : undefined;
