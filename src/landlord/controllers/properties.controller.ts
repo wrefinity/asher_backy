@@ -50,7 +50,10 @@ class PropertyController {
 
             for (let i = 1; i <= count; i++) {
                 try {
-                    const numberedName = `${value.name} ${i.toString().padStart(2, '0')}`;
+
+                    const numberedName = count > 1
+                        ? `${value.name} ${i.toString().padStart(2, '0')}`
+                        : value.name;
 
                     // Check property existence
                     const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
@@ -147,7 +150,10 @@ class PropertyController {
                 };
 
                 for (let i = 1; i <= count; i++) {
-                    const numberedName = `${prop.name} ${i.toString().padStart(2, '0')}`;
+                    const numberedName = count > 1
+                        ? `${prop.name} ${i.toString().padStart(2, '0')}`
+                        : prop.name;
+
 
                     const exist = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
                         landlordId,
