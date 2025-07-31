@@ -142,8 +142,14 @@ export const handlePropertyUploads = async (
       (f) => !f.mimetype.startsWith("image/") && !f.mimetype.startsWith("video/")
     );
 
+    // Validate count match
+    // if (documentNames.length && documentNames.length !== documentFiles.length) {
+    //   return res.status(400).json({
+    //     error: `Number of documentNames (${documentNames.length}) does not match number of document files (${documentFiles.length})`,
+    //   });
+    // }
     // Validate count match only when documentNames are provided
-    if (documentNames && documentNames.length > 0 && documentNames.length !== files.length) {
+    if (documentNames && documentNames.length > 0 && documentNames.length !== documentFiles.length) {
       return res.status(400).json({
         error: `Number of documentNames (${documentNames.length}) does not match number of uploaded files (${files.length})`,
         details: {
