@@ -2,8 +2,8 @@ import { Router } from "express";
 import { Authorize } from "../../middlewares/authorize";
 import PropertyController from "../controllers/properties.controller";
 import SettingController from "../controllers/setting.controller";
-import upload, { uploadcsv } from "../../configs/multer";
-import { uploadToCloudinary, handlePropertyUploads } from "../../middlewares/multerCloudinary";
+import upload from "../../configs/multer";
+import {handlePropertyUploads } from "../../middlewares/multerCloudinary";
 
 class ApartmentLandlordRouter {
     public router: Router;

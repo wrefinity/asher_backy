@@ -419,7 +419,7 @@ class PropertyController {
                 }
             }
 
-            const listing = await PropertyServices.createPropertyListing(data);
+            const listing = await PropertyServices.createPropertyListing({data, listAs: checkOwnership.specificationType });
             return res.status(201).json(listing);
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -557,7 +557,6 @@ class PropertyController {
 
 
     }
-
 
     updatePropsListing = async (req: CustomRequest, res: Response) => {
 
@@ -705,132 +704,6 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     };
-    // bulkPropsUpload = async (req: CustomRequest, res: Response) => {
-    //     try {
-    //         const landlordId = req.user?.landlords?.id;
-    //         if (!landlordId) {
-    //             return res.status(404).json({ error: 'Kindly login as landlord' });
-    //         }
-    //         if (!req.file) return res.status(400).json({ error: 'No CSV file uploaded.' });
-
-    //         const filePath = req.file.path;
-    //         // Read and process the CSV file
-    //         const dataFetched = await parseCSV(filePath);
-    //         let uploaded = [];
-
-    //         interface UploadError {
-    //             name: string;
-    //             errors: string[];
-    //             row?: any;
-    //         }
-
-    //         let uploadErrors: UploadError[] = [];
-
-    //         for (const row of dataFetched) {
-    //             try {
-    //                 let rowErrors: string[] = [];
-    //                 // Convert semicolon-separated amenities string to an array
-    //                 if (row.amenities && typeof row.amenities === 'string') {
-    //                     row.amenities = row.amenities.split(';').map(item => item.trim());
-    //                 }
-    //                 // Parse date fields
-    //                 // row.yearBuilt = parseDateField(row.yearBuilt);
-    //                 // row.dueDate = parseDateField(row.dueDate);
-
-
-    //                 // Convert date fields safely
-    //                 const dateFields = [
-    //                     { key: "dueDate", label: "Due Date" },
-    //                     { key: "yearBuilt", label: "Year Built" },
-    //                 ];
-
-    //                 for (const field of dateFields) {
-    //                     try {
-    //                         if (row[field.key]) {
-    //                             row[field.key] = parseDateFieldNew(row[field.key]?.toString(), field.label);
-    //                         }
-    //                     } catch (dateError) {
-    //                         rowErrors.push(dateError.message);
-    //                     }
-    //                 }
-
-    //                 // Validate the row using Joi validations
-    //                 const { error, value } = createPropertySchema.validate(row, { abortEarly: false });
-    //                 if (error) {
-    //                     const existingError = uploadErrors.find(err => err.name === row.name);
-    //                     if (existingError) {
-    //                         existingError.errors.push(...error.details.map(detail => detail.message));
-    //                     } else {
-    //                         uploadErrors.push({
-    //                             name: Array.isArray(row.name) ? row.name[0] : row.name,
-    //                             errors: [...error.details.map(detail => detail.message)],
-    //                         });
-    //                     }
-    //                     continue;
-    //                 }
-    //                 if (rowErrors.length > 0) {
-    //                     let existingError = uploadErrors.find(err => err.name === row.name);
-    //                     if (existingError) {
-    //                         existingError.errors.push(...rowErrors);
-    //                     } else {
-    //                         uploadErrors.push({ name: Array.isArray(row.name) ? row.name[0] : row.name, errors: rowErrors });
-    //                     }
-    //                     continue;
-    //                 }
-
-    //                 const state = await stateServices.getStateByName(Array.isArray(row.state) ? row.state[0] : row.state)
-
-    //                 const existance = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
-    //                     landlordId,
-    //                     Array.isArray(row.name) ? row.name[0] : row.name,
-    //                     state?.id,
-    //                     Array.isArray(row.city) ? row.city[0] : row.city
-    //                 );
-
-    //                 if (existance) {
-    //                     const existingError = uploadErrors.find(err => err.name === row.name);
-    //                     if (existingError) {
-    //                         existingError.errors.push('Property already exists');
-    //                     } else {
-    //                         uploadErrors.push({
-    //                             name: Array.isArray(row.name) ? row.name[0] : row.name,
-    //                             errors: ['Property already exists'],
-    //                         });
-    //                     }
-    //                     continue;
-    //                 }
-
-    //                 delete value["state"]
-
-    //                 // const property = await PropertyServices.createProperty({ ...value, stateId: state?.id, landlordId });
-
-    //                 uploaded.push([]);
-    //             } catch (err) {
-    //                 const existingError = uploadErrors.find(error => error.name === row.name);
-    //                 if (existingError) {
-    //                     existingError.errors.push(`Unexpected error: ${err.message}`);
-    //                 } else {
-    //                     uploadErrors.push({
-    //                         name: Array.isArray(row.name) ? row.name[0] : row.name,
-    //                         errors: [`Unexpected error: ${err.message}`],
-    //                     });
-    //                 }
-    //             }
-    //         }
-
-    //         // Delete the file after processing if needed
-    //         fs.unlinkSync(filePath);
-
-    //         // Determine response based on upload results
-    //         if (uploaded.length > 0) {
-    //             return res.status(200).json({ uploaded, uploadErrors });
-    //         } else {
-    //             return res.status(400).json({ error: 'No property was uploaded.', uploadErrors });
-    //         }
-    //     } catch (error) {
-    //         ErrorService.handleError(error, res);
-    //     }
-    // };
 
     // Get all tenants for a specific property
     getTenantsForProperty = async (req: CustomRequest, res: Response) => {

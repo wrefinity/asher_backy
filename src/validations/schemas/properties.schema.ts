@@ -114,7 +114,6 @@ export const updatePropertyDocumentSchema = Joi.object({
 export const createPropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().required(),
   applicationFeeAmount: Joi.number().optional(),
-
   type: Joi.string()
     .valid(...Object.values(ListingType))
     .required()
@@ -136,14 +135,14 @@ export const createPropertyListingSchema = Joi.object({
       'any.only': `"propertySubType" must be one of ${propertyType.join(', ')}`,
     }),
 
-  listAs: Joi.string()
-    .valid(...Object.values(PropertySpecificationType))
-    .required()
-    .messages({
-      'string.base': '"listAs" must be a string',
-      'any.only': `"listAs" must be one of ${Object.values(PropertySpecificationType).join(', ')}`,
-      'any.required': '"listAs" is required',
-    }),
+  // listAs: Joi.string()
+  //   .valid(...Object.values(PropertySpecificationType))
+  //   .required()
+  //   .messages({
+  //     'string.base': '"listAs" must be a string',
+  //     'any.only': `"listAs" must be one of ${Object.values(PropertySpecificationType).join(', ')}`,
+  //     'any.required': '"listAs" is required',
+  //   }),
 
   priceFrequency: Joi.string()
     .valid(...Object.values(PriceFrequency))
@@ -204,7 +203,7 @@ export const createPropertyListingSchema = Joi.object({
 
 export const updatePropertyListingSchema = Joi.object({
   payApplicationFee: Joi.boolean().optional(),
-  type: Joi.string().valid(...listingTypes).default(ListingType.ENTIRE_PROPERTY).optional(),
+  // type: Joi.string().valid(...listingTypes).default(ListingType.ENTIRE_PROPERTY).optional(),
   // propertyId: Joi.string().optional(),
   isActive: Joi.boolean().optional(),
   onListing: Joi.boolean().optional()

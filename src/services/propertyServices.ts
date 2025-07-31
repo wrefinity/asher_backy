@@ -1153,117 +1153,41 @@ class PropertyService {
         }
     }
 
-    // async createPropertyListing(data: PropertyListingDTO | any) {
-    //     const { propertyId, unitId: unitIds, roomId: roomIds, ...baseData } = data;
 
-    //     // const propListed = await this.getPropsListedById(propertyId);
-    //     // if (propListed) {
-    //     //     throw new Error(`The property with ID ${propertyId} has already been listed`);
-    //     // }
-    //     const listings = [];
-    //     // If unitIds exist, iterate and create listing for each unit
-    //     if (Array.isArray(unitIds)) {
-    //         for (const unitId of unitIds) {
-    //             if (unitId) { // Ensure unitId is not null/undefined
-    //                 const created = await prismaClient.propertyListingHistory.create({
-    //                     data: {
-    //                         ...baseData,
-    //                         propertyId,
-    //                         unitId,
-    //                         roomId: null
-    //                     },
-    //                 });
-    //                 listings.push(created);
-    //                 await prismaClient.unitConfiguration.update({
-    //                     where: { id: unitId },
-    //                     data: { isListed: true }
-    //                 });
-    //             }
-    //         }
-    //     }
-
-    //     // If roomIds exist, iterate and create listing for each room
-    //     if (Array.isArray(roomIds)) {
-    //         for (const roomId of roomIds) {
-    //             if (roomId) { // Ensure roomId is not null/undefined
-    //                 const created = await prismaClient.propertyListingHistory.create({
-    //                     data: {
-    //                         ...baseData,
-    //                         propertyId,
-    //                         roomId,
-    //                         unitId: null
-    //                     },
-    //                 });
-    //                 listings.push(created);
-    //             }
-    //         }
-    //     }
-
-    //     // If neither roomIds nor unitIds were provided, create one general listing
-    //     // Handle ENTIRE_PROPERTY listing (no specific units/rooms)
-    //     if ( data.type === ListingType.ENTIRE_PROPERTY &&
-    //         (!unitIds || unitIds.length === 0 || unitIds.every(id => !id)) &&
-    //         (!roomIds || roomIds.length === 0 || roomIds.every(id => !id))
-    //     ) {
-    //         const created = await prismaClient.propertyListingHistory.create({
-    //             data: {
-    //                 ...baseData,
-    //                 propertyId,
-    //                 type: ListingType.ENTIRE_PROPERTY,
-    //                 unitId: null,
-    //                 roomId: null
-    //             },
-    //         });
-    //         listings.push(created);
-
-    //          // property's isListed status
-    //          await prismaClient.properties.update({
-    //             where: { id: propertyId },
-    //             data: { isListed: true }
-    //         });
-    //     }
-
-
-
-    //     if (listings.length === 0) {
-    //         throw new Error('No valid listings were created - check your unitIds and roomIds');
-    //     }
-
-    //     return listings;
-    // }
-
-    async createPropertyListing(data: PropertyListingDTO | any) {
-        const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
-        const response: {
-            success: boolean;
-            message: string;
-            listings: any[];
-            alreadyListed: {
-                units: string[];
-                rooms: string[];
-                property?: boolean;
-            };
-            newlyListed: {
-                units: string[];
-                rooms: string[];
-                property?: boolean;
-            };
-        } = {
-            success: true,
-            message: '',
-            listings: [],
-            alreadyListed: { units: [], rooms: [] },
-            newlyListed: { units: [], rooms: [] }
+async createPropertyListing(data: PropertyListingDTO | any) {
+    const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
+    const response: {
+        success: boolean;
+        message: string;
+        listings: any[];
+        alreadyListed: {
+            units: string[];
+            rooms: string[];
+            property?: boolean;
         };
+        newlyListed: {
+            units: string[];
+            rooms: string[];
+            property?: boolean;
+        };
+    } = {
+        success: true,
+        message: '',
+        listings: [],
+        alreadyListed: { units: [], rooms: [] },
+        newlyListed: { units: [], rooms: [] }
+    };
 
+    return await prismaClient.$transaction(async (tx) => {
         // Check for existing ENTIRE_PROPERTY listing
         if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
-            const existing = await prismaClient.propertyListingHistory.findFirst({
+            const existing = await tx.propertyListingHistory.findFirst({
                 where: {
                     propertyId,
                     type: ListingType.ENTIRE_PROPERTY,
                     onListing: true
-                }
+                },
+                orderBy: { createdAt: 'desc' },
             });
 
             if (existing) {
@@ -1278,11 +1202,12 @@ class PropertyService {
         for (const unitId of unitIds) {
             if (!unitId) continue;
 
-            const existing = await prismaClient.propertyListingHistory.findFirst({
+            const existing = await tx.propertyListingHistory.findFirst({
                 where: {
                     unitId,
                     onListing: true
-                }
+                },
+                orderBy: { createdAt: "desc" }
             });
 
             if (existing) {
@@ -1296,7 +1221,7 @@ class PropertyService {
         for (const roomId of roomIds) {
             if (!roomId) continue;
 
-            const existing = await prismaClient.propertyListingHistory.findFirst({
+            const existing = await tx.propertyListingHistory.findFirst({
                 where: {
                     roomId,
                     onListing: true
@@ -1312,7 +1237,7 @@ class PropertyService {
 
         // Create listings for new units
         for (const unitId of response.newlyListed.units) {
-            const created = await prismaClient.propertyListingHistory.create({
+            const created = await tx.propertyListingHistory.create({
                 data: {
                     ...baseData,
                     propertyId: propertyId,
@@ -1320,10 +1245,9 @@ class PropertyService {
                     roomId: null,
                     type: ListingType.SINGLE_UNIT
                 }
-
             });
             response.listings.push(created);
-            await prismaClient.unitConfiguration.update({
+            await tx.unitConfiguration.update({
                 where: { id: unitId },
                 data: { isListed: true }
             });
@@ -1331,7 +1255,7 @@ class PropertyService {
 
         // Create listings for new rooms
         for (const roomId of response.newlyListed.rooms) {
-            const created = await prismaClient.propertyListingHistory.create({
+            const created = await tx.propertyListingHistory.create({
                 data: {
                     ...baseData,
                     propertyId: propertyId,
@@ -1341,7 +1265,7 @@ class PropertyService {
                 }
             });
             response.listings.push(created);
-            await prismaClient.roomDetail.update({
+            await tx.roomDetail.update({
                 where: { id: roomId },
                 data: { isListed: true }
             });
@@ -1349,7 +1273,7 @@ class PropertyService {
 
         // Create ENTIRE_PROPERTY listing if applicable
         if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
-            const created = await prismaClient.propertyListingHistory.create({
+            const created = await tx.propertyListingHistory.create({
                 data: {
                     ...baseData,
                     propertyId: propertyId,
@@ -1360,11 +1284,12 @@ class PropertyService {
             });
             response.listings.push(created);
             response.newlyListed.property = true;
-            await prismaClient.properties.update({
+            await tx.properties.update({
                 where: { id: propertyId },
                 data: { isListed: true }
             });
         }
+
         // Set appropriate message
         if (response.listings.length > 0) {
             response.message = 'Successfully created listings for new items';
@@ -1377,22 +1302,239 @@ class PropertyService {
         }
 
         return response;
-    }
+    }, {maxWait: 30000,
+        timeout: 30000
+    });
+}
 
 
-    deletePropertyListing = async (propertyId: string) => {
-        const lastListed = await this.getPropsListedById(propertyId);
-        if (!lastListed) {
-            throw new Error(`No listing history found for property ID ${propertyId}`);
+    deletePropertyListing = async (resourceId: string) => {
+        try {
+            let updatedResource: any = null;
+            let resourceType: 'property' | 'unit' | 'room' | null = null;
+            let lastListedHistory: any = null;
+
+            await prismaClient.$transaction(async (tx) => {
+                // 1. Attempt to update `properties` model
+                const propertyUpdate = await tx.properties.update({
+                    where: { id: resourceId },
+                    data: { isListed: false },
+                    include: {
+                        propertyListingHistory: {
+                            where: { onListing: true, isActive: true },
+                            orderBy: { createdAt: 'desc' },
+                            take: 1,
+                        },
+                        specification: {
+                            include: {
+                                residential: {
+                                    include: {
+                                        unitConfigurations: {
+                                            include: {
+                                                RoomDetail: true
+                                            }
+                                        }
+                                    }
+                                },
+                                commercial: {
+                                    include: {
+                                        unitConfigurations: {
+                                            include: {
+                                                RoomDetail: true
+                                            }
+                                        }
+                                    }
+                                },
+                                shortlet: {
+                                    include: {
+                                        roomDetails: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                }).catch(() => null);
+
+                if (propertyUpdate) {
+                    updatedResource = propertyUpdate;
+                    resourceType = 'property';
+                    if (propertyUpdate.propertyListingHistory.length > 0) {
+                        lastListedHistory = propertyUpdate.propertyListingHistory[0];
+                    }
+
+                    // Unlist all units and rooms for this property
+                    const specification = propertyUpdate.specification;
+                    if (specification) {
+                        // Handle residential property units and rooms
+                        if (specification.residential) {
+                            const residential = specification.residential;
+                            if (residential.unitConfigurations && residential.unitConfigurations.length > 0) {
+                                // Unlist all units
+                                await tx.unitConfiguration.updateMany({
+                                    where: {
+                                        id: {
+                                            in: residential.unitConfigurations.map(unit => unit.id)
+                                        }
+                                    },
+                                    data: { isListed: false }
+                                });
+
+                                // Unlist all rooms in these units
+                                const allRoomIds = residential.unitConfigurations
+                                    .flatMap(unit => unit.RoomDetail)
+                                    .map(room => room.id);
+
+                                if (allRoomIds.length > 0) {
+                                    await tx.roomDetail.updateMany({
+                                        where: {
+                                            id: {
+                                                in: allRoomIds
+                                            }
+                                        },
+                                        data: { isListed: false }
+                                    });
+                                }
+                            }
+                        }
+
+                        // Handle commercial property units and rooms
+                        if (specification.commercial) {
+                            const commercial = specification.commercial;
+                            if (commercial.unitConfigurations && commercial.unitConfigurations.length > 0) {
+                                // Unlist all units
+                                await tx.unitConfiguration.updateMany({
+                                    where: {
+                                        id: {
+                                            in: commercial.unitConfigurations.map(unit => unit.id)
+                                        }
+                                    },
+                                    data: { isListed: false }
+                                });
+
+                                // Unlist all rooms in these units
+                                const allRoomIds = commercial.unitConfigurations
+                                    .flatMap(unit => unit.RoomDetail)
+                                    .map(room => room.id);
+
+                                if (allRoomIds.length > 0) {
+                                    await tx.roomDetail.updateMany({
+                                        where: {
+                                            id: {
+                                                in: allRoomIds
+                                            }
+                                        },
+                                        data: { isListed: false }
+                                    });
+                                }
+                            }
+                        }
+
+                        // Handle shortlet property rooms
+                        if (specification.shortlet) {
+                            const shortlet = specification.shortlet;
+                            if (shortlet.roomDetails && shortlet.roomDetails.length > 0) {
+                                // Unlist all rooms
+                                await tx.roomDetail.updateMany({
+                                    where: {
+                                        id: {
+                                            in: shortlet.roomDetails.map(room => room.id)
+                                        }
+                                    },
+                                    data: { isListed: false }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // 2. If not a property, check and update `UnitConfiguration`
+                if (!updatedResource) {
+                    const unitUpdate = await tx.unitConfiguration.update({
+                        where: { id: resourceId },
+                        data: { isListed: false },
+                        include: {
+                            propertyListingHistory: {
+                                where: { onListing: true, isActive: true },
+                                orderBy: { createdAt: 'desc' },
+                                take: 1,
+                            },
+                            RoomDetail: true
+                        },
+                    }).catch(() => null);
+
+                    if (unitUpdate) {
+                        updatedResource = unitUpdate;
+                        resourceType = 'unit';
+                        if (unitUpdate.propertyListingHistory.length > 0) {
+                            lastListedHistory = unitUpdate.propertyListingHistory[0];
+                        }
+
+                        // Unlist all rooms in this unit
+                        if (unitUpdate.RoomDetail && unitUpdate.RoomDetail.length > 0) {
+                            await tx.roomDetail.updateMany({
+                                where: {
+                                    id: {
+                                        in: unitUpdate.RoomDetail.map(room => room.id)
+                                    }
+                                },
+                                data: { isListed: false }
+                            });
+                        }
+                    }
+                }
+
+                // 3. If not a unit, check and update `RoomDetail`
+                if (!updatedResource) {
+                    const roomUpdate = await tx.roomDetail.update({
+                        where: { id: resourceId },
+                        data: { isListed: false },
+                        include: {
+                            propertyListingHistory: {
+                                where: { onListing: true, isActive: true },
+                                orderBy: { createdAt: 'desc' },
+                                take: 1,
+                            },
+                        },
+                    }).catch(() => null);
+
+                    if (roomUpdate) {
+                        updatedResource = roomUpdate;
+                        resourceType = 'room';
+                        if (roomUpdate.propertyListingHistory.length > 0) {
+                            lastListedHistory = roomUpdate.propertyListingHistory[0];
+                        }
+                    }
+                }
+
+                // If no resource was found after all attempts, throw an error to rollback.
+                if (!updatedResource) {
+                    throw new Error('Resource not found');
+                }
+
+                // 4. Update the corresponding propertyListingHistory record if one was found.
+                if (lastListedHistory) {
+                    await tx.propertyListingHistory.update({
+                        where: { id: lastListedHistory.id },
+                        data: {
+                            onListing: false,
+                            isActive: false,
+                            availableTo: new Date(),
+                        },
+                    });
+                } else {
+                    console.warn(`Resource with ID ${resourceId} was unlisted but no active listing history was found.`);
+                }
+            });
+
+            return updatedResource;
+
+        } catch (error: any) {
+            console.error('Database error in deletePropertyListing:', error);
+            if (error.message === 'Resource not found') {
+                return null;
+            }
+            throw error;
         }
-
-        return await prismaClient.propertyListingHistory.update({
-            where: { id: lastListed.id },
-            data: {
-                onListing: false,
-                isActive: false,
-            },
-        });
     };
 
     delistPropertyListing = async (propertyId: string) => {
@@ -1413,7 +1555,9 @@ class PropertyService {
     getPropsListedById = async (propertyId: string) => {
         const propsListed = await prismaClient.propertyListingHistory.findFirst({
             where: {
-                propertyId
+                propertyId,
+                onListing: true,
+                isActive: true,
             },
             include: {
                 property: {
