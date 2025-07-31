@@ -2,7 +2,7 @@ import fs from 'fs';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, IBasePropertyDTOSchema, unitConfigurationSchema, roomDetailSchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, IBasePropertyDTOSchema, unitConfigurationSchema, roomDetailSchema, BulkPropertyUploadSchema } from "../../validations/schemas/properties.schema"
 import { IPropertySpecificationDTO } from "../../validations/interfaces/properties.interface"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";
@@ -17,7 +17,6 @@ import userServices from '../../services/user.services';
 import propertyUploadServices from '../../services/property.upload.services';
 import propertyRoomService from '../../services/property.room.service';
 import propertyUnitService from '../../services/property.unit.service';
-import propertyServices from '../../services/propertyServices';
 import commercialServices from '../../services/commercial.services';
 import residentialServices from '../../services/residential.services';
 
@@ -112,6 +111,80 @@ class PropertyController {
         }
     };
 
+    createPropertiesBulk = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        if (!landlordId) return res.status(403).json({ error: 'Kindly login' });
+
+        const { error, value: properties } = BulkPropertyUploadSchema.validate(req.body, { abortEarly: false });
+        if (error) return res.status(400).json({ error: error.details });
+
+        const results = { created: [], failed: [] };
+
+        for (const prop of properties) {
+            try {
+                const state = await stateServices.getStateByName(prop?.state);
+                if (!state) throw new Error('State not found');
+
+                const {
+                    uploadedFiles = [],
+                    specificationType,
+                    propertySubType,
+                    otherTypeSpecific,
+                    commercial,
+                    shortlet,
+                    residential,
+                    count = 1,
+                    ...data
+                } = prop;
+
+                const specification: IPropertySpecificationDTO = {
+                    specificationType,
+                    propertySubType,
+                    otherTypeSpecific,
+                    commercial,
+                    shortlet,
+                    residential
+                };
+
+                for (let i = 1; i <= count; i++) {
+                    const numberedName = `${prop.name} ${i.toString().padStart(2, '0')}`;
+
+                    const exist = await PropertyServices.getUniquePropertiesBaseLandlordNameState(
+                        landlordId,
+                        numberedName,
+                        state.id,
+                        prop.city
+                    );
+
+                    if (exist) {
+                        results.failed.push({ name: numberedName, error: 'Property already exists' });
+                        continue;
+                    }
+
+                    const property = await PropertyServices.createProperties(
+                        {
+                            ...data,
+                            name: numberedName,
+                            stateId: state.id,
+                            landlordId
+                        },
+                        specification,
+                        uploadedFiles,
+                        req.user?.id
+                    );
+
+                    results.created.push(property);
+                }
+            } catch (err: any) {
+                results.failed.push({
+                    name: prop?.name || 'Unknown',
+                    error: err?.message || 'Unknown error'
+                });
+            }
+        }
+        return res.status(results.created.length ? 201 : 400).json(results);
+    };
+
     createRoom = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
         const { error, value } = roomDetailSchema.validate(req.body, { abortEarly: false });
@@ -145,6 +218,7 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
     createUnit = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
 
@@ -191,6 +265,7 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
     getPropertyBasedOnUserPreference = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user?.landlords?.id;
@@ -248,6 +323,7 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
     updatePropertyAvailability = async (req: CustomRequest, res: Response) => {
         try {
             const { error, value } = propAvailabiltySchema.validate(req.body);

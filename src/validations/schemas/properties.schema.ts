@@ -807,3 +807,6 @@ export const IBasePropertyDTOSchema = Joi.object({
     otherwise: Joi.forbidden()
   }),
 });
+
+// for builk uploads
+export const BulkPropertyUploadSchema = Joi.array().items(IBasePropertyDTOSchema);
