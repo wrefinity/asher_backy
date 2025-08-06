@@ -378,7 +378,6 @@ export const bookingSchema = Joi.object({
     'any.only': `BookingStatus type must be one of: ${Object.values(BookingStatus).join(',')}`,
     'string.base': 'BookingStatus type must be a string'
   }).default(BookingStatus.PENDING),
-
   guestName: Joi.string().required(),
   guestEmail: Joi.string().email().required(),
   guestPhone: Joi.string().optional(),
