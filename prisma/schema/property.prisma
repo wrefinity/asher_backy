@@ -267,10 +267,10 @@ model properties {
   updatedAt DateTime? @updatedAt
 
   // Features and Description
-  name             String
-  description      String?
-  propertySize     Int?
-  isDeleted        Boolean @default(false)
+  name         String
+  description  String?
+  propertySize Int?
+  isDeleted    Boolean @default(false)
 
   //                                               owners
   landlordId String
@@ -363,9 +363,9 @@ model properties {
   TenantLeaseBreach TenantLeaseBreach[]
 
   BroadcastCategory BroadcastCategory[]
+  billsSubCategory  billsSubCategory[]
 
   @@unique([landlordId, name, stateId, city])
-  billsSubCategory billsSubCategory[]
 }
 
 model PropertySpecification {
@@ -421,10 +421,13 @@ model UnitConfiguration {
   count                 Int?
   bedrooms              Int?
   bathrooms             Int?
+  kitchens              Int?
   price                 String
   priceFrequency        PriceFrequency?
   area                  String?
+  ensuite               Boolean?             @default(false)
   isDeleted             Boolean              @default(false)
+  furnished             Boolean?             @default(false)
   isListed              Boolean              @default(false)
   images                PropertyMediaFiles[] @relation("UnitImages")
   description           String?
@@ -461,6 +464,7 @@ model RoomDetail {
   roomSize              String
   ensuite               Boolean              @default(false)
   isDeleted             Boolean              @default(false)
+  furnished             Boolean?             @default(false)
   count                 Int?
   price                 String
   priceFrequency        PriceFrequency?
@@ -556,7 +560,7 @@ model ResidentialProperty {
   coolingTypes              String[] // JSON array of cooling types 
   glazingTypes              GlazingType?
 
-  additionalNotes String?
+  additionalNotes       String?
   PropertySpecification PropertySpecification[]
 
   billsSubCategory billsSubCategory[]

@@ -309,12 +309,14 @@ export const unitConfigurationSchema = Joi.object({
   idType: Joi.array().items(Joi.string()).optional(),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
-
+  ensuite: Joi.boolean().default(false).optional(),
+  furnished: Joi.boolean().default(false).optional(),
   unitType: Joi.string().required(),
   unitNumber: Joi.string().optional(),
   floorNumber: Joi.number().optional(),
   count: Joi.number().optional(),
   bedrooms: Joi.number().optional(),
+  kitchens: Joi.number().optional(),
   bathrooms: Joi.number().optional(),
   price: Joi.string().required(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
@@ -731,7 +733,7 @@ export const IBasePropertyDTOSchema = Joi.object({
 
   currency: Joi.string().valid(...Object.values(Currency)).optional(),
   marketValue: Joi.number().optional(),
-  price: Joi.number().required(),
+  price: Joi.string().optional(),
   securityDeposit: Joi.number().optional(),
   // initialDeposit: Joi.number().optional(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
@@ -754,7 +756,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   landRegistryNumber: Joi.string().optional(),
   vatStatus: Joi.string().valid(...Object.values(VatStatus)).optional(),
 
-  keyFeatures: Joi.array().items(Joi.string()).required(),
+  keyFeatures: Joi.array().items(Joi.string()).optional(),
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
 
   propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),

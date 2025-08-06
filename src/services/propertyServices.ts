@@ -1154,158 +1154,159 @@ class PropertyService {
     }
 
 
-async createPropertyListing(data: PropertyListingDTO | any) {
-    const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
-    const response: {
-        success: boolean;
-        message: string;
-        listings: any[];
-        alreadyListed: {
-            units: string[];
-            rooms: string[];
-            property?: boolean;
+    async createPropertyListing(data: PropertyListingDTO | any) {
+        const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
+        const response: {
+            success: boolean;
+            message: string;
+            listings: any[];
+            alreadyListed: {
+                units: string[];
+                rooms: string[];
+                property?: boolean;
+            };
+            newlyListed: {
+                units: string[];
+                rooms: string[];
+                property?: boolean;
+            };
+        } = {
+            success: true,
+            message: '',
+            listings: [],
+            alreadyListed: { units: [], rooms: [] },
+            newlyListed: { units: [], rooms: [] }
         };
-        newlyListed: {
-            units: string[];
-            rooms: string[];
-            property?: boolean;
-        };
-    } = {
-        success: true,
-        message: '',
-        listings: [],
-        alreadyListed: { units: [], rooms: [] },
-        newlyListed: { units: [], rooms: [] }
-    };
 
-    return await prismaClient.$transaction(async (tx) => {
-        // Check for existing ENTIRE_PROPERTY listing
-        if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
-            const existing = await tx.propertyListingHistory.findFirst({
-                where: {
-                    propertyId,
-                    type: ListingType.ENTIRE_PROPERTY,
-                    onListing: true
-                },
-                orderBy: { createdAt: 'desc' },
-            });
+        return await prismaClient.$transaction(async (tx) => {
+            // Check for existing ENTIRE_PROPERTY listing
+            if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
+                const existing = await tx.propertyListingHistory.findFirst({
+                    where: {
+                        propertyId,
+                        type: ListingType.ENTIRE_PROPERTY,
+                        onListing: true
+                    },
+                    orderBy: { createdAt: 'desc' },
+                });
 
-            if (existing) {
-                response.alreadyListed.property = true;
-                response.message = 'Property is already listed as entire property';
+                if (existing) {
+                    response.alreadyListed.property = true;
+                    response.message = 'Property is already listed as entire property';
+                    response.success = false;
+                    return response;
+                }
+            }
+
+            // Check unit listings
+            for (const unitId of unitIds) {
+                if (!unitId) continue;
+
+                const existing = await tx.propertyListingHistory.findFirst({
+                    where: {
+                        unitId,
+                        onListing: true
+                    },
+                    orderBy: { createdAt: "desc" }
+                });
+
+                if (existing) {
+                    response.alreadyListed.units.push(unitId);
+                } else {
+                    response.newlyListed.units.push(unitId);
+                }
+            }
+
+            // Check room listings
+            for (const roomId of roomIds) {
+                if (!roomId) continue;
+
+                const existing = await tx.propertyListingHistory.findFirst({
+                    where: {
+                        roomId,
+                        onListing: true
+                    }
+                });
+
+                if (existing) {
+                    response.alreadyListed.rooms.push(roomId);
+                } else {
+                    response.newlyListed.rooms.push(roomId);
+                }
+            }
+
+            // Create listings for new units
+            for (const unitId of response.newlyListed.units) {
+                const created = await tx.propertyListingHistory.create({
+                    data: {
+                        ...baseData,
+                        propertyId: propertyId,
+                        unitId: unitId,
+                        roomId: null,
+                        type: ListingType.SINGLE_UNIT
+                    }
+                });
+                response.listings.push(created);
+                await tx.unitConfiguration.update({
+                    where: { id: unitId },
+                    data: { isListed: true }
+                });
+            }
+
+            // Create listings for new rooms
+            for (const roomId of response.newlyListed.rooms) {
+                const created = await tx.propertyListingHistory.create({
+                    data: {
+                        ...baseData,
+                        propertyId: propertyId,
+                        roomId: roomId,
+                        unitId: null,
+                        type: ListingType.ROOM
+                    }
+                });
+                response.listings.push(created);
+                await tx.roomDetail.update({
+                    where: { id: roomId },
+                    data: { isListed: true }
+                });
+            }
+
+            // Create ENTIRE_PROPERTY listing if applicable
+            if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
+                const created = await tx.propertyListingHistory.create({
+                    data: {
+                        ...baseData,
+                        propertyId: propertyId,
+                        unitId: null,
+                        roomId: null,
+                        type: ListingType.ENTIRE_PROPERTY
+                    }
+                });
+                response.listings.push(created);
+                response.newlyListed.property = true;
+                await tx.properties.update({
+                    where: { id: propertyId },
+                    data: { isListed: true }
+                });
+            }
+
+            // Set appropriate message
+            if (response.listings.length > 0) {
+                response.message = 'Successfully created listings for new items';
+                if (response.alreadyListed.units.length > 0 || response.alreadyListed.rooms.length > 0) {
+                    response.message += ', some items were already listed';
+                }
+            } else {
+                response.message = 'No new listings created - all specified items were already listed';
                 response.success = false;
-                return response;
             }
-        }
 
-        // Check unit listings
-        for (const unitId of unitIds) {
-            if (!unitId) continue;
-
-            const existing = await tx.propertyListingHistory.findFirst({
-                where: {
-                    unitId,
-                    onListing: true
-                },
-                orderBy: { createdAt: "desc" }
-            });
-
-            if (existing) {
-                response.alreadyListed.units.push(unitId);
-            } else {
-                response.newlyListed.units.push(unitId);
-            }
-        }
-
-        // Check room listings
-        for (const roomId of roomIds) {
-            if (!roomId) continue;
-
-            const existing = await tx.propertyListingHistory.findFirst({
-                where: {
-                    roomId,
-                    onListing: true
-                }
-            });
-
-            if (existing) {
-                response.alreadyListed.rooms.push(roomId);
-            } else {
-                response.newlyListed.rooms.push(roomId);
-            }
-        }
-
-        // Create listings for new units
-        for (const unitId of response.newlyListed.units) {
-            const created = await tx.propertyListingHistory.create({
-                data: {
-                    ...baseData,
-                    propertyId: propertyId,
-                    unitId: unitId,
-                    roomId: null,
-                    type: ListingType.SINGLE_UNIT
-                }
-            });
-            response.listings.push(created);
-            await tx.unitConfiguration.update({
-                where: { id: unitId },
-                data: { isListed: true }
-            });
-        }
-
-        // Create listings for new rooms
-        for (const roomId of response.newlyListed.rooms) {
-            const created = await tx.propertyListingHistory.create({
-                data: {
-                    ...baseData,
-                    propertyId: propertyId,
-                    roomId: roomId,
-                    unitId: null,
-                    type: ListingType.ROOM
-                }
-            });
-            response.listings.push(created);
-            await tx.roomDetail.update({
-                where: { id: roomId },
-                data: { isListed: true }
-            });
-        }
-
-        // Create ENTIRE_PROPERTY listing if applicable
-        if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
-            const created = await tx.propertyListingHistory.create({
-                data: {
-                    ...baseData,
-                    propertyId: propertyId,
-                    unitId: null,
-                    roomId: null,
-                    type: ListingType.ENTIRE_PROPERTY
-                }
-            });
-            response.listings.push(created);
-            response.newlyListed.property = true;
-            await tx.properties.update({
-                where: { id: propertyId },
-                data: { isListed: true }
-            });
-        }
-
-        // Set appropriate message
-        if (response.listings.length > 0) {
-            response.message = 'Successfully created listings for new items';
-            if (response.alreadyListed.units.length > 0 || response.alreadyListed.rooms.length > 0) {
-                response.message += ', some items were already listed';
-            }
-        } else {
-            response.message = 'No new listings created - all specified items were already listed';
-            response.success = false;
-        }
-
-        return response;
-    }, {maxWait: 30000,
-        timeout: 30000
-    });
-}
+            return response;
+        }, {
+            maxWait: 30000,
+            timeout: 30000
+        });
+    }
 
 
     deletePropertyListing = async (resourceId: string) => {
@@ -1823,7 +1824,7 @@ async createPropertyListing(data: PropertyListingDTO | any) {
         const { shortlet, specificationType, residential, commercial } = specification;
 
         return prismaClient.$transaction(async (tx) => {
-            const { agencyId, landlordId, stateId, keyFeatures, ...rest } = data;
+            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, ...rest } = data;
 
             if (!landlordId || !stateId) {
                 throw new Error("Missing required fields: landlordId or stateId.");
@@ -1842,6 +1843,8 @@ async createPropertyListing(data: PropertyListingDTO | any) {
             const property = await tx.properties.create({
                 data: {
                     ...rest,
+                    price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
+                    marketValue: marketValue ? new Prisma.Decimal(marketValue) : null, // Convert if exist
                     keyFeatures: { set: keyFeatures },
                     specificationType,
                     landlord: { connect: { id: landlordId } },
@@ -1971,6 +1974,7 @@ async createPropertyListing(data: PropertyListingDTO | any) {
                             roomSize: room.roomSize,
                             count: room.count,
                             ensuite: room.ensuite,
+                            furnished: room.furnished,
                             price: room.price,
                             priceFrequency: room.priceFrequency,
                         }))
@@ -1996,6 +2000,9 @@ async createPropertyListing(data: PropertyListingDTO | any) {
                             floorNumber: unit.floorNumber,
                             bedrooms: unit.bedrooms,
                             bathrooms: unit.bathrooms,
+                            kitchens: unit.kitchens,
+                            furnished: unit.furnished,
+                            ensuite: unit.ensuite,
                             count: unit.count,
                             price: unit.price,
                             priceFrequency: unit.priceFrequency,
@@ -2075,6 +2082,7 @@ async createPropertyListing(data: PropertyListingDTO | any) {
                         roomSize: room.roomSize,
                         ensuite: room.ensuite,
                         price: room.price,
+                        furnished: room.furnished
                     })) || []
                 },
 
@@ -2103,6 +2111,9 @@ async createPropertyListing(data: PropertyListingDTO | any) {
                         count: unit.count,
                         bedrooms: unit.bedrooms,
                         bathrooms: unit.bathrooms,
+                        kitchens: unit.kitchens,
+                        furnished: unit.furnished,
+                        ensuite: unit.ensuite,
                         price: unit.price,
                         area: unit.area,
                         description: unit.description,
