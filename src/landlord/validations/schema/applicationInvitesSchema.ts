@@ -52,10 +52,11 @@ export const agreementDocumentSchema = Joi.object({
     'string.uri': 'Document URL must be a valid URI'
   }),
   processedContent: Joi.string().required(),
-  variables: Joi.object().required().messages({
-    'object.base': 'Variables must be an object',
-    'any.required': 'Variables are required, (meaning the replaced variables)'
-  }),
+  variables: Joi.array().items(Joi.string()).required().messages({
+  'array.base': 'Variables must be an array',
+  'string.base': 'Each variable must be a string',
+  'any.required': 'Variables are required (meaning the array of variable names to replace)'
+}),
   metadata: Joi.object().optional(),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),

@@ -104,7 +104,7 @@ model AgreementDocument {
   id               String  @id @default(cuid())
   documentUrl      String[]
   processedContent String? // Stores the processed template with variables
-  variables        Json // Stores the variable mappings used
+  variables        String [] // Stores the variable mappings used
   metadata         Json? // Additional metadata (IP, device, etc.)
 
   // Signing Information
