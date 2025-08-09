@@ -118,3 +118,11 @@ export const tenantSchema = Joi.object({
   requireParking: Joi.string().valid('YES', 'NO').required(),
   haveOutstandingDebts: Joi.string().valid('YES', 'NO').required(),
 });
+
+// Then create the array schema
+export const tenantArraySchema = Joi.array().items(tenantSchema).required().messages({
+  'array.base': 'Tenant data must be provided as an array',
+  'any.required': 'At least one tenant record is required',
+  'array.includesRequiredUnknowns': 'Each tenant record must contain all required fields'
+});
+
