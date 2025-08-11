@@ -18,6 +18,7 @@ class ApplicationInvitesService {
         guarantorInformation: true,
         declaration: true,
         residentialInfo: true,
+        agreementDocument: true,
         referenceForm: {
             include: {
                 tenancyReferenceHistory: true,
