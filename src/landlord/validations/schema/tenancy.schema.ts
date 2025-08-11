@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { nextOfKinSchema } from '../../../webuser/schemas';
 
 export const tenantSchema = Joi.object({
   no: Joi.string().required(),
@@ -46,6 +47,7 @@ export const tenantSchema = Joi.object({
   nationality: Joi.string().required(),
   identificationType: Joi.string().required(),
   issuingAuthority: Joi.string().required(),
+  identificationNo: Joi.string().required(),
   expiryDate: Joi.date().required().messages({
     'date.base': 'Expiry date must be a valid date in ISO 8601 format (YYYY-MM-DD).',
   }),
@@ -63,12 +65,9 @@ export const tenantSchema = Joi.object({
   gauratorEmployerName: Joi.string().required(),
 
   // Next of Kin Information
-  nextOfKinLastName: Joi.string().required(),
-  nextOfKinFirstName: Joi.string().required(),
-  nextOfKinMiddleName: Joi.string().optional(),
-  nextOfKinEmail: Joi.string().optional(),
-  relationship: Joi.string().required(),
-  nextOfKinPhoneNumber: Joi.string().required(),
+  nextOfKin: nextOfKinSchema.required().messages({
+    'object.base': 'Next of kin must be an object',
+  }),
 
   // Employment Information
   employmentStatus: Joi.string().required(),

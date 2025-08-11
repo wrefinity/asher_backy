@@ -98,13 +98,11 @@ class EmailService {
         if (tenant) {
             return { email: tenant.tenantWebUserEmail, userId: tenant.user.id };
         }
-
         return null;
 
     }
-
     createEmail = async (emailData: EmailIF, isDraft: boolean = false) => {
-        const { senderId, receiverId, parentEmailId, threadId, ...rest } = emailData;
+        const { senderId, receiverId, parentEmailId, threadId, attachment, ...rest } = emailData;
 
         // Compute threadId if it's a reply
         let finalThreadId = threadId;
@@ -113,9 +111,15 @@ class EmailService {
             finalThreadId = parentEmail?.threadId || parentEmailId;
         }
 
+        // Filter out undefined/null attachments
+        const filteredAttachments = attachment
+            ? attachment.filter(att => att !== undefined && att !== null)
+            : [];
+
         // Build the base data
         const createData: any = {
             ...rest,
+            attachment: filteredAttachments, // Use filtered array
             isDraft,
             isSent: !isDraft,
             threadId: finalThreadId,
@@ -124,13 +128,12 @@ class EmailService {
         };
 
         // Only connect receiver if it's not a draft
-        if (!isDraft) {
+        if (!isDraft && receiverId) {
             createData.receiver = { connect: { id: receiverId } };
         }
 
         return await prismaClient.email.create({ data: createData });
     };
-
 
     async getEmailById(emailId: string) {
         try {

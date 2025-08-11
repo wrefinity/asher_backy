@@ -87,7 +87,7 @@ export interface IBasePropertyDTO {
     //
     currency?: Currency;
     marketValue?: number;
-    price: number;
+    price?: number;
     securityDeposit?: number;
     // initialDeposit?: number;
     priceFrequency?: PriceFrequency;

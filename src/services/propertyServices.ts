@@ -1976,6 +1976,7 @@ class PropertyService {
                             ensuite: room.ensuite,
                             furnished: room.furnished,
                             price: room.price,
+                            description: room?.description,
                             priceFrequency: room.priceFrequency,
                         }))
                     ) || [],
@@ -2007,7 +2008,7 @@ class PropertyService {
                             price: unit.price,
                             priceFrequency: unit.priceFrequency,
                             area: unit.area,
-                            description: unit.description,
+                            description: unit?.description,
                             availability: unit.availability,
                         }))
                     ) || [],
@@ -2082,6 +2083,7 @@ class PropertyService {
                         roomSize: room.roomSize,
                         ensuite: room.ensuite,
                         price: room.price,
+                        description: room?.description,
                         furnished: room.furnished
                     })) || []
                 },
@@ -2165,6 +2167,7 @@ class PropertyService {
                     create: roomDetails?.map((room: any) => ({
                         roomName: room.roomName,
                         roomSize: room.roomSize,
+                        description: room?.description,
                         ensuite: room.ensuite,
                         price: room.price,
                     })) || [],

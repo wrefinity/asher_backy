@@ -356,10 +356,14 @@ class UserService {
             middleName: userData?.middleName,
             nationality: userData?.nationality,
             identificationType: userData?.identificationType,
+            identificationNo: userData?.identificationNo,
             issuingAuthority: userData?.issuingAuthority,
             expiryDate: userData?.expiryDate,
-            userId
+            userId,
+            nextOfKin: userData?.nextOfKin
         });
+
+    
 
         // 2. Run independent calls in parallel
         const [guarantorInfo, employmentInfo, emergencyInfo, refreeInfo] = await Promise.all([

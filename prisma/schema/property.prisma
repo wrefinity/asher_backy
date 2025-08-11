@@ -462,6 +462,7 @@ model RoomDetail {
   id                    String               @id @default(cuid())
   roomName              String
   roomSize              String
+  description           String?
   ensuite               Boolean              @default(false)
   isDeleted             Boolean              @default(false)
   furnished             Boolean?             @default(false)

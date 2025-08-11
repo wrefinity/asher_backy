@@ -336,6 +336,7 @@ export const roomDetailSchema = Joi.object({
   residentialPropertyId: Joi.string().optional(),
   commercialPropertyId: Joi.string().optional(),
   unitId: Joi.string().optional(),
+  description: Joi.string().optional(),
   // media files attachement for middlewares
   documentName: Joi.array().items(Joi.string()).optional(),
   docType: Joi.array().items(Joi.string()).optional(),
