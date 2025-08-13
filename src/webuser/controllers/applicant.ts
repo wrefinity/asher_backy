@@ -43,7 +43,7 @@ class ApplicantControls {
   };
   getPendingApplications = async (req: CustomRequest, res: Response) => {
     try {
-      const userId = req.user?.id; 
+      const userId = req.user?.id;
       const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
       res.status(200).json({ pendingApplications });
     } catch (error) {
@@ -53,7 +53,7 @@ class ApplicantControls {
   getApplications = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user?.id;
-  
+
       const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
       const completedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.COMPLETED);
       const approvedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.APPROVED);
@@ -762,7 +762,7 @@ class ApplicantControls {
     }
   }
 
- signAgreementForm = async (req: CustomRequest, res: Response) => {
+  signAgreementForm = async (req: CustomRequest, res: Response) => {
     const userId = req.user?.id;
     const agreementId = req.params.id;
     try {
@@ -786,6 +786,8 @@ class ApplicantControls {
           details: [`Agreement with ID ${agreementId} does not exist`]
         });
       }
+
+      // const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls, ...data} = value;
 
       // Get landlord info
       const landlordId = agreement.application?.properties?.landlordId;
@@ -828,11 +830,11 @@ class ApplicantControls {
 
       // Update agreement
       const created = await ApplicantService.signTenantAgreementDocument(
-        { metadata, documentUrl, processedContent }, 
-        userId, 
+        { metadata, documentUrl, processedContent },
+        userId,
         agreementId
       );
-      
+
       if (!created) {
         return res.status(400).json({ message: "Agreement letter not updated" });
       }
@@ -864,8 +866,8 @@ class ApplicantControls {
 
       // Send email notification
       await sendMail(
-        landlord.user.email, 
-        `Asher - ${agreement.application?.properties?.name} Agreement Form`, 
+        landlord.user.email,
+        `Asher - ${agreement.application?.properties?.name} Agreement Form`,
         htmlContent
       );
 
@@ -880,7 +882,7 @@ class ApplicantControls {
 
       // Update application status
       await ApplicantService.updateApplicationStatusStep(
-        agreement.applicationId, 
+        agreement.applicationId,
         ApplicationStatus.AGREEMENTS_SIGNED
       );
 

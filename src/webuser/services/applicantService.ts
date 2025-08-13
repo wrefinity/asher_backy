@@ -803,9 +803,9 @@ class ApplicantService {
         ...(value.metadata as object),
         tenantSignature: {
           signedAt: new Date(),
-          ipAddress: value.metadata.ipAddress,
-          userAgent: value.metadata.userAgent,
-          signature: value.metadata.signature
+          ipAddress: value.metadata?.ipAddress,
+          userAgent: value.metadata?.userAgent,
+          signature: value.metadata?.signature
         }
       },
       agreementStatus: await this.getUpdatedAgreementStatus(agreementId, 'TENANT')
