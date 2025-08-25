@@ -4,6 +4,7 @@ import { Authorize } from "../../middlewares/authorize";
 import TenantController from "../controllers/tenant.controller";
 import TenantBillRouter from "./tenant-bills.routes"
 import MaintenanceRouter from "./maintenance.routes"
+import ProfileRouter from "./profile.routes"
 import TenantDashboardRouter from "./dashboard.routes"
 class TenantRouter {
     public router: Router;
@@ -21,6 +22,7 @@ class TenantRouter {
         this.router.use('/dashboard', TenantDashboardRouter)
         this.router.use('/bills', TenantBillRouter)
         this.router.use('/maintenances', MaintenanceRouter)
+        this.router.use('/profile', ProfileRouter)
     }
 }
 

@@ -1,8 +1,8 @@
 import { Router } from "express";
-import dashboardController from "../../controllers/dashboard.controller";
+import ProfileController from "../controllers/profile";
 import { Authorize } from "../../middlewares/authorize";
 
-class Dashboard {
+class Profile {
     public router: Router;
     authenticateService: Authorize
 
@@ -13,9 +13,9 @@ class Dashboard {
     }
 
     private initializeRoutes() {
-        this.router.use(this.authenticateService.authorize)
-        this.router.get("/", dashboardController.getDashboardData);
+        this.router.use(this.authenticateService.authorize);
+        this.router.get("/", ProfileController.getProfileData);
     }
 }
 
-export default new Dashboard().router;
+export default new Profile().router;

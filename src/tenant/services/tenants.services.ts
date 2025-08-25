@@ -175,6 +175,7 @@ class TenantService {
 
         return tenant;
     };
+   
 }
 
 export default new TenantService();
