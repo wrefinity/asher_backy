@@ -2,10 +2,10 @@ import { Router } from "express";
 import { userRoles } from "@prisma/client";
 import { Authorize } from "../../middlewares/authorize";
 import TenantController from "../controllers/tenant.controller";
-import TenantBillRouter from "./tenant-bills.routes"
-import MaintenanceRouter from "./maintenance.routes"
-import ProfileRouter from "./profile.routes"
-import TenantDashboardRouter from "./dashboard.routes"
+import TenantBillRouter from "./tenant-bills.routes";
+import MaintenanceRouter from "./maintenance.routes";
+import ProfileRouter from "./profile.routes";
+import TenantDashboardRouter from "./dashboard.routes";
 class TenantRouter {
     public router: Router;
     authenticateService: Authorize

@@ -14,7 +14,7 @@ class Profile {
 
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize);
-        this.router.get("/", ProfileController.getProfileData);
+        this.router.get("/:tenantId", ProfileController.getProfileData);
     }
 }
 

@@ -23,8 +23,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/**/*.ts",
-    "src/**/*.js",
-    "package.json"
+    "src/**/*.js" 
   ],
   "exclude": [
     "node_modules",
