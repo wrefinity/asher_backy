@@ -185,6 +185,31 @@ const employmentInformationSchema = Joi.object({
     employerPhone: Joi.string().optional(),
     positionTitle: Joi.string().optional()
 });
+// Schema for creating tenant with required personalInfo
+export const tenantCreateSchema = Joi.object({
+  personalInfo: applicantPersonalDetailsSchema.optional(),
+  employmentInfo: employmentInformationSchema.optional(),
+  nextOfKinInfo: nextOfKinSchema.optional(),
+  guarantorInfo: guarantorInformationSchema.optional(),
+  emergencyContactInfo: emergencyContactSchema.optional(),
+  residentialInfo: residentialInformationSchema.optional()
+//   applicationQuestions: additionalInfoSchema.optional(),
+//   declarationInfo: declarationSchema.optional(),
+//   refereeInfo: refreeSchema.optional(),
+//   documents: Joi.array().items(documentSchema).optional()
+}).or(
+  'personalInfo',
+  'employmentInfo',
+  'nextOfKinInfo',
+  'guarantorInfo',
+  'emergencyContactInfo',
+  'residentialInfo',
+//   'applicationQuestions',
+//   'declarationInfo',
+//   'refereeInfo',
+//   'documents'
+);
+
 
 export {
     nextOfKinSchema,

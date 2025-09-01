@@ -898,6 +898,230 @@ class ApplicantService {
       }
     });
   }
+
+   copyApplicationDataToTenant = async (applicationId: string) =>{
+    const application = await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        user: true,
+        personalDetails: {
+          include: {
+            nextOfKin: true
+          }
+        },
+        residentialInfo: {
+          include: {
+            prevAddresses: true
+          }
+        },
+        emergencyInfo: true,
+        employmentInfo: true,
+        guarantorInformation: true,
+        applicationQuestions: true,
+        declaration: true,
+        referee: true,
+        properties: true,
+        units: true,
+        rooms: true,
+        tenant: true,
+      }
+    });
+
+    if (!application) {
+      throw new Error('Application not found');
+    }
+
+    if (!application.tenant) {
+      throw new Error('No tenant found for this application');
+    }
+
+    // Prepare JSON data
+    const applicationData = {
+      personalInfo: application.personalDetails,
+      nextOfKinInfo: application.personalDetails?.nextOfKin,
+      employmentInfo: application.employmentInfo,
+      guarantorInfo: application.guarantorInformation,
+      emergencyContactInfo: application.emergencyInfo,
+      residentialInfo: application.residentialInfo,
+      applicationQuestions: application.applicationQuestions,
+      declarationInfo: application.declaration,
+      refereeInfo: application.referee,
+      applicationMetadata: {
+        applicationId: application.id,
+        appliedAt: application.createdAt,
+        status: application.status
+      }
+    };
+
+    // Update tenant with application data
+    const updatedTenant = await prismaClient.tenants.update({
+      where: { id: application.tenant.id },
+      data: {
+        personalInfo: applicationData.personalInfo,
+        nextOfKinInfo: applicationData.nextOfKinInfo,
+        employmentInfo: applicationData.employmentInfo,
+        guarantorInfo: applicationData.guarantorInfo,
+        emergencyContactInfo: applicationData.emergencyContactInfo,
+        residentialInfo: applicationData.residentialInfo,
+        applicationQuestions: applicationData.applicationQuestions,
+        declarationInfo: applicationData.declarationInfo
+      }
+    });
+
+    return updatedTenant;
+  }
+
+    // Get tenant with application data
+  getTenantWithApplicationData = async (tenantId: string) => {
+    return await prismaClient.tenants.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        tenantId: true,
+        tenantCode: true,
+        personalInfo: true,
+        nextOfKinInfo: true,
+        employmentInfo: true,
+        guarantorInfo: true,
+        emergencyContactInfo: true,
+        residentialInfo: true,
+        applicationQuestions: true,
+        declarationInfo: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: true,
+          }
+        },
+        property: {
+          select: {
+            id: true,
+            name: true,
+            address: true
+          }
+        },
+        landlord: {
+          select: {
+            id: true,
+          }
+        }
+      }
+    });
+  }
+
+  // Update specific tenant application data
+  updateTenantApplicationData = async (tenantId: string, data: {
+    personalInfo?: any;
+    nextOfKinInfo?: any;
+    employmentInfo?: any;
+    guarantorInfo?: any;
+    emergencyContactInfo?: any;
+    // residentialInfo?: any;
+    // applicationQuestions?: any;
+    // declarationInfo?: any;
+  }) =>{
+    return await prismaClient.tenants.update({
+      where: { id: tenantId },
+      data: {
+        ...(data.personalInfo && { personalInfo: data.personalInfo }),
+        ...(data.nextOfKinInfo && { nextOfKinInfo: data.nextOfKinInfo }),
+        ...(data.employmentInfo && { employmentInfo: data.employmentInfo }),
+        ...(data.guarantorInfo && { guarantorInfo: data.guarantorInfo }),
+        ...(data.emergencyContactInfo && { emergencyContactInfo: data.emergencyContactInfo }),
+      //   ...(data.residentialInfo && { residentialInfo: data.residentialInfo }),
+      //   ...(data.applicationQuestions && { applicationQuestions: data.applicationQuestions }),
+      //   ...(data.declarationInfo && { declarationInfo: data.declarationInfo })
+      }
+    });
+  }
+
+  // Get application data for a user's last approved application
+  getLastApplicationDataForUser = async (userId: string) => {
+    const lastApplication = await prismaClient.application.findFirst({
+      where: {
+        userId: userId,
+        status: 'APPROVED'
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        personalDetails: {
+          include: {
+            nextOfKin: true
+          }
+        },
+        residentialInfo: {
+          include: {
+            prevAddresses: true
+          }
+        },
+        emergencyInfo: true,
+        employmentInfo: true,
+        guarantorInformation: true,
+        applicationQuestions: true,
+        declaration: true,
+        referee: true,
+        properties: true,
+        units: true,
+        rooms: true
+      }
+    });
+
+    if (!lastApplication) {
+      return null;
+    }
+
+    return {
+      personalInfo: lastApplication.personalDetails,
+      nextOfKinInfo: lastApplication.personalDetails?.nextOfKin,
+      employmentInfo: lastApplication.employmentInfo,
+      guarantorInfo: lastApplication.guarantorInformation,
+      emergencyContactInfo: lastApplication.emergencyInfo,
+      residentialInfo: lastApplication.residentialInfo,
+      applicationQuestions: lastApplication.applicationQuestions,
+      declarationInfo: lastApplication.declaration,
+      refereeInfo: lastApplication.referee,
+      propertyInfo: {
+        property: lastApplication.properties,
+        unit: lastApplication.units,
+        room: lastApplication.rooms
+      }
+    };
+  }
+
+  // Attach last application data to tenant
+  attachLastApplicationDataToTenant =  async (tenantId: string) =>{
+    const tenant = await prismaClient.tenants.findUnique({
+      where: { id: tenantId },
+      include: { user: true }
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const lastApplicationData = await this.getLastApplicationDataForUser(tenant.userId);
+
+    if (!lastApplicationData) {
+      throw new Error('No approved application found for this user');
+    }
+
+    return await prismaClient.tenants.update({
+      where: { id: tenantId },
+      data: {
+        personalInfo: lastApplicationData.personalInfo,
+        nextOfKinInfo: lastApplicationData.nextOfKinInfo,
+        employmentInfo: lastApplicationData.employmentInfo,
+        guarantorInfo: lastApplicationData.guarantorInfo,
+        emergencyContactInfo: lastApplicationData.emergencyContactInfo,
+        residentialInfo: lastApplicationData.residentialInfo,
+        applicationQuestions: lastApplicationData.applicationQuestions,
+        declarationInfo: lastApplicationData.declarationInfo
+      }
+    });
+  }
 }
 
 export default new ApplicantService();

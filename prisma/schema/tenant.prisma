@@ -25,9 +25,9 @@ model tenants {
     propertyId            String
     property              properties             @relation(fields: [propertyId], references: [id])
     unitId                String?
-    unit                  UnitConfiguration?      @relation(fields: [unitId], references: [id])
+    unit                  UnitConfiguration?     @relation(fields: [unitId], references: [id])
     roomId                String?
-    room                  RoomDetail?      @relation(fields: [roomId], references: [id])
+    room                  RoomDetail?            @relation(fields: [roomId], references: [id])
     history               tenantPaymentHistory[]
 
     createdAt DateTime   @default(now())
@@ -44,6 +44,16 @@ model tenants {
     TenantLeaseBreach  TenantLeaseBreach[]
     SupportTicket      SupportTicket[]      @relation("TicketTenantRaisedBy")
     billsSubCategory   billsSubCategory[]
+
+    // JSON fields for application data
+    personalInfo         Json?
+    nextOfKinInfo        Json?
+    employmentInfo       Json?
+    guarantorInfo        Json?
+    emergencyContactInfo Json?
+    residentialInfo      Json?
+    applicationQuestions Json?
+    declarationInfo      Json?
 
     @@unique([userId, propertyId])
     @@unique([userId])

@@ -135,6 +135,8 @@ class ApplicationControls {
 
             if (!tenant) return res.status(400).json({ message: "tenant not created" })
             await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.TENANT_CREATED);
+            await applicantService.copyApplicationDataToTenant(applicationId);
+            
             return res.status(200).json({ tenant });
         } catch (error) {
             errorService.handleError(error, res)
