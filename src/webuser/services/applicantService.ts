@@ -279,9 +279,9 @@ class ApplicantService {
     });
 
     // If a recent application exists, prevent re-application
-    if (recentApplication) {
-      throw new Error("You have already applied for this property in the last 3 months. Please wait before reapplying.");
-    }
+    // if (recentApplication) {
+    //   throw new Error("You have already applied for this property in the last 3 months. Please wait before reapplying.");
+    // }
 
     // Create application record
     const app = await prismaClient.application.create({
