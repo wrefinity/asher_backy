@@ -42,32 +42,7 @@ model Ads {
   updatedAt        DateTime     @updatedAt
 }
 
-model landlords {
-  id                    String                  @id @default(cuid())
-  property              properties[]
-  userId                String                  @unique
-  user                  users                   @relation(fields: [userId], references: [id])
-  landlordCode          String?                 @unique
-  tenants               tenants[]
-  reviews               reviews[]
 
-  isDeleted            Boolean                @default(false)
-  bankInfo             bankInfo[]
-  maintenances         maintenance[]          @relation("landlordUser")
-  maintenanceWhitelist maintenanceWhitelist[]
-  stripeCustomerId     String?                @unique
-
-  BroadcastCategory  BroadcastCategory[]
-  Broadcast          Broadcast[]
-  globalSettings     Settings[]
-  propertySettings   propertySettings[]
-  applicationInvites applicationInvites[]
-  emailDomains       String?              @unique
-
-  SupportTicket SupportTicket[] @relation("TicketRaisedBy")
-
-  billsSubCategory billsSubCategory[]
-}
 
 model bankInfo {
   id            String     @id @default(cuid())

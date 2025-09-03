@@ -93,6 +93,7 @@ class ApplicantService {
     employeeReference: true,
     referee: true,
     Log: true,
+    applicationInvites: true
     // agreementDocumentUrl: true,
   }
 
@@ -930,10 +931,12 @@ class ApplicantService {
     if (!application) {
       throw new Error('Application not found');
     }
+    console.log(application)
 
     if (!application.tenant) {
       throw new Error('No tenant found for this application');
     }
+
 
     // Prepare JSON data
     const applicationData = {

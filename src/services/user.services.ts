@@ -207,12 +207,12 @@ class UserService {
             await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
         }
 
-        // for web user for complete tenant account profile creation
+        // for web user complete tenant account profile creation
         if (user && !landlordBulkUploads && userData?.role === userRoles.TENANT && createTenantProfile) {
             // user = await this.createNewUser(userData, landlordBulkUploads);
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
-            const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id)
-            if (tenantExist) return tenantExist;
+            // const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id, userData?.propertyId)
+            // if (tenantExist) return tenantExist;
             const result = await this.updateUserBasedOnRole(userData, user, roleToUse) as any;
 
             sendMail(
@@ -230,7 +230,6 @@ class UserService {
             await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
             //unlist the property
             await propertyServices.deletePropertyListing(userData?.propertyId);
-
             await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.TENANT_CREATED);
             await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.COMPLETED);
 
@@ -363,7 +362,7 @@ class UserService {
             nextOfKin: userData?.nextOfKin
         });
 
-    
+
 
         // 2. Run independent calls in parallel
         const [guarantorInfo, employmentInfo, emergencyInfo, refreeInfo] = await Promise.all([
@@ -498,9 +497,7 @@ class UserService {
                 });
                 if (!landlord) throw new Error('Landlord not found');
 
-                const property = await prismaClient.properties.findUnique({
-                    where: { id: userData.propertyId },
-                });
+                const property = await propertyServices.getPropertiesById(userData.propertyId);
                 if (!property) throw new Error('Property not found');
 
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
@@ -516,6 +513,16 @@ class UserService {
                         property: {
                             connect: { id: property.id },
                         },
+                        unit: userData.unitId
+                            ? {
+                                connect: { id: userData.unitId },
+                            }
+                            : undefined,
+                        room: userData.roomId
+                            ? {
+                                connect: { id: userData.roomId },
+                            }
+                            : undefined,
                         initialDeposit: userData.initialDeposit || 0,
                         tenantWebUserEmail: userData.tenantWebUserEmail,
                         leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
@@ -540,12 +547,14 @@ class UserService {
         }
     };
 
-    tenantExistsForLandlord = async (landlordId: string, userId: string) => {
+    tenantExistsForLandlord = async (landlordId: string, userId: string, propertyId?: string) => {
         return await prismaClient.users.findFirst({
             where: {
                 tenant: {
                     userId,
                     landlordId: landlordId,
+                    isCurrentLease: true,
+                    ...(propertyId && { propertyId })
                 },
             },
             include: {
@@ -580,7 +589,7 @@ class UserService {
         return updated;
     }
 
-    updateUserRole = async (userId: string, role: userRoles) => {   
+    updateUserRole = async (userId: string, role: userRoles) => {
         const user = await prismaClient.users.findUnique({ where: { id: userId } });
         if (!user) throw new Error('User not found');
         const updatedRoles = user.role.includes(role) ? user.role : [...user.role, role];

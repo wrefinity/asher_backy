@@ -111,32 +111,36 @@ class ApplicationControls {
 
             // update the application also to completed
             const tenantWebUserEmail = application?.user.email;
-            const userEmail = tenantWebUserEmail.toString().split('@')[0];
+            // const userEmail = tenantWebUserEmail.toString().split('@')[0];
             // get the current landlord email domain
             const landlord = await this.landlordService.getLandlordById(landlordId);
             if (!landlord) return res.status(403).json({ message: "login as a landlord" })
 
-            const landlordEmail = landlord.user.email.toString().trim().split('@')[0];
+            // const landlordEmail = landlord.user.email.toString().trim().split('@')[0];
 
-            const email = `${userEmail}@${landlordEmail}.asher.co`;
+            // const email = `${userEmail}@${landlordEmail}.asher.co`;
 
             // TODO: check if tenant has been a tenant for the current landlord before and just update the property
             const tenant = await await userServices.createUser({
                 ...req.body,
-                newEmail: email,
+                // newEmail: email,
                 email: tenantWebUserEmail,
                 tenantWebUserEmail,
                 propertyId: application.propertiesId,
+                roomId: application.applicationInvites.roomId,
+                unitId: application.applicationInvites.unitId,
                 applicationId,
                 role: userRoles.TENANT,
                 password: application?.personalDetails?.firstName,
                 landlordId
             }, false, req.user?.id, true);
 
+            console.log(tenant)
+
             if (!tenant) return res.status(400).json({ message: "tenant not created" })
             await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.TENANT_CREATED);
             await applicantService.copyApplicationDataToTenant(applicationId);
-            
+
             return res.status(200).json({ tenant });
         } catch (error) {
             errorService.handleError(error, res)

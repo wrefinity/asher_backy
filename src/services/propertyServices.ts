@@ -685,9 +685,6 @@ class PropertyService {
         }
     }
 
-
-
-
     countListedProperties = async (filters: PropertyFilters = {}, availability: boolean = true) => {
         const {
             landlordId,
