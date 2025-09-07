@@ -1,6 +1,8 @@
 import { Router } from "express";
 import AuthController from "../controllers/auth";
 import RoleRouter from "./roles"
+import { validateBody } from "../middlewares/validation";
+import { ConfirmationSchema, LoginSchema, RegisterSchema } from "../validations/schemas/auth";
 class AuthRoutes {
     public router: Router;
 
@@ -11,11 +13,12 @@ class AuthRoutes {
 
     private initializeRoutes(): void {
         this.router.use("/roles", RoleRouter);
-        this.router.post("/login", AuthController.login.bind(AuthController));
-        this.router.post("/verify", AuthController.confirmation.bind(AuthController));
+        this.router.post("/login", validateBody(LoginSchema), AuthController.login.bind(AuthController));
+        this.router.post("/send-token", AuthController.sendToken.bind(AuthController));
+        this.router.post("/verify", validateBody(ConfirmationSchema), AuthController.confirmation.bind(AuthController));
         this.router.post("/reset-code", AuthController.sendPasswordResetCode.bind(AuthController));
         this.router.post("/refresh-token", AuthController.refreshToken.bind(AuthController));
-        this.router.post("/register", AuthController.register.bind(AuthController));
+        this.router.post("/register", validateBody(RegisterSchema), AuthController.register.bind(AuthController));
         this.router.post("/reset-password", AuthController.passwordReset.bind(AuthController));
         this.router.post('/tenants/register', AuthController.registerTenant.bind(AuthController))
         // this.router.post('/landlord/register', AuthController.createLandlord.bind(AuthController))

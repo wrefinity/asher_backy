@@ -145,14 +145,7 @@ model creditScore {
   reviewScore       Float
 }
 
-model VerificationToken {
-  id        Int       @id @default(autoincrement())
-  token     String    @unique
-  userId    String
-  user      users     @relation(fields: [userId], references: [id])
-  expiresAt DateTime?
-  createdAt DateTime  @default(now())
-}
+
 
 //  status will be in-progress, completed, assigned, aborted
 model status {

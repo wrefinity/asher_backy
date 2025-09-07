@@ -6,304 +6,269 @@ import { Jtoken } from "../middlewares/Jtoken";
 import { JWT_SECRET } from "../secrets";
 import UserServices from "../services/user.services";
 import {
-    createVerificationToken,
-    deleteVerificationToken,
-    getTokensByUserId,
-    validateVerificationToken
+  createVerificationToken,
+  deleteVerificationToken,
+  getTokensByUserId,
+  updateTokenToUsed,
+  validateVerificationToken,
 } from "../services/verification_token.service";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
-import { LogType, Prisma } from "@prisma/client"
+import { LogType } from "@prisma/client";
 import { generateOtp } from "../utils/helpers";
-import ErrorService from "../services/error.service";
-import { LoginSchema, ConfirmationSchema, RegisterSchema } from "../validations/schemas/auth";
+import { LoginSchema } from "../validations/schemas/auth";
 import { CustomRequest } from "../utils/types";
 import logsServices from "../services/logs.services";
 
-import { onlineStatus } from '@prisma/client'
+import { onlineStatus } from "@prisma/client";
+import { asyncHandler } from "../utils/asyncHandler";
+import { ApiResponse } from "../utils/ApiResponse";
+import { ApiError } from "../utils/ApiError";
 
 class AuthControls {
-    protected tokenService: Jtoken;
-    // protected googleService: GoogleService;
-    constructor() {
-        this.tokenService = new Jtoken(JWT_SECRET);
-        // this.googleService = new GoogleService()
+  protected tokenService: Jtoken;
+
+  constructor() {
+    this.tokenService = new Jtoken(JWT_SECRET);
+  }
+
+  private verificationTokenCreator = async (identifier: {
+    userId?: string;
+    email?: string;
+  }) => {
+    const token = await createVerificationToken(identifier, generateOtp);
+    if (identifier.email) {
+      await sendEmail(
+        identifier.email,
+        "EMAIL VERIFICATION",
+        generateEmailTemplate(token)
+      );
+    }
+  };
+
+  register = asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body.value;
+
+    const existingUser = await UserServices.findUserByEmail(email);
+    if (existingUser) {
+      throw ApiError.validationError(["User already exists"]);
     }
 
-    verificationTokenCreator = async (userId: string, email: string) => {
-        const token = await createVerificationToken(userId, generateOtp);
-        sendEmail(email, "EMAIL VERIFICATION", generateEmailTemplate(token));
+    const newUser = await UserServices.createUser(req.body.value);
+    await this.verificationTokenCreator({ userId: newUser.id, email });
+
+    return res
+      .status(201)
+      .json(
+        ApiResponse.created(
+          newUser,
+          "User registered successfully, check your email for verification code"
+        )
+      );
+  });
+
+  sendToken = asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email) {
+      throw ApiError.validationError(["Email is required"]);
     }
 
-    register = async (req: Request, res: Response) => {
-
-        try {
-            const { error, value } = ConfirmationSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({
-                    message: 'Validation failed',
-                    errors: error.details.map(d => d.message)
-                });
-            }
-            const { email } = value;
-
-            let user = await UserServices.findUserByEmail(email);
-            if (user) return res.status(400).json({ message: "user exists" });
-
-            let newUser = await UserServices.createUser(value);
-            // Create verification token
-            await this.verificationTokenCreator(newUser.id, email);
-
-            // const serializedUser = serializeBigInt(user);
-            return res.status(201).json({ message: "User registered successfully, check your email for verification code", user: newUser });
-
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                console.log(error)
-                return res.status(400).json({ message: error });
-            } else {
-                return res.status(500).json({ message: "An unknown error occurred" });
-            }
-        }
-
+    const user = await UserServices.findUserByEmail(email);
+    if (user) {
+      throw ApiError.validationError(["User already exists"]);
     }
 
-    confirmation = async (req: Request, res: Response) => {
-        try {
+    await this.verificationTokenCreator({ email });
 
-            const { error, value } = ConfirmationSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({
-                    message: 'Validation failed',
-                    errors: error.details.map(d => d.message)
-                });
-            }
+    return res
+      .status(201)
+      .json(
+        ApiResponse.success(
+          {},
+          "Verification code sent, check your email."
+        )
+      );
+  });
 
-            const { email, token } = value;
-            // Find user by email
-            const user = await UserServices.findUserByEmail(email);
-            if (!user) {
-                res.status(404).json({ message: 'User not found' });
-                return;
-            }
-            // Validate verification token
-            const isValidToken = await validateVerificationToken(token, user.id);
-            if (!isValidToken) {
-                return res.status(400).json({ message: 'Invalid or expired token' });
-            }
-            // Update user's isVerified status to true
-            const updatedUser = await UserServices.updateUserVerificationStatus(user.id, true);
+  confirmation = asyncHandler(async (req: Request, res: Response) => {
+    const { email, token } = req.body;
 
-            const tokenRet = await getTokensByUserId(user.id, token)
-            await deleteVerificationToken(Number(tokenRet.id));
+    const user = await UserServices.findUserByEmail(email);
+    if (!user) throw ApiError.notFound("User not found");
 
-            const userResponse = updatedUser;
+    const isValidToken = await validateVerificationToken(token, {userId:user.id});
+    if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
 
-            const { password, ...userWithoutId } = userResponse;
+    const updatedUser = await UserServices.updateUserVerificationStatus(
+      user.id,
+      true
+    );
 
-            res.status(200).json({ message: 'User verified successfully', user: userWithoutId });
-        } catch (error) {
-            console.error('Error verifying user:', error);
-            res.status(500).json({ message: error.message || 'Failed to verify user' });
-        }
+    const tokenRet = await getTokensByUserId(user.id, token);
+    await deleteVerificationToken(Number(tokenRet.id));
+
+    const { password, ...userWithoutPassword } = updatedUser;
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(userWithoutPassword, "User verified successfully"));
+  });
+  genericConfirmation = asyncHandler(async (req: Request, res: Response) => {
+    const { email, token } = req.body;
+
+    const isValidToken = await validateVerificationToken(token, {email});
+    if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
+    await updateTokenToUsed(isValidToken.id);
+    return res
+      .status(200)
+      .json(ApiResponse.success({email, token}, "token validated"));
+  });
+
+  sendPasswordResetCode = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { email } = req.body;
+    if (!email) throw ApiError.validationError(["Email is required"]);
+
+    const normalizedEmail = email.toLowerCase();
+    const user = await UserServices.findUserByEmail(normalizedEmail);
+    if (!user) throw ApiError.notFound("User does not exist");
+
+    await this.verificationTokenCreator({
+      userId: user.id,
+      email: normalizedEmail,
+    });
+
+    return res
+      .status(201)
+      .json(ApiResponse.success({}, "Password reset code sent to email"));
+  });
+
+  passwordReset = asyncHandler(async (req: Request, res: Response) => {
+    const { email, tenantCode, newPassword, token } = req.body;
+
+    if (!email && !tenantCode) {
+      throw ApiError.validationError(["Email or tenant code is required"]);
     }
 
-    sendPasswordResetCode = async (req: CustomRequest, res: Response) => {
-        const { email } = req.body;
+    let user = null;
+    if (email) user = await UserServices.findUserByEmail(email);
+    if (!user && tenantCode) user = await UserServices.findUserByTenantCode(tenantCode);
 
-        // Convert email to lowercase
-        const normalizedEmail = email.toLowerCase();
+    if (!user) throw ApiError.notFound("User does not exist");
 
-        try {
-            const user = await UserServices.findUserByEmail(normalizedEmail);
-            if (!user) {
-                return res.status(400).json({ message: "User does not exist" });
-            }
-
-            // Ensure user is not null
-            if (user && typeof user !== 'boolean' && 'id' in user) {
-                // Create verification token with normalized email
-                await this.verificationTokenCreator(user.id, normalizedEmail);
-            }
-
-            return res.status(201).json({
-                message: "Password reset code sent, check your email for verification code"
-            });
-        } catch (error: unknown) {
-            ErrorService.handleError(error, res);
-        }
+    if (email) {
+      const isValidToken = await validateVerificationToken(token, user.id);
+      if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
     }
 
-    passwordReset = async (req: Request, res: Response) => {
-        const { email, tenantCode, newPassword, token } = req.body;
+    await UserServices.updateUserPassword(user.id, newPassword);
+    await logsServices.createLog({
+      events: "Password Reset",
+      type: LogType.ACTIVITY,
+      createdById: user.id,
+    });
 
-        try {
-            // Ensure at least one identifier is provided
-            if (!email && !tenantCode) {
-                return res.status(400).json({ message: "Email or tenant code is required." });
-            }
+    return res
+      .status(200)
+      .json(ApiResponse.success({}, "Password updated successfully"));
+  });
 
-            let user = null;
-
-            // Find user by email if provided
-            if (email) {
-                user = await UserServices.findUserByEmail(email);
-            }
-
-            // If user is not found via email and tenantCode is provided, find user by tenantCode
-            if (!user && tenantCode) {
-                user = await UserServices.findUserByTenantCode(tenantCode);
-            }
-
-            if (!user) {
-                return res.status(404).json({ message: "User does not exist." });
-            }
-
-            // **Only validate the token if resetting via email**
-            if (email) {
-                const isValidToken = await validateVerificationToken(token, user.id);
-                if (!isValidToken) {
-                    return res.status(400).json({ message: "Invalid or expired token." });
-                }
-            }
-
-            // Update user's password
-
-            await UserServices.updateUserPassword(user.id, newPassword);
-            await logsServices.createLog({
-                events: "Password Reset",
-                type: LogType.ACTIVITY,
-                createdById: user.id,
-            });
-            return res.status(200).json({ message: "Password updated successfully." });
-
-        } catch (error) {
-            ErrorService.handleError(error, res);
-        }
-    };
-
-    refreshToken = async (req: Request, res: Response) => {
-        try {
-            const { refreshToken } = req.body;
-
-            if (!refreshToken) {
-                return res.status(400).json({ message: "Refresh token is required as refreshToken" });
-            }
-
-            // Verify token and get new tokens + user details
-            const tokens = await this.tokenService.verifyAndRefreshToken(refreshToken);
-
-            if (!tokens) {
-                return res.status(401).json({ message: "Invalid or expired refresh token" });
-            }
-
-            res.json({
-                accessToken: tokens.accessToken,
-                refreshToken: tokens.refreshToken,
-                user: tokens.user, // Return user details
-            });
-        } catch (error) {
-            console.error("Error refreshing token:", error);
-            res.status(500).json({ message: "Internal server error" });
-        }
+  refreshToken = asyncHandler(async (req: Request, res: Response) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      throw ApiError.validationError(["Refresh token is required"]);
     }
 
-    login = async (req: Request, res: Response) => {
+    const tokens = await this.tokenService.verifyAndRefreshToken(refreshToken);
+    if (!tokens) throw ApiError.unauthorized("Invalid or expired refresh token");
 
-        try {
-            const { error, value } = LoginSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
-            }
-            const { email, tenantCode, password: userPassword } = value;
+    return res.status(200).json(ApiResponse.success(tokens, "Token refreshed successfully"));
+  });
 
-            let user = null;
-            // Handle scenario where only tenantCode is supplied
-            if (tenantCode && !email && !userPassword) {
-                user = await UserServices.findUserByTenantCode(tenantCode);
+  login = asyncHandler(async (req: Request, res: Response) => {
 
-                if (!user) {
-                    return res.status(404).json({ message: "No user found for the provided tenant code." });
-                }
+    const { email, tenantCode, password: userPassword } = req.body;
+    let user = null;
 
-                // Exclude sensitive fields and return user details
-                const { password: _, ...userDetails } = user;
-                // Update online status before creating tokens
-                await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
-                const tokens = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
+    // tenantCode only login
+    if (tenantCode && !email && !userPassword) {
+      user = await UserServices.findUserByTenantCode(tenantCode);
+      if (!user) throw ApiError.notFound("No user found for the provided tenant code");
 
-                return res.status(200).json({
-                    message: "Tenant-specific user retrieved successfully.",
-                    userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
-                    accessToken: tokens.accessToken,
-                    refreshToken: tokens.refreshToken,
-                });
-            }
+      await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+      const tokens = await this.tokenService.createToken({
+        id: user.id,
+        role: String(user.role),
+        email: String(user.email),
+      });
 
-            // Ensure at least one identifier is provided
-            if (!email && !tenantCode) {
-                return res.status(400).json({ message: "Email or tenant code is required." });
-            }
-
-            // Find user by email or tenantCode
-            if (email) {
-                user = await UserServices.findUserByEmail(email);
-            }
-            if (!user && tenantCode) {
-                user = await UserServices.findUserByTenantCode(tenantCode);
-            }
-            if (!user) {
-                return res.status(404).json({ message: "User does not exist." });
-            }
-            // Verify password
-            if (!user.password || !compareSync(userPassword, user.password)) {
-                return res.status(400).json({ message: "Invalid login credentials." });
-            }
-
-            if (!user.isVerified) {
-                await this.verificationTokenCreator(user.id, email);
-                return res.status(400).json({ message: "Account not verified, a verification code was sent to your email" });
-            }
-
-            // Update online status before creating tokens
-            await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
-
-            const token = await this.tokenService.createToken({ id: user.id, role: String(user.role), email: String(user.email) });
-            await logsServices.createLog({
-                events: `user ${user.email} logged in`,
-                type: LogType.ACTIVITY,
-                createdById: user.id,
-            });
-            // Exclude sensitive fields and return user details
-            const { password: _, ...userDetails } = user;
-            return res.status(200).json({
-                message: "User logged in successfully.",
-                token: token.accessToken,
-                refreshToken: token.refreshToken,
-                userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
-            });
-        } catch (error: unknown) {
-            ErrorService.handleError(error, res)
-        }
-
+      const { password, ...userDetails } = user;
+      return res.status(200).json(
+        ApiResponse.success(
+          {
+            userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
+            ...tokens,
+          },
+          "Tenant-specific user retrieved successfully"
+        )
+      );
     }
 
-    registerTenant = async (req: Request, res: Response) => {
-        try {
-            const { tenantId, password } = req.body
-
-            if (!tenantId && !password) return res.status(500).json({ message: "No tenant Id or password found" })
-
-            const otp = await createVerificationToken(tenantId, generateOtp)
-
-            // send the email
-            console.log(otp)
-
-            return res.status(200).json({ message: "Email sent successfully" })
-        } catch (error) {
-            ErrorService.handleError(error, res)
-        }
-
+    if (!email && !tenantCode) {
+      throw ApiError.validationError(["Email or tenant code is required"]);
     }
+
+    if (email) user = await UserServices.findUserByEmail(email);
+    if (!user && tenantCode) user = await UserServices.findUserByTenantCode(tenantCode);
+    if (!user) throw ApiError.notFound("User does not exist");
+
+    if (!user.password || !compareSync(userPassword, user.password)) {
+      throw ApiError.validationError(["Invalid login credentials"]);
+    }
+
+    if (!user.isVerified) {
+      await this.verificationTokenCreator({ userId: user.id, email });
+      throw ApiError.unauthorized("Account not verified, verification code sent to email");
+    }
+
+    await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+    const tokens = await this.tokenService.createToken({
+      id: user.id,
+      role: String(user.role),
+      email: String(user.email),
+    });
+
+    await logsServices.createLog({
+      events: `User ${user.email} logged in`,
+      type: LogType.ACTIVITY,
+      createdById: user.id,
+    });
+
+    const { password, ...userDetails } = user;
+    return res.status(200).json(
+      ApiResponse.success(
+        {
+          token: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
+        },
+        "User logged in successfully"
+      )
+    );
+  });
+
+  registerTenant = asyncHandler(async (req: Request, res: Response) => {
+    const { tenantId, password } = req.body;
+    if (!tenantId || !password) {
+      throw ApiError.validationError(["Tenant ID and password are required"]);
+    }
+
+    const otp = await createVerificationToken({ userId: tenantId }, generateOtp);
+    console.log(otp);
+
+    return res
+      .status(200)
+      .json(ApiResponse.success({}, "Tenant verification email sent successfully"));
+  });
 }
+
 export default new AuthControls();
