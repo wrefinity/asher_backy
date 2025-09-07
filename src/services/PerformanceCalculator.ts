@@ -68,36 +68,47 @@ class PerformanceCalculator {
             (diversityScore * 0.2)  // Landlord changes
         );
     }
-    private async calculateRentToIncomeRatio(userId: string): Promise<number> {
-        const tenant = await prismaClient.tenants.findUnique({
-            where: { userId },
-            include: {
-                user: {
-                    include: {
-                        EmploymentInformation: {
-                            take: 1
-                        }
-                    }
+private async calculateRentToIncomeRatio(userId: string): Promise<number> {
+    const tenant = await prismaClient.tenants.findFirst({
+        where: { userId, isCurrentLease: true }, 
+        include: {
+            user: {
+                include: {
+                    EmploymentInformation: {
+                        orderBy: { createdAt: "desc" },
+                        take: 1,
+                    },
                 },
-                property: true
-            }
-        });
-        // Default score if missing data
-        if (!tenant || !tenant.property || !tenant.user.EmploymentInformation[0]) {
-            return 85; // Midpoint of your range
-        }
-        const monthlyRent = Number(tenant.property.price);
-        const monthlyIncome = Number(tenant.user.EmploymentInformation[0].monthlyOrAnualIncome);
+            },
+            property: true,
+        },
+    });
 
-        // Handle invalid income
-        if (monthlyIncome <= 0) return 50;
-        const ratio = monthlyRent / monthlyIncome;
-
-        // Exact scoring per your requirements
-        if (ratio <= 0.3) return 100;
-        if (ratio <= 0.4) return 85; // Midpoint of 80-90 range
-        return 40;
+    // Default score if missing data
+    if (!tenant || !tenant.property || tenant.user.EmploymentInformation.length === 0) {
+        return 85; // Midpoint of your range
     }
+
+    const monthlyRent = Number(tenant.property.price);
+    const employmentInfo = tenant.user.EmploymentInformation[0];
+    let monthlyIncome = Number(employmentInfo.monthlyOrAnualIncome);
+
+    // Optional: normalize if income type is annual
+    // if (employmentInfo.incomeType === "ANNUAL") {
+    //     monthlyIncome = monthlyIncome / 12;
+    // }
+
+    // Handle invalid income
+    if (monthlyIncome <= 0) return 50;
+
+    const ratio = monthlyRent / monthlyIncome;
+
+    // Exact scoring per your requirements
+    if (ratio <= 0.3) return 100;
+    if (ratio <= 0.4) return 85; // Midpoint of 80-90 range
+    return 40;
+}
+
     private async calculateUtilityCompliance(userId: string): Promise<number> {
         // Get ALL tenancies for this user
         const tenancies = await prismaClient.tenants.findMany({

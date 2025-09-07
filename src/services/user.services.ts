@@ -27,27 +27,26 @@ class UserService {
         };
     }
     // cm641qu2d00003wf057tudib7
-    checkexistance = async (obj: object): Promise<false | { id: string; tenant?: any; landlords?: any; profile?: any; vendors?: any }> => {
+
+    checkexistance = async (obj: object): Promise<false | { id: string; tenants?: any; landlords?: any; profile?: any; vendors?: any }> => {
         const user = await prismaClient.users.findFirst({
             where: { ...obj },
             select: {
                 id: true,
-                tenant: { select: { id: true } },
+                tenants: { select: { id: true } }, // ✅ plural
                 landlords: { select: { id: true } },
                 profile: true,
                 vendors: { select: { id: true } },
             }
         });
 
-        // Dynamically build the inclusion object
-        if (user?.tenant != null) this.inclusion.tenant = true;
+        if (user?.tenants?.length) this.inclusion.tenants = true; // ✅ check array length
         if (user?.landlords != null) this.inclusion.landlords = true;
         if (user?.vendors != null) this.inclusion.vendors = true;
         if (user?.profile) this.inclusion.profile = true;
-        // console.log(user)
-        return user
-    }
 
+        return user;
+    }
     findUserByEmail = async (email: string) => {
         // Find the user first to check if related entities exist
         const foundUser = await this.checkexistance({ email })
@@ -78,12 +77,12 @@ class UserService {
     findUserByTenantCode = async (tenantCode: string) => {
         return await prismaClient.users.findFirst({
             where: {
-                tenant: {
-                    tenantCode,
+                tenants: { // ✅ plural
+                    some: { tenantCode }, // ✅ must use "some"
                 },
             },
             include: {
-                tenant: {
+                tenants: { // ✅ plural
                     include: {
                         property: true,
                         landlord: {
@@ -495,14 +494,13 @@ class UserService {
                 const landlord = await prismaClient.landlords.findUnique({
                     where: { id: userData.landlordId },
                 });
-                if (!landlord) throw new Error('Landlord not found');
+                if (!landlord) throw new Error("Landlord not found");
 
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
 
-                // ✅ Build tenant connection dynamically based on controller input
                 const connectData: any = {
                     tenantCode,
-                    user: { connect: { id: user.id } },
+                    user: { connect: { id: user.id } }, // MUST point to existing user
                     landlord: { connect: { id: landlord.id } },
                     initialDeposit: userData.initialDeposit || 0,
                     tenantWebUserEmail: userData.tenantWebUserEmail,
@@ -523,7 +521,17 @@ class UserService {
                     connectData.room = { connect: { id: userData.roomId } };
                 }
 
-                const tenant = await prismaClient.tenants.create({ data: connectData });
+                // Fix: Ensure user exists before creating tenant
+                const existingUser = await prismaClient.users.findUnique({
+                    where: { id: user.id },
+                });
+                if (!existingUser) {
+                    throw new Error(`User with id ${user.id} does not exist`);
+                }
+
+                const tenant = await prismaClient.tenants.create({
+                    data: connectData,
+                });
 
                 if (tenant) {
                     await this.updateUserRole(user.id, userRoles.TENANT);
@@ -541,19 +549,22 @@ class UserService {
     tenantExistsForLandlord = async (landlordId: string, userId: string, propertyId?: string) => {
         return await prismaClient.users.findFirst({
             where: {
-                tenant: {
-                    userId,
-                    landlordId: landlordId,
-                    isCurrentLease: true,
-                    ...(propertyId && { propertyId })
+                tenants: {
+                    some: { // ✅ must use "some"
+                        userId,
+                        landlordId: landlordId,
+                        isCurrentLease: true,
+                        ...(propertyId && { propertyId })
+                    }
                 },
             },
             include: {
-                tenant: true,
+                tenants: true,
                 profile: true
             }
         })
     }
+
 
     updateLandlordOrTenantOrVendorInfo = async (data: any, id: string, role: string) => {
 

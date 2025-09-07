@@ -21,7 +21,7 @@ class CreditScoreService {
             const user = await prismaClient.users.findUnique({
                 where: { id: userId },
                 include: {
-                    tenant: true,
+                    tenants: true,
                     landlords: true,
                     ratingsReceived: true,
                 },

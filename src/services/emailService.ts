@@ -82,7 +82,7 @@ class EmailService {
         // Step 1: Check if the email exists in the users table
         const user = await prismaClient.users.findUnique({
             where: { email },
-            include: { tenant: true }, // Include tenant details if the user is a tenant
+            include: { tenants: true }, // Include tenant details if the user is a tenant
         });
 
         if (user) {

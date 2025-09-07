@@ -18,14 +18,14 @@ model users {
     onlineStatus           onlineStatus?            @default(offline)
     // foreign key and relational fields 
     VerificationToken      VerificationToken[]
-    tenant                 tenants?
+    tenants                tenants[]                // ✅ 1 user → many tenants
     landlords              landlords?
     // community              Community[]
     communityPost          CommunityPost[]
     communityPostLikes     CommunityPostLike[]
     communityPostViews     CommunityPostView[]
-    sentEmails             Email[]                  @relation("SentEmails") // Emails sent by this user
-    receivedEmails         Email[]                  @relation("ReceivedEmails") // Emails received by this user
+    sentEmails             Email[]                  @relation("SentEmails") 
+    receivedEmails         Email[]                  @relation("ReceivedEmails") 
     applicantion           application[]
     agents                 agents[]
     Comments               Comment[]
@@ -39,68 +39,54 @@ model users {
     profile                profile?                 @relation(fields: [profileId], references: [id])
     residentialInformation residentialInformation[]
     CommunityMember        CommunityMember[]
-    // maintenance            maintenance[]
     Ads                    Ads[]
     transactions           Transaction[]
-
-    // maintenance maintenance[] @relation(name: "vendorUser")
-    // tenantMaintenanceUser maintenance[]      @relation("tenantUser")
-    // vendorMaintenaceUser  maintenance[]      @relation("vendorUser")
-    creditScore              creditScore?
-    // propertyDocument         propertyDocument[]
-    reviews                  reviews[]
-    Subscription             Subscription[]
-    vendors                  vendors?
-    stripeCustomerId         String?                    @unique
-    wallet                   wallet[]
-    nextOfKin                nextOfKin[]
-    applicationCreatedBy     application[]              @relation("createdBy")
-    applicationUpdatedBy     application[]              @relation("updatedBy")
-    guarantorInformation     guarantorInformation[]
-    emergencyContact         emergencyContact[]
-    referees                 referees[]
-    document                 propertyDocument[]
-    EmploymentInformation    EmploymentInformation[]
+    creditScore            creditScore?
+    reviews                reviews[]
+    Subscription           Subscription[]
+    vendors                vendors?
+    stripeCustomerId       String?                  @unique
+    wallet                 wallet[]
+    nextOfKin              nextOfKin[]
+    applicationCreatedBy   application[]            @relation("createdBy")
+    applicationUpdatedBy   application[]            @relation("updatedBy")
+    guarantorInformation   guarantorInformation[]
+    emergencyContact       emergencyContact[]
+    referees               referees[]
+    document               propertyDocument[]
+    EmploymentInformation  EmploymentInformation[]
     applicantPersonalDetails applicantPersonalDetails[]
-    Complaint                Complaint[]
-    Log                      Log[]                      @relation("users")
-    violation                violation[]                @relation("users")
-    UserLikedProperty        UserLikedProperty[]
-    applicationInvites       applicationInvites[]
-
-    application application[] @relation("ApplicationUser")
-    Booking     Booking[]
-
-    UserSearchPreference UserSearchPreference[]
-
-    assignedTemplates   UserDocuTemplate[]
-    DocuTemplate        DocuTemplate[]
-    DocuTemplateVersion DocuTemplateVersion[]
-    UserEmailState UserEmailState[]
-    Community Community[] @relation("CommunityOwner")
-    CommunityPostShare CommunityPostShare[]
-    CommentLike CommentLike[]
-    DiscussionThread DiscussionThread[]
-    DiscussionComment DiscussionComment[]
-    DiscussionCommentLike DiscussionCommentLike[]
-    CommunityPostPollVote CommunityPostPollVote[]
+    Complaint              Complaint[]
+    Log                    Log[]                    @relation("users")
+    violation              violation[]              @relation("users")
+    UserLikedProperty      UserLikedProperty[]
+    applicationInvites     applicationInvites[]
+    application            application[]            @relation("ApplicationUser")
+    Booking                Booking[]
+    UserSearchPreference   UserSearchPreference[]
+    assignedTemplates      UserDocuTemplate[]
+    DocuTemplate           DocuTemplate[]
+    DocuTemplateVersion    DocuTemplateVersion[]
+    UserEmailState         UserEmailState[]
+    Community              Community[] @relation("CommunityOwner")
+    CommunityPostShare     CommunityPostShare[]
+    CommentLike            CommentLike[]
+    DiscussionThread       DiscussionThread[]
+    DiscussionComment      DiscussionComment[]
+    DiscussionCommentLike  DiscussionCommentLike[]
+    CommunityPostPollVote  CommunityPostPollVote[]
     DiscussionThreadPollVote DiscussionThreadPollVote[]
-    ForumMember ForumMember[]
+    ForumMember            ForumMember[]
     BroadcastCategoryMembers BroadcastCategoryMembers[]
-    ForumThreadLike ForumThreadLike[]
+    ForumThreadLike        ForumThreadLike[]
     DiscussionCommentShare DiscussionCommentShare[]
-    Forum Forum[] @relation("ForumOwner")
-
-    ForumThreadPin ForumThreadPin[]
-    SupportTicketAssigned SupportTicket[] @relation("TicketAssignedTo")
-
-    ComplaintMessage ComplaintMessage[]
-
-    UserPreferences UserPreferences[]
-
+    Forum                  Forum[] @relation("ForumOwner")
+    ForumThreadPin         ForumThreadPin[]
+    SupportTicketAssigned  SupportTicket[] @relation("TicketAssignedTo")
+    ComplaintMessage       ComplaintMessage[]
+    UserPreferences        UserPreferences[]
     NotificationPreference NotificationPreference[]
-
-    Todo Todo[]
+    Todo                   Todo[]
 }
 
 model UserLikedProperty {

@@ -135,6 +135,7 @@ class ApplicationControls {
                 {
                     ...req.body,
                     email: tenantWebUserEmail,
+                    userId: application?.user?.id,
                     tenantWebUserEmail,
                     propertyId: application.propertiesId,
                     unitId: application.applicationInvites.unitId,

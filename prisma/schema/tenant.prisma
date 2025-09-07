@@ -55,6 +55,6 @@ model tenants {
     applicationQuestions Json?
     declarationInfo      Json?
 
-    @@unique([userId, propertyId])
-    @@unique([userId])
+    // @@unique([userId, propertyId])
+    // @@unique([userId])
 }
