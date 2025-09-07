@@ -20,7 +20,7 @@ class UserService {
 
     constructor() {
         this.inclusion = {
-            tenant: true,
+            tenants: true,
             landlords: true,
             vendors: true,
             profile: true
