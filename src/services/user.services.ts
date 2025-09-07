@@ -497,50 +497,41 @@ class UserService {
                 });
                 if (!landlord) throw new Error('Landlord not found');
 
-                const property = await propertyServices.getPropertiesById(userData.propertyId);
-                if (!property) throw new Error('Property not found');
-
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
-                const tenant = await prismaClient.tenants.create({
-                    data: {
-                        tenantCode,
-                        user: {
-                            connect: { id: user.id },
-                        },
-                        landlord: {
-                            connect: { id: landlord.id },
-                        },
-                        property: {
-                            connect: { id: property.id },
-                        },
-                        unit: userData.unitId
-                            ? {
-                                connect: { id: userData.unitId },
-                            }
-                            : undefined,
-                        room: userData.roomId
-                            ? {
-                                connect: { id: userData.roomId },
-                            }
-                            : undefined,
-                        initialDeposit: userData.initialDeposit || 0,
-                        tenantWebUserEmail: userData.tenantWebUserEmail,
-                        leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
-                        leaseEndDate: userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined,
-                        application: userData.applicationId
-                            ? {
-                                connect: { id: userData.applicationId },
-                            }
-                            : undefined,
-                    },
-                });
+
+                // ✅ Build tenant connection dynamically based on controller input
+                const connectData: any = {
+                    tenantCode,
+                    user: { connect: { id: user.id } },
+                    landlord: { connect: { id: landlord.id } },
+                    initialDeposit: userData.initialDeposit || 0,
+                    tenantWebUserEmail: userData.tenantWebUserEmail,
+                    leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
+                    leaseEndDate: userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined,
+                    application: userData.applicationId
+                        ? { connect: { id: userData.applicationId } }
+                        : undefined,
+                };
+
+                if (userData.propertyId) {
+                    connectData.property = { connect: { id: userData.propertyId } };
+                }
+                if (userData.unitId) {
+                    connectData.unit = { connect: { id: userData.unitId } };
+                }
+                if (userData.roomId) {
+                    connectData.room = { connect: { id: userData.roomId } };
+                }
+
+                const tenant = await prismaClient.tenants.create({ data: connectData });
+
                 if (tenant) {
-                    // Check if the role already exists else update
                     await this.updateUserRole(user.id, userRoles.TENANT);
                 }
 
-                return tenant
+                return tenant;
             }
+
 
             default:
                 throw new Error(`Unsupported role: ${role}`);

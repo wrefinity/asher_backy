@@ -481,3 +481,19 @@ export interface IPropertySpecificationDTO {
     commercialId?: string
     shortletId?: string
 }
+
+export interface PropertySearchDto {
+  propertyCategory?: PropertySpecificationType; // RESIDENTIAL | COMMERCIAL | SHORTLET
+  propertyType?: PropertyType;                  // Subtype (e.g., APARTMENT, OFFICE, SHOP)
+  location?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  minRent?: number;
+  maxRent?: number;
+  leaseDuration?: number;
+  moveInDate?: Date;
+
+  // 🔹 Commercial-specific
+  minSize?: number; // floor size min
+  maxSize?: number; // floor size max
+}

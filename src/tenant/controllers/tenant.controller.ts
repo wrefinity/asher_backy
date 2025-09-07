@@ -1,21 +1,30 @@
-import { Response } from "express"
-import errorService from "../../services/error.service"
-import { CustomRequest } from "../../utils/types"
-import TenantService from "../services/tenants.services"
-
+import { Response } from "express";
+import { CustomRequest } from "../../utils/types";
+import TenantService from "../services/tenants.services";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { ApiResponse } from "../../utils/ApiResponse";
+import { ApiError } from "../../utils/ApiError";
 
 class TenantController {
-    constructor() { }
+  constructor() {}
 
-     getTenantById = async(req: CustomRequest, res: Response) =>{
-        try {
-            const { tenantId } = req.params;
-            const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
-            return res.status(200).json({tenant})
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+  getTenantById = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { tenantId } = req.params;
+
+    if (!tenantId) {
+      throw ApiError.badRequest("Tenant ID is required");
     }
+
+    const tenant = await TenantService.getTenantWithUserAndProfile(tenantId);
+
+    if (!tenant) {
+      throw ApiError.notFound("Tenant not found");
+    }
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(tenant, "Tenant retrieved successfully"));
+  });
 }
 
 export default new TenantController();

@@ -6,6 +6,7 @@ import TenantBillRouter from "./tenant-bills.routes";
 import MaintenanceRouter from "./maintenance.routes";
 import ProfileRouter from "./profile.routes";
 import TenantDashboardRouter from "./dashboard.routes";
+import PropertyRouter from "./properties.routes";
 class TenantRouter {
     public router: Router;
     authenticateService: Authorize
@@ -23,6 +24,7 @@ class TenantRouter {
         this.router.use('/bills', TenantBillRouter)
         this.router.use('/maintenances', MaintenanceRouter)
         this.router.use('/profile', ProfileRouter)
+        this.router.use('/properties', PropertyRouter)
     }
 }
 

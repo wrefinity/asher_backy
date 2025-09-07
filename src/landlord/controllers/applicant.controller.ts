@@ -16,11 +16,14 @@ import sendMail from "../../utils/emailer"
 import applicantService from "../../webuser/services/applicantService"
 import { PropertyDocumentService } from "../../services/propertyDocument.service"
 import emailService from "../../services/emailService"
+import { ApiError } from "../../utils/ApiError"
+import { asyncHandler } from "../../utils/asyncHandler"
+import { ApiResponse } from "../../utils/ApiResponse"
 
 class ApplicationControls {
     private landlordService: LandlordService;
 
-    constructor() {this.landlordService = new LandlordService();}
+    constructor() { this.landlordService = new LandlordService(); }
 
     getApplicationStatistics = async (req: CustomRequest, res: Response) => {
         try {
@@ -96,56 +99,46 @@ class ApplicationControls {
             errorService.handleError(error, res)
         }
     }
-    approveApplicationAndCreateTenant = async (req: CustomRequest, res: Response) => {
-        try {
-            const landlordId = req.user?.landlords?.id;
-            const applicationId = req.params?.applicationId;
-            // if (!req.body.email) return res.status(400).json({ message: "kindly supply the new tenant email" })
-            const application = await ApplicationService.getApplicationById(applicationId);
+    //  Controller: approveApplicationAndCreateTenant
+    approveApplicationAndCreateTenant = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        const applicationId = req.params?.applicationId;
 
-            // get the tenant web user email 
-            if (!application) return res.status(400).json({ message: "application doesn't exist" });
+        const application = await ApplicationService.getApplicationById(applicationId);
+        if (!application) return res.status(400).json(ApiError.notFound("application doesn't exist" ));
 
-            // update application invite status to approve
-            await ApplicationInvitesService.updateInvite(application.applicationInviteId, { response: InvitedResponse.APPROVED });
+        // Approve invite
+        await ApplicationInvitesService.updateInvite(application.applicationInviteId, { response: InvitedResponse.APPROVED });
 
-            // update the application also to completed
-            const tenantWebUserEmail = application?.user.email;
-            // const userEmail = tenantWebUserEmail.toString().split('@')[0];
-            // get the current landlord email domain
-            const landlord = await this.landlordService.getLandlordById(landlordId);
-            if (!landlord) return res.status(403).json({ message: "login as a landlord" })
+        const tenantWebUserEmail = application?.user.email;
 
-            // const landlordEmail = landlord.user.email.toString().trim().split('@')[0];
+        const landlord = await this.landlordService.getLandlordById(landlordId);
+        if (!landlord) return res.status(403).json(
+            ApiError.unauthorized("login as a landlord")
+        );
 
-            // const email = `${userEmail}@${landlordEmail}.asher.co`;
+        // Pass property, unit, room separately
+        const tenant = await userServices.createUser({
+            ...req.body,
+            email: tenantWebUserEmail,
+            tenantWebUserEmail,
+            propertyId: application.propertiesId,
+            unitId: application.applicationInvites.unitId,
+            roomId: application.applicationInvites.roomId,
+            applicationId,
+            role: userRoles.TENANT,
+            password: application?.personalDetails?.firstName,
+            landlordId
+        }, false, req.user?.id, true);
 
-            // TODO: check if tenant has been a tenant for the current landlord before and just update the property
-            const tenant = await await userServices.createUser({
-                ...req.body,
-                // newEmail: email,
-                email: tenantWebUserEmail,
-                tenantWebUserEmail,
-                propertyId: application.propertiesId,
-                roomId: application.applicationInvites.roomId,
-                unitId: application.applicationInvites.unitId,
-                applicationId,
-                role: userRoles.TENANT,
-                password: application?.personalDetails?.firstName,
-                landlordId
-            }, false, req.user?.id, true);
+        if (!tenant) return res.status(400).json(ApiError.notFound("tenant not created"));
 
-            console.log(tenant)
+        await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.TENANT_CREATED);
+        await applicantService.copyApplicationDataToTenant(applicationId);
 
-            if (!tenant) return res.status(400).json({ message: "tenant not created" })
-            await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.TENANT_CREATED);
-            await applicantService.copyApplicationDataToTenant(applicationId);
+        return res.status(200).json(ApiResponse.created(tenant, "tenant created"));
+    })
 
-            return res.status(200).json({ tenant });
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
-    }
 
     createInvite = async (req: CustomRequest, res: Response) => {
         try {

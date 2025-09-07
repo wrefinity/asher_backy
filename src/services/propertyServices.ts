@@ -2,7 +2,7 @@ import { IdType, ListingType, PriceFrequency, Prisma, PrismaClient, PropertySpec
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
-import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
+import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import property from "../routes/property";
 
@@ -2483,6 +2483,79 @@ class PropertyService {
         }
         return result;
     }
+
+    async searchPropertiesForRecommendation(filters: PropertySearchDto) {
+        const {
+            propertyType,
+            location,
+            bedrooms,
+            bathrooms,
+            minRent,
+            maxRent,
+            leaseDuration,
+            moveInDate,
+            minSize,
+            maxSize,
+        } = filters;
+
+        let specTypeFilter: PropertySpecificationType[] = [
+            PropertySpecificationType.RESIDENTIAL,
+            PropertySpecificationType.COMMERCIAL,
+            PropertySpecificationType.SHORTLET,
+        ];
+
+        if (filters.propertyCategory) {
+            specTypeFilter = [filters.propertyCategory];
+        }
+
+        return prismaClient.properties.findMany({
+            where: {
+                isDeleted: false,
+                isListed: true,
+                specificationType: { in: specTypeFilter },
+
+                ...(propertyType && { specification: { some: { propertySubType: propertyType } } }),
+
+                ...(location && {
+                    OR: [
+                        { city: { contains: location, mode: "insensitive" } },
+                        { state: { name: { contains: location, mode: "insensitive" } } },
+                    ],
+                }),
+
+                specification: {
+                    some: {
+                        AND: [
+                            // Residential filters
+                            ...(bedrooms ? [{ residential: { bedrooms: { gte: bedrooms } } }] : []),
+                            ...(bathrooms ? [{ residential: { bathrooms: { gte: bathrooms } } }] : []),
+
+                            // Commercial filters
+                            // ...(minSize ? [{ commercial: { floorSize: { gte: minSize } } }] : []),
+                            // ...(maxSize ? [{ commercial: { floorSize: { lte: maxSize } } }] : []),
+                        ],
+                    },
+                },
+
+                // ✅ Budget and availability
+                ...(minRent && { price: { gte: minRent } }),
+                ...(maxRent && { price: { lte: maxRent } }),
+                ...(moveInDate && { availableFrom: { lte: moveInDate } }),
+            },
+            include: {
+                specification: {
+                    include: {
+                        residential: true,
+                        commercial: true,
+                        shortlet: true,
+                    },
+                },
+                images: true,
+                landlord: { select: { id: true } },
+            },
+        });
+    }
+
 }
 
 export default new PropertyService()

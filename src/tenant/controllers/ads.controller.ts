@@ -1,133 +1,139 @@
-import { Request, Response } from "express"
-import errorService from "../../services/error.service"
-import { CustomRequest } from "../../utils/types"
-import { adSchema } from "../schema/adShema"
-import adsServices from "../services/ads.services"
-import transferServices from "../../services/transfer.services"
-
+import { Request, Response } from "express";
+import { CustomRequest } from "../../utils/types";
+import { adSchema } from "../schema/adShema";
+import adsServices from "../services/ads.services";
+import { ApiResponse } from "../../utils/ApiResponse";
+import { ApiError } from "../../utils/ApiError";
+import { asyncHandler } from "../../utils/asyncHandler";
 
 class AdController {
-    constructor() { }
+  constructor() {}
 
-    async createAd(req: CustomRequest, res: Response) {
-        if (typeof req.body.bussinessDetails === "string") {
-            req.body.bussinessDetails = JSON.parse(req.body.bussinessDetails)
-        }
-        try {
-            const { value, error } = adSchema.validate(req.body)
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message })
-            }
-            const userId = String(req.user.id)
-            const data = { ...value }
-            const attachment = req.body.cloudinaryUrls
-            delete data['cloudinaryUrls']
-            const ad = await adsServices.createAd({ ...data, attachment }, userId, value.currency)
-            return res.status(201).json(ad)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+  createAd = asyncHandler(async (req: CustomRequest, res: Response) => {
+    if (typeof req.body.bussinessDetails === "string") {
+      req.body.bussinessDetails = JSON.parse(req.body.bussinessDetails);
     }
 
-    // turn ad to listed so we can display it
-    async listAd(req: CustomRequest, res: Response) {
-        //NOTE: check if it is an admin listing this
-        try {
-            const adsId = req.params.adsId;
-            const ads = await adsServices.listAds(adsId)
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
-    }
-    async getAdsById(req: CustomRequest, res: Response) {
-        try {
-            const { adsId } = req.params;
-            const ads = await adsServices.getAdById(adsId)
-            if (!ads) {
-                return res.status(404).json({ message: "Ad not found" })
-            }
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    const { value, error } = adSchema.validate(req.body);
+    if (error) {
+      throw ApiError.validationError(error.details.map((d) => d.message));
     }
 
-    async getAllAds(req: CustomRequest, res: Response) {
-        //NOTE: check if it is an admin listing all ads
+    const userId = String(req.user.id);
+    const data = { ...value };
+    const attachment = req.body.cloudinaryUrls;
+    delete data["cloudinaryUrls"];
 
-        try {
-            const ads = await adsServices.getAllAds()
-            if (ads.length < 0) {
-                return res.status(200).json({ message: "No ads found" })
-            }
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    const ad = await adsServices.createAd(
+      { ...data, attachment },
+      userId,
+      value.currency
+    );
+
+    return res
+      .status(201)
+      .json(ApiResponse.created(ad, "Ad created successfully"));
+  });
+
+  listAd = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const adsId = req.params.adsId;
+    const ads = await adsServices.listAds(adsId);
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Ad listed successfully"));
+  });
+
+  getAdsById = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { adsId } = req.params;
+    const ads = await adsServices.getAdById(adsId);
+    if (!ads) {
+      throw ApiError.notFound("Ad not found");
     }
 
-    async getAllListedAds(req: Request, res: Response) {
-        try {
-            const ads = await adsServices.getAllListedAds()
-            if (ads.length < 1) {
-                return res.status(200).json({ message: "No listed ads found" })
-            }
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Ad retrieved successfully"));
+  });
+
+  getAllAds = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const ads = await adsServices.getAllAds();
+    if (!ads || ads.length === 0) {
+      return res.status(200).json(ApiResponse.success([], "No ads found"));
     }
 
-    async getAdsByLocation(req: Request, res: Response) {
-        const { location, isListed } = req.query;
-        const isListedBoolean = isListed === 'false' ? false : Boolean(isListed);
-        try {
-            const ads = await adsServices.getAdsByLocation(location, isListedBoolean)
-            if (ads.length < 0) return res.status(404).json({ message: "No Ads found in such location" })
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Ads retrieved successfully"));
+  });
+
+  getAllListedAds = asyncHandler(async (req: Request, res: Response) => {
+    const ads = await adsServices.getAllListedAds();
+    if (!ads || ads.length === 0) {
+      return res
+        .status(200)
+        .json(ApiResponse.success([], "No listed ads found"));
     }
 
-    async incrementAdsStats(req: CustomRequest, res: Response) {
-        //statsType is and enum of views, click & reach
-        try {
-            const { adsId } = req.params;
-            const { statType } = req.body
-            const ads = await adsServices.increamentAdStats(adsId, statType)
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Listed ads retrieved successfully"));
+  });
+
+  getAdsByLocation = asyncHandler(async (req: Request, res: Response) => {
+    const { location, isListed } = req.query;
+    const isListedBoolean = isListed === "false" ? false : Boolean(isListed);
+
+    const ads = await adsServices.getAdsByLocation(location, isListedBoolean);
+    if (!ads || ads.length === 0) {
+      throw ApiError.notFound("No ads found in the specified location");
     }
 
-    async getAdStats(req: CustomRequest, res: Response) {
-        try {
-            const { adsId } = req.params;
-            const ads = await adsServices.getAdStats(adsId)
-            if (!ads) {
-                return res.status(404).json({ message: 'Ad not found' });
-            }
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    return res
+      .status(200)
+      .json(
+        ApiResponse.success(ads, "Ads by location retrieved successfully")
+      );
+  });
+
+  incrementAdsStats = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { adsId } = req.params;
+    const { statType } = req.body;
+
+    const ads = await adsServices.increamentAdStats(adsId, statType);
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Ad stats incremented successfully"));
+  });
+
+  getAdStats = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { adsId } = req.params;
+    const ads = await adsServices.getAdStats(adsId);
+
+    if (!ads) {
+      throw ApiError.notFound("Ad not found");
     }
 
-    async getAdsByUser(req: CustomRequest, res: Response) {
-        try {
-            const { userId } = req.params;
-            const ads = await adsServices.getAdsByUserId(userId)
-            if (ads.length < 0) {
-                return res.status(200).json({ message: "No ads found by this user" })
-            }
-            return res.status(200).json(ads)
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Ad stats retrieved successfully"));
+  });
+
+  getAdsByUser = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { userId } = req.params;
+    const ads = await adsServices.getAdsByUserId(userId);
+
+    if (!ads || ads.length === 0) {
+      return res
+        .status(200)
+        .json(ApiResponse.success([], "No ads found for this user"));
     }
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Ads by user retrieved successfully"));
+  });
 }
 
 export default new AdController();

@@ -808,3 +808,42 @@ export const IBasePropertyDTOSchema = Joi.object({
 
 // for builk uploads
 export const BulkPropertyUploadSchema = Joi.array().items(IBasePropertyDTOSchema);
+
+
+export const propertySearchSchema = Joi.object({
+  propertyCategory: Joi.string()
+    .valid(...Object.values(PropertySpecificationType))
+    .optional(),
+
+  propertyType: Joi.string()
+    .valid(...Object.values(PropertyType))
+    .optional(),
+
+  location: Joi.string().trim().optional(),
+
+  // 🔹 Residential filters
+  bedrooms: Joi.number().integer().min(0).optional(),
+  bathrooms: Joi.number().integer().min(0).optional(),
+
+  // 🔹 Rent filters
+  minRent: Joi.number().integer().min(0).optional(),
+  maxRent: Joi.number().integer().min(0).optional(),
+
+  leaseDuration: Joi.number().integer().min(1).optional(),
+
+  moveInDate: Joi.date().iso().optional(),
+
+  // 🔹 Commercial filters
+  minSize: Joi.number().integer().min(0).optional(),
+  maxSize: Joi.number().integer().min(0).optional(),
+})
+  // cross-field validations
+  .custom((value, helpers) => {
+    if (value.minRent && value.maxRent && value.minRent > value.maxRent) {
+      return helpers.error("any.invalid", { message: "minRent cannot be greater than maxRent" });
+    }
+    if (value.minSize && value.maxSize && value.minSize > value.maxSize) {
+      return helpers.error("any.invalid", { message: "minSize cannot be greater than maxSize" });
+    }
+    return value;
+  }, "Custom validation");

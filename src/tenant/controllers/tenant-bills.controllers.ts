@@ -1,104 +1,119 @@
 import { Response } from "express";
 import { CustomRequest } from "../../utils/types";
-import errorService from "../../services/error.service";
 import tenantBillsService from "../services/tenant-bills.service";
-import landlordBIllsService from "../../landlord/services/bill.services"
+import landlordBillsService from "../../landlord/services/bill.services";
 import { PayableBy } from "@prisma/client";
+import { ApiResponse } from "../../utils/ApiResponse";
+import { ApiError } from "../../utils/ApiError";
+import { asyncHandler } from "../../utils/asyncHandler";
+
 interface TenantBillQueryParams {
-    page?: string;
-    limit?: string;
-    propertyId?: string;
-    billId?: string;
-    payableBy?: PayableBy;
-    status?: 'paid' | 'unpaid';
-    startDate?: string;
-    endDate?: string;
+  page?: string;
+  limit?: string;
+  propertyId?: string;
+  billId?: string;
+  payableBy?: PayableBy;
+  status?: "paid" | "unpaid";
+  startDate?: string;
+  endDate?: string;
 }
+
 class TenantBillController {
-    constructor() {
+  constructor() {}
+
+  getTenantBill = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    if (!tenantId) {
+      throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    getTenantBill = async (req: CustomRequest, res: Response) => {
-        const tenantId = req.user?.tenant?.id;
-        if (!tenantId) {
-            return res.status(401).json({ message: 'Unauthorized - Tenant ID missing' });
-        }
+    const {
+      page = "1",
+      limit = "10",
+      propertyId,
+      billId,
+      payableBy,
+      status,
+      startDate,
+      endDate,
+    } = req.query as TenantBillQueryParams;
 
-        const {
-            page = '1',
-            limit = '10',
-            propertyId,
-            billId,
-            payableBy,
-            status,
-            startDate,
-            endDate
-        } = req.query as TenantBillQueryParams;
+    // Prepare date range if provided
+    const dateRange =
+      startDate || endDate
+        ? {
+            start: startDate ? new Date(startDate) : undefined,
+            end: endDate ? new Date(endDate) : undefined,
+          }
+        : undefined;
 
-        try {
-            // Prepare date range if provided
-            const dateRange = startDate || endDate ? {
-                start: startDate ? new Date(startDate) : undefined,
-                end: endDate ? new Date(endDate) : undefined
-            } : undefined;
+    // Prepare transaction filter if status is provided
+    const transactionFilter = status
+      ? status === "paid"
+        ? { transactions: { some: {} } } // At least one transaction exists
+        : { transactions: { none: {} } } // No transactions exist
+      : {};
 
-            // Prepare transaction filter if status is provided
-            const transactionFilter = status ? {
-                transactions: status === 'paid' ?
-                    { some: {} } : // At least one transaction exists
-                    { none: {} }  // No transactions exist
-            } : {};
+    const result = await landlordBillsService.getBills(
+      {
+        tenantId,
+        propertyId,
+        billId,
+        payableBy: payableBy as PayableBy,
+        dateRange,
+        ...transactionFilter,
+      },
+      {
+        page: parseInt(page, 10),
+        pageSize: parseInt(limit, 10),
+      },
+      {
+        includeProperty: true,
+        includeLandlord: true,
+        includeTransactions: true,
+      }
+    );
 
-            const result = await landlordBIllsService.getBills(
-                {
-                    tenantId,
-                    propertyId,
-                    billId,
-                    payableBy: payableBy as PayableBy,
-                    dateRange,
-                    ...transactionFilter
-                },
-                {
-                    page: parseInt(page, 10),
-                    pageSize: parseInt(limit, 10)
-                },
-                {
-                    includeProperty: true,
-                    includeLandlord: true,
-                    includeTransactions: true
-                }
-            );
+    return res
+      .status(200)
+      .json(ApiResponse.success(result, "Tenant bills retrieved successfully"));
+  });
 
-            return res.status(200).json(result);
-        } catch (error) {
-            errorService.handleError(error, res);
-        }
+  getUpcomingBills = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    if (!tenantId) {
+      throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    async getUpcomingBills(req: CustomRequest, res: Response) {
-        const tenantId = req.user?.tenant?.id;
-        const { days } = req.body
+    const { days } = req.body;
 
-        try {
-            const tenantBills = await tenantBillsService.getUpcomingBills(tenantId, days);
-            if (!tenantBills || tenantBills.length < 1) return res.status(404).json({ message: "No bills found" });
-            return res.status(200).json(tenantBills);
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+    const tenantBills = await tenantBillsService.getUpcomingBills(tenantId, days);
+
+    if (!tenantBills || tenantBills.length < 1) {
+      throw ApiError.notFound("No upcoming bills found");
     }
 
-    async getOverdueBills(req: CustomRequest, res: Response) {
-        const tenantId = req.user?.tenant?.id;
+    return res
+      .status(200)
+      .json(ApiResponse.success(tenantBills, "Upcoming bills retrieved successfully"));
+  });
 
-        try {
-            const tenantBills = await tenantBillsService.getOverdueBills(tenantId);
-            if (!tenantBills || tenantBills.length < 1) return res.status(404).json({ message: "No bills found" });
-            return res.status(200).json(tenantBills);
-        } catch (error) {
-            errorService.handleError(error, res)
-        }
+  getOverdueBills = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    if (!tenantId) {
+      throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
+
+    const tenantBills = await tenantBillsService.getOverdueBills(tenantId);
+
+    if (!tenantBills || tenantBills.length < 1) {
+      throw ApiError.notFound("No overdue bills found");
+    }
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(tenantBills, "Overdue bills retrieved successfully"));
+  });
 }
 
 export default new TenantBillController();
