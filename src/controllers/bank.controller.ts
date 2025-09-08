@@ -1,78 +1,68 @@
-import { Response } from 'express';
-import { BankInfoService } from '../services/bank.services';
-import { bankInfoSchema } from '../validations/schemas/banks.schema';
-import { CustomRequest } from '../utils/types';
-
+import { Response } from "express";
+import { BankInfoService } from "../services/bank.services";
+import { bankInfoSchema } from "../validations/schemas/banks.schema";
+import { CustomRequest } from "../utils/types";
+import { ApiError } from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
+import { asyncHandler } from "../utils/asyncHandler";
 const bankInfoService = new BankInfoService();
 
 class BankInfoController {
-    createBankInfo = async (req: CustomRequest, res: Response) => {
-        const { error, value } = bankInfoSchema.validate(req.body);
-        if (error) return res.status(400).json({ error: error.details[0].message });
+  createBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { error, value } = bankInfoSchema.validate(req.body);
+    if (error) throw ApiError.badRequest(error.details[0].message);
 
-        try {
-            // Check if landlordId or vendorId is available from the user
-            const landlordId = req.user?.landlords?.id || null;
-            const vendorId = req.user?.vendors?.id || null;
+    const landlordId = req.user?.landlords?.id || null;
+    const vendorId = req.user?.vendors?.id || null;
 
-            // Prevent creation if both landlordId and vendorId are null
-            if (!landlordId && !vendorId) {
-                return res.status(400).json({ error: 'kindly login aas landlord or vendor to add bank informations' });
-            }
-
-            const data = {
-                ...value,
-                landlordId: landlordId ? landlordId : undefined,
-                vendorId: vendorId ? vendorId : undefined
-            };
-
-            const bankInfo = await bankInfoService.createBankInfo(data);
-            return res.status(201).json({ bankInfo });
-        } catch (err) {
-            return res.status(500).json({ error: 'Failed to create bank info' });
-        }
+    if (!landlordId && !vendorId) {
+      throw ApiError.badRequest(
+        "Kindly login as landlord or vendor to add bank information"
+      );
     }
 
-    getBankInfo = async (req: CustomRequest, res: Response) => {
-        try {
-            const bankInfo = await bankInfoService.getBankInfoById(req.params.id);
-            if (!bankInfo) return res.status(404).json({ error: 'Bank info not found' });
-            return res.status(200).json(bankInfo);
-        } catch (err) {
-            return res.status(500).json({ error: 'Failed to retrieve bank info' });
-        }
-    }
+    const data = {
+      ...value,
+      landlordId: landlordId ?? undefined,
+      vendorId: vendorId ?? undefined,
+    };
 
-    updateBankInfo = async (req: CustomRequest, res: Response) => {
-        const { error } = bankInfoSchema.validate(req.body);
-        if (error) return res.status(400).json({ error: error.details[0].message });
+    const bankInfo = await bankInfoService.createBankInfo(data);
+    return res.status(201).json(ApiResponse.success(bankInfo, "Bank info created"));
+  });
 
-        try {
-            const updatedBankInfo = await bankInfoService.updateBankInfo(req.params.id, req.body);
-            return res.status(200).json(updatedBankInfo);
-        } catch (err) {
-            return res.status(500).json({ error: 'Failed to update bank info' });
-        }
-    }
+  getBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const bankInfo = await bankInfoService.getBankInfoById(req.params.id);
+    if (!bankInfo) throw ApiError.notFound("Bank info not found");
+    return res.status(200).json(ApiResponse.success(bankInfo, "Bank info retrieved"));
+  });
 
-    deleteBankInfo = async (req: CustomRequest, res: Response) => {
-        try {
-            await bankInfoService.deleteBankInfo(req.params.id);
-            return res.status(204).send();
-        } catch (err) {
-            return res.status(500).json({ error: 'Failed to delete bank info' });
-        }
-    }
+  updateBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { error } = bankInfoSchema.validate(req.body);
+    if (error) throw ApiError.badRequest(error.details[0].message);
 
-    getAllBankInfo = async (req: CustomRequest, res: Response) => {
-        try {
-            const bankInfoList = await bankInfoService.getAllBankInfo();
-            return res.status(200).json(bankInfoList);
-        } catch (err) {
-            return res.status(500).json({ error: 'Failed to retrieve bank info' });
-        }
-    }
+    const updatedBankInfo = await bankInfoService.updateBankInfo(
+      req.params.id,
+      req.body
+    );
+    return res
+      .status(200)
+      .json(ApiResponse.success(updatedBankInfo, "Bank info updated successfully"));
+  });
+
+  deleteBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {
+    await bankInfoService.deleteBankInfo(req.params.id);
+    return res
+      .status(200)
+      .json(ApiResponse.success({}, "Bank info deleted successfully"));
+  });
+
+  getAllBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const bankInfoList = await bankInfoService.getAllBankInfo();
+    return res
+      .status(200)
+      .json(ApiResponse.success(bankInfoList, "All bank info retrieved"));
+  });
 }
 
-
-export default new BankInfoController()
+export default new BankInfoController();

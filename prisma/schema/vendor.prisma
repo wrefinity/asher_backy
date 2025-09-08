@@ -1,0 +1,24 @@
+model vendors {
+  id           String            @id @default(cuid())
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  userId       String?
+  user         users?            @relation(fields: [userId], references: [id])
+  services     services[]
+  reviews      reviews[]
+  bankInfo     bankInfo[]
+  maintenances maintenance[]     @relation("vendorUser")
+
+  documents    vendorDocument[]  // 🔹 connect documents here
+
+  @@unique([userId])
+}
+
+model vendorDocument {
+  id        String   @id @default(cuid())
+  url       String
+  type      String
+  vendorId  String
+  vendor    vendors  @relation(fields: [vendorId], references: [id])
+  createdAt DateTime @default(now())
+}

@@ -3,7 +3,7 @@ import { hashSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
 import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus } from "@prisma/client";
-import { CreateLandlordIF } from "../validations/interfaces/auth.interface";
+import { CreateLandlordIF, RegisterVendorInput } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
 import EmergencyContactService from "../services/emergencyinfo.services"
@@ -15,6 +15,7 @@ import { getCurrentCountryCurrency } from "../utils/helpers";
 import sendMail from "../utils/emailer";
 import propertyServices from "./propertyServices";
 import applicantService from "../webuser/services/applicantService";
+import { ApiError } from "../utils/ApiError";
 class UserService {
     protected inclusion;
 
@@ -167,6 +168,54 @@ class UserService {
             },
         });
     }
+
+    async registerVendor(input: RegisterVendorInput) {
+        const { email, password, profile, uploadedDocuments = [] } = input;
+
+        // 🔹 Transaction: create user + profile + vendor + vendorDocuments
+        const newVendor = await prismaClient.$transaction(
+            async (tx) => {
+                const createdProfile = await tx.profile.create({
+                    data: { ...profile }
+                });
+
+                const createdUser = await tx.users.create({
+                    data: {
+                        email,
+                        password: this.hashPassword(password),
+                        profileId: createdProfile.id
+                    }
+                });
+
+                const vendor = await tx.vendors.create({
+                    data: {
+                        userId: createdUser.id
+                    }
+                });
+
+                // Save uploaded documents linked to vendor
+                if (uploadedDocuments.length > 0) {
+                    await tx.vendorDocument.createMany({
+                        data: uploadedDocuments.map((doc) => ({
+                            url: doc.url,
+                            type: doc.type,
+                            vendorId: vendor.id
+                        }))
+                    });
+                }
+
+                return { createdUser, createdProfile, vendor, uploadedDocuments };
+            },
+            {
+                maxWait: 20_000, // wait up to 20s for a free connection
+                timeout: 60_000 // ransaction must finish within 60s
+            }
+        );
+
+        return newVendor;
+    }
+
+
 
     createUser = async (userData: any, landlordBulkUploads: boolean = false, createdBy: string = null, createTenantProfile: boolean = false) => {
         let user = null

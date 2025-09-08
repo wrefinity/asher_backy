@@ -1,28 +1,30 @@
 model profile {
-    id            String    @id @default(cuid())
-    gender        String?
-    phoneNumber   String?
-    address       String?
-    country       String?
-    city          String?
-    maritalStatus String?
-    dateOfBirth   DateTime?
-    fullname      String?
-    firstName     String?
-    lastName      String?
-    middleName    String?
-    profileUrl    String?
-    zip           String?
-    unit          String?
-    state         String?
-    timeZone      String?
-    taxPayerId    String?
-    taxType       String?
-    title         String?
+  id            String    @id @default(cuid())
+  fullname      String?
+  gender        String?
+  phoneNumber   String?
+  address       String?
+  country       String?
+  city          String?
+  maritalStatus String?
+  dateOfBirth   DateTime?
+  firstName     String?
+  lastName      String?
+  middleName    String?
+  profileUrl    String?
+  zip           String?
+  unit          String?
+  state         String?
+  timeZone      String?
+  taxPayerId    String?
+  taxType       String?
+  title         String?
 
-    // relations fields 
-    users users?
+  // relations fields 
+  users     users?
 }
+
+
 enum RiskLevel {
   EXCELLENT  // 850-950
   GOOD       // 700-849

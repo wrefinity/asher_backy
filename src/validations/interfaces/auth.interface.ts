@@ -17,15 +17,37 @@ export interface CreateLandlordDTO {
     userId: string;
 }
 
-// DTO for updating a landlord
-// export interface UpdateLandlordDTO {
-//     userId?: string;
-//     properties?: string[];
-//     tenants?: string[];
-//     lnadlordSupportTicket?: string[];
-//     transactions?: string[];
-//     reviews?: string[];
-// }
+export interface UploadedDocumentInput {
+  url: string;
+  type: string;
+}
+
+export interface RegisterVendorInput {
+  email: string;
+  password: string;
+  profile: {
+    fullname?: string;
+    gender?: string;
+    phoneNumber?: string;
+    address?: string;
+    country?: string;
+    city?: string;
+    maritalStatus?: string;
+    dateOfBirth?: Date;
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    profileUrl?: string;
+    zip?: string;
+    unit?: string;
+    state?: string;
+    timeZone?: string;
+    taxPayerId?: string;
+    taxType?: string;
+    title?: string;
+  };
+  uploadedDocuments?: UploadedDocumentInput[];
+}
 
 export interface UpdateLandlordDTO {
     userId?: string;

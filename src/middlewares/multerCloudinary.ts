@@ -221,3 +221,85 @@ export const handlePropertyUploads = async (
     res.status(500).json({ error: "Failed to process uploads" });
   }
 };
+
+
+export const uploadToCloudinaryGeneric = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const filesObj = (req.files as { [fieldname: string]: Express.Multer.File[] }) || {};
+
+    // Flatten all uploaded files
+    const allFiles: Express.Multer.File[] = Object.values(filesObj).flat();
+
+    if (!allFiles || allFiles.length === 0) {
+      req.body.uploadedDocuments = [];
+      return next();
+    }
+
+    const documentTypes: string[] = Array.isArray(req.body.documentTypes)
+      ? req.body.documentTypes
+      : [];
+
+    const uploadedDocuments: { url: string; type: string }[] = [];
+
+    const uploadPromises = allFiles.map(async (file, index) => {
+      let fileBuffer: Buffer = file.buffer;
+
+      const isImage = file.mimetype.startsWith("image/");
+      const isVideo = file.mimetype.startsWith("video/");
+      const isDocument = file.mimetype.startsWith("application/");
+      const isAudio = file.mimetype.startsWith("audio/");
+
+      // Resize images before upload
+      if (isImage) {
+        fileBuffer = await sharp(file.buffer)
+          .resize({ width: 800, height: 600, fit: "inside" })
+          .toBuffer();
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: isImage
+              ? "image"
+              : isVideo
+              ? "video"
+              : isDocument
+              ? "raw"
+              : isAudio
+              ? "video"
+              : "auto",
+            folder: CLOUDINARY_FOLDER,
+            format: isImage ? "webp" : undefined,
+          },
+          (err, result) => {
+            if (err || !result) {
+              console.error("Cloudinary upload error:", err);
+              return reject(err || new Error("Cloudinary result undefined"));
+            }
+
+            const docType = documentTypes[index] || "UNSPECIFIED";
+            uploadedDocuments.push({ url: result.secure_url, type: docType });
+
+            resolve();
+          }
+        );
+
+        uploadStream.end(fileBuffer);
+      });
+    });
+
+    await Promise.all(uploadPromises);
+
+    // Attach uploaded docs to body
+    req.body.uploadedDocuments = uploadedDocuments;
+
+    next();
+  } catch (error) {
+    console.error("Error in uploadToCloudinary middleware:", error);
+    next(error);
+  }
+};
