@@ -17,7 +17,7 @@ class AuthRoutes {
         this.router.use("/roles", RoleRouter);
         this.router.post("/login", validateBody(LoginSchema), AuthController.login.bind(AuthController));
         this.router.post("/send-token", AuthController.sendToken.bind(AuthController));
-        this.router.post("//verify-otp", validateBody(ConfirmationSchema), AuthController.genericConfirmation.bind(AuthController));
+        this.router.post("/verify-otp", validateBody(ConfirmationSchema), AuthController.genericConfirmation.bind(AuthController));
         this.router.post("/verify", validateBody(ConfirmationSchema), AuthController.confirmation.bind(AuthController));
         this.router.post("/reset-code", AuthController.sendPasswordResetCode.bind(AuthController));
         this.router.post("/refresh-token", AuthController.refreshToken.bind(AuthController));
