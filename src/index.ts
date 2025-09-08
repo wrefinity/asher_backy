@@ -36,10 +36,11 @@ import TenantRouter from "./tenant/routes/index";
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
+import { ApiError } from "./utils/ApiError";
 
 // WebSocket tracking
 export const prismaClient = new PrismaClient({ log: ['query'] });
-export const userSockets = new Map<string, WebSocket>(); 
+export const userSockets = new Map<string, WebSocket>();
 class Server {
     private app: Express;
     private port: number;
@@ -113,6 +114,36 @@ class Server {
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);
+
+        // Global error handler must come last
+        this.app.use(
+            (
+                err: any,
+                req: express.Request,
+                res: express.Response,
+                next: express.NextFunction
+            ) => {
+                console.error("🔥 Error caught:", err);
+
+                if (err instanceof ApiError) {
+                    return res.status(err.statusCode).json({
+                        success: err.success,
+                        message: err.message,
+                        code: err.data.code,
+                        errors: err.data.errors || [],
+                        details: err.data.details || {}, // ✅ Pass details for frontend logic
+                    });
+                }
+
+                return res.status(500).json({
+                    success: false,
+                    message: "Internal Server Error",
+                    code: "INTERNAL_ERROR",
+                    errors: ["Internal Server Error"],
+                });
+            }
+        );
+
     }
 
     // Socket.IO – Real-time chat messages
