@@ -150,8 +150,12 @@ class AuthControls {
 
     genericConfirmation = asyncHandler(async (req: Request, res: Response) => {
         const { email, token } = req.body;
+        if (!email || !token) throw ApiError.validationError(["Email and token are required"]);
+
         const isValidToken = await validateVerificationToken(token, { email });
+        console.log(isValidToken)
         if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
+        
         await updateTokenToUsed(isValidToken.id);
         return res
             .status(200)

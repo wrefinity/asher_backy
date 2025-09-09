@@ -21,7 +21,7 @@ export class ApiError extends Error {
     }
   }
 
-  // 🔹 Validation errors
+  // Validation errors
   static validationError(errors: string[] | string, details?: any): ApiError {
     const errorArray = Array.isArray(errors) ? errors : [errors];
     return new ApiError(400, "Validation failed", {
