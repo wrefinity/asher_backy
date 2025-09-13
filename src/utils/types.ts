@@ -6,6 +6,8 @@ export type JWTPayload = {
     id: string;
     role: string | string[];
     email: string;
+    tenantCode?: string;
+    tenantId?: string;
     tenant?: {
         id?: string;
     };
@@ -40,7 +42,7 @@ export type EmailDataType = {
     isRead?: boolean;
     isStarred?: boolean;
     isArchived?: boolean;
-    isSpam?: boolean;   
+    isSpam?: boolean;
     isReply?: boolean;
 }
 export interface CloudinaryFile extends Express.Multer.File {

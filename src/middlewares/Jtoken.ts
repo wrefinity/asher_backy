@@ -1,6 +1,13 @@
 import jwt from "jsonwebtoken";
 import { JWTPayload } from "../utils/types";
 import UserServices from "../services/user.services";
+
+interface RefreshTokenResult {
+    accessToken: string;
+    refreshToken: string;
+    user: JWTPayload;
+}
+
 export class Jtoken {
     private secret: string;
 
@@ -58,34 +65,37 @@ export class Jtoken {
      * @param refreshToken - The refresh token to verify.
      * @returns A new access and refresh token pair, or null if verification fails.
      */
-    async verifyAndRefreshToken(refreshToken: string) {
+    async verifyAndRefreshToken(refreshToken: string): Promise<RefreshTokenResult | null> {
         try {
             const decoded = jwt.verify(refreshToken, this.secret) as JWTPayload;
-
-            // Fetch user from database using decoded ID
             const userDetails = await UserServices.findAUserById(decoded.id);
 
             if (!userDetails) {
                 return null;
             }
-            // Exclude sensitive fields and return user details
+
             const { password: _, ...user } = userDetails;
 
-            // Generate a new access token (valid for 1 hour)
-            const newAccessToken = jwt.sign(
-                { id: user.id, role: user.role },
-                this.secret,
-                { expiresIn: "1d" }
-            );
+            // Preserve all context information from the original token
+            const newPayload: JWTPayload = {
+                id: user.id,
+                role: user.role,
+                email: user.email,
+                tenantCode: decoded.tenantCode,
+                tenantId: decoded.tenantId,
+                tenant: decoded.tenant,
+                landlords: decoded.landlords,
+                vendors: decoded.vendors
+            };
 
-            // Generate a new refresh token (valid for 7 days)
-            const newRefreshToken = jwt.sign(
-                { id: user.id, role: user.role,},
-                this.secret,
-                { expiresIn: "7d" }
-            );
+            const newAccessToken = jwt.sign(newPayload, this.secret, { expiresIn: "1d" });
+            const newRefreshToken = jwt.sign(newPayload, this.secret, { expiresIn: "7d" });
 
-            return { accessToken: newAccessToken, refreshToken: newRefreshToken, user };
+            return {
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                user: newPayload // This is now properly typed as JWTPayload
+            };
         } catch (error) {
             console.error("Error verifying refresh token:", error);
             return null;

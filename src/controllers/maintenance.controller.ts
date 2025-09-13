@@ -135,10 +135,8 @@ class MaintenanceController {
   }
   public createMaintenance = async (req: CustomRequest, res: Response) => {
     try {
-      const { error, value } = maintenanceSchema.validate(req.body);
-      if (error) {
-        return res.status(400).json({ message: error.details[0].message });
-      }
+
+      const value = req.body 
       const tenantId = req.user.tenant?.id;
       let landlordId = req.user.landlords?.id;
 
@@ -358,6 +356,8 @@ class MaintenanceController {
       ErrorService.handleError(error, res);
     }
   }
+
+  
 
 }
 

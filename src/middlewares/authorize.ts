@@ -1,6 +1,7 @@
+// middleware/Authorize.ts
 import { Response, NextFunction } from "express";
 import { JWT_SECRET } from "../secrets";
-import { CustomRequest } from "../utils/types";
+import { CustomRequest, JWTPayload } from "../utils/types";
 import { Jtoken } from "./Jtoken";
 import UserService from "../services/user.services";
 import { userRoles } from "@prisma/client";
@@ -37,7 +38,8 @@ export class Authorize {
                 return res.status(401).json({ message: "User not found" });
             }
 
-            req.user = user;
+            // Build the user object with proper tenant context
+            req.user = this.buildUserWithContext(user, decoded);
             return next();
         } catch (error) {
             if (error.name === "TokenExpiredError") {
@@ -45,6 +47,66 @@ export class Authorize {
             }
             return res.status(401).json({ message: "Token verification failed" });
         }
+    }
+
+    /**
+     * Builds user object with proper tenant/landlord/vendor context
+     */
+    private buildUserWithContext(user: any, decoded: JWTPayload): JWTPayload {
+        const baseUser = {
+            id: user.id,
+            role: user.role,
+            email: user.email,
+        };
+
+        // If JWT has specific tenant info, use that (tenant-specific login)
+        if (decoded.tenantId && decoded.tenantCode) {
+            return {
+                ...baseUser,
+                tenantCode: decoded.tenantCode,
+                tenantId: decoded.tenantId,
+                tenant: { id: decoded.tenantId },
+                // Clear other contexts when in tenant-specific mode
+                landlords: undefined,
+                vendors: undefined
+            };
+        }
+
+        // If JWT has landlord info, use that
+        if (decoded.landlords?.id) {
+            return {
+                ...baseUser,
+                landlords: { id: decoded.landlords.id },
+                // Clear other contexts
+                tenant: undefined,
+                tenantCode: undefined,
+                tenantId: undefined,
+                vendors: undefined
+            };
+        }
+
+        // If JWT has vendor info, use that
+        if (decoded.vendors?.id) {
+            return {
+                ...baseUser,
+                vendors: { id: decoded.vendors.id },
+                // Clear other contexts
+                tenant: undefined,
+                tenantCode: undefined,
+                tenantId: undefined,
+                landlords: undefined
+            };
+        }
+
+        // Default: include all relationships from database
+        return {
+            ...baseUser,
+            tenant: user.tenants.length > 0 ? { id: user.tenants[0].id } : undefined,
+            tenantCode: user.tenants.length > 0 ? user.tenants[0].tenantCode : undefined,
+            tenantId: user.tenants.length > 0 ? user.tenants[0].id : undefined,
+            landlords: user.landlords.length > 0 ? { id: user.landlords[0].id } : undefined,
+            vendors: user.vendors.length > 0 ? { id: user.vendors[0].id } : undefined
+        };
     }
 
     private extractToken(req: CustomRequest): string | undefined {
@@ -56,9 +118,6 @@ export class Authorize {
 
     /**
      * Handles token refresh if access token is expired.
-     * @param req - Express request object
-     * @param res - Express response object
-     * @param next - Express next function
      */
     private async handleTokenRefresh(req: CustomRequest, res: Response, next: NextFunction) {
         const refreshToken = req.headers["x-refresh-token"] as string;
@@ -71,8 +130,15 @@ export class Authorize {
             return res.status(403).json({ message: "Invalid refresh token" });
         }
 
-        // Attach new user data to request
-        req.user = newTokens?.user;
+        // Get fresh user data with relationships
+        const user = await UserService.findAUserById(newTokens.user.id);
+        if (!user) {
+            return res.status(401).json({ message: "User not found" });
+        }
+
+        // Build user with proper context - pass the user payload from refresh
+        req.user = this.buildUserWithContext(user, newTokens.user);
+
         // Send new tokens in response headers
         res.setHeader("x-access-token", newTokens.accessToken);
         res.setHeader("x-refresh-token", newTokens.refreshToken);
@@ -82,7 +148,6 @@ export class Authorize {
 
     /**
      * Middleware to authorize users based on role.
-     * @param role - Required user role
      */
     authorizeRole(role: userRoles) {
         return (req: CustomRequest, res: Response, next: NextFunction) => {
@@ -92,15 +157,52 @@ export class Authorize {
     }
 
     /**
+     * Middleware to ensure user is operating in tenant context
+     */
+    requireTenantContext() {
+        return (req: CustomRequest, res: Response, next: NextFunction) => {
+            if (!req.user?.tenant?.id && !req.user?.tenantId) {
+                return res.status(403).json({
+                    message: "Tenant context required. Please log in as a specific tenant."
+                });
+            }
+            next();
+        };
+    }
+
+    /**
+     * Middleware to ensure user is operating in landlord context
+     */
+    requireLandlordContext() {
+        return (req: CustomRequest, res: Response, next: NextFunction) => {
+            if (!req.user?.landlords?.id) {
+                return res.status(403).json({
+                    message: "Landlord context required."
+                });
+            }
+            next();
+        };
+    }
+
+    /**
+     * Middleware to ensure user is operating in vendor context
+     */
+    requireVendorContext() {
+        return (req: CustomRequest, res: Response, next: NextFunction) => {
+            if (!req.user?.vendors?.id) {
+                return res.status(403).json({
+                    message: "Vendor context required."
+                });
+            }
+            next();
+        };
+    }
+
+    /**
      * Logs out a user by clearing authorization headers.
-     * @param req - Express request object
-     * @param res - Express response object
      */
     async logoutUser(req: CustomRequest, res: Response) {
         req.headers.authorization = "";
         return res.status(200).json({ message: "Logged out successfully" });
     }
 }
-
-
-

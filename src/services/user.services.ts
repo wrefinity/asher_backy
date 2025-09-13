@@ -15,7 +15,8 @@ import { getCurrentCountryCurrency } from "../utils/helpers";
 import sendMail from "../utils/emailer";
 import propertyServices from "./propertyServices";
 import applicantService from "../webuser/services/applicantService";
-import { ApiError } from "../utils/ApiError";
+
+
 class UserService {
     protected inclusion;
 
@@ -27,7 +28,7 @@ class UserService {
             profile: true
         };
     }
-    // cm641qu2d00003wf057tudib7
+ 
 
     checkexistance = async (obj: object): Promise<false | { id: string; tenants?: any; landlords?: any; profile?: any; vendors?: any }> => {
         const user = await prismaClient.users.findFirst({
@@ -78,12 +79,12 @@ class UserService {
     findUserByTenantCode = async (tenantCode: string) => {
         return await prismaClient.users.findFirst({
             where: {
-                tenants: { // ✅ plural
-                    some: { tenantCode }, // ✅ must use "some"
+                tenants: {
+                    some: { tenantCode }, 
                 },
             },
             include: {
-                tenants: { // ✅ plural
+                tenants: {
                     include: {
                         property: true,
                         landlord: {

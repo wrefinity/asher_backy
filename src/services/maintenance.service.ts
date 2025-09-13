@@ -1,10 +1,14 @@
-import { TransactionReference, maintenanceStatus, chatType, TransactionStatus, Currency } from "@prisma/client";
+import { TransactionReference, maintenanceStatus, chatType, TransactionStatus, Currency, properties, UnitConfiguration, RoomDetail, Prisma } from "@prisma/client";
 import { prismaClient } from "..";
 import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
 import walletService from "./wallet.service";
 import { subDays, addDays, isBefore, isAfter, isToday } from 'date-fns';
 
+type SearchResult =
+  | { type: "property"; data: properties }
+  | { type: "unit"; data: UnitConfiguration }
+  | { type: "room"; data: RoomDetail };
 
 class MaintenanceService {
   protected inclusion;
@@ -75,64 +79,56 @@ class MaintenanceService {
     });
   }
 
+  // Main maintenance creation
   createMaintenance = async (maintenanceData: MaintenanceIF) => {
     const { subcategoryIds, tenantId, landlordId, serviceId, categoryId, propertyId, ...rest } = maintenanceData;
-    // Remove duplicates
-    let subcategoryIdsUnique = [...new Set(subcategoryIds)];
-    if (subcategoryIds) {
-      // Verify that all subcategory IDs exist
+
+    // Validate subcategories
+    if (subcategoryIds?.length) {
+      const subcategoryIdsUnique = [...new Set(subcategoryIds)];
       const existingSubcategories = await prismaClient.subCategory.findMany({
-        where: {
-          id: { in: subcategoryIdsUnique }
-        },
+        where: { id: { in: subcategoryIdsUnique } },
         select: { id: true }
       });
-
-      const existingSubcategoryIds = existingSubcategories.map(subCategory => subCategory.id);
-      // console.log("++++catgpri+++")
-      // console.log(existingSubcategoryIds)
-      // console.log(subcategoryIds)
-      if (existingSubcategoryIds.length !== subcategoryIdsUnique.length) {
-        throw new Error('One or more subcategories do not exist');
+      if (existingSubcategories.length !== subcategoryIdsUnique.length) {
+        throw new Error("One or more subcategories do not exist");
       }
     }
 
-    const createData: any = {
-      ...rest, paymentStatus: "PENDING",
-      landlordDecision: "PENDING",
-      subcategories: subcategoryIdsUnique ? {
-        connect: subcategoryIdsUnique.map(id => ({ id })),
-      } : undefined,
-      category: {
-        connect: { id: categoryId },
-      },
-      services: serviceId
-        ? {
-          connect: { id: serviceId },
-        }
+    // Detect whether it's a property, unit, or room
+    const detected = await this.searchPropertyUnitRoomForMaintenace(propertyId);
+
+    // Build payload
+    const maintenancePayload: any = {
+      ...rest,
+      tenantId: tenantId || undefined,
+      landlordId: landlordId || undefined,
+      serviceId,
+      categoryId,
+      subcategories: subcategoryIds
+        ? { connect: subcategoryIds.map(id => ({ id })) }
         : undefined,
-      tenant: tenantId
-        ? {
-          connect: { id: tenantId },
-        }
-        : undefined,
-      landlord: landlordId
-        ? {
-          connect: { id: landlordId },
-        }
-        : undefined,
-      property: propertyId
-        ? {
-          connect: { id: propertyId },
-        }
-        : undefined,
+    };
+
+    switch (detected.type) {
+      case "property":
+        maintenancePayload.propertyId = detected.data.id;
+        break;
+      case "unit":
+        maintenancePayload.unitId = detected.data.id;
+        // maintenancePayload.propertyId = detected.data.propertyId; // parent link
+        break;
+      case "room":
+        maintenancePayload.roomId = detected.data.id;
+        maintenancePayload.unitId = detected.data.unitId;
+        // maintenancePayload.propertyId = detected.data.propertyId; // full chain
+        break;
     }
 
-    return await prismaClient.maintenance.create({
-      data: createData,
-      include: this.inclusion,
-    });
-  }
+    // Create maintenance request
+    return prismaClient.maintenance.create({ data: maintenancePayload });
+  };
+
 
   createMaintenanceChat = async (maintenanceId: string, senderId: string, receiverId: string, initialMessage: string) => {
     try {
@@ -227,7 +223,7 @@ class MaintenanceService {
     return maintenance?.vendorId !== null;
   }
 
-  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string,  isActive: boolean = true) => {
+  checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, isActive: boolean = true) => {
     return await prismaClient.maintenanceWhitelist.findFirst({
       where: {
         landlordId,
@@ -367,13 +363,104 @@ class MaintenanceService {
       throw new Error('Error fetching vendors for property maintenance');
     }
   }
-  
-  getPropertyTenantMaintenance = async (propertyId: string, tenantId: string) => {
+
+  // getPropertyTenantMaintenance = async (propertyId: string, tenantId: string) => {
+  //   return await prismaClient.maintenance.findMany({
+  //     where: { propertyId, tenantId },
+  //     include: this.inclusion,
+  //   });
+  // }
+
+  getPropertyTenantMaintenance = async (tenantId: string) => {
+    // Get the tenant's attachments (property, unit, or room)
+    const tenant = await prismaClient.tenants.findUnique({
+      where: { id: tenantId },
+      select: {
+        propertyId: true,
+        unitId: true,
+        roomId: true
+      }
+    });
+
+    if (!tenant) {
+      throw new Error("Tenant not found");
+    }
+
+    // Build the where clause based on what the tenant is attached to
+    const whereClause: any = { tenantId };
+
+    if (tenant.roomId) {
+      // Tenant is attached to a specific room
+      whereClause.roomId = tenant.roomId;
+    } else if (tenant.unitId) {
+      // Tenant is attached to a specific unit
+      whereClause.unitId = tenant.unitId;
+    } else if (tenant.propertyId) {
+      // Tenant is attached to a full property
+      whereClause.propertyId = tenant.propertyId;
+    } else {
+      // Tenant has no attachments
+      return [];
+    }
+
     return await prismaClient.maintenance.findMany({
-      where: { propertyId, tenantId },
+      where: whereClause,
       include: this.inclusion,
     });
   }
+
+async searchPropertyUnitRoomForMaintenace(id: string): Promise<SearchResult> {
+  const maxRetries = 3;
+  const baseTimeout = 30000;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await this.executeSearchTransaction(id, baseTimeout * attempt);
+    } catch (error: any) {
+      if (attempt === maxRetries) {
+        throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
+      }
+      
+      if (error.message.includes('timeout') || error.code === 'P1001') {
+        console.warn(`Attempt ${attempt} failed, retrying in ${attempt * 2000}ms...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  
+  throw new Error('Unexpected error in search operation');
+}
+
+private async executeSearchTransaction(id: string, timeout: number): Promise<SearchResult> {
+  return await prismaClient.$transaction(async (tx) => {
+    const [property, unit, room] = await Promise.all([
+      tx.properties.findFirst({ 
+        where: { id, isDeleted: false }
+      }),
+      
+      tx.unitConfiguration.findFirst({ 
+        where: { id, isDeleted: false },
+      }),
+      
+      tx.roomDetail.findFirst({ 
+        where: { id, isDeleted: false },
+      })
+    ]);
+
+    if (property) return { type: "property", data: property };
+    if (unit) return { type: "unit", data: unit };
+    if (room) return { type: "room", data: room };
+
+    throw new Error("No matching property, unit, or room found");
+  }, {
+    maxWait: timeout,
+    timeout: timeout,
+    isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+  });
+}
 }
 
 

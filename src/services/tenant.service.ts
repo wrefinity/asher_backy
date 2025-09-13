@@ -22,6 +22,18 @@ class TenantService {
     });
     return tenant?.user || null;
   }
+  getTenantByCode = async (tenantCode: string) => {
+    return await prismaClient.tenants.findUnique({
+      where: { tenantCode },
+      select: {
+        id: true,
+        tenantCode: true,
+        propertyId: true,
+        unitId: true,
+        roomId: true,
+      }
+    });
+  }
   getTenantById = async (tenantId: string) => {
     return await prismaClient.tenants.findFirst({
       where: { id: tenantId },
@@ -39,7 +51,7 @@ class TenantService {
     // Query the tenants table to get all tenants linked to the propertyId
     const tenants = await prismaClient.tenants.findMany({
       where: {
-        propertyId: propertyId, 
+        propertyId: propertyId,
       },
       include: {
         user: true,
@@ -48,42 +60,42 @@ class TenantService {
     return tenants;
   }
   // Get all tenants for a given property and categorize them into previous, current, and future
-  getTenantsByLeaseStatus = async (propertyId: string) =>{
-      // Get the current date to compare with lease dates
-      const currentDate = new Date();
+  getTenantsByLeaseStatus = async (propertyId: string) => {
+    // Get the current date to compare with lease dates
+    const currentDate = new Date();
 
-      // Fetch tenants for the given property
-      const tenants = await this.getTenantsForProperty(propertyId);
+    // Fetch tenants for the given property
+    const tenants = await this.getTenantsForProperty(propertyId);
 
-      // Categorize tenants into previous, current, and future
-      const categorizedTenants = {
-        current: [],
-        previous: [],
-        future: []
-      };
+    // Categorize tenants into previous, current, and future
+    const categorizedTenants = {
+      current: [],
+      previous: [],
+      future: []
+    };
 
-      tenants.forEach((tenant) => {
-        // Check if the tenant's lease is currently active
-        if (tenant.leaseStartDate && tenant.leaseEndDate) {
-          const leaseStart = new Date(tenant.leaseStartDate);
-          const leaseEnd = new Date(tenant.leaseEndDate);
+    tenants.forEach((tenant) => {
+      // Check if the tenant's lease is currently active
+      if (tenant.leaseStartDate && tenant.leaseEndDate) {
+        const leaseStart = new Date(tenant.leaseStartDate);
+        const leaseEnd = new Date(tenant.leaseEndDate);
 
-          // Current tenant: lease is active
-          if (leaseStart <= currentDate && leaseEnd >= currentDate) {
-            categorizedTenants.current.push(tenant);
-          }
-          // Previous tenant: lease has ended
-          else if (leaseEnd < currentDate) {
-            categorizedTenants.previous.push(tenant);
-          }
-          // Future tenant: lease hasn't started yet
-          else if (leaseStart > currentDate) {
-            categorizedTenants.future.push(tenant);
-          }
+        // Current tenant: lease is active
+        if (leaseStart <= currentDate && leaseEnd >= currentDate) {
+          categorizedTenants.current.push(tenant);
         }
-      });
+        // Previous tenant: lease has ended
+        else if (leaseEnd < currentDate) {
+          categorizedTenants.previous.push(tenant);
+        }
+        // Future tenant: lease hasn't started yet
+        else if (leaseStart > currentDate) {
+          categorizedTenants.future.push(tenant);
+        }
+      }
+    });
 
-      return categorizedTenants;
+    return categorizedTenants;
   }
 }
 

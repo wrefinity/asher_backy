@@ -22,6 +22,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { ApiError } from "../utils/ApiError";
 import userServices from "../services/user.services";
+import tenantService from "../services/tenant.service";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -155,7 +156,7 @@ class AuthControls {
         const isValidToken = await validateVerificationToken(token, { email });
         console.log(isValidToken)
         if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
-        
+
         await updateTokenToUsed(isValidToken.id);
         return res
             .status(200)
@@ -194,7 +195,7 @@ class AuthControls {
         if (!user) throw ApiError.notFound("User does not exist");
 
         if (email) {
-            const isValidToken = await validateVerificationToken(token, user.id);
+            const isValidToken = await validateVerificationToken(token, email);
             if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
         }
 
@@ -226,17 +227,24 @@ class AuthControls {
 
         const { email, tenantCode, password: userPassword } = req.body;
         let user = null;
+        let activeTenant: any = null;
 
         // tenantCode only login
         if (tenantCode && !email && !userPassword) {
             user = await UserServices.findUserByTenantCode(tenantCode);
             if (!user) throw ApiError.notFound("No user found for the provided tenant code");
 
+            // Get the specific tenant record for this tenantCode
+            activeTenant = await tenantService.getTenantByCode(tenantCode);
+            if (!activeTenant) throw ApiError.notFound("Tenant record not found");
+
             await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
             const tokens = await this.tokenService.createToken({
                 id: user.id,
                 role: String(user.role),
                 email: String(user.email),
+                tenantCode: tenantCode,
+                tenantId: activeTenant.id
             });
 
             const { password, ...userDetails } = user;

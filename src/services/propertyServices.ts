@@ -1748,12 +1748,26 @@ class PropertyService {
         return properties;
     }
 
+    // getPropertiesAttachedToTenants = async (tenantId: string) => {
+    //     return await prismaClient.properties.findFirst({
+    //         where: {
+    //             tenants: {
+    //                 some: { id: tenantId },
+    //             },
+    //         }
+    //     });
+    // 
+
     getPropertiesAttachedToTenants = async (tenantId: string) => {
-        return await prismaClient.properties.findFirst({
-            where: {
-                tenants: {
-                    some: { id: tenantId },
-                },
+        return await prismaClient.tenants.findUnique({
+            where: { id: tenantId },
+            select: {
+                property: true,
+                unit: true,
+                room: true,
+                propertyId: true,
+                unitId: true,
+                roomId: true
             }
         });
     }
