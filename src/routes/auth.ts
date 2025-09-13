@@ -13,8 +13,8 @@ class AuthRoutes {
 
     constructor() {
         this.router = Router();
-        this.initializeRoutes();
         this.authenticateService = new Authorize();
+        this.initializeRoutes();
     }
 
     private initializeRoutes(): void {
