@@ -2,15 +2,19 @@ import { Router } from "express";
 import AuthController from "../controllers/auth";
 import RoleRouter from "./roles"
 import { validateBody } from "../middlewares/validation";
-import { ConfirmationSchema, LoginSchema, passwordResetSchema, RegisterSchema, RegisterVendorSchema } from "../validations/schemas/auth";
+import { ConfirmationSchema, LoginSchema, passwordResetSchema, RegisterSchema, RegisterVendorSchema, updatePasswordSchema } from "../validations/schemas/auth";
 import { uploadToCloudinaryGeneric } from '../middlewares/multerCloudinary';
 import upload from "../configs/multer";
+import { Authorize } from "../middlewares/authorize";
+
 class AuthRoutes {
     public router: Router;
+    public authenticateService: Authorize;
 
     constructor() {
         this.router = Router();
         this.initializeRoutes();
+        this.authenticateService = new Authorize();
     }
 
     private initializeRoutes(): void {
@@ -25,6 +29,7 @@ class AuthRoutes {
         this.router.post("/register-vendor", upload.array('files'), uploadToCloudinaryGeneric, validateBody(RegisterVendorSchema), AuthController.registerVendor.bind(AuthController));
         this.router.post("/reset-password", validateBody(passwordResetSchema), AuthController.passwordReset.bind(AuthController));
         this.router.post('/tenants/register', AuthController.registerTenant.bind(AuthController))
+        this.router.post('/update-password', this.authenticateService.authorize, validateBody(updatePasswordSchema),  AuthController.updatePassword.bind(AuthController))
         // this.router.post('/landlord/register', AuthController.createLandlord.bind(AuthController))
         // this.router.get("/google_url", AuthController.sendGoogleUrl.bind(AuthController))
         // this.router.get("/google/callback", AuthController.githubLogin.bind(AuthController))

@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { hashSync } from "bcrypt";
+import { hashSync, compareSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
 import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus } from "@prisma/client";
@@ -15,6 +15,7 @@ import { getCurrentCountryCurrency } from "../utils/helpers";
 import sendMail from "../utils/emailer";
 import propertyServices from "./propertyServices";
 import applicantService from "../webuser/services/applicantService";
+import { ApiError } from "../utils/ApiError";
 
 
 class UserService {
@@ -28,7 +29,7 @@ class UserService {
             profile: true
         };
     }
- 
+
 
     checkexistance = async (obj: object): Promise<false | { id: string; tenants?: any; landlords?: any; profile?: any; vendors?: any }> => {
         const user = await prismaClient.users.findFirst({
@@ -80,7 +81,7 @@ class UserService {
         return await prismaClient.users.findFirst({
             where: {
                 tenants: {
-                    some: { tenantCode }, 
+                    some: { tenantCode },
                 },
             },
             include: {
@@ -649,6 +650,60 @@ class UserService {
             where: { id: userId },
             data: { role: updatedRoles },
         });
+    }
+
+    async updatePasswordWithOldPassword(
+        userId: string,
+        oldPassword: string,
+        newPassword: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            // Find user by ID
+            const user = await prismaClient.users.findUnique({
+                where: { id: userId },
+                select: { id: true, password: true }
+            });
+
+            if (!user) {
+                throw ApiError.notFound('User not found');
+            }
+
+            // Check if user has a password set (might be social login user)
+            if (!user.password) {
+                throw ApiError.badRequest('Password not set for this account. Please use password reset.');
+            }
+
+            // Verify old password
+            const isOldPasswordValid = compareSync(oldPassword, user.password);
+
+            if (!isOldPasswordValid) {
+                throw ApiError.unauthorized('Current password is incorrect');
+            }
+
+            // Check if new password is same as old password
+            if (oldPassword === newPassword) {
+                throw ApiError.badRequest('New password cannot be the same as current password');
+            }
+
+            // Hash new password
+            const hashedPassword = this.hashPassword(newPassword);
+            // Update password
+            await prismaClient.users.update({
+                where: { id: userId },
+                data: { password: hashedPassword }
+            });
+
+            return {
+                success: true,
+                message: 'Password updated successfully'
+            };
+
+        } catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw ApiError.internal('Failed to update password');
+        }
     }
 }
 

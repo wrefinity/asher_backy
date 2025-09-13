@@ -182,14 +182,14 @@ class AuthControls {
     passwordReset = asyncHandler(async (req: Request, res: Response) => {
         const { email, tenantCode, newPassword, token } = req.body;
         let user = null;
-        let  isValidToken = null
+        let isValidToken = null
         if (email) user = await UserServices.findUserByEmail(email);
         if (!user && tenantCode) user = await UserServices.findUserByTenantCode(tenantCode);
 
         if (!user) throw ApiError.notFound("User does not exist");
 
         if (email) {
-            isValidToken = await validateVerificationToken(token, {email}, true);
+            isValidToken = await validateVerificationToken(token, { email }, true);
             if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
         }
 
@@ -308,6 +308,35 @@ class AuthControls {
         return res
             .status(200)
             .json(ApiResponse.success({}, "Tenant verification email sent successfully"));
+    });
+
+    updatePassword = asyncHandler(async (req: CustomRequest, res: Response) => {
+        // Validate request body
+
+        const { oldPassword, newPassword } = req.body;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            throw ApiError.unauthorized('User not authenticated');
+        }
+
+        // Update password
+        const result = await UserServices.updatePasswordWithOldPassword(
+            userId,
+            oldPassword,
+            newPassword
+        );
+
+        // Log the activity
+        await logsServices.createLog({
+            events: 'Password updated via profile',
+            type: LogType.ACTIVITY,
+            createdById: userId,
+        });
+
+        return res.status(200).json(
+            ApiResponse.success({}, result.message)
+        );
     });
 }
 
