@@ -172,7 +172,7 @@ class AuthControls {
         if (!user) throw ApiError.notFound("User does not exist");
 
         await this.verificationTokenCreator({
-            userId: user.id,
+
             email: normalizedEmail,
         });
 
