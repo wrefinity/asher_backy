@@ -2,7 +2,7 @@ import { Router } from "express";
 import AuthController from "../controllers/auth";
 import RoleRouter from "./roles"
 import { validateBody } from "../middlewares/validation";
-import { ConfirmationSchema, LoginSchema, RegisterSchema, RegisterVendorSchema } from "../validations/schemas/auth";
+import { ConfirmationSchema, LoginSchema, passwordResetSchema, RegisterSchema, RegisterVendorSchema } from "../validations/schemas/auth";
 import { uploadToCloudinaryGeneric } from '../middlewares/multerCloudinary';
 import upload from "../configs/multer";
 class AuthRoutes {
@@ -23,7 +23,7 @@ class AuthRoutes {
         this.router.post("/refresh-token", AuthController.refreshToken.bind(AuthController));
         this.router.post("/register", validateBody(RegisterSchema), AuthController.register.bind(AuthController));
         this.router.post("/register-vendor", upload.array('files'), uploadToCloudinaryGeneric, validateBody(RegisterVendorSchema), AuthController.registerVendor.bind(AuthController));
-        this.router.post("/reset-password", AuthController.passwordReset.bind(AuthController));
+        this.router.post("/reset-password", validateBody(passwordResetSchema), AuthController.passwordReset.bind(AuthController));
         this.router.post('/tenants/register', AuthController.registerTenant.bind(AuthController))
         // this.router.post('/landlord/register', AuthController.createLandlord.bind(AuthController))
         // this.router.get("/google_url", AuthController.sendGoogleUrl.bind(AuthController))

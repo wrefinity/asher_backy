@@ -181,19 +181,15 @@ class AuthControls {
 
     passwordReset = asyncHandler(async (req: Request, res: Response) => {
         const { email, tenantCode, newPassword, token } = req.body;
-
-        if (!email && !tenantCode) {
-            throw ApiError.validationError(["Email or tenant code is required"]);
-        }
-
         let user = null;
+        let  isValidToken = null
         if (email) user = await UserServices.findUserByEmail(email);
         if (!user && tenantCode) user = await UserServices.findUserByTenantCode(tenantCode);
 
         if (!user) throw ApiError.notFound("User does not exist");
 
         if (email) {
-            const isValidToken = await validateVerificationToken(token, email, true);
+            isValidToken = await validateVerificationToken(token, email, true);
             if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
         }
 
@@ -203,7 +199,7 @@ class AuthControls {
             type: LogType.ACTIVITY,
             createdById: user.id,
         });
-
+        await deleteVerificationToken(isValidToken.id);
         return res
             .status(200)
             .json(ApiResponse.success({}, "Password updated successfully"));

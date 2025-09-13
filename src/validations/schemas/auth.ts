@@ -66,6 +66,50 @@ export const assignRoleSchema = Joi.object({
   roles: Joi.array().items(Joi.string().valid(...Object.values(userRoles))).required()
 });
 
+// Password reset validation schema
+export const passwordResetSchema = Joi.object({
+  email: Joi.string()
+    .email()
+    .lowercase()
+    .optional()
+    .messages({
+      'string.email': 'Please provide a valid email address'
+    }),
+
+  tenantCode: Joi.string()
+    .optional()
+    .messages({
+      'string.empty': 'Tenant code cannot be empty'
+    }),
+
+  newPassword: Joi.string()
+    .min(8)
+    .max(128)
+    .required()
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .messages({
+      'string.min': 'Password must be at least 8 characters long',
+      'string.max': 'Password cannot exceed 128 characters',
+      'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+      'any.required': 'New password is required'
+    }),
+
+  token: Joi.string()
+    .required()
+    .min(6)
+    .max(10)
+    .messages({
+      'string.min': 'Token must be at least 6 characters',
+      'string.max': 'Token cannot exceed 10 characters',
+      'any.required': 'Verification token is required'
+    })
+})
+.xor('email', 'tenantCode') // Requires exactly one of email or tenantCode
+.messages({
+  'object.xor': 'Provide either email or tenant code, but not both',
+  'object.missing': 'Either email or tenant code is required'
+});
+
 export const ConfirmationSchema = Joi.object({
   email: Joi.string()
     .email()
