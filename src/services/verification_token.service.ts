@@ -48,7 +48,8 @@ export async function createVerificationToken(
  */
 export async function validateVerificationToken(
   token: string,
-  identifier: { userId?: string; email?: string }
+  identifier: { userId?: string; email?: string },
+  isUsed: boolean = false
 ) {
   try {
     if (!identifier.userId && !identifier.email) {
@@ -67,7 +68,7 @@ export async function validateVerificationToken(
         expiresAt: {
           gte: new Date(), // Ensure token is not expired
         },
-        isUsed: false, // Optional: only accept unused tokens
+        isUsed,
       },
     });
 
