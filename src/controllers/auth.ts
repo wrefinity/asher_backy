@@ -189,7 +189,7 @@ class AuthControls {
         if (!user) throw ApiError.notFound("User does not exist");
 
         if (email) {
-            isValidToken = await validateVerificationToken(token, email, true);
+            isValidToken = await validateVerificationToken(token, {email}, true);
             if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
         }
 
