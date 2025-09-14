@@ -55,6 +55,8 @@ export class Authorize {
      * Builds user object with proper tenant/landlord/vendor context
      */
     private buildUserWithContext(user: any, decoded: JWTPayload): JWTPayload {
+        console.log("=====building user context======")
+        console.log({ user, decoded })
         const baseUser = {
             id: user.id,
             role: user.role,
