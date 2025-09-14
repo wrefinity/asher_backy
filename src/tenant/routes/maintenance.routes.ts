@@ -20,6 +20,7 @@ class MaintenanceRouter {
         // this.router.post('/', upload.array('files'), uploadToCloudinary, adsController.createAd);
         this.router.post('/requests', this.authenticateService.requireTenantContext(), validateBody(maintenanceSchema), MaintenanceController.createMaintenance);
         this.router.get('/requests', this.authenticateService.requireTenantContext(), MaintenanceController.getMaintenances);
+        this.router.get('/requests/:id', this.authenticateService.requireTenantContext(), MaintenanceController.getMaintenancesById);
     }
 }
 

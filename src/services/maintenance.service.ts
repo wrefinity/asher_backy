@@ -32,6 +32,7 @@ class MaintenanceService {
       include: this.inclusion,
     });
   }
+ 
   getSpecificVendorMaintenanceJobs = async (categoryId) => {
     return await prismaClient.maintenance.findMany({
       where: {

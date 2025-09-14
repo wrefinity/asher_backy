@@ -94,6 +94,19 @@ class MaintenanceControls {
       .status(200)
       .json(ApiResponse.success(maintenances, "Tenant maintenance records retrieved successfully"));
   });
+
+    getMaintenancesById = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const maintenanceId = req.params.id;
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance record not found");
+    }
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(maintenance, "Tenant maintenance record retrieved successfully"));
+  });
 }
 
 export default new MaintenanceControls();
