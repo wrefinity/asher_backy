@@ -54,62 +54,87 @@ export class Authorize {
     /**
      * Builds user object with proper tenant/landlord/vendor context
      */
+    /**
+     * Builds user object with proper tenant/landlord/vendor context
+     */
     private buildUserWithContext(user: any, decoded: JWTPayload): JWTPayload {
-        console.log("=====building user context======")
-        console.log({ user, decoded })
+        console.log("=====building user context======");
+        console.log({ user, decoded });
+
         const baseUser = {
             id: user.id,
-            role: user.role,
+            role: Array.isArray(user.role) ? user.role : String(user.role).split(","),
             email: user.email,
         };
 
-        // If JWT has specific tenant info, use that (tenant-specific login)
+        // ✅ Tenant-specific context (from JWT)
         if (decoded.tenantId && decoded.tenantCode) {
             return {
                 ...baseUser,
                 tenantCode: decoded.tenantCode,
                 tenantId: decoded.tenantId,
                 tenant: { id: decoded.tenantId },
-                // Clear other contexts when in tenant-specific mode
                 landlords: undefined,
-                vendors: undefined
+                vendors: undefined,
             };
         }
 
-        // If JWT has landlord info, use that
+        // ✅ Landlord-specific context (from JWT)
         if (decoded.landlords?.id) {
             return {
                 ...baseUser,
                 landlords: { id: decoded.landlords.id },
-                // Clear other contexts
                 tenant: undefined,
                 tenantCode: undefined,
                 tenantId: undefined,
-                vendors: undefined
+                vendors: undefined,
             };
         }
 
-        // If JWT has vendor info, use that
+        // ✅ Vendor-specific context (from JWT)
         if (decoded.vendors?.id) {
             return {
                 ...baseUser,
                 vendors: { id: decoded.vendors.id },
-                // Clear other contexts
                 tenant: undefined,
                 tenantCode: undefined,
                 tenantId: undefined,
-                landlords: undefined
+                landlords: undefined,
             };
         }
 
-        // Default: include all relationships from database
+        // Special case: WEBUSER → no tenant/landlord/vendor relationships
+        if (baseUser.role.includes("WEBUSER")) {
+            return {
+                ...baseUser,
+                tenant: undefined,
+                tenantCode: undefined,
+                tenantId: undefined,
+                landlords: undefined,
+                vendors: undefined,
+            };
+        }
+
+        // Default: select tenant by decoded tenantCode, else fallback to first
+        let selectedTenant = undefined;
+        if (Array.isArray(user.tenants) && user.tenants.length > 0) {
+            if (decoded.tenantCode) {
+                selectedTenant = user.tenants.find(
+                    (t: any) => t.tenantCode === decoded.tenantCode
+                );
+            }
+            if (!selectedTenant) {
+                selectedTenant = user.tenants[0];
+            }
+        }
+
         return {
             ...baseUser,
-            tenant: user.tenants.length > 0 ? { id: user.tenants[0].id } : undefined,
-            tenantCode: user.tenants.length > 0 ? user.tenants[0].tenantCode : undefined,
-            tenantId: user.tenants.length > 0 ? user.tenants[0].id : undefined,
-            landlords: user.landlords.length > 0 ? { id: user.landlords[0].id } : undefined,
-            vendors: user.vendors.length > 0 ? { id: user.vendors[0].id } : undefined
+            tenant: selectedTenant ? { id: selectedTenant.id } : undefined,
+            tenantCode: selectedTenant?.tenantCode,
+            tenantId: selectedTenant?.id,
+            landlords: user.landlords ? { id: user.landlords.id } : undefined,
+            vendors: user.vendors ? { id: user.vendors.id } : undefined,
         };
     }
 
