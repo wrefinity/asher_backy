@@ -23,7 +23,8 @@ export const uploadDocsCloudinary = async (file: Express.Multer.File) => {
 export const uploadToCloudinary = async (req: CustomRequest, res: Response, next: NextFunction) => {
   try {
     const files = (req.files as { [fieldname: string]: Express.Multer.File[] }) || undefined;
-
+    console.log("========image+++++===========")
+    console.log(req.files)
     if (!files || Object.keys(files).length === 0) {
       req.body.cloudinaryUrls = [];
       req.body.cloudinaryVideoUrls = [];
