@@ -16,6 +16,8 @@ class ProfileControls {
     }
 
     const data = { ...req.body };
+    console.log("validationsss");
+    console.log(data);
     const profileUrl = req.body.cloudinaryUrls?.[0];
 
     // Remove unwanted keys
