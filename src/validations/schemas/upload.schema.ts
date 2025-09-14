@@ -20,3 +20,4 @@ export const uploadSchema = Joi.object({
   cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
   uploadedDocuments: Joi.array().items(uploadedDocumentSchema).optional(),
 });
+

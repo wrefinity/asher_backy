@@ -42,6 +42,8 @@ export class Authorize {
             req.user = this.buildUserWithContext(user, decoded);
             return next();
         } catch (error) {
+            console.log("=====token verificatio reason failure======")
+            console.log(error)
             if (error.name === "TokenExpiredError") {
                 return this.handleTokenRefresh(req, res, next);
             }
