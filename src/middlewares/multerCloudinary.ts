@@ -97,6 +97,8 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
     req.body.cloudinaryVideoUrls = videoUrls;
     req.body.cloudinaryDocumentUrls = documentUrls;
     req.body.cloudinaryAudioUrls = audioUrls;
+    console.log("Req body after Cloudinary:", req.body);
+
 
     next();
   } catch (error) {
@@ -266,12 +268,12 @@ export const uploadToCloudinaryGeneric = async (
             resource_type: isImage
               ? "image"
               : isVideo
-              ? "video"
-              : isDocument
-              ? "raw"
-              : isAudio
-              ? "video"
-              : "auto",
+                ? "video"
+                : isDocument
+                  ? "raw"
+                  : isAudio
+                    ? "video"
+                    : "auto",
             folder: CLOUDINARY_FOLDER,
             format: isImage ? "webp" : undefined,
           },

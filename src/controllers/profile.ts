@@ -26,6 +26,7 @@ class ProfileControls {
     delete data.uploadedDocuments;
     delete data.id;
 
+    
     const updatedUser = await ProfileServices.updateUserProfile(profileInfo.id, {
       ...data,
       profileUrl,
