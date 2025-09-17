@@ -563,6 +563,7 @@ model ResidentialProperty {
 
   additionalNotes       String?
   PropertySpecification PropertySpecification[]
+  availableFrom DateTime?
 
   billsSubCategory billsSubCategory[]
 }

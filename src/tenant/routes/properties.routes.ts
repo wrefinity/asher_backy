@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Authorize } from "../../middlewares/authorize";
 import propertyController from "../controllers/properties.controller";
 import { validateBody } from "../../middlewares/validation";
+import { propertySearchSchema } from "../../validations/schemas/properties.schema";
 
 class PropertyRouter {
     public router: Router;
@@ -14,7 +15,7 @@ class PropertyRouter {
     }
 
     private initializeRoutes() {
-        this.router.post("/search", validateBody, propertyController.searchProperties);
+        this.router.post("/search", validateBody(propertySearchSchema), propertyController.searchProperties);
 
     }
 }
