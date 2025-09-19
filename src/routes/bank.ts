@@ -26,7 +26,7 @@ class BankRouter {
         // Get all bank info records
         this.router.get('/bank-info', this.authenticateService.authorize, BankInfoController.getAllBankInfo);
         // Add to your bank router
-        this.router.get('/bank-info/my', this.authenticateService.authorize, BankInfoController.getMyBankInfo);
+        this.router.get('/my-bank', this.authenticateService.authorize, BankInfoController.getMyBankInfo);
     }
 }
 
