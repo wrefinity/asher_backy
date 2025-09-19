@@ -25,7 +25,8 @@ class BankRouter {
         this.router.delete('/bank-info/:id', this.authenticateService.authorize, BankInfoController.deleteBankInfo);
         // Get all bank info records
         this.router.get('/bank-info', this.authenticateService.authorize, BankInfoController.getAllBankInfo);
-
+        // Add to your bank router
+        this.router.get('/bank-info/my', this.authenticateService.authorize, BankInfoController.getMyBankInfo);
     }
 }
 

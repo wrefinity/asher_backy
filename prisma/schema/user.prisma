@@ -18,7 +18,7 @@ model users {
     onlineStatus           onlineStatus?            @default(offline)
     // foreign key and relational fields 
     VerificationToken      VerificationToken[]
-    tenants                tenants[]                // ✅ 1 user → many tenants
+    tenants                tenants[]               
     landlords              landlords?
     // community              Community[]
     communityPost          CommunityPost[]

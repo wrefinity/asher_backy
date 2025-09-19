@@ -174,7 +174,7 @@ class UserService {
     async registerVendor(input: RegisterVendorInput) {
         const { email, password, profile, uploadedDocuments = [] } = input;
 
-        // 🔹 Transaction: create user + profile + vendor + vendorDocuments
+        // Transaction: create user + profile + vendor + vendorDocuments
         const newVendor = await prismaClient.$transaction(
             async (tx) => {
                 const createdProfile = await tx.profile.create({

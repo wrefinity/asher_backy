@@ -63,6 +63,26 @@ class BankInfoController {
       .status(200)
       .json(ApiResponse.success(bankInfoList, "All bank info retrieved"));
   });
+  // Add to your bank controller
+getMyBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {
+  const landlordId = req.user?.landlords?.id;
+  const vendorId = req.user?.vendors?.id;
+
+  if (!landlordId && !vendorId) {
+    return res.status(200).json(ApiResponse.success(null, "No bank info found"));
+  }
+
+  let bankInfo;
+  if (landlordId) {
+    bankInfo = await bankInfoService.getBankInfoByLandlordId(landlordId);
+  } else {
+    bankInfo = await bankInfoService.getBankInfoByVendorId(vendorId);
+  }
+
+  return res.status(200).json(ApiResponse.success(bankInfo, "Bank info retrieved"));
+});
+
+
 }
 
 export default new BankInfoController();

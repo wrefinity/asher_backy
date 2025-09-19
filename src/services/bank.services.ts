@@ -31,4 +31,13 @@ export class BankInfoService {
   getAllBankInfo = async () => {
     return await prismaClient.bankInfo.findMany();
   }
+
+  // Add to your bank service
+async getBankInfoByLandlordId(landlordId: string): Promise<IBankInfo | null> {
+  return await prismaClient.bankInfo.findFirst({ where: { landlordId } });
+}
+
+async getBankInfoByVendorId(vendorId: string): Promise<IBankInfo | null> {
+  return await prismaClient.bankInfo.findFirst({ where: { vendorId } });
+}
 }
