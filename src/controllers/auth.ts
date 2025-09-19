@@ -13,7 +13,7 @@ import {
 } from "../services/verification_token.service";
 import generateEmailTemplate from "../templates/email";
 import sendEmail from "../utils/emailer";
-import { LogType } from "@prisma/client";
+import { LogType, userRoles } from "@prisma/client";
 import { generateOtp } from "../utils/helpers";
 import { CustomRequest } from "../utils/types";
 import logsServices from "../services/logs.services";

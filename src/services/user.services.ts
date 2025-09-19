@@ -184,6 +184,8 @@ class UserService {
                 const createdUser = await tx.users.create({
                     data: {
                         email,
+                        isVerified: true,
+                        role: [userRoles.VENDOR],
                         password: this.hashPassword(password),
                         profileId: createdProfile.id
                     }
