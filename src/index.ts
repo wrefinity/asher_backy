@@ -11,6 +11,7 @@ import { APP_SECRET, PORT } from "./secrets";
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/applicant";
 import ComplaintRoutes from "./routes/complaint";
+import SuggestionRoutes from "./routes/suggestion";
 import FileUploads from './routes/fileuploads';
 import CategoryRouter from "./routes/category";
 import TodoRouter from "./routes/todo";
@@ -114,6 +115,7 @@ class Server {
         // bank information routes
         this.app.use("/api/banks/", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);
+        this.app.use("/api/suggestions", SuggestionRoutes);
 
         // Global error handler must come last
         this.app.use(
