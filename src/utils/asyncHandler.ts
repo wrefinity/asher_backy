@@ -14,7 +14,7 @@ export const asyncHandler =
       }
 
       /**
-       * 🔹 Prisma Errors
+       * Prisma Errors
        */
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         // https://www.prisma.io/docs/orm/reference/error-reference#error-codes
@@ -72,7 +72,7 @@ export const asyncHandler =
       }
 
       /**
-       * 🔹 Mongoose Errors
+       * Mongoose Errors
        */
       if (error.name === "ValidationError") {
         const errors = Object.values(error.errors).map((err: any) => err.message);
@@ -91,7 +91,7 @@ export const asyncHandler =
       }
 
       /**
-       * 🔹 JWT Errors
+       * JWT Errors
        */
       if (error.name === "JsonWebTokenError") {
         return next(ApiError.unauthorized("Invalid token"));

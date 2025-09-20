@@ -4,6 +4,7 @@ export interface IComplaint {
   id?: string;
   category: ComplaintCategory;
   subject: string;
+  description: string;
   createdById?: string;
   propertyId?: string;
   priority: ComplaintPriority;

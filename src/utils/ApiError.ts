@@ -31,7 +31,7 @@ export class ApiError extends Error {
     });
   }
 
-  // 🔹 Not found errors
+  // Not found errors
   static notFound(message = "Resource not found", details?: any): ApiError {
     return new ApiError(404, message, {
       errors: [message],
@@ -40,7 +40,7 @@ export class ApiError extends Error {
     });
   }
 
-  // 🔹 Unauthorized errors
+  // Unauthorized errors
   static unauthorized(message = "Unauthorized", details?: any): ApiError {
     return new ApiError(401, message, {
       errors: [message],
@@ -49,7 +49,7 @@ export class ApiError extends Error {
     });
   }
 
-  // 🔹 Forbidden errors
+  // Forbidden errors
   static forbidden(message = "Forbidden", details?: any): ApiError {
     return new ApiError(403, message, {
       errors: [message],
@@ -58,7 +58,7 @@ export class ApiError extends Error {
     });
   }
 
-  // 🔹 Bad request errors
+  // Bad request errors
   static badRequest(message = "Bad request", details?: any): ApiError {
     return new ApiError(400, message, {
       errors: [message],
@@ -76,7 +76,7 @@ export class ApiError extends Error {
     });
   }
 
-  // 🔹 Prisma-related errors
+  // Prisma-related errors
   static prismaError(code: string, message: string, details?: any): ApiError {
     return new ApiError(500, message, {
       errors: [message],
@@ -85,7 +85,7 @@ export class ApiError extends Error {
     });
   }
 
-  // 🔹 Internal server error
+  // Internal server error
   static internal(message = "Internal server error", details?: any): ApiError {
     return new ApiError(500, message, {
       errors: [message],

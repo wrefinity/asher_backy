@@ -87,6 +87,8 @@ model users {
     UserPreferences        UserPreferences[]
     NotificationPreference NotificationPreference[]
     Todo                   Todo[]
+
+    Suggestion Suggestion[]
 }
 
 model UserLikedProperty {
