@@ -13,14 +13,205 @@ type SearchResult =
 class MaintenanceService {
   protected inclusion;
   constructor() {
-    this.inclusion = {
-      tenant: true,
-      landlord: true,
-      vendor: true,
-      property: true,
-      category: true,
-      subcategories: true,
-      services: true,
+   this.inclusion = {
+      tenant: {
+        include: {
+          user: {
+            include: {
+              profile: true // Populate user profile
+            }
+          },
+          property: {
+            include: {
+              landlord: {
+                include: {
+                  user: {
+                    include: {
+                      profile: true // Populate landlord user profile
+                    }
+                  }
+                }
+              },
+              state: true,
+              agency: true,
+              agents: {
+                include: {
+                  user: {
+                    include: {
+                      profile: true // Populate agent user profile
+                    }
+                  }
+                }
+              }
+            }
+          },
+          unit: {
+            include: {
+              ResidentialProperty: true,
+              CommercialProperty: true,
+              images: true
+            }
+          },
+          room: {
+            include: {
+              ResidentialProperty: true,
+              CommercialProperty: true,
+              ShortletProperty: true,
+              unit: true,
+              images: true
+            }
+          },
+          agent: {
+            include: {
+              user: {
+                include: {
+                  profile: true // Populate agent user profile
+                }
+              }
+            }
+          },
+          application: true
+        }
+      },
+      landlord: {
+        include: {
+          user: {
+            include: {
+              profile: true
+            }
+          }
+        }
+      },
+      vendor: {
+        include: {
+          user: {
+            include: {
+              profile: true // Populate vendor user profile
+            }
+          },
+          services: true
+        }
+      },
+      property: {
+        include: {
+          landlord: {
+            include: {
+              user: {
+                include: {
+                  profile: true
+                }
+              }
+            }
+          },
+          state: true,
+          agency: true,
+          agents: {
+            include: {
+              user: {
+                include: {
+                  profile: true
+                }
+              }
+            }
+          },
+          images: true,
+          videos: true,
+          specification: true
+        }
+      },
+      units: {
+        include: {
+          ResidentialProperty: true,
+          CommercialProperty: true,
+          images: true,
+          RoomDetail: {
+            include: {
+              images: true,
+              ResidentialProperty: true,
+              CommercialProperty: true,
+              ShortletProperty: true
+            }
+          }
+        }
+      },
+      rooms: {
+        include: {
+          ResidentialProperty: true,
+          CommercialProperty: true,
+          ShortletProperty: true,
+          unit: {
+            include: {
+              ResidentialProperty: true,
+              CommercialProperty: true,
+              images: true
+            }
+          },
+          images: true
+        }
+      },
+      category: {
+        include: {
+          subCategory: true
+        }
+      },
+      subcategories: {
+        include: {
+          category: true 
+        }
+      },
+      services: {
+        include: {
+          vendor: {
+            include: {
+              user: {
+                include: {
+                  profile: true
+                }
+              }
+            }
+          },
+          category: true,
+          subcategory: true,
+          tenant: {
+            include: {
+              user: {
+                include: {
+                  profile: true
+                }
+              }
+            }
+          }
+        }
+      },
+      chatRoom: {
+        include: {
+          user1: {
+            include: {
+              profile: true
+            }
+          },
+          user2: {
+            include: {
+              profile: true
+            }
+          },
+          messages: {
+            include: {
+              sender: {
+                include: {
+                  profile: true
+                }
+              },
+              receiver: {
+                include: {
+                  profile: true
+                }
+              }
+            }
+          }
+        }
+      },
+      reScheduleHistory: true
     };
   }
 
@@ -32,7 +223,7 @@ class MaintenanceService {
       include: this.inclusion,
     });
   }
- 
+
   getSpecificVendorMaintenanceJobs = async (categoryId) => {
     return await prismaClient.maintenance.findMany({
       where: {
@@ -410,58 +601,58 @@ class MaintenanceService {
     });
   }
 
-async searchPropertyUnitRoomForMaintenace(id: string): Promise<SearchResult> {
-  const maxRetries = 3;
-  const baseTimeout = 30000;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await this.executeSearchTransaction(id, baseTimeout * attempt);
-    } catch (error: any) {
-      if (attempt === maxRetries) {
-        throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
+  async searchPropertyUnitRoomForMaintenace(id: string): Promise<SearchResult> {
+    const maxRetries = 3;
+    const baseTimeout = 30000;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.executeSearchTransaction(id, baseTimeout * attempt);
+      } catch (error: any) {
+        if (attempt === maxRetries) {
+          throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
+        }
+
+        if (error.message.includes('timeout') || error.code === 'P1001') {
+          console.warn(`Attempt ${attempt} failed, retrying in ${attempt * 2000}ms...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          continue;
+        }
+
+        throw error;
       }
-      
-      if (error.message.includes('timeout') || error.code === 'P1001') {
-        console.warn(`Attempt ${attempt} failed, retrying in ${attempt * 2000}ms...`);
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-        continue;
-      }
-      
-      throw error;
     }
+
+    throw new Error('Unexpected error in search operation');
   }
-  
-  throw new Error('Unexpected error in search operation');
-}
 
-private async executeSearchTransaction(id: string, timeout: number): Promise<SearchResult> {
-  return await prismaClient.$transaction(async (tx) => {
-    const [property, unit, room] = await Promise.all([
-      tx.properties.findFirst({ 
-        where: { id, isDeleted: false }
-      }),
-      
-      tx.unitConfiguration.findFirst({ 
-        where: { id, isDeleted: false },
-      }),
-      
-      tx.roomDetail.findFirst({ 
-        where: { id, isDeleted: false },
-      })
-    ]);
+  private async executeSearchTransaction(id: string, timeout: number): Promise<SearchResult> {
+    return await prismaClient.$transaction(async (tx) => {
+      const [property, unit, room] = await Promise.all([
+        tx.properties.findFirst({
+          where: { id, isDeleted: false }
+        }),
 
-    if (property) return { type: "property", data: property };
-    if (unit) return { type: "unit", data: unit };
-    if (room) return { type: "room", data: room };
+        tx.unitConfiguration.findFirst({
+          where: { id, isDeleted: false },
+        }),
 
-    throw new Error("No matching property, unit, or room found");
-  }, {
-    maxWait: timeout,
-    timeout: timeout,
-    isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
-  });
-}
+        tx.roomDetail.findFirst({
+          where: { id, isDeleted: false },
+        })
+      ]);
+
+      if (property) return { type: "property", data: property };
+      if (unit) return { type: "unit", data: unit };
+      if (room) return { type: "room", data: room };
+
+      throw new Error("No matching property, unit, or room found");
+    }, {
+      maxWait: timeout,
+      timeout: timeout,
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+    });
+  }
 }
 
 
