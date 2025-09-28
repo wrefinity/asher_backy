@@ -28,15 +28,15 @@ class VendorServiceRoutes {
         this.router.get('/maintenances/:id',  MaintenanceServiceController.getMaintenancesById);
 
         // Vendor actions
-        this.router.post("/:maintenanceId/accept", MaintenanceServiceController.acceptJob);
-        this.router.post("/:maintenanceId/start-attachments",  upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadStartAttachments);
-        this.router.post("/:maintenanceId/end-attachments",  upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadEndAttachments);
+        this.router.post("/maintenances/:maintenanceId/accept", MaintenanceServiceController.acceptJob);
+        this.router.post("/maintenances/:maintenanceId/start-attachments",  upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadStartAttachments);
+        this.router.post("/maintenances/:maintenanceId/end-attachments",  upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadEndAttachments);
 
         // Status changes
-        this.router.post("/:maintenanceId/status", MaintenanceServiceController.updateStatus);
+        this.router.post("/maintenances/:maintenanceId/status", MaintenanceServiceController.updateStatus);
 
         // History
-        this.router.get("/:maintenanceId/history", MaintenanceServiceController.getStatusHistory);
+        this.router.get("/maintenances/:maintenanceId/history", MaintenanceServiceController.getStatusHistory);
     }
 
 }
