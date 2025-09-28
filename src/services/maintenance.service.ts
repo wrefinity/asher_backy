@@ -694,6 +694,7 @@ class MaintenanceService {
     return prismaClient.maintenance.update({
       where: { id: maintenanceId },
       data: { status: newStatus },
+      include: this.inclusion,
     });
   }
   async assignVendor(maintenanceId: string, vendorId: string) {
