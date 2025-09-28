@@ -9,7 +9,7 @@ model vendors {
   bankInfo     bankInfo[]
   maintenances maintenance[]     @relation("vendorUser")
 
-  documents    vendorDocument[]  // 🔹 connect documents here
+  documents    vendorDocument[]  
 
   @@unique([userId])
 }

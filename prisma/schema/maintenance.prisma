@@ -2,6 +2,9 @@ enum maintenanceStatus {
   ASSIGNED
   UNASSIGNED
   PENDING
+  IN_PROGRESS
+  PAUSED
+  RESUMED
   COMPLETED
   CANCELLATION_REQUEST
   CANCEL
@@ -61,10 +64,12 @@ model maintenance {
 
   services  services? @relation(fields: [serviceId], references: [id])
   serviceId String?
-
+  startAttachments String[]
+  endAttachments String[]
   //payment
   paymentStatus TransactionStatus @default(PENDING)
   amount        Decimal?          @db.Decimal(18, 2)
+  maintenanceStatusHistory maintenanceStatusHistory[]
 }
 
 model maintenanceRescheduleHistory {
@@ -74,6 +79,16 @@ model maintenanceRescheduleHistory {
   newDate       DateTime
   maintenance   maintenance @relation(fields: [maintenanceId], references: [id])
 }
+
+model maintenanceStatusHistory {
+  id            String           @id @default(cuid())
+  maintenanceId String
+  oldStatus     maintenanceStatus
+  newStatus     maintenanceStatus
+  changedAt     DateTime         @default(now())
+  maintenance   maintenance      @relation(fields: [maintenanceId], references: [id])
+}
+
 
 model services {
   id String @id @default(cuid())

@@ -13,7 +13,7 @@ type SearchResult =
 class MaintenanceService {
   protected inclusion;
   constructor() {
-   this.inclusion = {
+    this.inclusion = {
       tenant: {
         include: {
           user: {
@@ -156,7 +156,7 @@ class MaintenanceService {
       },
       subcategories: {
         include: {
-          category: true 
+          category: true
         }
       },
       services: {
@@ -651,6 +651,62 @@ class MaintenanceService {
       maxWait: timeout,
       timeout: timeout,
       isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+    });
+  }
+
+  async uploadStartAttachments(maintenanceId: string, files: { url: string; type: string }[]) {
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        startAttachments: {
+          push: files.map(f => f.url),
+        },
+      },
+    });
+  }
+
+  async uploadEndAttachments(maintenanceId: string, files: { url: string; type: string }[]) {
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        endAttachments: {
+          push: files.map(f => f.url),
+        },
+      },
+    });
+  }
+
+
+  async updateStatus(maintenanceId: string, newStatus: maintenanceStatus) {
+    const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });
+    if (!maintenance) throw new Error("Maintenance not found");
+
+    // Record history
+    await prismaClient.maintenanceStatusHistory.create({
+      data: {
+        maintenanceId,
+        oldStatus: maintenance.status,
+        newStatus,
+      },
+    });
+
+    // Update status
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: { status: newStatus },
+    });
+  }
+  async assignVendor(maintenanceId: string, vendorId: string) {
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: { vendorId, status: maintenanceStatus.ASSIGNED },
+    });
+  }
+
+  async getStatusHistory(maintenanceId: string) {
+    return prismaClient.maintenanceStatusHistory.findMany({
+      where: { maintenanceId },
+      orderBy: { changedAt: "asc" },
     });
   }
 }
