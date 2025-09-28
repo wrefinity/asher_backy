@@ -31,7 +31,7 @@ class MaintenanceControls {
   // Upload start attachments
   uploadStartAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const files = req.body.files; // assume [{ url, type }]
+    const files = req.body.uploadedFiles; // assume [{ url, type }]
 
     if (!files || !Array.isArray(files)) {
       throw ApiError.badRequest("Files are required and must be an array");
@@ -46,8 +46,8 @@ class MaintenanceControls {
   // Upload end attachments
   uploadEndAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const files = req.body.files;
-
+    const files = req.body.uploadedFiles; 
+    
     if (!files || !Array.isArray(files)) {
       throw ApiError.badRequest("Files are required and must be an array");
     }
@@ -76,7 +76,7 @@ class MaintenanceControls {
   // Vendor accepts job
   acceptJob = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const { vendorId } = req.body;
+    const vendorId = req.user.vendors.id;
 
     if (!vendorId) {
       throw ApiError.badRequest("Vendor ID is required to accept a job");

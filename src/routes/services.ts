@@ -22,9 +22,10 @@ class VendorServiceRoutes {
         this.router.post('/category/:categoryId', this.authenticateService.authorize, VendorServiceController.getServicesByCategoryAndSubcategories);
         this.router.post('/offer/:categoryId', this.authenticateService.authorize, VendorServiceController.applyOffer);
         this.router.get('/:id', VendorServiceController.getService);
-        this.router.patch('/:id', this.authenticateService.authorize, VendorServiceController.updateService);
-        this.router.delete('/:id', this.authenticateService.authorize, VendorServiceController.deleteService);
-        this.router.get('/maintenances/all', this.authenticateService.authorize, MaintenanceServiceController.getMaintenances);
+        this.router.patch('/:id', VendorServiceController.updateService);
+        this.router.delete('/:id', VendorServiceController.deleteService);
+        this.router.get('/maintenances/all',  MaintenanceServiceController.getMaintenances);
+        this.router.get('/maintenances/:id',  MaintenanceServiceController.getMaintenancesById);
 
         // Vendor actions
         this.router.post("/:maintenanceId/accept", MaintenanceServiceController.acceptJob);
