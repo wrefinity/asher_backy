@@ -18,8 +18,8 @@ class ProfileRoutes {
     }
 
     private initializeRoutes(): void {
-        this.router.post('/update', upload.array('files'), uploadToCloudinary, validateBody(profileSchema), ProfileControls.profileUpdate);
-        this.router.post('/search-preferences', validateBody(userSearchPreferenceSchema), ProfileControls.addUserSearchPreference);
+        this.router.post('/update', upload.array('files'), uploadToCloudinary, validateBody(profileSchema), ProfileControls.profileUpdate)
+        this.router.post('/search-preferences', validateBody(userSearchPreferenceSchema), ProfileControls.addUserSearchPreference);;
         this.router.get('/', ProfileControls.getCurrentUserProfile);
     }
 }

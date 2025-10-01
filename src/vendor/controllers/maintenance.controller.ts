@@ -47,7 +47,7 @@ class MaintenanceControls {
   uploadEndAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
     const files = req.body.uploadedFiles; 
-    
+
     if (!files || !Array.isArray(files)) {
       throw ApiError.badRequest("Files are required and must be an array");
     }
@@ -100,6 +100,46 @@ class MaintenanceControls {
     return res
       .status(200)
       .json(ApiResponse.success(history, "Maintenance status history retrieved successfully"));
+  });
+
+   // Reschedule maintenance
+  rescheduleMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const { newDate } = req.body;
+
+    if (!newDate) {
+      throw ApiError.badRequest("New date is required");
+    }
+
+    const updated = await MaintenanceService.rescheduleMaintenanceDate(maintenanceId, newDate);
+    return res
+      .status(200)
+      .json(ApiResponse.success(updated, "Reschedule request sent successfully"));
+  });
+
+  // Pause maintenance
+  pauseMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const { resumeDate } = req.body;
+
+    if (!resumeDate) {
+      throw ApiError.badRequest("Resume date is required");
+    }
+
+    const updated = await MaintenanceService.pauseMaintenance(maintenanceId, resumeDate);
+    return res
+      .status(200)
+      .json(ApiResponse.success(updated, "Work paused successfully"));
+  });
+
+  // Resume maintenance
+  resumeMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+
+    const updated = await MaintenanceService.resumeMaintenance(maintenanceId);
+    return res
+      .status(200)
+      .json(ApiResponse.success(updated, "Work resumed successfully"));
   });
 }
 

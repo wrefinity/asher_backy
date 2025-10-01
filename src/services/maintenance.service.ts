@@ -4,6 +4,7 @@ import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfac
 import transferServices from "./transfer.services";
 import walletService from "./wallet.service";
 import { subDays, addDays, isBefore, isAfter, isToday } from 'date-fns';
+import { ApiError } from "../utils/ApiError";
 
 type SearchResult =
   | { type: "property"; data: properties }
@@ -709,6 +710,112 @@ class MaintenanceService {
       where: { maintenanceId },
       orderBy: { changedAt: "asc" },
     });
+  }
+
+  async rescheduleMaintenanceDate(maintenanceId: string, newDate: Date) {
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId }
+    });
+
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance not found");
+    }
+
+    // Create reschedule history entry
+    await prismaClient.maintenanceRescheduleHistory.create({
+      data: {
+        maintenanceId,
+        oldDate: maintenance.scheduleDate || new Date(),
+        newDate: new Date(newDate),
+      }
+    });
+
+    // Update maintenance with reschedule request
+    const updated = await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        rescheduleRequestDate: new Date(newDate),
+        rescheduleRequestStatus: 'PENDING',
+        scheduleDate: new Date(newDate), // Update the actual schedule date
+      },
+      include: {
+        // Include necessary relations
+        tenant: true,
+        vendor: true,
+        property: true,
+        category: true,
+      }
+    });
+
+    return updated;
+  }
+
+  async pauseMaintenance(maintenanceId: string, resumeDate: Date) {
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId }
+    });
+
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance not found");
+    }
+
+    const updated = await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        status: maintenanceStatus.PAUSED,
+        pauseResumeDate: new Date(resumeDate),
+        isPaused: true,
+        maintenanceStatusHistory: {
+          create: {
+            oldStatus: maintenance.status,
+            newStatus: maintenanceStatus.PAUSED,
+          },
+        },
+      },
+      include: {
+        // Include necessary relations
+        tenant: true,
+        vendor: true,
+        property: true,
+        category: true,
+      }
+    });
+
+    return updated;
+  }
+
+  async resumeMaintenance(maintenanceId: string) {
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId }
+    });
+
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance not found");
+    }
+
+    const updated = await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        status: maintenanceStatus.IN_PROGRESS,
+        pauseResumeDate: null,
+        isPaused: false,
+        maintenanceStatusHistory: {
+          create: {
+            oldStatus: maintenance.status,
+            newStatus: maintenanceStatus.IN_PROGRESS,
+          },
+        },
+      },
+      include: {
+        // Include necessary relations
+        tenant: true,
+        vendor: true,
+        property: true,
+        category: true,
+      }
+    });
+
+    return updated;
   }
 }
 

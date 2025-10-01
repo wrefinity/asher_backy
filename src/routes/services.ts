@@ -24,19 +24,24 @@ class VendorServiceRoutes {
         this.router.get('/:id', VendorServiceController.getService);
         this.router.patch('/:id', VendorServiceController.updateService);
         this.router.delete('/:id', VendorServiceController.deleteService);
-        this.router.get('/maintenances/all',  MaintenanceServiceController.getMaintenances);
-        this.router.get('/maintenances/:id',  MaintenanceServiceController.getMaintenancesById);
+        this.router.get('/maintenances/all', MaintenanceServiceController.getMaintenances);
+        this.router.get('/maintenances/:id', MaintenanceServiceController.getMaintenancesById);
 
         // Vendor actions
         this.router.post("/maintenances/:maintenanceId/accept", MaintenanceServiceController.acceptJob);
-        this.router.post("/maintenances/:maintenanceId/start-attachments",  upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadStartAttachments);
-        this.router.post("/maintenances/:maintenanceId/end-attachments",  upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadEndAttachments);
+        this.router.post("/maintenances/:maintenanceId/start-attachments", upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadStartAttachments);
+        this.router.post("/maintenances/:maintenanceId/end-attachments", upload.array("files"), uploadToCloudinaryGeneric, MaintenanceServiceController.uploadEndAttachments);
 
         // Status changes
         this.router.post("/maintenances/:maintenanceId/status", MaintenanceServiceController.updateStatus);
 
         // History
         this.router.get("/maintenances/:maintenanceId/history", MaintenanceServiceController.getStatusHistory);
+
+        // Update your routes
+        this.router.post("/maintenances/:maintenanceId/reschedule", MaintenanceServiceController.rescheduleMaintenance);
+        this.router.post("/maintenances/:maintenanceId/pause", MaintenanceServiceController.pauseMaintenance);
+        this.router.post("/maintenances/:maintenanceId/resume", MaintenanceServiceController.resumeMaintenance);
     }
 
 }

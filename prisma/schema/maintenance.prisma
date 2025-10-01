@@ -10,6 +10,13 @@ enum maintenanceStatus {
   CANCEL
 }
 
+// Add reschedule status enum
+enum maintenanceRescheduleStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 enum maintenanceDecisionStatus {
   APPROVED
   DECLINED
@@ -70,6 +77,15 @@ model maintenance {
   paymentStatus TransactionStatus @default(PENDING)
   amount        Decimal?          @db.Decimal(18, 2)
   maintenanceStatusHistory maintenanceStatusHistory[]
+
+    // Add pause functionality
+  pauseResumeDate      DateTime?  // Date when work should automatically resume
+  isPaused            Boolean    @default(false)
+  
+  // Add reschedule request functionality
+  rescheduleRequestDate DateTime?
+  rescheduleRequestStatus maintenanceRescheduleStatus? @default(PENDING)
+  rescheduleReason     String?
 }
 
 model maintenanceRescheduleHistory {
