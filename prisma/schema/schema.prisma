@@ -60,7 +60,6 @@ model agency {
   name       String
   agents     agents[]
   properties properties[]
-  // TODO:
 }
 
 model agents {

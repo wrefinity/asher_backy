@@ -33,6 +33,7 @@ import UserRouter from "./routes/users";
 import DocuSignRouter from "./routes/docusign";
 import AdsRouter from "./tenant/routes/ads.routes";
 import communityRoutes from "./routes/community.routes";
+import VendorRouter from "./vendor/routes/index.routes";
 import TenantRouter from "./tenant/routes/index";
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
@@ -96,6 +97,7 @@ class Server {
         this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);
         this.app.use("/api/vendor/services", VendorServiceRouter);
+        this.app.use("/api/vendors", VendorRouter);
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);

@@ -12,6 +12,8 @@ model vendors {
   documents    vendorDocument[]  
 
   @@unique([userId])
+  Event Event[]
+  VendorAvailability VendorAvailability[]
 }
 
 model vendorDocument {
