@@ -13,7 +13,6 @@ class EventsController {
     const eventData: CreateEventDTO = req.body;
 
     const event = await eventService.createEvent(vendorId, eventData);
-    
     return res.status(201).json(
       ApiResponse.success(event, 'Event created successfully')
     );
