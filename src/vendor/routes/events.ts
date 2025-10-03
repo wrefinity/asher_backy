@@ -15,7 +15,7 @@ class EventRouter {
         // Event routes
         this.router.post('/', EventController.createEvent);
         this.router.get('/', EventController.getVendorEvents);
-        // this.router.get('/range', EventController.getEventsByDateRange);
+        this.router.get('/range', EventController.getEventsByDateRange);
         this.router.get('/:eventId', EventController.getEventById);
         this.router.put('/:eventId', EventController.updateEvent);
         this.router.delete('/:eventId', EventController.deleteEvent);

@@ -37,25 +37,25 @@ class EventsController {
     );
   });
 
-  // getEventsByDateRange = asyncHandler(async (req: CustomRequest, res: Response) => {
-  //   const vendorId = req.user.vendors.id;
-  //   const { startDate, endDate } = req.query;
+  getEventsByDateRange = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const vendorId = req.user.vendors.id;
+    const { startDate, endDate } = req.query;
 
-  //   if (!startDate || !endDate) {
-  //     return res.status(400).json(
-  //       ApiError.badRequest('startDate and endDate are required')
-  //     );
-  //   }
+    if (!startDate || !endDate) {
+      return res.status(400).json(
+        ApiError.badRequest('startDate and endDate are required')
+      );
+    }
 
-  //   const start = new Date(startDate as string);
-  //   const end = new Date(endDate as string);
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
 
-  //   const events = await eventService.getEventsByDateRange(vendorId, start, end);
+    const events = await eventService.getEventsByDateRange(vendorId, start, end);
     
-  //   return res.status(200).json(
-  //     ApiResponse.success(events, 'Events retrieved successfully')
-  //   );
-  // });
+    return res.status(200).json(
+      ApiResponse.success(events, 'Events retrieved successfully')
+    );
+  });
 
   getEventById = asyncHandler(async (req: CustomRequest, res: Response) => {
     const vendorId = req.user.vendors.id;
