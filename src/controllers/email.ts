@@ -146,8 +146,9 @@ class EmailController {
                 limit,
                 search ? String(search) : undefined
             );
-
-            res.json(result);
+            console.log("Completed fetching inbox:");
+            console.log(result);
+            return            res.status(200).json(result);
         } catch (error) {
             res.status(400).json({ message: error.message });
         }

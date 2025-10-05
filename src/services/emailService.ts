@@ -171,6 +171,7 @@ class EmailService {
                     receiverEmail: user.email,
                     isDraft: false,
                     isSent: true,
+                    isDeleted: false,
                     isReply: false,
                     states: {
                         none: {
@@ -226,6 +227,8 @@ class EmailService {
             skip: (currentPage - 1) * itemsPerPage,
             take: itemsPerPage,
         });
+
+        console.log(emails)
 
         const transformedEmails = emails.map(email => {
             const [userState] = email.states;
@@ -321,6 +324,7 @@ class EmailService {
         const where: any = {
             ...baseConditions,
             ...searchConditions,
+            isDeleted: false,
             ...(baseConditions.isDraft !== true && category != 'sent' && {
                 states: {
                     some: {
