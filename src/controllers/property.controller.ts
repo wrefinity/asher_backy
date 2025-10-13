@@ -427,6 +427,21 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     }
+        getRelatedListings = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const excludeListingId = req.query.excludeListingId as string;
+            
+            const relatedListings = await PropertyServices.getRelatedListings(propertyId, excludeListingId);
+            
+            return res.status(200).json({
+                success: true,
+                data: relatedListings
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    }
 
 }
 

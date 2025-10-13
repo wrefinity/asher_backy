@@ -1,46 +1,45 @@
 model Broadcast {
-    id         String            @id @default(cuid())
-    landlordId String
-    subject    String
-    message    String
-    type       BroadcastType
-    // recipients String[] // Array of recipient emails
-    categoryId String
-    category   BroadcastCategory @relation("BroadcastCategory", fields: [categoryId], references: [id], onDelete: Cascade)
-    scheduledAt DateTime? // when to send the broadcast
-    isDraft    Boolean           @default(false)
-    createdAt  DateTime          @default(now())
-    updatedAt  DateTime          @updatedAt
-    landlord   landlords         @relation(fields: [landlordId], references: [id], onDelete: Cascade)
-}
-
-enum BroadcastType {
-    EMAIL
-    CHAT
+  id          String            @id @default(cuid())
+  landlordId  String
+  subject     String
+  message     String
+  type        BroadcastType
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  categoryId  String
+  isDraft     Boolean           @default(false)
+  scheduledAt DateTime?
+  category    BroadcastCategory @relation("BroadcastCategory", fields: [categoryId], references: [id], onDelete: Cascade)
+  landlord    landlords         @relation(fields: [landlordId], references: [id], onDelete: Cascade)
 }
 
 model BroadcastCategory {
-    id         String                     @id @default(cuid())
-    landlordId String?
-    name       String
-    members    BroadcastCategoryMembers[]
-    location   String?
-    propertyId String?
-    property   properties?                @relation(fields: [propertyId], references: [id])
-    createdAt  DateTime                   @default(now())
-    updatedAt  DateTime                   @updatedAt
-    Broadcast  Broadcast[]                @relation("BroadcastCategory")
-    landlord   landlords?                   @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  id         String                     @id @default(cuid())
+  name       String
+  location   String?
+  propertyId String?
+  createdAt  DateTime                   @default(now())
+  updatedAt  DateTime                   @updatedAt
+  landlordId String?
+  Broadcast  Broadcast[]                @relation("BroadcastCategory")
+  landlord   landlords?                 @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  property   properties?                @relation(fields: [propertyId], references: [id])
+  members    BroadcastCategoryMembers[]
 }
 
 model BroadcastCategoryMembers {
-    id                  String            @id @default(cuid())
-    userId              String
-    broadcastCategoryId String
-    broadcastCategory   BroadcastCategory @relation(fields: [broadcastCategoryId], references: [id], onDelete: Cascade)
-    user                users             @relation(fields: [userId], references: [id], onDelete: Cascade)
-    createdAt           DateTime          @default(now())
-    updatedAt           DateTime          @updatedAt
+  id                  String            @id @default(cuid())
+  userId              String
+  broadcastCategoryId String
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  broadcastCategory   BroadcastCategory @relation(fields: [broadcastCategoryId], references: [id], onDelete: Cascade)
+  user                users             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@unique([userId, broadcastCategoryId])
+  @@unique([userId, broadcastCategoryId])
+}
+
+enum BroadcastType {
+  EMAIL
+  CHAT
 }

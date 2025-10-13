@@ -743,5 +743,58 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     };
+        updateProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+
+
+            // Verify that the property belongs to the landlord
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property || property.landlordId !== landlordId) {
+                return res.status(404).json({ message: "Property not found or access denied" });
+            }
+
+            const updatedProperty = await PropertyServices.updateProperty(propertyId, req.body);
+
+            return res.status(200).json({ property: updatedProperty });
+
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+    }
+
+    syncPropertyListingStatus = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+
+            // Verify that the property belongs to the landlord
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property || property.landlordId !== landlordId) {
+                return res.status(404).json({ message: "Property not found or access denied" });
+            }
+
+            const result = await PropertyServices.syncPropertyListingStatus(propertyId);
+
+            return res.status(200).json({ 
+                message: "Property listing status synced successfully",
+                result 
+            });
+
+        } catch (err) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+    }
 }
 export default new PropertyController() 

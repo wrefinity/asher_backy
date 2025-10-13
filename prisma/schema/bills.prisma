@@ -1,14 +1,9 @@
 model bills {
   id               String             @id @default(cuid())
-  name             String
   description      String?
   isDeleted        Boolean            @default(false)
+  name             String
   billsSubCategory billsSubCategory[]
-}
-
-enum PayableBy {
-  LANDLORD
-  TENANT
 }
 
 model billsSubCategory {
@@ -21,16 +16,21 @@ model billsSubCategory {
   billFrequency       PaymentFrequency
   dueDate             DateTime
   payableBy           PayableBy?            @default(LANDLORD)
-  isDeleted           Boolean               @default(false)
   propertyId          String?
-  property            properties?           @relation(fields: [propertyId], references: [id])
   landlordId          String?
-  landlord            landlords?            @relation(fields: [landlordId], references: [id])
   tenantId            String?
-  tenants            tenants?            @relation(fields: [tenantId], references: [id])
-  bills               bills?                @relation(fields: [billCategoryId], references: [id])
-  transactions        Transaction[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
-  ResidentialProperty ResidentialProperty[]
+  isDeleted           Boolean               @default(false)
+  bills               bills                 @relation(fields: [billCategoryId], references: [id])
+  landlord            landlords?            @relation(fields: [landlordId], references: [id])
+  property            properties?           @relation(fields: [propertyId], references: [id])
+  tenants             tenants?              @relation(fields: [tenantId], references: [id])
+  ResidentialProperty ResidentialProperty[] @relation("ResidentialPropertyTobillsSubCategory")
+  transactions        Transaction[]         @relation("TransactionTobillsSubCategory")
+}
+
+enum PayableBy {
+  LANDLORD
+  TENANT
 }

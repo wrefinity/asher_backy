@@ -946,7 +946,7 @@ class PropertyService {
             take,
         });
         // Transform the properties to spread specifications based on listAs type
-        return properties.map(property => {
+        const transformedProperties = await Promise.all(properties.map(async (property) => {
             // Type assertion for the specification array
             const specification = property.property.specification as {
                 residential?: any;
@@ -991,8 +991,16 @@ class PropertyService {
                 }
             }
 
+            // Build hierarchy information
+            const hierarchy = this.buildHierarchy(property);
+            
+            // Get related listings
+            const relatedListings = await this.getRelatedListings(property.property.id, property.id);
+
             return {
                 ...property,
+                hierarchy,
+                relatedListings,
                 property: {
                     ...propertyWithoutSpec,
                     // Only include spec data if it exists
@@ -1003,8 +1011,106 @@ class PropertyService {
                     allSpecifications: specification
                 }
             };
-        });
+        }));
+        
+        return transformedProperties;
     };
+
+    // Build hierarchy information for a listing
+    private buildHierarchy(property: any) {
+        const breadcrumb = [];
+        let context = '';
+        let level: 'property' | 'unit' | 'room' = 'property';
+        
+        // Always start with property
+        breadcrumb.push({
+            id: property.property.id,
+            name: property.property.name,
+            type: 'property',
+            url: `/property/${property.property.id}`
+        });
+        
+        if (property.type === 'SINGLE_UNIT' && property.unit) {
+            level = 'unit';
+            breadcrumb.push({
+                id: property.unit.id,
+                name: `${property.unit.unitType} ${property.unit.unitNumber || ''}`.trim(),
+                type: 'unit',
+                url: `/property/${property.id}` // Current listing URL
+            });
+            context = `${property.unit.unitType} ${property.unit.unitNumber || ''} in ${property.property.name}`.trim();
+        }
+        
+        if (property.type === 'ROOM' && property.room) {
+            level = 'room';
+            if (property.unit) {
+                breadcrumb.push({
+                    id: property.unit.id,
+                    name: `${property.unit.unitType} ${property.unit.unitNumber || ''}`.trim(),
+                    type: 'unit',
+                    url: `/property/${property.unit.id}` // Would need unit listing URL
+                });
+            }
+            breadcrumb.push({
+                id: property.room.id,
+                name: property.room.roomName,
+                type: 'room',
+                url: `/property/${property.id}` // Current listing URL
+            });
+            context = `${property.room.roomName} in ${property.unit ? `${property.unit.unitType} ${property.unit.unitNumber || ''}` : 'Unit'} in ${property.property.name}`.trim();
+        }
+        
+        if (property.type === 'ENTIRE_PROPERTY') {
+            context = property.property.name;
+        }
+        
+        return {
+            level,
+            propertyId: property.property.id,
+            unitId: property.unit?.id,
+            roomId: property.room?.id,
+            breadcrumb,
+            context
+        };
+    }
+
+    // Get related listings in the same property
+    getRelatedListings = async (propertyId: string, excludeListingId: string) => {
+        const related = await prismaClient.propertyListingHistory.findMany({
+            where: {
+                propertyId,
+                id: { not: excludeListingId },
+                onListing: true,
+                isActive: true
+            },
+            include: {
+                property: true,
+                unit: true,
+                room: true
+            }
+        });
+        
+        const units = related.filter(r => r.type === 'SINGLE_UNIT');
+        const rooms = related.filter(r => r.type === 'ROOM');
+        
+        return {
+            units: units.map(u => ({
+                id: u.id,
+                name: `${u.unit?.unitType} ${u.unit?.unitNumber || ''}`.trim(),
+                price: Number(u.price) || 0,
+                currency: u.property.currency || 'USD',
+                url: `/property/${u.id}`
+            })),
+            rooms: rooms.map(r => ({
+                id: r.id,
+                name: r.room?.roomName || 'Room',
+                price: Number(r.price) || 0,
+                currency: r.property.currency || 'USD',
+                url: `/property/${r.id}`
+            })),
+            totalCount: related.length
+        };
+    }
 
     getInactiveLandlordProperties = async (landlordId: string) => {
 
@@ -1248,6 +1354,11 @@ class PropertyService {
                     where: { id: unitId },
                     data: { isListed: true }
                 });
+                // Mark property as listed when any unit is listed
+                await tx.properties.update({
+                    where: { id: propertyId },
+                    data: { isListed: true }
+                });
             }
 
             // Create listings for new rooms
@@ -1264,6 +1375,11 @@ class PropertyService {
                 response.listings.push(created);
                 await tx.roomDetail.update({
                     where: { id: roomId },
+                    data: { isListed: true }
+                });
+                // Mark property as listed when any room is listed
+                await tx.properties.update({
+                    where: { id: propertyId },
                     data: { isListed: true }
                 });
             }
@@ -1522,6 +1638,45 @@ class PropertyService {
                 } else {
                     console.warn(`Resource with ID ${resourceId} was unlisted but no active listing history was found.`);
                 }
+
+                // 5. Check if property still has any active listings after unlisting this resource
+                if (resourceType === 'property') {
+                    const remainingActiveListings = await tx.propertyListingHistory.count({
+                        where: {
+                            propertyId: resourceId,
+                            onListing: true,
+                            isActive: true
+                        }
+                    });
+
+                    // Only set isListed to false if no active listings remain
+                    if (remainingActiveListings === 0) {
+                        await tx.properties.update({
+                            where: { id: resourceId },
+                            data: { isListed: false }
+                        });
+                    }
+                } else if (resourceType === 'unit' || resourceType === 'room') {
+                    // For units/rooms, check if the property still has any active listings
+                    const propertyId = updatedResource?.residentialPropertyId || updatedResource?.commercialPropertyId;
+                    if (propertyId) {
+                        const remainingActiveListings = await tx.propertyListingHistory.count({
+                            where: {
+                                propertyId: propertyId,
+                                onListing: true,
+                                isActive: true
+                            }
+                        });
+
+                        // Only set isListed to false if no active listings remain
+                        if (remainingActiveListings === 0) {
+                            await tx.properties.update({
+                                where: { id: propertyId },
+                                data: { isListed: false }
+                            });
+                        }
+                    }
+                }
             });
 
             return updatedResource;
@@ -1534,6 +1689,51 @@ class PropertyService {
             throw error;
         }
     };
+
+    // Method to sync isListed field based on propertyListingHistory
+    syncPropertyListingStatus = async (propertyId: string) => {
+        try {
+            const activeListingsCount = await prismaClient.propertyListingHistory.count({
+                where: {
+                    propertyId: propertyId,
+                    onListing: true,
+                    isActive: true
+                }
+            });
+
+            const isListed = activeListingsCount > 0;
+
+            await prismaClient.properties.update({
+                where: { id: propertyId },
+                data: { isListed: isListed }
+            });
+
+            return { propertyId, isListed, activeListingsCount };
+        } catch (error) {
+            console.error('Error syncing property listing status:', error);
+            throw error;
+        }
+    }
+
+    // Method to sync all properties' isListed status
+    syncAllPropertiesListingStatus = async () => {
+        try {
+            const properties = await prismaClient.properties.findMany({
+                select: { id: true }
+            });
+
+            const results = [];
+            for (const property of properties) {
+                const result = await this.syncPropertyListingStatus(property.id);
+                results.push(result);
+            }
+
+            return results;
+        } catch (error) {
+            console.error('Error syncing all properties listing status:', error);
+            throw error;
+        }
+    }
 
     delistPropertyListing = async (propertyId: string) => {
         const lastListed = await this.getPropsListedById(propertyId);

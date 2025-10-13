@@ -1,3 +1,32 @@
+model taskManagement {
+  id          String       @id @default(cuid())
+  taskName    String
+  description String
+  dueDate     DateTime
+  completed   Boolean      @default(false)
+  status      StatusType   @default(PENDING)
+  priority    PriorityType @default(LOW)
+  propertyId  String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  isDeleted   Boolean      @default(false)
+  property    properties   @relation(fields: [propertyId], references: [id])
+}
+
+model inventoryManageMent {
+  id           String        @id @default(cuid())
+  itemName     String
+  description  String
+  quantity     Int
+  status       InventoryType @default(UNAVIALABLE)
+  itemLocation String
+  propertyId   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  isDeleted    Boolean       @default(false)
+  property     properties?   @relation(fields: [propertyId], references: [id])
+}
+
 enum StatusType {
   PENDING
   COMPLETED
@@ -10,39 +39,8 @@ enum PriorityType {
   MEDIUM
 }
 
-model taskManagement {
-  id          String       @id @default(cuid())
-  taskName    String
-  description String
-  dueDate     DateTime
-  completed   Boolean      @default(false)
-  status      StatusType   @default(PENDING)
-  priority    PriorityType @default(LOW)
-  propertyId  String
-  property    properties   @relation(fields: [propertyId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted   Boolean      @default(false)
-}
-
 enum InventoryType {
   UNAVIALABLE
   AVAILABLE
   UNDER_MAINTANACE
-}
-
-
-model inventoryManageMent {
-  id           String        @id @default(cuid())
-  itemName     String
-  description  String
-  quantity     Int
-  status       InventoryType @default(UNAVIALABLE)
-  itemLocation String
-  propertyId   String?
-  property     properties?    @relation(fields: [propertyId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted   Boolean      @default(false)
 }

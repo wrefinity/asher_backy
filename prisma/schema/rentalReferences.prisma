@@ -1,118 +1,70 @@
-enum ReferenceStatus {
-    PENDING
-    COMPLETED
-    DRAFT
-    SUBMITTED
-    APPROVED
-    REJECTED
-}
-
-// Enums
-enum EmploymentType {
-  EMPLOYED
-  SELF_EMPLOYED
-  FREELANCE
-  DIRECTOR
-  SOLE_PROPRIETOR
-}
-
 model ExternalLandlord {
-  id            String                  @id @default(cuid())
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-
-  // Landlord Information
+  id            String                 @id @default(cuid())
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
   name          String
   contactNumber String
   emailAddress  String
-
-  //            Relationship
   referenceForm LandlordReferenceForm?
-
 }
+
 model LandlordReferenceForm {
-  id                        String                   @id @default(cuid())
-  createdAt                 DateTime                 @default(now())
-  updatedAt                 DateTime                 @updatedAt
-
-  // Form metadata
-  status                    ReferenceStatus          @default(PENDING)
-
-  //                        Relationships
-  TenancyReferenceHistoryId String                   @unique
-  tenancyReferenceHistory   TenancyReferenceHistory @relation(fields: [TenancyReferenceHistoryId], references: [id])
-
-  externalLandlordId        String                   @unique
-  externalLandlord          ExternalLandlord        @relation(fields: [externalLandlordId], references: [id])
-
-  conductId                 String                   @unique
-  conduct                   TenantConduct           @relation(fields: [conductId], references: [id])
-
-  // Additional Comments
-  additionalComments        String?                  @db.Text
-
-  // Signature Information
+  id                        String                  @id @default(cuid())
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  status                    ReferenceStatus         @default(PENDING)
+  TenancyReferenceHistoryId String                  @unique
+  externalLandlordId        String                  @unique
+  conductId                 String                  @unique
+  additionalComments        String?
   signerName                String?
   signature                 String?
-  signedDate                DateTime                 @default(now())
-
-  // One-to-one relationship with application
-  applicationId             String                   @unique
+  signedDate                DateTime                @default(now())
+  applicationId             String                  @unique
+  tenancyReferenceHistory   TenancyReferenceHistory @relation(fields: [TenancyReferenceHistoryId], references: [id])
   application               application             @relation(fields: [applicationId], references: [id])
+  conduct                   TenantConduct           @relation(fields: [conductId], references: [id])
+  externalLandlord          ExternalLandlord        @relation(fields: [externalLandlordId], references: [id])
 }
 
 model TenancyReferenceHistory {
-  id               String                  @id @default(cuid())
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-  // Tenant Information
+  id               String                 @id @default(cuid())
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
   tenantName       String
   currentAddress   String
   monthlyRent      String?
   rentStartDate    DateTime?
   rentEndDate      DateTime?
   reasonForLeaving String?
-
-  //               Relationship
   referenceForm    LandlordReferenceForm?
 }
 
 model TenantConduct {
-  id                       String                  @id @default(cuid())
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
-
-  // Tenant Conduct & Payment History
+  id                       String                 @id @default(cuid())
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
   rentOnTime               Boolean?
-  rentOnTimeDetails        String?                 @db.Text
-
+  rentOnTimeDetails        String?
   rentArrears              Boolean?
-  rentArrearsDetails       String?                 @db.Text
-
+  rentArrearsDetails       String?
   propertyCondition        Boolean?
-  propertyConditionDetails String?                 @db.Text
-
+  propertyConditionDetails String?
   complaints               Boolean?
-  complaintsDetails        String?                 @db.Text
-
+  complaintsDetails        String?
   endCondition             Boolean?
-  endConditionDetails      String?                 @db.Text
-
+  endConditionDetails      String?
   rentAgain                Boolean?
-  rentAgainDetails         String?                 @db.Text
-
-  //                       Relationship
+  rentAgainDetails         String?
   referenceForm            LandlordReferenceForm?
 }
 
-//  guarantor agreement model
 model GuarantorAgreement {
-  id                      String                @id @default(cuid())
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-  status                  String                @default("DRAFT")
+  id                      String               @id @default(cuid())
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  status                  String               @default("DRAFT")
   submittedAt             DateTime?
-  // guarantor personal information for screening
   title                   String?
   firstName               String
   middleName              String?
@@ -121,83 +73,19 @@ model GuarantorAgreement {
   nationalInsuranceNumber String?
   contactNumber           String
   emailAddress            String
-
-  //                      relationships
-  guarantor               guarantorInformation @relation(fields: [guarantorId], references: [id])
-  guarantorId             String                    @unique
+  guarantorId             String               @unique
   guarantorEmployment     Json?
-  // guarantorEmployment     GuarantorEmploymentInfo? @relation(fields: [guarantorEmploymentId], references: [id])
-  // guarantorEmploymentId   String?               @unique
-  documents               propertyDocument[]
-
-  // Agreement details
-  // agreementText           String                @db.Text
-  signedByGuarantor       Boolean               @default(false)
+  signedByGuarantor       Boolean              @default(false)
   guarantorSignature      String?
   guarantorSignedAt       DateTime?
-  // One-to-one relationship with application
-  applicationId           String                @unique
+  applicationId           String               @unique
   application             application          @relation(fields: [applicationId], references: [id])
-
+  guarantor               guarantorInformation @relation(fields: [guarantorId], references: [id])
+  documents               propertyDocument[]
 }
 
-// model GuarantorEmploymentInfo {
-//   id                        String               @id @default(cuid())
-//   employmentType            EmploymentType
-
-//   // Common fields across employment types
-//   annualIncome              Decimal?             @db.Decimal(10, 2)
-
-//   // Employed specific fields
-//   employerName              Json?
-//   jobTitle                  String?
-//   employmentStartDate       DateTime?
-//   employerAddress           String?
-//   employerPhone             String?
-//   employerEmail             String?
-
-//   // Self-employed specific fields
-//   businessName              String?
-//   businessNature            String?
-//   businessYears             Int?
-//   businessAddress           String?
-//   accountantName            String?
-//   accountantContact         String?
-//   utrNumber                 String?
-
-//   // Freelance specific fields
-//   freelanceType             String?
-//   freelanceYears            Int?
-//   freelanceMonthlyIncome    Decimal?             @db.Decimal(10, 2)
-//   freelancePortfolioWebsite String?
-//   freelanceMajorClients     String?
-//   freelanceUtrNumber        String?
-
-//   // Director specific fields
-//   companyName               String?
-//   companyNumber             String?
-//   position                  String?
-//   directorIncome            String?
-//   ownershipPercentage       Int?
-//   companyFounded            Int?
-//   companyAddress            String?
-
-//   // Sole proprietor specific fields
-//   businessNameSole          String?
-//   businessNatureSole        String?
-//   businessYearsSole         String?
-//   annualIncomeSole          String?
-//   businessAddressSole       String?
-//   businessRegistration      String?
-//   utrNumberSole             String?
-
-//   //                        Relationship
-//   guarantorAgreement        GuarantorAgreement?
-// }
-
-// Employee Information
 model EmployeeReferenceForm {
-  id                         String       @id @default(cuid())
+  id                         String      @id @default(cuid())
   employeeName               String?
   jobTitle                   String?
   department                 String?
@@ -218,11 +106,27 @@ model EmployeeReferenceForm {
   wouldReemploy              Boolean?
   reemployDetails            String?
   additionalComments         String?
-  declarationConfirmed       Boolean      @default(true)
+  declarationConfirmed       Boolean     @default(true)
   signerName                 String?
   signature                  String?
   date                       DateTime?
-  // One-to-one relationship with application
-  applicationId              String       @unique
+  applicationId              String      @unique
   application                application @relation(fields: [applicationId], references: [id])
+}
+
+enum ReferenceStatus {
+  PENDING
+  COMPLETED
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum EmploymentType {
+  EMPLOYED
+  SELF_EMPLOYED
+  FREELANCE
+  DIRECTOR
+  SOLE_PROPRIETOR
 }

@@ -15,6 +15,63 @@ const propertySpecificationType = Object.values(PropertySpecificationType);
 // property listing schema
 const listingTypes = Object.values(ListingType);
 
+// Joi schema for validating property update data
+export const updatePropertySchemaNew = Joi.object({
+  // Basic Information
+  name: Joi.string().optional(),
+  description: Joi.string().optional(),
+  propertySize: Joi.number().integer().optional(),
+  isDeleted: Joi.boolean().optional(),
+  
+  // Pricing
+  marketValue: Joi.number().optional(),
+  price: Joi.number().optional(),
+  securityDeposit: Joi.number().optional(),
+  
+  // Location
+  city: Joi.string().optional(),
+  stateId: Joi.string().optional(),
+  country: Joi.string().optional(),
+  zipcode: Joi.string().optional(),
+  address: Joi.string().optional(),
+  address2: Joi.string().optional(),
+  latitude: Joi.number().optional(),
+  longitude: Joi.number().optional(),
+  
+  // Property Details
+  areaUnit: Joi.string().valid('SQFT', 'SQM').optional(),
+  yearBuilt: Joi.number().integer().optional(),
+  currency: Joi.string().valid('NGN', 'USD', 'GBP').optional(),
+  priceFrequency: Joi.string().valid('DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'PER_SQFT').optional(),
+  rentalPeriod: Joi.string().optional(),
+  availability: Joi.string().valid('OCCUPIED', 'VACANT', 'RENTED', 'RESERVED', 'COMING_SOON', 'SOLD', 'PENDING', 'MAINTENANCE').optional(),
+  
+  // UK Specifics
+  businessRateVerified: Joi.boolean().optional(),
+  postalCodeVerified: Joi.boolean().optional(),
+  isListed: Joi.boolean().optional(),
+  landRegistryNumber: Joi.string().optional(),
+  vatStatus: Joi.string().valid('VAT_EXEMPT', 'VAT_APPLICABLE', 'VAT_OPTIONAL').optional(),
+  
+  // Property Features
+  keyFeatures: Joi.array().items(Joi.string()).optional(),
+  customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+  
+  // Specification
+  specificationType: Joi.string().valid('COMMERCIAL', 'RESIDENTIAL', 'SHORTLET').optional(),
+  
+  // Media (for future use)
+  images: Joi.array().items(Joi.string().uri()).optional(),
+  videos: Joi.array().items(Joi.string().uri()).optional(),
+  
+  // Read-only fields (should not be updated via this endpoint)
+  landlordId: Joi.string().forbidden(),
+  agencyId: Joi.string().forbidden(),
+  createdAt: Joi.date().iso().forbidden(),
+  updatedAt: Joi.date().iso().forbidden(),
+  count: Joi.number().forbidden(),
+});
+
 export const createPropertySchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().required(),

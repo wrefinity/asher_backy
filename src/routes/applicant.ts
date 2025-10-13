@@ -6,6 +6,7 @@ import EmployeeReferenceFormControls from '../controllers/employee.reference.con
 import { Authorize } from "../middlewares/authorize";
 import { uploadToCloudinary } from '../middlewares/multerCloudinary';
 import upload, {uploadControl} from "../configs/multer";
+
 class ApplicantRoutes {
     public router: Router;
     authenticateService: Authorize

@@ -1,114 +1,108 @@
-enum onlineStatus {
-    online
-    offline
-}
-
 model users {
-    id         String  @id @default(cuid())
-    email      String  @unique
-    password   String?
-    isVerified Boolean @default(false)
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    // user role definition default is webuser
-    role userRoles[] @default([WEBUSER])
-
-    onlineStatus           onlineStatus?            @default(offline)
-    // foreign key and relational fields 
-    VerificationToken      VerificationToken[]
-    tenants                tenants[]               
-    landlords              landlords?
-    // community              Community[]
-    communityPost          CommunityPost[]
-    communityPostLikes     CommunityPostLike[]
-    communityPostViews     CommunityPostView[]
-    sentEmails             Email[]                  @relation("SentEmails") 
-    receivedEmails         Email[]                  @relation("ReceivedEmails") 
-    applicantion           application[]
-    agents                 agents[]
-    Comments               Comment[]
-    ratingsGiven           Rating[]                 @relation("ratedByUser")
-    ratingsReceived        Rating[]                 @relation("userRated")
-    messagesSent           Message[]                @relation("messagesSent")
-    messagesReceived       Message[]                @relation("messagesReceived")
-    chatRoomsUser1         ChatRoom[]               @relation("chatRoomsUser1")
-    chatRoomsUser2         ChatRoom[]               @relation("chatRoomsUser2")
-    profileId              String?                  @unique
-    profile                profile?                 @relation(fields: [profileId], references: [id])
-    residentialInformation residentialInformation[]
-    CommunityMember        CommunityMember[]
-    Ads                    Ads[]
-    transactions           Transaction[]
-    creditScore            creditScore?
-    reviews                reviews[]
-    Subscription           Subscription[]
-    vendors                vendors?
-    stripeCustomerId       String?                  @unique
-    wallet                 wallet[]
-    nextOfKin              nextOfKin[]
-    applicationCreatedBy   application[]            @relation("createdBy")
-    applicationUpdatedBy   application[]            @relation("updatedBy")
-    guarantorInformation   guarantorInformation[]
-    emergencyContact       emergencyContact[]
-    referees               referees[]
-    document               propertyDocument[]
-    EmploymentInformation  EmploymentInformation[]
-    applicantPersonalDetails applicantPersonalDetails[]
-    Complaint              Complaint[]
-    Log                    Log[]                    @relation("users")
-    violation              violation[]              @relation("users")
-    UserLikedProperty      UserLikedProperty[]
-    applicationInvites     applicationInvites[]
-    application            application[]            @relation("ApplicationUser")
-    Booking                Booking[]
-    UserSearchPreference   UserSearchPreference[]
-    assignedTemplates      UserDocuTemplate[]
-    DocuTemplate           DocuTemplate[]
-    DocuTemplateVersion    DocuTemplateVersion[]
-    UserEmailState         UserEmailState[]
-    Community              Community[] @relation("CommunityOwner")
-    CommunityPostShare     CommunityPostShare[]
-    CommentLike            CommentLike[]
-    DiscussionThread       DiscussionThread[]
-    DiscussionComment      DiscussionComment[]
-    DiscussionCommentLike  DiscussionCommentLike[]
-    CommunityPostPollVote  CommunityPostPollVote[]
-    DiscussionThreadPollVote DiscussionThreadPollVote[]
-    ForumMember            ForumMember[]
-    BroadcastCategoryMembers BroadcastCategoryMembers[]
-    ForumThreadLike        ForumThreadLike[]
-    DiscussionCommentShare DiscussionCommentShare[]
-    Forum                  Forum[] @relation("ForumOwner")
-    ForumThreadPin         ForumThreadPin[]
-    SupportTicketAssigned  SupportTicket[] @relation("TicketAssignedTo")
-    ComplaintMessage       ComplaintMessage[]
-    UserPreferences        UserPreferences[]
-    NotificationPreference NotificationPreference[]
-    Todo                   Todo[]
-
-    Suggestion Suggestion[]
+  id                       String                     @id @default(cuid())
+  email                    String                     @unique
+  password                 String?
+  isVerified               Boolean                    @default(false)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  role                     userRoles[]                @default([WEBUSER])
+  onlineStatus             onlineStatus?              @default(offline)
+  profileId                String?                    @unique
+  stripeCustomerId         String?                    @unique
+  Ads                      Ads[]
+  Booking                  Booking[]
+  BroadcastCategoryMembers BroadcastCategoryMembers[]
+  chatRoomsUser1           ChatRoom[]                 @relation("chatRoomsUser1")
+  chatRoomsUser2           ChatRoom[]                 @relation("chatRoomsUser2")
+  Comments                 Comment[]
+  CommentLike              CommentLike[]
+  Community                Community[]                @relation("CommunityOwner")
+  CommunityMember          CommunityMember[]
+  communityPost            CommunityPost[]
+  communityPostLikes       CommunityPostLike[]
+  CommunityPostPollVote    CommunityPostPollVote[]
+  CommunityPostShare       CommunityPostShare[]
+  communityPostViews       CommunityPostView[]
+  Complaint                Complaint[]
+  ComplaintMessage         ComplaintMessage[]
+  DiscussionComment        DiscussionComment[]
+  DiscussionCommentLike    DiscussionCommentLike[]
+  DiscussionCommentShare   DiscussionCommentShare[]
+  DiscussionThread         DiscussionThread[]
+  DiscussionThreadPollVote DiscussionThreadPollVote[]
+  DocuTemplate             DocuTemplate[]
+  DocuTemplateVersion      DocuTemplateVersion[]
+  receivedEmails           Email[]                    @relation("ReceivedEmails")
+  sentEmails               Email[]                    @relation("SentEmails")
+  EmploymentInformation    EmploymentInformation[]
+  Forum                    Forum[]                    @relation("ForumOwner")
+  ForumMember              ForumMember[]
+  ForumThreadLike          ForumThreadLike[]
+  ForumThreadPin           ForumThreadPin[]
+  Log                      Log[]                      @relation("users")
+  messagesReceived         Message[]                  @relation("messagesReceived")
+  messagesSent             Message[]                  @relation("messagesSent")
+  NotificationPreference   NotificationPreference[]
+  ratingsGiven             Rating[]                   @relation("ratedByUser")
+  ratingsReceived          Rating[]                   @relation("userRated")
+  Subscription             Subscription[]
+  Suggestion               Suggestion[]
+  SupportTicketAssigned    SupportTicket[]            @relation("TicketAssignedTo")
+  Todo                     Todo[]
+  transactions             Transaction[]
+  assignedTemplates        UserDocuTemplate[]
+  UserEmailState           UserEmailState[]
+  UserLikedProperty        UserLikedProperty[]
+  UserPreferences          UserPreferences?
+  UserSearchPreference     UserSearchPreference?
+  VerificationToken        VerificationToken[]
+  agents                   agents[]
+  applicantPersonalDetails applicantPersonalDetails[]
+  applicationCreatedBy     application[]              @relation("createdBy")
+  applicationUpdatedBy     application[]              @relation("updatedBy")
+  application              application[]              @relation("ApplicationUser")
+  applicationInvites       applicationInvites[]
+  creditScore              creditScore?
+  emergencyContact         emergencyContact[]
+  guarantorInformation     guarantorInformation[]
+  landlords                landlords?
+  nextOfKin                nextOfKin[]
+  document                 propertyDocument[]
+  referees                 referees[]
+  residentialInformation   residentialInformation[]
+  reviews                  reviews[]
+  tenants                  tenants[]
+  profile                  profile?                   @relation(fields: [profileId], references: [id])
+  vendors                  vendors?
+  violation                violation[]                @relation("users")
+  wallet                   wallet[]
+  applicantion             application[]              @relation("applicationTousers")
 }
 
 model UserLikedProperty {
-    id         String      @id @default(cuid())
-    userId     String?
-    user       users?      @relation(fields: [userId], references: [id])
-    propertyId String?
-    property   properties? @relation(fields: [propertyId], references: [id])
-    likedAt    DateTime    @default(now())
-
-    @@unique([userId, propertyId])
+  id         String      @id @default(cuid())
+  userId     String?
+  propertyId String?
+  likedAt    DateTime    @default(now())
+  property   properties? @relation(fields: [propertyId], references: [id])
+  user       users?      @relation(fields: [userId], references: [id])
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  @@unique([userId, propertyId])
 }
 
 model UserSearchPreference {
-    id          String         @id @default(cuid())
-    description String?        @unique
-    userId      String         @unique
-    user        users          @relation(fields: [userId], references: [id])
-    types       PropertyType[]
-    isActive    Boolean        @default(true)
-    updatedAt   DateTime       @updatedAt
-    createdAt   DateTime       @default(now())
+  id          String         @id @default(cuid())
+  description String?        @unique
+  userId      String         @unique
+  types       PropertyType[]
+  isActive    Boolean        @default(true)
+  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime       @default(now())
+  user        users          @relation(fields: [userId], references: [id])
+}
+
+enum onlineStatus {
+  online
+  offline
 }

@@ -1,34 +1,28 @@
-enum DocuTemplateFor {
-  USER
-  ASHER
-}
-
 model DocuTemplate {
-  id            String                @id @default(cuid())
-  title         String
-  description   String?
-  content       Json
-  ownerId       String
-  documentFor   DocuTemplateFor       @default(USER)
-  owner         users                 @relation(fields: [ownerId], references: [id])
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  isActive      Boolean               @default(true)
-  versions      DocuTemplateVersion[]
-  userTemplates UserDocuTemplate[]
-
+  id                String                @id @default(cuid())
+  title             String
+  description       String?
+  content           Json
+  ownerId           String
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  isActive          Boolean               @default(true)
+  documentFor       DocuTemplateFor       @default(USER)
   AgreementDocument AgreementDocument[]
+  owner             users                 @relation(fields: [ownerId], references: [id])
+  versions          DocuTemplateVersion[]
+  userTemplates     UserDocuTemplate[]
 }
 
 model DocuTemplateVersion {
   id         String       @id @default(cuid())
-  isDeleted  Boolean      @default(false)
   templateId String
-  template   DocuTemplate @relation(fields: [templateId], references: [id])
   version    Int
   content    String
   createdAt  DateTime     @default(now())
   updatedBy  String
+  isDeleted  Boolean      @default(false)
+  template   DocuTemplate @relation(fields: [templateId], references: [id])
   user       users        @relation(fields: [updatedBy], references: [id])
 
   @@unique([templateId, version])
@@ -37,12 +31,17 @@ model DocuTemplateVersion {
 model UserDocuTemplate {
   id         String       @id @default(cuid())
   userId     String
-  user       users        @relation(fields: [userId], references: [id])
   templateId String
-  template   DocuTemplate @relation(fields: [templateId], references: [id])
   isDefault  Boolean      @default(false)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  template   DocuTemplate @relation(fields: [templateId], references: [id])
+  user       users        @relation(fields: [userId], references: [id])
 
   @@unique([userId, templateId])
+}
+
+enum DocuTemplateFor {
+  USER
+  ASHER
 }

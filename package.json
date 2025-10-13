@@ -14,7 +14,8 @@
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
     "migrate-dev": "prisma migrate dev --name init",
-    "generate": "prisma generate"
+    "generate": "prisma generate",
+    "db:pull": "npx prisma db pull"
   },
   "pre-commit": [
     "ts.check",

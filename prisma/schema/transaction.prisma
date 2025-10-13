@@ -1,3 +1,68 @@
+model Transaction {
+  id                        String               @id @default(cuid())
+  description               String?
+  amount                    Decimal              @db.Decimal(18, 2)
+  userId                    String
+  walletId                  String?
+  type                      TransactionType
+  reference                 TransactionReference
+  status                    TransactionStatus
+  referenceId               String               @unique
+  paymentGateway            PaymentGateway?
+  stripePaymentIntentId     String?              @unique
+  propertyId                String?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  currency                  String?
+  isDue                     Boolean?             @default(false)
+  securityDepositPercentage Int?
+  roomId                    String?
+  unitId                    String?
+  metadata                  Json?
+  Ads                       Ads[]
+  Log                       Log[]                @relation("transactions")
+  property                  properties?          @relation(fields: [propertyId], references: [id])
+  room                      RoomDetail?          @relation(fields: [roomId], references: [id])
+  unit                      UnitConfiguration?   @relation(fields: [unitId], references: [id])
+  user                      users                @relation(fields: [userId], references: [id])
+  wallet                    wallet?              @relation(fields: [walletId], references: [id])
+  billsSubCategory          billsSubCategory[]   @relation("TransactionTobillsSubCategory")
+}
+
+model tenantPaymentHistory {
+  id                 String    @id @default(cuid())
+  rentStartDate      DateTime? @db.Timestamptz(6)
+  rentEndDate        DateTime? @db.Timestamptz(6)
+  expectedRentAmount Decimal?  @db.Decimal(18, 2)
+  amountPaid         Decimal?  @db.Decimal(18, 2)
+  tenantId           String?
+  tenant             tenants?  @relation(fields: [tenantId], references: [id])
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  stripeSubscriptionId String    @unique
+  status               String
+  userId               String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  cancelledAt          DateTime?
+  user                 users     @relation(fields: [userId], references: [id])
+}
+
+model Budget {
+  id              String               @id @default(cuid())
+  propertyId      String
+  transactionType TransactionReference
+  budgetAmount    Float
+  currentAmount   Float                @default(0)
+  frequency       BudgetFrequency
+  alertThreshold  Float                @default(0.8)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  property        properties           @relation(fields: [propertyId], references: [id])
+}
+
 enum TransactionReference {
   FUND_WALLET
   WITHDRAWAL
@@ -41,79 +106,6 @@ enum PaymentFrequency {
   QUARTERLY
   ANNUALLY
   PER_SQFT
-}
-
-model Transaction {
-  id                        String               @id @default(cuid())
-  description               String?
-  amount                    Decimal              @db.Decimal(18, 2)
-  userId                    String
-  user                      users                @relation(fields: [userId], references: [id])
-  walletId                  String?
-  wallet                    wallet?              @relation(fields: [walletId], references: [id])
-  type                      TransactionType
-  reference                 TransactionReference
-  status                    TransactionStatus
-  referenceId               String               @unique
-  paymentGateway            PaymentGateway?
-  stripePaymentIntentId     String?              @unique
-  propertyId                String?
-  property                  properties?          @relation(fields: [propertyId], references: [id])
-  unitId                    String?
-  unit                      UnitConfiguration?   @relation(fields: [unitId], references: [id])
-  roomId                    String?
-  room                      RoomDetail?          @relation(fields: [roomId], references: [id])
-  createdAt                 DateTime             @default(now())
-  updatedAt                 DateTime             @updatedAt
-  currency                  String?
-  isDue                     Boolean?             @default(false)
-  Ads                       Ads[]
-  securityDepositPercentage Int?
-  Log                       Log[]                @relation("transactions")
-  metadata                  Json?
-
-  billsSubCategory billsSubCategory[]
-}
-
-model tenantPaymentHistory {
-  id            String    @id @default(cuid())
-  rentStartDate DateTime? @db.Timestamptz(6)
-  rentEndDate   DateTime? @db.Timestamptz(6)
-
-  expectedRentAmount Decimal? @db.Decimal(18, 2)
-  amountPaid         Decimal? @db.Decimal(18, 2)
-
-  // relationships feilds
-  tenantId String?
-  tenant   tenants? @relation(fields: [tenantId], references: [id])
-}
-
-
-
-// New Subscription model
-model Subscription {
-  id                   String    @id @default(cuid())
-  stripeSubscriptionId String    @unique
-  status               String
-  userId               String
-  user                 users     @relation(fields: [userId], references: [id])
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  cancelledAt          DateTime?
-}
-
-model Budget {
-  id              String               @id @default(cuid())
-  propertyId      String
-  transactionType TransactionReference
-  budgetAmount    Float
-  currentAmount   Float                @default(0)
-  frequency       BudgetFrequency
-  alertThreshold  Float                @default(0.8) // 80% threshold
-  property        properties           @relation(fields: [propertyId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 enum BudgetFrequency {

@@ -18,6 +18,13 @@ import SupportRouter from './support.routes';
 
 import FinanceRouter from './finance.routes';
 import LandlordTransactionRouter from './landlord-transaction.routes';
+import AnalyticsRouter from './analytics.routes';
+import ReportsRouter from './reports.routes';
+import PaymentRouter from './payment.routes';
+import LeaseRenewalRouter from './leaseRenewal.routes';
+import LandlordEventRouter from './landlordEvent.routes';
+import PropertyValueRouter from './propertyValue.routes';
+import StorageAnalyticsRouter from './storageAnalytics.routes';
 class LandlordRouter {
     public router: Router;
     authenticateService: Authorize
@@ -103,10 +110,27 @@ class LandlordRouter {
         this.router.use("/transactions", LandlordTransactionRouter);
         this.router.use("/finance", FinanceRouter);
 
+        // Payment management routes
+        this.router.use("/payments", PaymentRouter);
+
+        // Analytics routes
+        this.router.use("/analytics", AnalyticsRouter);
+        
+        // Reports routes  
+        this.router.use("/reports", ReportsRouter);
+
         //broadcast routes
         this.router.use('/broadcast', BroadcastRouter)
         // inspections
         this.router.use('/inspections', InspectionRouter)
+        // lease renewal routes
+        this.router.use('/lease-renewals', LeaseRenewalRouter)
+        // landlord event routes
+        this.router.use('/events', LandlordEventRouter)
+        // property value routes
+        this.router.use('/property-values', PropertyValueRouter)
+        // storage analytics routes
+        this.router.use('/storage', StorageAnalyticsRouter)
     }
 }
 

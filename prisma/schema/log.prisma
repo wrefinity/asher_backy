@@ -1,53 +1,46 @@
+model Log {
+  id                 String                  @id @default(cuid())
+  subjects           String?
+  viewAgain          YesNo?
+  considerRenting    YesNo?
+  events             String
+  type               LogType?
+  status             logTypeStatus?
+  createdAt          DateTime                @default(now())
+  propertyId         String?
+  applicationId      String?
+  transactionId      String?
+  createdById        String?
+  propertyListingId  String?
+  roomId             String?
+  unitId             String?
+  application        application?            @relation("apply", fields: [applicationId], references: [id])
+  users              users?                  @relation("users", fields: [createdById], references: [id])
+  property           properties?             @relation("props", fields: [propertyId], references: [id])
+  propertyListing    propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
+  rooms              RoomDetail?             @relation(fields: [roomId], references: [id])
+  transaction        Transaction?            @relation("transactions", fields: [transactionId], references: [id])
+  units              UnitConfiguration?      @relation(fields: [unitId], references: [id])
+  applicationInvites applicationInvites[]
+}
+
 enum LogType {
-    MAINTENANCE
-    APPLICATION
-    TRANSACTION
-    FEEDBACK
-    ACTIVITY
-    VIEW
-    ENQUIRED
-    // communication logs
-    CALL
-    MESSAGE
-    EMAIL
+  MAINTENANCE
+  APPLICATION
+  TRANSACTION
+  FEEDBACK
+  ACTIVITY
+  VIEW
+  ENQUIRED
+  CALL
+  MESSAGE
+  EMAIL
 }
 
 enum logTypeStatus {
-    PENDING
-    INVITED
-    RE_INVITED
-    REJECTED
-    COMPLETED
-}
-
-model Log {
-    id              String   @id @default(cuid()) // Unique ID for the log entry
-    subjects        String?
-    viewAgain       YesNo? // The feedback comment
-    considerRenting YesNo? // The feedback comment
-    events          String // Events or comments description
-    type            LogType?
-
-    // for application enquiry pending
-    status logTypeStatus?
-
-    createdAt  DateTime    @default(now()) // Log creation timestamp
-    propertyId String? // Foreign key for the property (optional)
-    property   properties? @relation("props", fields: [propertyId], references: [id])
-
-    propertyListing   propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
-    propertyListingId String?
-    units             UnitConfiguration?      @relation(fields: [unitId], references: [id])
-    unitId            String?
-    rooms             RoomDetail?             @relation(fields: [roomId], references: [id])
-    roomId            String?
-
-    applicationId String? // Foreign key for the property (optional)
-    application   application? @relation("apply", fields: [applicationId], references: [id])
-    transactionId String? // Foreign key for the transaction (optional)
-    transaction   Transaction? @relation("transactions", fields: [transactionId], references: [id])
-    createdById   String? // Foreign key for the transaction (optional)
-    users         users?       @relation("users", fields: [createdById], references: [id])
-
-    applicationInvites applicationInvites[]
+  PENDING
+  INVITED
+  RE_INVITED
+  REJECTED
+  COMPLETED
 }

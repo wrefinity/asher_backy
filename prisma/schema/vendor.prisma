@@ -1,19 +1,16 @@
 model vendors {
-  id           String            @id @default(cuid())
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  userId       String?
-  user         users?            @relation(fields: [userId], references: [id])
-  services     services[]
-  reviews      reviews[]
-  bankInfo     bankInfo[]
-  maintenances maintenance[]     @relation("vendorUser")
-
-  documents    vendorDocument[]  
-
-  @@unique([userId])
-  Event Event[]
+  id                 String               @id @default(cuid())
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  userId             String?              @unique
+  Event              Event[]
   VendorAvailability VendorAvailability[]
+  bankInfo           bankInfo[]
+  maintenances       maintenance[]        @relation("vendorUser")
+  reviews            reviews[]
+  services           services[]
+  documents          vendorDocument[]
+  user               users?               @relation(fields: [userId], references: [id])
 }
 
 model vendorDocument {
@@ -21,6 +18,6 @@ model vendorDocument {
   url       String
   type      String
   vendorId  String
-  vendor    vendors  @relation(fields: [vendorId], references: [id])
   createdAt DateTime @default(now())
+  vendor    vendors  @relation(fields: [vendorId], references: [id])
 }

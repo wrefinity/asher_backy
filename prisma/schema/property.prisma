@@ -1,3 +1,500 @@
+model propertyListingHistory {
+  id                   String                     @id @default(cuid())
+  payApplicationFee    Boolean                    @default(false)
+  isActive             Boolean                    @default(true)
+  onListing            Boolean                    @default(true)
+  type                 ListingType?               @default(SINGLE_UNIT)
+  propertyId           String?
+  listAs               PropertySpecificationType? @default(SHORTLET)
+  propertySubType      PropertyType?
+  unitId               String?
+  roomId               String?
+  price                Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  priceFrequency       PriceFrequency?
+  securityDeposit      Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  minStayDays          Int?
+  maxStayDays          Int?
+  createdAt            DateTime?                  @default(now())
+  availableFrom        DateTime?
+  availableTo          DateTime?
+  applicationFeeAmount Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  Log                  Log[]
+  applicationInvites   applicationInvites[]
+  property             properties?                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  room                 RoomDetail?                @relation(fields: [roomId], references: [id])
+  unit                 UnitConfiguration?         @relation(fields: [unitId], references: [id])
+}
+
+model SuitableUse {
+  id                   String             @id @default(uuid())
+  name                 String
+  commercialPropertyId String
+  commercialProperty   CommercialProperty @relation(fields: [commercialPropertyId], references: [id], onDelete: Cascade)
+}
+
+model AdditionalRule {
+  id         String           @id @default(uuid())
+  rule       String
+  shortletId String
+  shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
+}
+
+model UnavailableDate {
+  id         String           @id @default(uuid())
+  date       DateTime
+  shortletId String
+  shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
+}
+
+model HostLanguage {
+  id         String           @id @default(uuid())
+  language   String
+  shortletId String
+  shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
+}
+
+model properties {
+  id                     String                     @id @default(cuid())
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime?                  @updatedAt
+  name                   String
+  description            String?
+  propertySize           Int?
+  isDeleted              Boolean                    @default(false)
+  landlordId             String
+  agencyId               String?
+  marketValue            Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  price                  Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  securityDeposit        Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  areaUnit               AreaUnit                   @default(SQFT)
+  yearBuilt              Int?
+  city                   String
+  stateId                String
+  country                String
+  zipcode                String
+  longitude              Decimal?                   @db.Decimal(18, 6)
+  latitude               Decimal?                   @db.Decimal(18, 6)
+  address                String
+  address2               String?
+  currency               Currency?                  @default(NGN)
+  priceFrequency         PriceFrequency?
+  rentalPeriod           String?
+  availability           AvailabilityStatus?        @default(VACANT)
+  businessRateVerified   Boolean                    @default(false)
+  postalCodeVerified     Boolean                    @default(false)
+  landRegistryNumber     String?
+  vatStatus              VatStatus?                 @default(VAT_EXEMPT)
+  specificationType      PropertySpecificationType? @default(RESIDENTIAL)
+  keyFeatures            String[]
+  customKeyFeatures      String[]
+  count                  Int?
+  isListed               Boolean                    @default(false)
+  BroadcastCategory      BroadcastCategory[]
+  Budget                 Budget[]
+  Complaint              Complaint[]
+  leaseRenewals          LeaseRenewal[]
+  Log                    Log[]                      @relation("props")
+  images                 PropertyMediaFiles[]       @relation("PropertyImages")
+  videos                 PropertyMediaFiles[]       @relation("PropertyVideos")
+  virtualTours           PropertyMediaFiles[]       @relation("PropertyVirtualTours")
+  specification          PropertySpecification[]
+  ratings                Rating[]
+  TenantLeaseBreach      TenantLeaseBreach[]
+  transactions           Transaction[]
+  UserLikedProperty      UserLikedProperty[]
+  agents                 agents[]
+  application            application[]
+  applicationInvites     applicationInvites[]
+  billsSubCategory       billsSubCategory[]
+  inspection             inspection[]
+  inventoryManageMent    inventoryManageMent[]
+  maintenance            maintenance[]
+  maintenanceWhitelist   maintenanceWhitelist[]
+  agency                 agency?                    @relation(fields: [agencyId], references: [id])
+  landlord               landlords                  @relation(fields: [landlordId], references: [id])
+  state                  state                      @relation(fields: [stateId], references: [id])
+  propertyDocument       propertyDocument[]
+  propertyListingHistory propertyListingHistory[]
+  settings               propertySettings[]
+  reviews                reviews[]
+  taskManagement         taskManagement[]
+  tenants                tenants[]
+  violation              violation[]                @relation("violations")
+
+  @@unique([landlordId, name, stateId, city])
+}
+
+model PropertySpecification {
+  id                String                    @id @default(cuid())
+  propertyId        String
+  specificationType PropertySpecificationType
+  propertySubType   PropertyType?
+  otherTypeSpecific Json?
+  isActive          Boolean                   @default(true)
+  fromDate          DateTime?
+  toDate            DateTime?
+  residentialId     String?
+  commercialId      String?
+  shortletId        String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  commercial        CommercialProperty?       @relation(fields: [commercialId], references: [id])
+  property          properties                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  residential       ResidentialProperty?      @relation(fields: [residentialId], references: [id])
+  shortlet          ShortletProperty?         @relation(fields: [shortletId], references: [id])
+}
+
+model SharedFacilities {
+  id                    String               @id @default(cuid())
+  kitchen               Boolean              @default(false)
+  bathroom              Boolean              @default(false)
+  livingRoom            Boolean              @default(false)
+  garden                Boolean              @default(false)
+  garage                Boolean              @default(false)
+  laundry               Boolean              @default(false)
+  parking               Boolean              @default(false)
+  other                 String?
+  residentialPropertyId String?              @unique
+  commercialPropertyId  String?
+  shortletPropertyId    String?
+  CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
+  residentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: Cascade)
+  ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
+}
+
+model UnitConfiguration {
+  id                     String                   @id @default(cuid())
+  unitType               String
+  unitNumber             String?
+  floorNumber            Int?
+  count                  Int?
+  bedrooms               Int?
+  bathrooms              Int?
+  price                  String
+  area                   String?
+  isDeleted              Boolean                  @default(false)
+  isListed               Boolean                  @default(false)
+  description            String?
+  availability           AvailabilityStatus?
+  residentialPropertyId  String?
+  commercialPropertyId   String?
+  priceFrequency         PriceFrequency?
+  ensuite                Boolean?                 @default(false)
+  furnished              Boolean?                 @default(false)
+  kitchens               Int?
+  Booking                Booking[]
+  Log                    Log[]
+  RoomDetail             RoomDetail[]
+  Transaction            Transaction[]
+  CommercialProperty     CommercialProperty?      @relation(fields: [commercialPropertyId], references: [id])
+  ResidentialProperty    ResidentialProperty?     @relation(fields: [residentialPropertyId], references: [id])
+  application            application[]
+  applicationInvites     applicationInvites[]
+  maintenance            maintenance[]
+  maintenanceWhitelist   maintenanceWhitelist[]
+  propertyListingHistory propertyListingHistory[]
+  tenants                tenants[]
+  violation              violation[]
+  images                 PropertyMediaFiles[]     @relation("UnitImages")
+}
+
+model RoomDetail {
+  id                     String                   @id @default(cuid())
+  roomName               String
+  roomSize               String
+  ensuite                Boolean                  @default(false)
+  isDeleted              Boolean                  @default(false)
+  price                  String
+  availability           AvailabilityStatus?      @default(VACANT)
+  isListed               Boolean                  @default(false)
+  residentialPropertyId  String?
+  commercialPropertyId   String?
+  shortletPropertyId     String?
+  count                  Int?
+  priceFrequency         PriceFrequency?
+  unitId                 String?
+  furnished              Boolean?                 @default(false)
+  description            String?
+  Booking                Booking[]
+  Log                    Log[]
+  CommercialProperty     CommercialProperty?      @relation(fields: [commercialPropertyId], references: [id])
+  ResidentialProperty    ResidentialProperty?     @relation(fields: [residentialPropertyId], references: [id])
+  ShortletProperty       ShortletProperty?        @relation(fields: [shortletPropertyId], references: [id])
+  unit                   UnitConfiguration?       @relation(fields: [unitId], references: [id])
+  Transaction            Transaction[]
+  application            application[]
+  applicationInvites     applicationInvites[]
+  maintenance            maintenance[]
+  maintenanceWhitelist   maintenanceWhitelist[]
+  propertyListingHistory propertyListingHistory[]
+  tenants                tenants[]
+  images                 PropertyMediaFiles[]     @relation("RoomImages")
+}
+
+model ResidentialProperty {
+  id                        String                  @id @default(cuid())
+  status                    PropertyStatus          @default(FOR_RENT)
+  bedrooms                  Int?
+  bathrooms                 Int?
+  receiptionRooms           Int?
+  toilets                   Int?
+  tenure                    TensureType?
+  furnished                 Boolean?
+  renovationYear            String?
+  councilTaxBand            String?
+  garageType                GarageType?
+  yearBuilt                 Int?
+  floorLevel                Int?
+  totalArea                 String?
+  areaUnit                  AreaUnit?
+  rentalTerms               String?
+  utilities                 String[]
+  garden                    String?
+  gardenSize                String?
+  houseStyle                String?
+  numberOfStories           String?
+  outdoorsSpacesFeatures    String[]
+  otherSharedFacilities     String[]
+  houseRule                 String?
+  maxOccupant               Int?
+  isHMO                     Boolean?
+  isShareHouse              Boolean?
+  isHMOLicenced             Boolean?
+  hmoLicenceNumber          String?
+  hmoLicenceExpiryDate      DateTime?
+  totalOccupants            Int?
+  occupantsDetails          String?
+  totalFloors               Int?
+  unitPerFloors             Int?
+  totalUnits                Int?
+  buildingAmenityFeatures   String[]
+  safetyFeatures            String[]
+  customSafetyFeatures      String[]
+  epcRating                 String?
+  energyEfficiencyRating    Int?
+  environmentalImpactRating Int?
+  heatingTypes              String[]
+  coolingTypes              String[]
+  glazingTypes              GlazingType?
+  additionalNotes           String?
+  availableFrom             DateTime?
+  PropertySpecification     PropertySpecification[]
+  roomDetails               RoomDetail[]
+  sharedFacilities          SharedFacilities?
+  unitConfigurations        UnitConfiguration[]
+  billsSubCategory          billsSubCategory[]      @relation("ResidentialPropertyTobillsSubCategory")
+}
+
+model CommercialProperty {
+  id                        String                    @id @default(cuid())
+  totalArea                 String
+  areaUnit                  AreaUnit
+  businessRates             String?
+  serviceCharge             Float?
+  leaseTermUnit             LeaseTermUnit
+  minimumLeaseTerm          Int
+  maximumLeaseTerm          Int?
+  buildingClass             BuildingClass?
+  lastRefurbished           String?
+  totalFloors               Int?
+  zoning                    String?
+  yearBuilt                 Int?
+  totalRooms                Int
+  parkingSpaces             Int                       @default(0)
+  floorLevel                Int?
+  availableFrom             DateTime?
+  floorNumber               Int?
+  workstations              Int?
+  meetingRooms              Int?
+  officeLayout              OfficeLayout?
+  highRiseFloors            Int?
+  securityFeatures          String[]
+  clearHeight               String?
+  loadingDoorsCount         Int?
+  powerSupply               String?
+  floorLoad                 String?
+  columnSpacing             String?
+  hasYard                   Boolean                   @default(false)
+  yardDepth                 String?
+  safetyFeatures            String[]
+  customSafetyFeatures      String[]
+  epcRating                 String?
+  energyEfficiencyRating    Int?
+  environmentalImpactRating Int?
+  heatingTypes              String[]
+  coolingTypes              String[]
+  hasGreenCertification     Boolean                   @default(false)
+  greenCertificationType    String?
+  greenCertificationLevel   String?
+  totalUnits                Int?
+  leaseTerm                 String?
+  leaseTermNegotiable       Boolean                   @default(true)
+  rentReviewPeriod          String?
+  breakClause               String?
+  rentFreeOffered           Boolean                   @default(false)
+  rentFreePeriod            String?
+  otherSharedFacilities     String[]
+  houseRule                 String?
+  maxOccupant               Int?
+  isHMO                     Boolean?
+  isShareHouse              Boolean?
+  isHMOLicenced             Boolean?
+  hmoLicenceNumber          String?
+  hmoLicenceExpiryDate      DateTime?
+  totalOccupants            Int?
+  occupantsDetails          String?
+  floorAvailability         CommercialPropertyFloor[]
+  PropertySpecification     PropertySpecification[]
+  roomDetails               RoomDetail[]
+  sharedFacilities          SharedFacilities[]
+  suitableFor               SuitableUse[]
+  unitConfigurations        UnitConfiguration[]
+}
+
+model ShortletProperty {
+  id                       String                  @id @default(cuid())
+  lotSize                  Int?
+  garageSpaces             Int?
+  outdoorsSpacesFeatures   String[]
+  buildingName             String?
+  unitNumber               Int?
+  buildingAmenityFeatures  String[]
+  safetyFeatures           String[]
+  customSafetyFeatures     String[]
+  bedrooms                 Int?
+  beds                     Int?
+  bathrooms                Int?
+  maxGuests                Int?
+  propertySize             String?
+  sizeUnit                 AreaUnit?
+  floorLevel               Int?
+  totalFloors              Int?
+  renovationYear           String?
+  yearBuilt                Int?
+  furnished                Boolean                 @default(true)
+  minStayDays              Int?
+  maxStayDays              Int?
+  availableFrom            DateTime?
+  availableTo              DateTime?
+  basePrice                Float?
+  cleaningFee              Float?
+  weeklyDiscount           Float?
+  monthlyDiscount          Float?
+  checkInTime              String?
+  checkOutTime             String?
+  instantBooking           Boolean                 @default(false)
+  allowChildren            Boolean                 @default(true)
+  allowInfants             Boolean                 @default(true)
+  allowPets                Boolean                 @default(false)
+  allowSmoking             Boolean                 @default(false)
+  allowParties             Boolean                 @default(false)
+  quietHours               Boolean                 @default(false)
+  quietHoursStart          String?
+  quietHoursEnd            String?
+  cancellationPolicy       CancellationPolicy?
+  customCancellationPolicy String?
+  houseManual              String?
+  checkInInstructions      String?
+  localRecommendations     String?
+  emergencyContact         String?
+  hostName                 String?
+  hostPhotoUrl             String?
+  responseRate             Float?
+  responseTime             String?
+  isSuperhost              Boolean                 @default(false)
+  joinedDate               DateTime?
+  otherSharedFacilities    String[]
+  houseRule                String?
+  maxOccupant              Int?
+  isHMO                    Boolean?
+  isShareHouse             Boolean?
+  isHMOLicenced            Boolean?
+  hmoLicenceNumber         String?
+  hmoLicenceExpiryDate     DateTime?
+  totalOccupants           Int?
+  occupantsDetails         String?
+  additionalRules          AdditionalRule[]
+  bookings                 Booking[]
+  hostLanguages            HostLanguage[]
+  PropertySpecification    PropertySpecification[]
+  roomDetails              RoomDetail[]
+  seasonalPricing          SeasonalPricing[]
+  sharedFacilities         SharedFacilities[]
+  unavailableDates         UnavailableDate[]
+}
+
+model CommercialPropertyFloor {
+  id           String             @id @default(cuid())
+  floorNumber  Int
+  area         String?
+  price        String
+  available    Boolean            @default(true)
+  partialFloor Boolean            @default(false)
+  description  String?
+  amenities    String[]
+  propertyId   String
+  property     CommercialProperty @relation(fields: [propertyId], references: [id])
+}
+
+model SeasonalPricing {
+  id         String           @id @default(cuid())
+  seasonName String
+  startDate  DateTime
+  endDate    DateTime
+  price      String
+  propertyId String
+  property   ShortletProperty @relation(fields: [propertyId], references: [id])
+}
+
+model Booking {
+  id                   String              @id @default(cuid())
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  checkInDate          DateTime
+  checkOutDate         DateTime
+  guestCount           Int
+  totalPrice           String
+  status               BookingStatus       @default(PENDING)
+  guestName            String
+  guestEmail           String
+  guestPhone           String?
+  specialRequests      String?
+  paymentStatus        String?
+  paymentMethod        String?
+  transactionReference String?
+  propertyId           String
+  userId               String?
+  unitConfigurationId  String?
+  roomDetailId         String?
+  cancellationPolicy   CancellationPolicy? @default(FLEXIBLE)
+  isRefundable         Refundability       @default(YES)
+  property             ShortletProperty    @relation(fields: [propertyId], references: [id])
+  roomDetail           RoomDetail?         @relation(fields: [roomDetailId], references: [id], onDelete: Cascade)
+  unitConfiguration    UnitConfiguration?  @relation(fields: [unitConfigurationId], references: [id], onDelete: Cascade)
+  user                 users?              @relation(fields: [userId], references: [id])
+}
+
+model propertySettings {
+  id                String              @id @default(cuid())
+  landlordId        String?
+  propertyId        String?
+  settingType       PropsSettingType    @default(NOT_DEFINED)
+  lateFee           Decimal             @default(0.00) @db.Decimal(18, 2)
+  lateFeeFrequency  LatePaymentFeeType?
+  lateFeePercentage Int?                @default(0)
+  gracePeriodDays   Int?
+  depositPercentage Decimal             @default(0.00) @db.Decimal(5, 2)
+  refundTimeframe   String?
+  applicationFee    Decimal             @default(0.00) @db.Decimal(5, 2)
+  refundPolicy      Refundability?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  landlord          landlords?          @relation(fields: [landlordId], references: [id])
+  property          properties?         @relation(fields: [propertyId], references: [id])
+
+  @@unique([propertyId, settingType])
+}
+
 enum LatePaymentFeeType {
   ONE_TIME
   DAILY
@@ -39,8 +536,6 @@ enum PropertyType {
   HOUSE_MULTIPLE_OCCUPATION
   SHARED_HOUSE
   RENTAL_ROOM
-  DETACHED
-  SEMI_DETACHED
   APARTMENT
   VILLA
   CONDOMINIUM
@@ -73,8 +568,10 @@ enum PropertyType {
   COMMERICAL_GARAGE
   BUSINESS_PARK_UNIT
   DATA_CENTER
-  FLAT
   OTHER
+  DETACHED
+  SEMI_DETACHED
+  FLAT
 }
 
 enum PropertyStatus {
@@ -185,654 +682,4 @@ enum PropertyFeatureType {
   OFFICE_AMENITY
   BUILDING_AMENITY
   OUTDOORS_SPACE
-}
-
-model propertyListingHistory {
-  id                   String   @id @default(cuid())
-  payApplicationFee    Boolean  @default(false)
-  applicationFeeAmount Decimal? @default(0.00) @db.Decimal(18, 2)
-  isActive             Boolean  @default(true)
-  onListing            Boolean  @default(true)
-
-  type ListingType? @default(SINGLE_UNIT)
-
-  propertyId String? // If set, these settings apply to the property
-  property   properties? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  listAs          PropertySpecificationType? @default(SHORTLET)
-  propertySubType PropertyType?
-
-  unitId String?
-  unit   UnitConfiguration? @relation(fields: [unitId], references: [id])
-
-  roomId String?
-  room   RoomDetail? @relation(fields: [roomId], references: [id])
-
-  price Decimal? @default(0.00) @db.Decimal(18, 2)
-
-  priceFrequency  PriceFrequency?
-  securityDeposit Decimal?        @default(0.00) @db.Decimal(18, 2)
-  minStayDays     Int?
-  maxStayDays     Int?
-  // time attributes
-  createdAt       DateTime?       @default(now())
-  availableFrom   DateTime?
-  availableTo     DateTime?
-
-  applicationInvites applicationInvites[]
-
-  Log Log[]
-}
-
-model SuitableUse {
-  id   String @id @default(uuid())
-  name String
-
-  // Relations
-  commercialProperty   CommercialProperty @relation(fields: [commercialPropertyId], references: [id], onDelete: Cascade)
-  commercialPropertyId String
-}
-
-model AdditionalRule {
-  id   String @id @default(uuid())
-  rule String
-
-  // Relations
-  shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
-  shortletId String
-}
-
-model UnavailableDate {
-  id   String   @id @default(uuid())
-  date DateTime
-
-  // Relations
-  shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
-  shortletId String
-}
-
-model HostLanguage {
-  id       String @id @default(uuid())
-  language String
-
-  // Relations
-  shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
-  shortletId String
-}
-
-model properties {
-  id        String    @id @default(cuid())
-  // time attributes
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  // Features and Description
-  name         String
-  description  String?
-  propertySize Int?
-  isDeleted    Boolean @default(false)
-
-  //                                               owners
-  landlordId String
-  landlord   landlords @relation(fields: [landlordId], references: [id])
-  agencyId   String?
-  agency     agency?   @relation(fields: [agencyId], references: [id])
-  agents     agents[]
-
-  //                                               marketValue
-  marketValue     Decimal? @default(0.00) @db.Decimal(18, 2)
-  price           Decimal? @default(0.00) @db.Decimal(18, 2)
-  // initialDeposit  Decimal? @default(0.00) @db.Decimal(18, 2)
-  securityDeposit Decimal? @default(0.00) @db.Decimal(18, 2)
-
-  // features
-  areaUnit  AreaUnit @default(SQFT)
-  yearBuilt Int?
-
-  // adress informations
-  city      String
-  stateId   String
-  state     state    @relation(fields: [stateId], references: [id])
-  country   String
-  zipcode   String
-  longitude Decimal? @db.Decimal(18, 6)
-  latitude  Decimal? @db.Decimal(18, 6)
-  address   String
-  address2  String?
-
-  // //                                               visualizations
-  count            Int?
-  // Media
-  images           PropertyMediaFiles[] @relation("PropertyImages")
-  videos           PropertyMediaFiles[] @relation("PropertyVideos")
-  virtualTours     PropertyMediaFiles[] @relation("PropertyVirtualTours")
-  propertyDocument propertyDocument[]
-
-  ratings              Rating[]
-  tenants              tenants[]
-  application          application[]
-  maintenance          maintenance[]
-  reviews              reviews[]
-  taskManagement       taskManagement[]
-  inventoryManageMent  inventoryManageMent[]
-  maintenanceWhitelist maintenanceWhitelist[]
-
-  // Pricing, transaction, and budget
-  currency       Currency?       @default(NGN)
-  priceFrequency PriceFrequency?
-  rentalPeriod   String?
-  transactions   Transaction[]
-  Budget         Budget[]
-
-  // Availability
-  availability AvailabilityStatus? @default(VACANT)
-
-  // UK specifics
-  businessRateVerified Boolean    @default(false)
-  postalCodeVerified   Boolean    @default(false)
-  isListed             Boolean    @default(false)
-  landRegistryNumber   String?
-  vatStatus            VatStatus? @default(VAT_EXEMPT)
-
-  //setting
-  settings propertySettings[]
-
-  // specification for use types
-  specificationType PropertySpecificationType? @default(RESIDENTIAL)
-  specification     PropertySpecification[]
-
-  // Relation to applicationInvites
-  applicationInvites     applicationInvites[]
-  propertyListingHistory propertyListingHistory[]
-
-  Complaint Complaint[]
-
-  Log       Log[]       @relation("props")
-  violation violation[] @relation("violations")
-
-  UserLikedProperty UserLikedProperty[]
-
-  // Property features
-  keyFeatures       String[]
-  customKeyFeatures String[]
-  // Nearby amenities
-  // nearbyAmenities       String[] // JSON array of amenity IDs
-  // customNearbyAmenities String[] // JSON array of custom amenities
-  // amenityDistances      Json? // JSON object mapping amenity ID to distance
-  inspection        inspection[]
-  TenantLeaseBreach TenantLeaseBreach[]
-
-  BroadcastCategory BroadcastCategory[]
-  billsSubCategory  billsSubCategory[]
-
-  @@unique([landlordId, name, stateId, city])
-}
-
-model PropertySpecification {
-  id                String                    @id @default(cuid())
-  propertyId        String
-  property          properties                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  specificationType PropertySpecificationType
-  propertySubType   PropertyType?
-  otherTypeSpecific Json?
-
-  isActive Boolean   @default(true)
-  fromDate DateTime?
-  toDate   DateTime?
-
-  // Specific type data
-  residential   ResidentialProperty? @relation(fields: [residentialId], references: [id])
-  residentialId String?
-
-  commercial   CommercialProperty? @relation(fields: [commercialId], references: [id])
-  commercialId String?
-
-  shortlet   ShortletProperty? @relation(fields: [shortletId], references: [id])
-  shortletId String?
-
-  // allow versioning, auditing, etc.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SharedFacilities {
-  id                    String               @id @default(cuid())
-  kitchen               Boolean              @default(false)
-  bathroom              Boolean              @default(false)
-  livingRoom            Boolean              @default(false)
-  garden                Boolean              @default(false)
-  garage                Boolean              @default(false)
-  laundry               Boolean              @default(false)
-  parking               Boolean              @default(false)
-  other                 String?
-  residentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: Cascade)
-  residentialPropertyId String?              @unique
-  CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
-  commercialPropertyId  String?
-  ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
-  shortletPropertyId    String?
-}
-
-model UnitConfiguration {
-  id                    String               @id @default(cuid())
-  unitType              String
-  unitNumber            String?
-  floorNumber           Int?
-  count                 Int?
-  bedrooms              Int?
-  bathrooms             Int?
-  kitchens              Int?
-  price                 String
-  priceFrequency        PriceFrequency?
-  area                  String?
-  ensuite               Boolean?             @default(false)
-  isDeleted             Boolean              @default(false)
-  furnished             Boolean?             @default(false)
-  isListed              Boolean              @default(false)
-  images                PropertyMediaFiles[] @relation("UnitImages")
-  description           String?
-  availability          AvailabilityStatus?
-  ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
-  residentialPropertyId String?
-  CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
-  commercialPropertyId  String?
-
-  Booking   Booking[]
-  violation violation[]
-
-  propertyListingHistory propertyListingHistory[]
-  RoomDetail             RoomDetail[]
-
-  applicationInvites applicationInvites[]
-
-  application application[]
-
-  Log Log[]
-
-  maintenance maintenance[]
-
-  maintenanceWhitelist maintenanceWhitelist[]
-
-  Transaction Transaction[]
-
-  tenants tenants[]
-}
-
-model RoomDetail {
-  id                    String               @id @default(cuid())
-  roomName              String
-  roomSize              String
-  description           String?
-  ensuite               Boolean              @default(false)
-  isDeleted             Boolean              @default(false)
-  furnished             Boolean?             @default(false)
-  count                 Int?
-  price                 String
-  priceFrequency        PriceFrequency?
-  availability          AvailabilityStatus?  @default(VACANT)
-  images                PropertyMediaFiles[] @relation("RoomImages")
-  isListed              Boolean              @default(false)
-  ResidentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id])
-  residentialPropertyId String?
-  CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
-  commercialPropertyId  String?
-  ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
-  shortletPropertyId    String?
-  unit                  UnitConfiguration?   @relation(fields: [unitId], references: [id])
-  unitId                String?
-
-  Booking                Booking[]
-  propertyListingHistory propertyListingHistory[]
-  applicationInvites     applicationInvites[]
-
-  application application[]
-
-  Log Log[]
-
-  maintenance maintenance[]
-
-  maintenanceWhitelist maintenanceWhitelist[]
-
-  Transaction Transaction[]
-
-  tenants tenants[]
-}
-
-// Residential Property specific fields - Done
-model ResidentialProperty {
-  id String @id @default(cuid())
-
-  status          PropertyStatus @default(FOR_RENT)
-  // Residential specific details
-  bedrooms        Int?
-  bathrooms       Int?
-  receiptionRooms Int?
-  toilets         Int?
-
-  tenure         TensureType?
-  furnished      Boolean?
-  renovationYear String?
-  councilTaxBand String?
-  garageType     GarageType?
-  yearBuilt      Int?
-  floorLevel     Int?
-
-  // Additional details
-  totalArea   String?
-  areaUnit    AreaUnit?
-  rentalTerms String?
-  utilities   String[]
-
-  // dettached_house specifics
-  garden                 String?
-  gardenSize             String?
-  houseStyle             String?
-  numberOfStories        String?
-  outdoorsSpacesFeatures String[]
-
-  // shared room and hmo specifics
-  roomDetails           RoomDetail[]
-  sharedFacilities      SharedFacilities[]
-  otherSharedFacilities String[]
-  houseRule             String?
-  maxOccupant           Int?
-  isHMO                 Boolean?
-  isShareHouse          Boolean?
-  isHMOLicenced         Boolean?
-  hmoLicenceNumber      String?
-  hmoLicenceExpiryDate  DateTime?
-  totalOccupants        Int?
-  occupantsDetails      String?
-
-  // unit configuration for highrise build type
-  unitConfigurations      UnitConfiguration[]
-  totalFloors             Int?
-  unitPerFloors           Int?
-  totalUnits              Int?
-  buildingAmenityFeatures String[]
-  safetyFeatures          String[]
-  customSafetyFeatures    String[]
-
-  // Energy and Sustainability
-  epcRating                 String?
-  energyEfficiencyRating    Int?
-  environmentalImpactRating Int?
-  heatingTypes              String[] // JSON array of heating types
-  coolingTypes              String[] // JSON array of cooling types 
-  glazingTypes              GlazingType?
-
-  additionalNotes       String?
-  PropertySpecification PropertySpecification[]
-  availableFrom DateTime?
-
-  billsSubCategory billsSubCategory[]
-}
-
-// Commercial Property specific fields
-model CommercialProperty {
-  id String @id @default(cuid())
-
-  // Commercial specific details
-  totalArea String
-  areaUnit  AreaUnit
-
-  businessRates    String?
-  serviceCharge    Float?
-  // Lease terms
-  leaseTermUnit    LeaseTermUnit
-  minimumLeaseTerm Int // in months
-  maximumLeaseTerm Int? // in months
-
-  buildingClass   BuildingClass?
-  lastRefurbished String?
-  totalFloors     Int?
-  zoning          String?
-  yearBuilt       Int?
-  totalRooms      Int
-  parkingSpaces   Int            @default(0)
-  floorLevel      Int?
-  availableFrom   DateTime?
-
-  // Office Space Details
-  floorNumber  Int?
-  workstations Int?
-  meetingRooms Int?
-  officeLayout OfficeLayout?
-
-  // High-rise building specific
-  highRiseFloors    Int?
-  floorAvailability CommercialPropertyFloor[]
-
-  // Warehouse Details
-  securityFeatures  String[]
-  clearHeight       String?
-  loadingDoorsCount Int?
-  powerSupply       String?
-  floorLoad         String?
-  columnSpacing     String?
-  hasYard           Boolean  @default(false)
-  yardDepth         String?
-
-  safetyFeatures            String[]
-  customSafetyFeatures      String[]
-  // Energy and Sustainability
-  epcRating                 String?
-  energyEfficiencyRating    Int?
-  environmentalImpactRating Int?
-  heatingTypes              String[] // JSON array of heating types
-  coolingTypes              String[] // JSON array of cooling types
-  hasGreenCertification     Boolean  @default(false)
-  greenCertificationType    String?
-  greenCertificationLevel   String?
-
-  // Multi-unit properties
-  totalUnits         Int?
-  unitConfigurations UnitConfiguration[]
-
-  // Additional commercial-specific fields
-  leaseTerm           String?
-  leaseTermNegotiable Boolean @default(true)
-  rentReviewPeriod    String?
-  breakClause         String?
-  rentFreeOffered     Boolean @default(false)
-  rentFreePeriod      String?
-
-  suitableFor           SuitableUse[]
-  roomDetails           RoomDetail[]
-  sharedFacilities      SharedFacilities[]
-  otherSharedFacilities String[]
-  houseRule             String?
-  maxOccupant           Int?
-  isHMO                 Boolean?
-  isShareHouse          Boolean?
-  isHMOLicenced         Boolean?
-  hmoLicenceNumber      String?
-  hmoLicenceExpiryDate  DateTime?
-  totalOccupants        Int?
-  occupantsDetails      String?
-  PropertySpecification PropertySpecification[]
-}
-
-// Shotlet Property specific fields
-model ShortletProperty {
-  id String @id @default(cuid())
-
-  // house type specifics 
-  lotSize                 Int?
-  garageSpaces            Int?
-  outdoorsSpacesFeatures  String[]
-  // apartment specifics
-  buildingName            String?
-  unitNumber              Int?
-  buildingAmenityFeatures String[]
-  safetyFeatures          String[]
-  customSafetyFeatures    String[]
-
-  // Property Details
-  bedrooms       Int?
-  beds           Int?
-  bathrooms      Int?
-  maxGuests      Int?
-  propertySize   String?
-  sizeUnit       AreaUnit?
-  floorLevel     Int?
-  totalFloors    Int?
-  renovationYear String?
-  yearBuilt      Int?
-  furnished      Boolean   @default(true)
-
-  // Availability && Pricing
-  minStayDays     Int?
-  maxStayDays     Int?
-  availableFrom   DateTime?
-  availableTo     DateTime?
-  basePrice       Float? // per night
-  cleaningFee     Float?
-  weeklyDiscount  Float? // percentage
-  monthlyDiscount Float? // percentage
-
-  // House Rules
-  checkInTime              String?
-  checkOutTime             String?
-  instantBooking           Boolean             @default(false)
-  allowChildren            Boolean             @default(true)
-  allowInfants             Boolean             @default(true)
-  allowPets                Boolean             @default(false)
-  allowSmoking             Boolean             @default(false)
-  allowParties             Boolean             @default(false)
-  quietHours               Boolean             @default(false)
-  quietHoursStart          String?
-  quietHoursEnd            String?
-  // Booking & Policies
-  cancellationPolicy       CancellationPolicy?
-  customCancellationPolicy String?
-  houseManual              String?
-  checkInInstructions      String?
-  localRecommendations     String?
-  emergencyContact         String?
-
-  // Host info
-  hostName     String?
-  hostPhotoUrl String?
-  responseRate Float?
-  responseTime String?
-  isSuperhost  Boolean   @default(false)
-  joinedDate   DateTime?
-
-  // Relations
-  bookings         Booking[]
-  seasonalPricing  SeasonalPricing[]
-  unavailableDates UnavailableDate[]
-  additionalRules  AdditionalRule[]
-  hostLanguages    HostLanguage[]
-
-  roomDetails           RoomDetail[]
-  sharedFacilities      SharedFacilities[]
-  otherSharedFacilities String[]
-  houseRule             String?
-  maxOccupant           Int?
-  isHMO                 Boolean?
-  isShareHouse          Boolean?
-  isHMOLicenced         Boolean?
-  hmoLicenceNumber      String?
-  hmoLicenceExpiryDate  DateTime?
-  totalOccupants        Int?
-  occupantsDetails      String?
-
-  PropertySpecification PropertySpecification[]
-}
-
-model CommercialPropertyFloor {
-  id           String             @id @default(cuid())
-  floorNumber  Int
-  area         String?
-  price        String
-  available    Boolean            @default(true)
-  partialFloor Boolean            @default(false)
-  description  String?
-  amenities    String[]
-  // Relationships
-  propertyId   String
-  property     CommercialProperty @relation(fields: [propertyId], references: [id])
-}
-
-// Shotlet property specific models
-model SeasonalPricing {
-  id         String   @id @default(cuid())
-  seasonName String
-  startDate  DateTime
-  endDate    DateTime
-  price      String
-
-  // Relationships
-  propertyId String
-  property   ShortletProperty @relation(fields: [propertyId], references: [id])
-}
-
-model Booking {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  checkInDate  DateTime
-  checkOutDate DateTime
-  guestCount   Int
-  totalPrice   String
-  status       BookingStatus @default(PENDING)
-
-  guestName            String
-  guestEmail           String
-  guestPhone           String?
-  specialRequests      String?
-  paymentStatus        String?
-  paymentMethod        String?
-  transactionReference String?
-
-  // Relationships
-  propertyId String
-  property   ShortletProperty @relation(fields: [propertyId], references: [id])
-  userId     String?
-  user       users?           @relation(fields: [userId], references: [id])
-
-  unitConfigurationId String?
-  unitConfiguration   UnitConfiguration? @relation(fields: [unitConfigurationId], references: [id], onDelete: Cascade)
-
-  roomDetailId String?
-  roomDetail   RoomDetail? @relation(fields: [roomDetailId], references: [id], onDelete: Cascade)
-
-  cancellationPolicy CancellationPolicy? @default(FLEXIBLE)
-  isRefundable       Refundability       @default(YES)
-}
-
-model propertySettings {
-  id         String     @id @default(cuid())
-  // Optional relationships to differentiate setting scopes
-  landlordId String?
-  landlord   landlords? @relation(fields: [landlordId], references: [id])
-
-  propertyId String?
-  property   properties? @relation(fields: [propertyId], references: [id])
-
-  // Setting categorization
-  settingType PropsSettingType @default(NOT_DEFINED)
-
-  // late fee settings
-  lateFee           Decimal             @default(0.00) @db.Decimal(18, 2) // for fixed scenario
-  lateFeeFrequency  LatePaymentFeeType?
-  lateFeePercentage Int?                @default(0)
-  gracePeriodDays   Int?
-
-  // security deposit
-  depositPercentage Decimal @default(0.00) @db.Decimal(5, 2)
-  refundTimeframe   String? // Options like '7 days', '30 days'
-
-  //                                                                  application
-  applicationFee Decimal        @default(0.00) @db.Decimal(5, 2)
-  refundPolicy   Refundability? // Describe refund policy [YES OR NO]
-
-  //                                                                  Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([propertyId, settingType])
 }

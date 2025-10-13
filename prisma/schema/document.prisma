@@ -1,3 +1,46 @@
+model propertyDocument {
+  id            String              @id @default(cuid())
+  documentName  String
+  documentUrl   String[]
+  size          String?
+  type          String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  idType        IdType?
+  docType       DocumentType?
+  agreementId   String?
+  applicationId String?
+  propertyId    String?
+  uploadedBy    String?
+  agreement     GuarantorAgreement? @relation(fields: [agreementId], references: [id])
+  application   application?        @relation(fields: [applicationId], references: [id])
+  properties    properties?         @relation(fields: [propertyId], references: [id])
+  users         users?              @relation(fields: [uploadedBy], references: [id])
+}
+
+model PropertyMediaFiles {
+  id                    String              @id @default(cuid())
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  url                   String
+  caption               String?
+  isPrimary             Boolean             @default(false)
+  fileType              String?
+  type                  MediaType
+  imagePropertyId       String?             @map("image_property_id")
+  videoPropertyId       String?             @map("video_property_id")
+  virtualTourPropertyId String?             @map("virtual_tour_property_id")
+  imageProperty         properties?         @relation("PropertyImages", fields: [imagePropertyId], references: [id])
+  videoProperty         properties?         @relation("PropertyVideos", fields: [videoPropertyId], references: [id])
+  virtualTourProperty   properties?         @relation("PropertyVirtualTours", fields: [virtualTourPropertyId], references: [id])
+  RoomDetail            RoomDetail[]        @relation("RoomImages")
+  UnitConfiguration     UnitConfiguration[] @relation("UnitImages")
+
+  @@index([imagePropertyId])
+  @@index([videoPropertyId])
+  @@index([virtualTourPropertyId])
+}
+
 enum DocumentType {
   PAY_STUB
   TAX_RETURN
@@ -30,59 +73,3 @@ enum MediaType {
   VIDEO
   VIRTUAL_TOUR
 }
-
-model propertyDocument {
-  id           String   @id @default(cuid())
-  documentName String
-  documentUrl  String[]
-  size         String?
-  type         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // For ID documents
-  idType  IdType?
-  docType DocumentType?
-
-  //            Relationship
-  agreement   GuarantorAgreement? @relation(fields: [agreementId], references: [id])
-  agreementId String?
-
-  application   application? @relation(fields: [applicationId], references: [id])
-  applicationId String?
-
-  propertyId   String?
-  properties   properties? @relation(fields: [propertyId], references: [id])
-  uploadedBy   String?
-  users        users?      @relation(fields: [uploadedBy], references: [id])
-}
-
-model PropertyMediaFiles {
-  id        String    @id @default(cuid())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  url       String
-  caption   String?
-  isPrimary Boolean   @default(false)
-  fileType  String?
-  type      MediaType
-
-  // Separate foreign key fields for each relation type
-  imagePropertyId       String? @map("image_property_id")
-  videoPropertyId       String? @map("video_property_id")
-  virtualTourPropertyId String? @map("virtual_tour_property_id")
-
-  // Relations with explicit names and separate fields
-  imageProperty       properties? @relation("PropertyImages", fields: [imagePropertyId], references: [id])
-  videoProperty       properties? @relation("PropertyVideos", fields: [videoPropertyId], references: [id])
-  virtualTourProperty properties? @relation("PropertyVirtualTours", fields: [virtualTourPropertyId], references: [id])
-
-  @@index([imagePropertyId])
-  @@index([videoPropertyId])
-  @@index([virtualTourPropertyId])
-  RoomDetail RoomDetail[] @relation("RoomImages")
-  UnitConfiguration UnitConfiguration[] @relation("UnitImages")
-}
-
-
-

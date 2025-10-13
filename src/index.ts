@@ -39,6 +39,8 @@ import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
 import { ApiError } from "./utils/ApiError";
+import PaymentNotificationService from "./services/paymentNotification.service";
+import loggers from "./utils/loggers";
 
 // WebSocket tracking
 export const prismaClient = new PrismaClient({ log: ['query'] });
@@ -49,6 +51,7 @@ class Server {
     private server: http.Server;
     public io: IOServer;
     private wss: WebSocketServer;
+    public paymentNotificationService: PaymentNotificationService;
 
     constructor(port: number, secret: string) {
         this.app = express();
@@ -68,6 +71,7 @@ class Server {
         this.configureRoutes();
         this.configureSocketIO();
         this.configureWSS();
+        this.initializePaymentNotifications();
     }
 
     private configureMiddlewares(secret: string) {
@@ -127,7 +131,7 @@ class Server {
                 res: express.Response,
                 next: express.NextFunction
             ) => {
-                console.error("🔥 Error caught:", err);
+                console.error("Error caught:", err);
 
                 if (err instanceof ApiError) {
                     return res.status(err.statusCode).json({
@@ -135,7 +139,7 @@ class Server {
                         message: err.message,
                         code: err.data.code,
                         errors: err.data.errors || [],
-                        details: err.data.details || {}, // ✅ Pass details for frontend logic
+                        details: err.data.details || {},
                     });
                 }
 
@@ -221,11 +225,65 @@ class Server {
 
     public start() {
         this.server.listen(this.port, () => {
-            console.log(`🚀 Server running on http://localhost:${this.port}`);
-            console.log(`💬 Chat Socket.IO running on /socket.io`);
-            console.log(`📡 Email WebSocket running on /email`);
+            console.log(`Server running on http://localhost:${this.port}`);
+            console.log(`Chat Socket.IO running on /socket.io`);
+            console.log(`Email WebSocket running on /email`);
         });
     }
+
+    private initializePaymentNotifications() {
+        // Initialize payment notification service
+        this.paymentNotificationService = new PaymentNotificationService(this.io);
+
+        // Set up user room joining for Socket.IO
+        this.io.on('connection', (socket) => {
+            console.log('🔌 User connected for payment notifications:', socket.id);
+
+            // Join user to their personal room
+            socket.on('join_user_room', (userId: string) => {
+                socket.join(`user:${userId}`);
+                console.log(`User ${userId} joined payment notification room`);
+            });
+
+            // Leave user room
+            socket.on('leave_user_room', (userId: string) => {
+                socket.leave(`user:${userId}`);
+                console.log(`👋 User ${userId} left payment notification room`);
+            });
+
+            socket.on('disconnect', () => {
+                console.log('🔌 User disconnected from payment notifications:', socket.id);
+            });
+        });
+
+        // Schedule periodic checks for due and overdue bills
+        this.scheduleBillChecks();
+
+        console.log('🔔 Payment notification service initialized');
+    }
+
+    private scheduleBillChecks() {
+        // Check for due bills every hour
+        setInterval(async () => {
+            try {
+                await this.paymentNotificationService.checkAndSendDueBillsReminders();
+            } catch (error) {
+                loggers.error('Error in scheduled due bills check:', error);
+            }
+        }, 60 * 60 * 1000);
+
+        // Check for overdue bills every 6 hours
+        setInterval(async () => {
+            try {
+                await this.paymentNotificationService.checkAndSendOverdueBillsNotifications();
+            } catch (error) {
+                loggers.error('Error in scheduled overdue bills check:', error);
+            }
+        }, 6 * 60 * 60 * 1000);
+        loggers.info('Scheduled bill checks initialized');
+    }
+
+
 }
 
 const serverInstance = new Server(Number(PORT), APP_SECRET);

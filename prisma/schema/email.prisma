@@ -1,53 +1,43 @@
 model Email {
-    id               String   @id @default(cuid())
-    senderEmail      String
-    receiverEmail    String?
-    subject          String?
-    body             String
-    attachment       String[]
-    isReadBySender   Boolean  @default(true)
-    isReadByReceiver Boolean  @default(false)
-    isDraft          Boolean  @default(false)
-    isStarred          Boolean  @default(false)
-    isArchived          Boolean  @default(false)
-    isSpam          Boolean  @default(false)
-    isSent           Boolean  @default(false)
-    isReply           Boolean  @default(false)
-    isDeleted           Boolean  @default(false)
-    createdAt        DateTime @default(now())
-    
-    // Threading relationships
-    threadId         String?  // Root email ID for the thread
-    parentEmailId    String?  // Direct parent email ID
-    
-    // Relations
-    senderId         String
-    sender           users    @relation("SentEmails", fields: [senderId], references: [id])
-    receiverId       String?
-    receiver         users?    @relation("ReceivedEmails", fields: [receiverId], references: [id])
-    
-    // Corrected threading relations
-    parentEmail      Email?   @relation("EmailReplies", fields: [parentEmailId], references: [id])
-    replies          Email[]  @relation("EmailReplies")
-    // NEW: Per-user state tracking
-    states           UserEmailState[]
+  id               String           @id @default(cuid())
+  senderEmail      String
+  receiverEmail    String?
+  subject          String?
+  body             String
+  attachment       String[]
+  isReadBySender   Boolean          @default(true)
+  isReadByReceiver Boolean          @default(false)
+  isDraft          Boolean          @default(false)
+  isSent           Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  senderId         String
+  receiverId       String?
+  parentEmailId    String?
+  threadId         String?
+  isReply          Boolean          @default(false)
+  isArchived       Boolean          @default(false)
+  isSpam           Boolean          @default(false)
+  isStarred        Boolean          @default(false)
+  isDeleted        Boolean          @default(false)
+  parentEmail      Email?           @relation("EmailReplies", fields: [parentEmailId], references: [id])
+  replies          Email[]          @relation("EmailReplies")
+  receiver         users?           @relation("ReceivedEmails", fields: [receiverId], references: [id])
+  sender           users            @relation("SentEmails", fields: [senderId], references: [id])
+  states           UserEmailState[]
 }
 
 model UserEmailState {
-    id        String  @id @default(cuid())
-    emailId   String
-    email     Email   @relation(fields: [emailId], references: [id])
-    userId    String
-    user      users   @relation(fields: [userId], references: [id])
-    
-    // Per-user state flags
-    isRead    Boolean @default(false)
-    isStarred Boolean @default(false)
-    isDraft Boolean @default(false)
-    isArchived Boolean @default(false)
-    isSpam    Boolean @default(false)
-    isDeleted Boolean @default(false)
-    
-    // Unique constraint per user per email
-    @@unique([emailId, userId])
+  id         String  @id @default(cuid())
+  emailId    String
+  userId     String
+  isRead     Boolean @default(false)
+  isStarred  Boolean @default(false)
+  isArchived Boolean @default(false)
+  isSpam     Boolean @default(false)
+  isDeleted  Boolean @default(false)
+  isDraft    Boolean @default(false)
+  email      Email   @relation(fields: [emailId], references: [id])
+  user       users   @relation(fields: [userId], references: [id])
+
+  @@unique([emailId, userId])
 }

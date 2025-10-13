@@ -1,10 +1,10 @@
 model VerificationToken {
-    id        Int       @id @default(autoincrement())
-    token     String    @unique
-    isUsed    Boolean   @default(false)
-    email     String?
-    userId    String?
-    user      users?    @relation(fields: [userId], references: [id])
-    expiresAt DateTime?
-    createdAt DateTime  @default(now())
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  userId    String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  email     String?
+  isUsed    Boolean   @default(false)
+  user      users?    @relation(fields: [userId], references: [id])
 }

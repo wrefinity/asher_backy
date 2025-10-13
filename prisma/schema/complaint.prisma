@@ -1,57 +1,56 @@
 model Complaint {
-    id          String            @id @default(uuid())
-    date        DateTime          @default(now())
-    category    ComplaintCategory @default(MAINTENANCE)
-    subject     String
-    description String?
-    createdBy   users?            @relation(fields: [createdById], references: [id])
-    createdById String?
-    createdAt   DateTime          @default(now())
-    updatedAt   DateTime          @updatedAt
-    isDeleted   Boolean           @default(false)
-    property    properties?       @relation(fields: [propertyId], references: [id])
-    propertyId  String?
-    priority    ComplaintPriority @default(LOW)
-    status      ComplaintStatus   @default(IN_PROGRESS)
-
-    ComplaintMessage ComplaintMessage[]
+  id               String             @id @default(uuid())
+  date             DateTime           @default(now())
+  category         ComplaintCategory  @default(MAINTENANCE)
+  subject          String
+  createdById      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  isDeleted        Boolean            @default(false)
+  propertyId       String?
+  priority         ComplaintPriority  @default(LOW)
+  status           ComplaintStatus    @default(IN_PROGRESS)
+  description      String?
+  createdBy        users?             @relation(fields: [createdById], references: [id])
+  property         properties?        @relation(fields: [propertyId], references: [id])
+  ComplaintMessage ComplaintMessage[]
 }
 
 model Suggestion {
-    id          String   @id @default(uuid())
-    date        DateTime @default(now())
-    subject     String
-    description String?
-    createdBy   users?   @relation(fields: [createdById], references: [id])
-    createdById String?
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
-    isDeleted   Boolean  @default(false)
-}
-
-enum ComplaintCategory {
-    MAINTENANCE
-    NOISY
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  subject     String
+  description String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+  createdBy   users?   @relation(fields: [createdById], references: [id])
 }
 
 model ComplaintMessage {
-    id          String    @id @default(cuid())
-    complaint   Complaint @relation(fields: [complaintId], references: [id])
-    complaintId String
-    sender      users     @relation(fields: [senderId], references: [id])
-    senderId    String
-    message     String
-    createdAt   DateTime  @default(now())
+  id          String    @id @default(cuid())
+  complaintId String
+  senderId    String
+  message     String
+  createdAt   DateTime  @default(now())
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  sender      users     @relation(fields: [senderId], references: [id])
+}
+
+enum ComplaintCategory {
+  MAINTENANCE
+  NOISY
 }
 
 enum ComplaintPriority {
-    LOW
-    MEDIUM
-    HIGH
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum ComplaintStatus {
-    IN_PROGRESS
-    RESOLVED
-    URGENT
+  IN_PROGRESS
+  RESOLVED
+  URGENT
 }

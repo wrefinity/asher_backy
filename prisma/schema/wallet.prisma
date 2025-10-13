@@ -1,13 +1,13 @@
-// user wallets
 model wallet {
   id           String        @id @default(cuid())
   userId       String
-  user         users         @relation(fields: [userId], references: [id])
   balance      Decimal       @default(0.00) @db.Decimal(18, 2)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  currency     String
+  isActive     Boolean       @default(false)
   transactions Transaction[]
-  currency     String // e.g., USD, NGN (Naira)
-  isActive     Boolean       @default(false) // Flag to indicate if the wallet is active
-  @@unique([userId, currency]) // Ensures each user can have only one wallet per currency
+  user         users         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, currency])
 }

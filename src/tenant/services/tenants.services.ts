@@ -89,9 +89,7 @@ class TenantService {
                 isCurrentLease: true,
                 user: {
                     UserSearchPreference: {
-                      some: {
                         isActive: true,
-                      },
                     },
                 },
             },

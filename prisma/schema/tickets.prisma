@@ -1,3 +1,24 @@
+model SupportTicket {
+  id               String         @id @default(cuid())
+  raisedById       String?
+  assignedToId     String?
+  type             TicketType     @default(SUPPORT)
+  subject          String
+  description      String
+  priority         TicketPriority @default(PENDING)
+  status           TicketStatus   @default(OPEN)
+  attachments      String[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  raisedByTenantId String?
+  assignedTo       users?         @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  raisedBy         landlords?     @relation("TicketRaisedBy", fields: [raisedById], references: [id])
+  raisedByTenant   tenants?       @relation("TicketTenantRaisedBy", fields: [raisedByTenantId], references: [id])
+
+  @@index([raisedById])
+  @@index([assignedToId])
+}
+
 enum TicketStatus {
   OPEN
   IN_PROGRESS
@@ -15,27 +36,4 @@ enum TicketPriority {
   MEDIUM
   LOW
   PENDING
-}
-
-model SupportTicket {
-  id               String         @id @default(cuid())
-  raisedById       String? // Who submitted the ticket
-  raisedByTenantId String? // Who submitted the ticket
-  assignedToId     String? // Optional: Assigned support user
-  type             TicketType     @default(SUPPORT)
-  subject          String
-  description      String         @db.Text
-  priority         TicketPriority @default(PENDING)
-  status           TicketStatus   @default(OPEN)
-  attachments      String[] // File URLs
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  // Relations
-  raisedBy       landlords? @relation("TicketRaisedBy", fields: [raisedById], references: [id])
-  raisedByTenant tenants? @relation("TicketTenantRaisedBy", fields: [raisedByTenantId], references: [id])
-  assignedTo     users?     @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
-
-  @@index([raisedById])
-  @@index([assignedToId])
 }

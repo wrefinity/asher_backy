@@ -1,11 +1,11 @@
 model inspection {
-  id          String   @id @default(cuid())
-  propertyId  String
-  property    properties @relation(fields: [propertyId], references: [id])
-  tenantId      String
-  tenant        tenants    @relation(fields: [tenantId], references: [id])
-  score       Int
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String     @id @default(cuid())
+  propertyId String
+  tenantId   String
+  score      Int
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  property   properties @relation(fields: [propertyId], references: [id])
+  tenant     tenants    @relation(fields: [tenantId], references: [id])
 }

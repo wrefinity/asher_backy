@@ -410,6 +410,7 @@ class WalletService {
             throw error;
         }
     }
+    
     async updateWalletBalance(
         walletId: string,
         amount: Decimal,

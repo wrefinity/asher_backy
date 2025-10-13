@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["prismaSchemaFolder"]
@@ -12,11 +6,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-enum YesNo {
-  YES
-  NO
 }
 
 model Ads {
@@ -35,24 +24,22 @@ model Ads {
   clicks           Int          @default(0)
   reach            Int          @default(0)
   userId           String
-  user             users        @relation(fields: [userId], references: [id])
   referenceId      String?
-  transaction      Transaction? @relation(fields: [referenceId], references: [id])
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+  transaction      Transaction? @relation(fields: [referenceId], references: [id])
+  user             users        @relation(fields: [userId], references: [id])
 }
-
-
 
 model bankInfo {
   id            String     @id @default(cuid())
   landlordId    String?
-  landlords     landlords? @relation(fields: [landlordId], references: [id])
   vendorId      String?
-  vendors       vendors?   @relation(fields: [vendorId], references: [id])
   bankName      String
   accountNumber String
   accountName   String
+  landlords     landlords? @relation(fields: [landlordId], references: [id])
+  vendors       vendors?   @relation(fields: [vendorId], references: [id])
 }
 
 model agency {
@@ -70,42 +57,54 @@ model agents {
   twitter    String?
   instagram  String?
   linkedin   String?
-  // date fields
   createdAt  DateTime?   @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime?   @default(now()) @db.Timestamptz(6)
-  // agents relationships
   userId     String
-  user       users       @relation(fields: [userId], references: [id])
   agencyId   String?
-  agency     agency?     @relation(fields: [agencyId], references: [id])
   propertyId String?
+  agency     agency?     @relation(fields: [agencyId], references: [id])
   properties properties? @relation(fields: [propertyId], references: [id])
+  user       users       @relation(fields: [userId], references: [id])
   tenant     tenants[]
 }
 
 model Rating {
-  id          String  @id @default(cuid())
-  ratingValue Int     @default(0) // a rating scale from 0 to 5
-  comments    String? // Optional field for user comments
-
-  propertyId String?
-  property   properties? @relation(fields: [propertyId], references: [id])
-
-  userId String?
-  user   users?  @relation("userRated", fields: [userId], references: [id])
-
+  id            String      @id @default(cuid())
+  ratingValue   Int         @default(0)
+  comments      String?
+  propertyId    String?
+  userId        String?
   ratedByUserId String
-  ratedBy       users  @relation("ratedByUser", fields: [ratedByUserId], references: [id])
-
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @db.Timestamptz(6)
+  property      properties? @relation(fields: [propertyId], references: [id])
+  ratedBy       users       @relation("ratedByUser", fields: [ratedByUserId], references: [id])
+  user          users?      @relation("userRated", fields: [userId], references: [id])
 }
 
+model creditScore {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  score             Int
+  lastUpdated       DateTime @default(now())
+  paymentHistory    Float
+  rentalHistory     Float
+  maintainanceScore Float
+  reviewScore       Float
+  user              users    @relation(fields: [userId], references: [id])
+}
 
+model status {
+  id        String  @id @default(cuid())
+  name      String
+  isDeleted Boolean @default(false)
+}
 
+enum YesNo {
+  YES
+  NO
+}
 
-// user information definition 
-// defining the user roles
 enum userRoles {
   VENDOR
   LANDLORD
@@ -114,31 +113,3 @@ enum userRoles {
   AGENT
   ADMIN
 }
-
-
-
-model creditScore {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        users    @relation(fields: [userId], references: [id])
-  score       Int
-  lastUpdated DateTime @default(now())
-
-  //NOTE: Factors that can possibly contribute to the score
-  paymentHistory    Float
-  rentalHistory     Float
-  maintainanceScore Float
-  reviewScore       Float
-}
-
-
-
-//  status will be in-progress, completed, assigned, aborted
-model status {
-  id        String  @id @default(cuid())
-  name      String
-  isDeleted Boolean @default(false)
-  // maintenances maintenance[]
-}
-
-

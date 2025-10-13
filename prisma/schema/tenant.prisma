@@ -1,60 +1,50 @@
 model tenants {
-    id                    String                 @id @default(cuid())
-    tenantId              String?                @unique
-    landlordId            String
-    tenantCode            String?                @unique
-    password              String?
-    // rentstatus String?
-    rentstatus            Int?
-    leaseStartDate        DateTime?
-    leaseEndDate          DateTime?
-    isCurrentLease        Boolean                @default(true)
-    initialDeposit        Decimal?               @default(0.00) @db.Decimal(18, 2)
-    // isexisted                    Int?
-    dateOfFirstRent       DateTime?              @default(now()) @db.Timestamptz(6)
-    apartmentOrFlatNumber Int?
-    stripeCustomerId      String?                @unique
-    // tenantwebUserEmail
-    tenantWebUserEmail    String?
-    // relationships definitions
-    userId                String
-    user                  users                  @relation(fields: [userId], references: [id])
-    landlord              landlords              @relation(fields: [landlordId], references: [id])
-    agentId               String?
-    agent                 agents?                @relation(fields: [agentId], references: [id])
-    propertyId            String
-    property              properties             @relation(fields: [propertyId], references: [id])
-    unitId                String?
-    unit                  UnitConfiguration?     @relation(fields: [unitId], references: [id])
-    roomId                String?
-    room                  RoomDetail?            @relation(fields: [roomId], references: [id])
-    history               tenantPaymentHistory[]
-
-    createdAt DateTime   @default(now())
-    updatedAt DateTime   @updatedAt
-    reviews   reviews[]
-    services  services[]
-
-    maintenances       maintenance[]        @relation("tenantUser")
-    applicationInvites applicationInvites[]
-    violation          violation[]          @relation("tenant")
-    applicationId      String?              @unique
-    application        application?         @relation("ApplicationTenant", fields: [applicationId], references: [id])
-    inspection         inspection[]
-    TenantLeaseBreach  TenantLeaseBreach[]
-    SupportTicket      SupportTicket[]      @relation("TicketTenantRaisedBy")
-    billsSubCategory   billsSubCategory[]
-
-    // JSON fields for application data
-    personalInfo         Json?
-    nextOfKinInfo        Json?
-    employmentInfo       Json?
-    guarantorInfo        Json?
-    emergencyContactInfo Json?
-    residentialInfo      Json?
-    applicationQuestions Json?
-    declarationInfo      Json?
-
-    // @@unique([userId, propertyId])
-    // @@unique([userId])
+  id                    String                 @id @default(cuid())
+  tenantId              String?                @unique
+  landlordId            String
+  tenantCode            String?                @unique
+  password              String?
+  rentstatus            Int?
+  leaseStartDate        DateTime?
+  leaseEndDate          DateTime?
+  isCurrentLease        Boolean                @default(true)
+  initialDeposit        Decimal?               @default(0.00) @db.Decimal(18, 2)
+  dateOfFirstRent       DateTime?              @default(now()) @db.Timestamptz(6)
+  apartmentOrFlatNumber Int?
+  stripeCustomerId      String?                @unique
+  tenantWebUserEmail    String?
+  userId                String
+  agentId               String?
+  propertyId            String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  applicationId         String?                @unique
+  roomId                String?
+  unitId                String?
+  applicationQuestions  Json?
+  declarationInfo       Json?
+  emergencyContactInfo  Json?
+  employmentInfo        Json?
+  guarantorInfo         Json?
+  nextOfKinInfo         Json?
+  personalInfo          Json?
+  residentialInfo       Json?
+  leaseRenewals         LeaseRenewal[]
+  SupportTicket         SupportTicket[]        @relation("TicketTenantRaisedBy")
+  TenantLeaseBreach     TenantLeaseBreach[]
+  applicationInvites    applicationInvites[]
+  billsSubCategory      billsSubCategory[]
+  inspection            inspection[]
+  maintenances          maintenance[]          @relation("tenantUser")
+  reviews               reviews[]
+  services              services[]
+  history               tenantPaymentHistory[]
+  agent                 agents?                @relation(fields: [agentId], references: [id])
+  application           application?           @relation("ApplicationTenant", fields: [applicationId], references: [id])
+  landlord              landlords              @relation(fields: [landlordId], references: [id])
+  property              properties             @relation(fields: [propertyId], references: [id])
+  room                  RoomDetail?            @relation(fields: [roomId], references: [id])
+  unit                  UnitConfiguration?     @relation(fields: [unitId], references: [id])
+  user                  users                  @relation(fields: [userId], references: [id])
+  violation             violation[]            @relation("tenant")
 }

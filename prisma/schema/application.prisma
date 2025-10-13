@@ -1,4 +1,299 @@
-// Define the applicant model
+model applicationInvites {
+  id                     String                  @id @default(cuid())
+  isDeleted              Boolean                 @default(false)
+  applicationFee         YesNo?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  scheduleDate           DateTime?
+  reScheduleDate         DateTime?
+  response               InvitedResponse         @default(PENDING)
+  responseStepsCompleted InvitedResponse[]
+  propertiesId           String?
+  invitedByLandordId     String?
+  tenantsId              String?
+  userInvitedId          String?
+  enquiryId              String?
+  roomId                 String?
+  unitId                 String?
+  propertyListingId      String?
+  application            application?
+  enquires               Log?                    @relation(fields: [enquiryId], references: [id])
+  landlords              landlords?              @relation(fields: [invitedByLandordId], references: [id])
+  properties             properties?             @relation(fields: [propertiesId], references: [id])
+  propertyListing        propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
+  rooms                  RoomDetail?             @relation(fields: [roomId], references: [id])
+  tenants                tenants?                @relation(fields: [tenantsId], references: [id])
+  units                  UnitConfiguration?      @relation(fields: [unitId], references: [id])
+  userInvited            users?                  @relation(fields: [userInvitedId], references: [id])
+}
+
+model AgreementDocument {
+  id                 String           @id @default(cuid())
+  processedContent   String?
+  metadata           Json?
+  sentAt             DateTime?
+  signedByTenantAt   DateTime?
+  signedByLandlordAt DateTime?
+  completedAt        DateTime?
+  applicationId      String
+  templateId         String
+  templateVersion    Int
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  createdBy          String
+  documentUrl        String[]
+  agreementStatus    AgreementStatus?
+  variables          String[]
+  application        application      @relation(fields: [applicationId], references: [id])
+  documentTemplate   DocuTemplate     @relation(fields: [templateId], references: [id])
+}
+
+model LeaseRenewal {
+  id           String        @id @default(cuid())
+  tenantId     String
+  propertyId   String
+  currentRent  Decimal       @db.Decimal(10, 2)
+  proposedRent Decimal       @db.Decimal(10, 2)
+  renewalTerms Json
+  status       RenewalStatus @default(PENDING)
+  message      String?
+  proposedBy   String
+  proposedAt   DateTime      @default(now())
+  respondedBy  String?
+  respondedAt  DateTime?
+  counterOffer Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  property     properties    @relation(fields: [propertyId], references: [id])
+  tenant       tenants       @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([propertyId, status])
+}
+
+model application {
+  id                           String                   @id @default(cuid())
+  completedSteps               ApplicationSaveState[]
+  lastStep                     ApplicationSaveState?    @default(PERSONAL_KIN)
+  leaseStartDate               DateTime?
+  leaseEndDate                 DateTime?
+  propertyType                 String?
+  moveInDate                   DateTime?
+  rentAmountPaid               Decimal?
+  securityDeposit              Decimal?
+  leaseTerm                    String?
+  status                       ApplicationStatus        @default(PENDING)
+  statuesCompleted             ApplicationStatus[]
+  invited                      InvitedStatus?           @default(NO)
+  stepCompleted                Int?                     @default(1)
+  isDeleted                    Boolean                  @default(false)
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+  userId                       String?
+  residentialId                String?
+  emergencyContactId           String?
+  employmentInformationId      String?
+  propertiesId                 String?
+  applicantPersonalDetailsId   String
+  guarantorInformationId       String?
+  refereeId                    String?
+  createdById                  String?
+  updatedById                  String?
+  applicationInviteId          String?                  @unique
+  employmentVerificationStatus YesNo?
+  incomeVerificationStatus     YesNo?
+  creditCheckStatus            YesNo?
+  landlordVerificationStatus   YesNo?
+  guarantorVerificationStatus  YesNo?
+  refereeVerificationStatus    YesNo?
+  roomId                       String?
+  unitId                       String?
+  agreementDocument            AgreementDocument[]
+  employeeReference            EmployeeReferenceForm?
+  guarantorAgreement           GuarantorAgreement?
+  referenceForm                LandlordReferenceForm?
+  Log                          Log[]                    @relation("apply")
+  personalDetails              applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
+  applicationInvites           applicationInvites?      @relation(fields: [applicationInviteId], references: [id])
+  createdBy                    users?                   @relation("createdBy", fields: [createdById], references: [id])
+  emergencyInfo                emergencyContact?        @relation(fields: [emergencyContactId], references: [id])
+  employmentInfo               EmploymentInformation?   @relation(fields: [employmentInformationId], references: [id])
+  guarantorInformation         guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
+  properties                   properties?              @relation(fields: [propertiesId], references: [id])
+  referee                      referees?                @relation("referee", fields: [refereeId], references: [id])
+  residentialInfo              residentialInformation?  @relation(fields: [residentialId], references: [id])
+  rooms                        RoomDetail?              @relation(fields: [roomId], references: [id])
+  units                        UnitConfiguration?       @relation(fields: [unitId], references: [id])
+  updatedBy                    users?                   @relation("updatedBy", fields: [updatedById], references: [id])
+  user                         users?                   @relation("ApplicationUser", fields: [userId], references: [id])
+  applicationQuestions         applicationQuestions[]
+  declaration                  declaration[]
+  documents                    propertyDocument[]
+  tenant                       tenants?                 @relation("ApplicationTenant")
+  users                        users[]                  @relation("applicationTousers")
+}
+
+model applicantPersonalDetails {
+  id                 String        @id @default(cuid())
+  title              String
+  firstName          String
+  middleName         String?
+  lastName           String
+  dob                DateTime
+  email              String?       @unique
+  phoneNumber        String
+  maritalStatus      String
+  nationality        String?
+  identificationType String?
+  identificationNo   String?
+  issuingAuthority   String?
+  expiryDate         DateTime
+  userId             String?
+  user               users?        @relation(fields: [userId], references: [id])
+  application        application[]
+  nextOfKin          nextOfKin?
+}
+
+model nextOfKin {
+  id                         String                    @id @default(cuid())
+  lastName                   String
+  relationship               String
+  email                      String
+  firstName                  String
+  phoneNumber                String
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  middleName                 String?
+  applicantPersonalDetailsId String?                   @unique
+  userId                     String
+  applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
+  user                       users                     @relation(fields: [userId], references: [id])
+}
+
+model PrevAddress {
+  id                       String                  @id @default(cuid())
+  address                  String
+  lengthOfResidence        String
+  residentialInformationId String?
+  residentialInformation   residentialInformation? @relation(fields: [residentialInformationId], references: [id])
+}
+
+model residentialInformation {
+  id                          String        @id @default(cuid())
+  address                     String
+  addressStatus               String
+  city                        String?
+  state                       String?
+  country                     String?
+  zipCode                     String?
+  lengthOfResidence           String
+  reasonForLeaving            String?
+  landlordOrAgencyPhoneNumber String
+  landlordOrAgencyEmail       String
+  landlordOrAgencyName        String
+  userId                      String?
+  prevAddresses               PrevAddress[]
+  application                 application[]
+  user                        users?        @relation(fields: [userId], references: [id])
+}
+
+model guarantorInformation {
+  id                      String              @id @default(cuid())
+  fullName                String
+  phoneNumber             String
+  email                   String
+  address                 String
+  relationship            String?
+  identificationType      String?
+  identificationNo        String?
+  monthlyIncome           String?
+  employerName            String?
+  userId                  String?
+  dateOfBirth             DateTime?
+  nationalInsuranceNumber String?
+  title                   String?
+  guarantorAgreement      GuarantorAgreement?
+  application             application[]
+  user                    users?              @relation(fields: [userId], references: [id])
+}
+
+model emergencyContact {
+  id          String        @id @default(cuid())
+  fullname    String
+  phoneNumber String
+  email       String
+  address     String
+  userId      String?
+  application application[]
+  user        users?        @relation(fields: [userId], references: [id])
+}
+
+model referees {
+  id                        String        @id @default(cuid())
+  professionalReferenceName String
+  personalReferenceName     String
+  personalEmail             String
+  professionalEmail         String
+  personalPhoneNumber       String
+  professionalPhoneNumber   String
+  personalRelationship      String
+  professionalRelationship  String
+  userId                    String?
+  application               application[] @relation("referee")
+  user                      users?        @relation(fields: [userId], references: [id])
+}
+
+model EmploymentInformation {
+  id                   String        @id @default(cuid())
+  employmentStatus     String
+  taxCredit            String?
+  startDate            DateTime?
+  zipCode              String?
+  address              String?
+  city                 String?
+  state                String?
+  country              String?
+  monthlyOrAnualIncome String?
+  childBenefit         String?
+  childMaintenance     String?
+  disabilityBenefit    String?
+  housingBenefit       String?
+  others               String?
+  pension              String?
+  moreDetails          String?
+  employerCompany      String?
+  employerEmail        String?
+  employerPhone        String?
+  positionTitle        String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  userId               String?
+  user                 users?        @relation(fields: [userId], references: [id])
+  application          application[]
+}
+
+model applicationQuestions {
+  id                    String       @id @default(cuid())
+  havePet               AnswersEnum? @default(NO)
+  youSmoke              AnswersEnum? @default(NO)
+  requireParking        AnswersEnum? @default(NO)
+  haveOutstandingDebts  AnswersEnum? @default(NO)
+  additionalOccupants   String?
+  additionalInformation String?
+  applicantId           String
+  application           application  @relation(fields: [applicantId], references: [id])
+}
+
+model declaration {
+  id              String       @id @default(cuid())
+  signature       String?
+  declaration     String
+  additionalNotes String?
+  date            DateTime
+  applicantId     String?
+  application     application? @relation(fields: [applicantId], references: [id])
+}
+
 enum ApplicationStatus {
   PENDING
   DECLINED
@@ -24,7 +319,6 @@ enum AnswersEnum {
 }
 
 enum InvitedResponse {
-  // invites stages
   PENDING
   RESCHEDULED
   SCHEDULED
@@ -36,13 +330,12 @@ enum InvitedResponse {
   ACCEPTED
   AWAITING_FEEDBACK
   FEEDBACK
-  COMPLETED // might be redundant
+  COMPLETED
   CANCELLED
   APPLY
-  // application process stage
   APPLICATION_STARTED
   APPLICATION_NOT_STARTED
-  SUBMITTED // for submitted applications
+  SUBMITTED
   DECLINED
   APPROVED
   TENANT_CREATED
@@ -66,68 +359,6 @@ enum ApplicationSaveState {
   DECLARATION
 }
 
-model applicationInvites {
-  id             String  @id @default(cuid())
-  isDeleted      Boolean @default(false)
-  applicationFee YesNo?
-
-  createdAt      DateTime        @default(now()) // represents the date invited
-  updatedAt      DateTime        @updatedAt
-  scheduleDate   DateTime?
-  reScheduleDate DateTime?
-  response       InvitedResponse @default(PENDING)
-
-  responseStepsCompleted InvitedResponse[]
-
-  // relation ship fields
-  properties         properties?             @relation(fields: [propertiesId], references: [id])
-  propertiesId       String?
-  propertyListing    propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
-  propertyListingId  String?
-  units              UnitConfiguration?      @relation(fields: [unitId], references: [id])
-  unitId             String?
-  rooms              RoomDetail?             @relation(fields: [roomId], references: [id])
-  roomId             String?
-  invitedByLandordId String?
-  landlords          landlords?              @relation(fields: [invitedByLandordId], references: [id])
-  tenants            tenants?                @relation(fields: [tenantsId], references: [id])
-  tenantsId          String?
-  userInvited        users?                  @relation(fields: [userInvitedId], references: [id])
-  userInvitedId      String?
-  enquires           Log?                    @relation(fields: [enquiryId], references: [id])
-  enquiryId          String?
-
-  application application?
-}
-
-model AgreementDocument {
-  id               String  @id @default(cuid())
-  documentUrl      String[]
-  processedContent String? // Stores the processed template with variables
-  variables        String [] // Stores the variable mappings used
-  metadata         Json? // Additional metadata (IP, device, etc.)
-
-  // Signing Information
-  sentAt             DateTime?
-  signedByTenantAt   DateTime?
-  signedByLandlordAt DateTime?
-  completedAt        DateTime?
-
-  // Relationships
-  application   application @relation(fields: [applicationId], references: [id])
-  applicationId String
-
-  templateId      String
-  templateVersion Int
-  documentTemplate   DocuTemplate @relation(fields: [templateId], references: [id])
-
-
-  // Audit Fields
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  createdBy String // User ID who created/sent
-  agreementStatus AgreementStatus?
-}
 enum AgreementStatus {
   SIGNED_BY_TENANT
   SIGNED_BY_LANDLORD
@@ -135,273 +366,10 @@ enum AgreementStatus {
   COMPLETED
 }
 
-model application {
-  id             String                 @id @default(cuid())
-  // Array of completed states
-  completedSteps ApplicationSaveState[] // Array of completed steps
-
-  // state of application
-  lastStep ApplicationSaveState? @default(PERSONAL_KIN)
-
-  // start of property related
-  leaseStartDate   DateTime?
-  leaseEndDate     DateTime?
-  propertyType     String?
-  moveInDate       DateTime?
-  rentAmountPaid   Decimal?
-  securityDeposit  Decimal?
-  leaseTerm        String?
-  // end of property relates
-  status           ApplicationStatus   @default(PENDING)
-  statuesCompleted ApplicationStatus[]
-
-  units  UnitConfiguration? @relation(fields: [unitId], references: [id])
-  unitId String?
-  rooms  RoomDetail?        @relation(fields: [roomId], references: [id])
-  roomId String?
-
-  invited       InvitedStatus? @default(NO)
-  stepCompleted Int?           @default(1)
-  isDeleted     Boolean        @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // relation ship fields
-
-  userId String?
-  user   users?  @relation("ApplicationUser", fields: [userId], references: [id])
-
-  // residentialInformation residentialInformation[]
-  residentialId      String?
-  residentialInfo    residentialInformation? @relation(fields: [residentialId], references: [id])
-  emergencyContactId String?
-  emergencyInfo      emergencyContact?       @relation(fields: [emergencyContactId], references: [id])
-
-  employmentInformationId String?
-  employmentInfo          EmploymentInformation? @relation(fields: [employmentInformationId], references: [id])
-  documents               propertyDocument[]
-
-  properties   properties? @relation(fields: [propertiesId], references: [id])
-  propertiesId String?
-
-  personalDetails            applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
-  applicantPersonalDetailsId String
-  guarantorInformation       guarantorInformation?    @relation(fields: [guarantorInformationId], references: [id])
-  guarantorInformationId     String?
-  refereeId                  String?
-  referee                    referees?                @relation("referee", fields: [refereeId], references: [id])
-  // Relation to the tenant after application approval
-  // Tenant (new user created upon approval)
-  tenant                     tenants?                 @relation("ApplicationTenant")
-
-  createdById String?
-  createdBy   users?  @relation("createdBy", fields: [createdById], references: [id])
-  updatedById String?
-  updatedBy   users?  @relation("updatedBy", fields: [updatedById], references: [id])
-
-  applicationQuestions applicationQuestions[]
-
-  Log         Log[]         @relation("apply")
-  declaration declaration[]
-
-  applicationInviteId String?             @unique
-  applicationInvites  applicationInvites? @relation(fields: [applicationInviteId], references: [id])
-
-  // Verification-specific fields
-  employmentVerificationStatus YesNo?
-  incomeVerificationStatus     YesNo?
-  creditCheckStatus            YesNo?
-  landlordVerificationStatus   YesNo?
-  guarantorVerificationStatus  YesNo?
-  refereeVerificationStatus    YesNo?
-  // One-to-one relationship with LandlordReferenceForm
-  referenceForm                LandlordReferenceForm?
-  guarantorAgreement           GuarantorAgreement?
-  employeeReference            EmployeeReferenceForm?
-
-  users                users[]
-  agreementDocument AgreementDocument[]
-}
-
-model applicantPersonalDetails {
-  id                 String   @id @default(cuid())
-  title              String
-  firstName          String
-  middleName         String?
-  lastName           String
-  dob                DateTime
-  email              String?  @unique
-  phoneNumber        String
-  maritalStatus      String
-  nationality        String?
-  identificationType String?
-  //                                                  additions
-  identificationNo   String?
-
-  issuingAuthority String?
-  expiryDate       DateTime
-  application      application[]
-  nextOfKin        nextOfKin[]
-  user             users?        @relation(fields: [userId], references: [id])
-  userId           String? // Ensure this is nullable
-}
-
-model nextOfKin {
-  id                         String                    @id @default(cuid())
-  lastName                   String
-  relationship               String
-  email                      String
-  firstName                  String
-  phoneNumber                String
-  createdAt                  DateTime                  @default(now())
-  updatedAt                  DateTime                  @updatedAt
-  middleName                 String?
-  // One-to-one relationship with applicantPersonalDetails
-  applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
-  applicantPersonalDetailsId String?                   @unique
-  userId                     String
-  user                       users                     @relation(fields: [userId], references: [id])
-}
-
-// Define the residentialInformation model
-model PrevAddress {
-  id                       String                  @id @default(cuid())
-  address                  String
-  lengthOfResidence        String
-  residentialInformation   residentialInformation? @relation(fields: [residentialInformationId], references: [id])
-  residentialInformationId String?
-}
-
-model residentialInformation {
-  id            String @id @default(cuid())
-  address       String
-  addressStatus String
-
-  city    String?
-  state   String?
-  country String?
-  zipCode String?
-
-  // how long have you leave
-  lengthOfResidence String
-
-  // reason for leaving
-  reasonForLeaving String?
-
-  landlordOrAgencyPhoneNumber String
-  landlordOrAgencyEmail       String
-  landlordOrAgencyName        String
-
-  user   users?  @relation(fields: [userId], references: [id])
-  userId String?
-
-  prevAddresses PrevAddress[]
-  application   application[]
-}
-
-model guarantorInformation {
-  id                 String        @id @default(cuid())
-  fullName           String
-  phoneNumber        String
-  email              String
-  address            String
-  relationship       String?
-  identificationType String?
-  identificationNo   String?
-  monthlyIncome      String?
-  employerName       String?
-  application        application[]
-  userId             String?
-  user               users?        @relation(fields: [userId], references: [id])
-
-  // the below information is to be upload by the gaurantor himself
-  dateOfBirth             DateTime?
-  nationalInsuranceNumber String?
-  title                   String?
-  guarantorAgreement      GuarantorAgreement?
-}
-
-model emergencyContact {
-  id          String        @id @default(cuid())
-  fullname    String
-  phoneNumber String
-  email       String
-  address     String
-  application application[]
-  userId      String?
-  user        users?        @relation(fields: [userId], references: [id])
-}
-
-model referees {
-  id                        String @id @default(cuid())
-  professionalReferenceName String
-  personalReferenceName     String
-  personalEmail             String
-  professionalEmail         String
-  personalPhoneNumber       String
-  professionalPhoneNumber   String
-  personalRelationship      String
-  professionalRelationship  String
-
-  // Foreign key to application
-  application application[] @relation("referee")
-
-  userId String?
-  user   users?  @relation(fields: [userId], references: [id])
-}
-
-// Define the EmploymentInformation model
-model EmploymentInformation {
-  id                   String        @id @default(cuid())
-  employmentStatus     String
-  taxCredit            String?
-  startDate            DateTime?
-  zipCode              String?
-  address              String?
-  city                 String?
-  state                String?
-  country              String?
-  monthlyOrAnualIncome String?
-  childBenefit         String?
-  childMaintenance     String?
-  disabilityBenefit    String?
-  housingBenefit       String?
-  others               String?
-  pension              String?
-  moreDetails          String?
-  employerCompany      String?
-  employerEmail        String?
-  employerPhone        String?
-  positionTitle        String?
-  application          application[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String?
-  user   users?  @relation(fields: [userId], references: [id])
-}
-
-model applicationQuestions {
-  id                   String       @id @default(cuid())
-  havePet              AnswersEnum? @default(NO)
-  youSmoke             AnswersEnum? @default(NO)
-  requireParking       AnswersEnum? @default(NO)
-  haveOutstandingDebts AnswersEnum? @default(NO)
-
-  additionalOccupants   String?
-  additionalInformation String?
-  applicantId           String
-  application           application @relation(fields: [applicantId], references: [id])
-}
-
-model declaration {
-  id              String       @id @default(cuid())
-  signature       String?
-  declaration     String
-  additionalNotes String?
-  date            DateTime
-  applicantId     String?
-  application     application? @relation(fields: [applicantId], references: [id])
+enum RenewalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTER_OFFER
+  EXPIRED
 }

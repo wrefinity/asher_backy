@@ -1,26 +1,24 @@
 model landlords {
-  id                    String                  @id @default(cuid())
-  property              properties[]
-  userId                String                  @unique
-  user                  users                   @relation(fields: [userId], references: [id])
-  landlordCode          String?                 @unique
-  tenants               tenants[]
-  reviews               reviews[]
-
+  id                   String                 @id @default(cuid())
+  userId               String                 @unique
+  landlordCode         String?                @unique
   isDeleted            Boolean                @default(false)
+  stripeCustomerId     String?                @unique
+  emailDomains         String?                @unique
+  Broadcast            Broadcast[]
+  BroadcastCategory    BroadcastCategory[]
+  globalSettings       Settings[]
+  SupportTicket        SupportTicket[]        @relation("TicketRaisedBy")
+  applicationInvites   applicationInvites[]
   bankInfo             bankInfo[]
+  billsSubCategory     billsSubCategory[]
+  user                 users                  @relation(fields: [userId], references: [id])
   maintenances         maintenance[]          @relation("landlordUser")
   maintenanceWhitelist maintenanceWhitelist[]
-  stripeCustomerId     String?                @unique
+  property             properties[]
+  propertySettings     propertySettings[]
+  reviews              reviews[]
+  tenants              tenants[]
 
-  BroadcastCategory  BroadcastCategory[]
-  Broadcast          Broadcast[]
-  globalSettings     Settings[]
-  propertySettings   propertySettings[]
-  applicationInvites applicationInvites[]
-  emailDomains       String?              @unique
-
-  SupportTicket SupportTicket[] @relation("TicketRaisedBy")
-
-  billsSubCategory billsSubCategory[]
+  Event Event[]
 }

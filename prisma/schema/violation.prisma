@@ -1,9 +1,50 @@
+model violation {
+  id             String             @id @default(cuid())
+  actionTaken    String?
+  noticeType     NoticeType?
+  deliveryMethod DeliveryMethod?
+  description    String
+  severityLevel  SeverityLevel?     @default(LOW)
+  propertyId     String?
+  tenantId       String?
+  createdById    String?
+  unitId         String?
+  isDeleted      Boolean            @default(false)
+  dueDate        DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  amount         Decimal?           @default(0.00) @db.Decimal(18, 2)
+  user           users?             @relation("users", fields: [createdById], references: [id])
+  property       properties?        @relation("violations", fields: [propertyId], references: [id])
+  tenant         tenants?           @relation("tenant", fields: [tenantId], references: [id])
+  unit           UnitConfiguration? @relation(fields: [unitId], references: [id])
+}
+
+model TenantLeaseBreach {
+  id             String          @id @default(cuid())
+  tenantId       String
+  propertyId     String
+  breachType     LeaseBreachType
+  description    String
+  date           DateTime        @default(now())
+  resolved       Boolean         @default(false)
+  repeatOffense  Boolean         @default(false)
+  resolutionDate DateTime?
+  penaltyAmount  Decimal?        @db.Decimal(10, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  property       properties      @relation(fields: [propertyId], references: [id])
+  tenant         tenants         @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, propertyId])
+}
+
 enum SeverityLevel {
-  LOW // Low severity
-  MODERATE // Moderate severity
-  SEVERE // Severe severity
-  CRITICAL // Critical severity
-  EXTREME // Extreme severity
+  LOW
+  MODERATE
+  SEVERE
+  CRITICAL
+  EXTREME
 }
 
 enum NoticeType {
@@ -26,72 +67,20 @@ enum ViolationStatus {
   DELIVERED
 }
 
-model violation {
-  id             String             @id @default(cuid()) // Unique ID for the violation entry
-  actionTaken    String?
-  noticeType     NoticeType?
-  deliveryMethod DeliveryMethod?
-  amount         Decimal?           @default(0.00) @db.Decimal(18, 2)
-  description    String // Description of the violation
-  severityLevel  SeverityLevel?     @default(LOW) // Default value should be just the enum value (MODERATE)
-  propertyId     String? // Foreign key for the property (optional)
-  property       properties?        @relation("violations", fields: [propertyId], references: [id]) // Property relation
-  tenantId       String? // Foreign key for the tenant
-  tenant         tenants?           @relation("tenant", fields: [tenantId], references: [id]) // Tenant relation
-  createdById    String? // Foreign key for the user (optional)
-  unit           UnitConfiguration? @relation(fields: [unitId], references: [id])
-  unitId         String?
-  user           users?             @relation("users", fields: [createdById], references: [id]) // User relation
-  isDeleted      Boolean            @default(false)
-  dueDate        DateTime?
-  createdAt      DateTime           @default(now()) // Timestamp when violation was created
-  updatedAt      DateTime           @updatedAt // Timestamp when violation was last updated
-}
-
-model TenantLeaseBreach {
-  id             String          @id @default(cuid())
-  tenantId       String
-  tenant         tenants         @relation(fields: [tenantId], references: [id])
-  propertyId     String
-  property       properties      @relation(fields: [propertyId], references: [id])
-  breachType     LeaseBreachType
-  description    String
-  date           DateTime        @default(now())
-  resolved       Boolean         @default(false)
-  repeatOffense  Boolean         @default(false)
-  resolutionDate DateTime?
-  penaltyAmount  Decimal?        @db.Decimal(10, 2)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  @@index([tenantId, propertyId])
-}
-
 enum LeaseBreachType {
-  // Severe breaches
   SUBLETTING
   ILLEGAL_ACTIVITY
   UNAUTHORIZED_BUSINESS
-
-  // Significant breaches
   UNAUTHORIZED_OCCUPANT
   PROPERTY_DAMAGE
   SMOKING_VIOLATION
-
-  // Moderate breaches
   NOISE_VIOLATION
   PARKING_VIOLATION
   TRASH_VIOLATION
-
-  // Common minor breaches
   UNAUTHORIZED_PET
   LATE_PAYMENT
   GUEST_VIOLATION
-
-  // Technical breaches
   INSURANCE_LAPSE
   MAINTENANCE_NEGLECT
-
-  // Other
   OTHER
 }
