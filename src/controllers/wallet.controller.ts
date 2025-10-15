@@ -57,8 +57,9 @@ class WalletController {
         const userId = String(req.user.id)
         const { amount, paymentGateway, currency, payment_method } = req.body
 
-        if (!['NGN', 'GBP'].includes(currency)) {
-            return res.status(400).json({ error: 'Unsupported currency' });
+
+        if (![Currency.NGN, Currency.GBP].includes(currency)) {
+            return res.status(400).json({ error: `Unsupported currency: ${Currency.NGN} or ${Currency.GBP} are the only options` });
         }
 
         if (!Object.values(PaymentGateway).includes(paymentGateway)) {

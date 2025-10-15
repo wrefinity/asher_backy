@@ -69,21 +69,7 @@ class PayStackService {
 
             const { reference, authorization_url } = response.data.data;
             // create payment basse on orderId or walletId
-            if (response.status) {
-                await transactionServices.createTransaction({
-                    referenceId: reference,
-                    amount: Math.round(amount * 100),
-                    userId,
-                    description: `Payment for ${type}`,
-                    paymentGateway: 'PAYSTACK',
-                    walletId: walletId || '',
-                    propertyId: propertyId || '',
-                    type: TransactionType.CREDIT,
-                    status: TransactionStatus.PENDING,
-                    reference: type,
-                    metadata
-                });
-            }
+    
             return {
                 authorizationUrl: authorization_url,
                 reference,
