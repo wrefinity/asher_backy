@@ -30,9 +30,7 @@ class AuthRoutes {
         this.router.post("/reset-password", validateBody(passwordResetSchema), AuthController.passwordReset.bind(AuthController));
         this.router.post('/tenants/register', AuthController.registerTenant.bind(AuthController))
         this.router.post('/update-password', this.authenticateService.authorize, validateBody(updatePasswordSchema),  AuthController.updatePassword.bind(AuthController))
-        // this.router.post('/landlord/register', AuthController.createLandlord.bind(AuthController))
-        // this.router.get("/google_url", AuthController.sendGoogleUrl.bind(AuthController))
-        // this.router.get("/google/callback", AuthController.githubLogin.bind(AuthController))
+        this.router.post("/google-auth", AuthController.verifyGoogleToken.bind(AuthController))
     }
 }
 

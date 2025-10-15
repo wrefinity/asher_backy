@@ -221,6 +221,21 @@ class UserService {
 
 
 
+    createUserWithProfile = async (userData: any, profileData: any) => {
+        return await prismaClient.users.create({
+            data: {
+                email: userData?.email,
+                role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
+                isVerified: userData?.isVerified || false,
+                password: this.hashPassword(userData?.password),
+                profile: {
+                    create: {
+                        ...profileData
+                    }
+                }
+            },
+        });
+    }
     createUser = async (userData: any, landlordBulkUploads: boolean = false, createdBy: string = null, createTenantProfile: boolean = false) => {
         let user = null
 

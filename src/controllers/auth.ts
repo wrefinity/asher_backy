@@ -2,7 +2,7 @@ import { compareSync } from "bcrypt";
 import { Request, Response } from "express";
 
 import { Jtoken } from "../middlewares/Jtoken";
-import { JWT_SECRET } from "../secrets";
+import { GOOGLE_CLIENT_ID, JWT_SECRET } from "../secrets";
 import UserServices from "../services/user.services";
 import {
     createVerificationToken,
@@ -23,6 +23,8 @@ import { ApiResponse } from "../utils/ApiResponse";
 import { ApiError } from "../utils/ApiError";
 import userServices from "../services/user.services";
 import tenantService from "../services/tenant.service";
+import logger from "../utils/loggers";
+import oauth2Client from "../configs/oauth.config";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -338,6 +340,70 @@ class AuthControls {
             ApiResponse.success({}, result.message)
         );
     });
+
+    /**
+ * Google login using ID token
+*/
+    verifyGoogleToken = async (req: Request, res: Response) => {
+
+        const { code } = req.body;
+        if (!code) {
+            return res.status(400).send("Missing authorization code");
+        }
+        try {
+            // Exchange authorization code for tokens
+            const { tokens } = await oauth2Client.getToken(code);
+            oauth2Client.setCredentials(tokens);
+            const tokenId = tokens.id_token;
+
+            if (!tokenId) {
+                throw ApiError.unauthorized("Failed to get token from Google during code exchange");
+            }
+
+            const ticket = await oauth2Client.verifyIdToken({
+                idToken: tokenId,
+                audience: GOOGLE_CLIENT_ID,
+            });
+
+            const payload = ticket.getPayload();
+            const { email, name, picture, id: googleId, given_name, family_name } = payload as any;
+            if (!email) throw ApiError.unauthorized("Invalid Google token: missing email");
+
+
+            let user: any = await userServices.getUserById(email);
+            if (!user) {
+                user = await userServices.createUserWithProfile(
+                    { email, googleId, isVerified: true},
+                    { profileUrl: picture, fullname: name, lastName: family_name, firstName: given_name }
+                );
+
+            }
+            user = await userServices.findUserByEmail(user?.id);
+            await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+            const JWtokens = await this.tokenService.createToken({
+                id: user.id,
+                role: String(user.role),
+                email: String(user.email),
+            });
+
+            const { password, ...userDetails } = user;
+            return res.status(200).json(
+                ApiResponse.success(
+                    {
+                        token: JWtokens.accessToken,
+                        refreshToken: JWtokens.refreshToken,
+                        userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
+                    },
+                    "User logged in successfully"
+                )
+            );
+        } catch (error: any) {
+            logger.error("Google auth error:", error);
+            return res.status(error.statusCode || 400).json(
+                ApiError.badRequest(error.message || "Google authentication failed")
+            );
+        }
+    }
 }
 
 export default new AuthControls();
