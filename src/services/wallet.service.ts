@@ -264,7 +264,15 @@ class WalletService {
 
             case PaymentGateway.PAYSTACK:
 
-                const paystackPayment = await paystackServices.initializePayment(userId, amount, currency, user.email);
+                const paystackPayment = await paystackServices.initializePayment(
+                    userId,
+                    amount,
+                    currency,
+                    user.email,
+                    TransactionReference.FUND_WALLET,
+                    wallet.id
+                )
+                ;
                 paymentResponse = paystackPayment;
                 referenceId = paystackPayment.reference;
                 paymentUrl = paystackPayment.authorizationUrl;

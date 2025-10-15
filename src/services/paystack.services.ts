@@ -1,11 +1,11 @@
 import axios from "axios";
 import { Request, Response } from 'express'
-import crypto from 'crypto'
+import crypto, { randomUUID } from 'crypto'
 import transactionServices from "./transaction.services";
 import errorService from "./error.service";
 import { PaystackResponseType, WebhookEventResponse } from "../utils/types";
 import { PAYSTACK_SECRET_KEY } from "../secrets"
-import { Currency, TransactionStatus, TransactionType } from "@prisma/client";
+import { Currency, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 import walletService from "./wallet.service";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -33,29 +33,57 @@ class PayStackService {
         };
     }
 
+
     // Method to initiate a payment transaction
     async initializePayment(
         userId: string,
         amount: number,
         currency: Currency,
         email: string,
-        walletId?: string
+        type: TransactionReference,
+        walletId?: string,
+        propertyId?: string
     ) {
         try {
 
+            // Generate a unique reference — combine UUID + type
+            const uniqueRef = `${type}_${randomUUID()}`;
+            // Prepare metadata
+            const metadata = {
+                userId,
+                walletId,
+                propertyId,
+                type,
+            };
             const response = await axios.post<PaystackResponseType>(
                 `${this.payStackBaseUrl}/transaction/initialize`,
                 {
                     amount: amount * 100, // convert to kobo
                     email,
                     currency: currency || Currency.NGN,
-                    metadata: {
-                        userId,
-                        walletId: walletId,
-                    },
+                    metadata,
+                    reference: uniqueRef,
                 },
                 { headers: this.getHeaders() });
+
+
             const { reference, authorization_url } = response.data.data;
+            // create payment basse on orderId or walletId
+            if (response.status) {
+                await transactionServices.createTransaction({
+                    referenceId: reference,
+                    amount: Math.round(amount * 100),
+                    userId,
+                    description: `Payment for ${type}`,
+                    paymentGateway: 'PAYSTACK',
+                    walletId: walletId || '',
+                    propertyId: propertyId || '',
+                    type: TransactionType.CREDIT,
+                    status: TransactionStatus.PENDING,
+                    reference: type,
+                    metadata
+                });
+            }
             return {
                 authorizationUrl: authorization_url,
                 reference,
@@ -218,13 +246,19 @@ class PayStackService {
         const response = await axios.get(
             `${this.payStackBaseUrl}/transaction/verify/${referenceId}`,
             { headers: this.getHeaders() }
-        )
+        );
 
         const paystackData = response.data.data;
 
         if (paystackData.status !== 'success') {
             throw new Error('Payment not succeeded');
         }
+
+        const metadata = paystackData.metadata as {
+            userId?: string;
+            walletId?: string;
+            propertyId?: string;
+        };
 
         // Find transaction by reference
         const transaction = await prismaClient.transaction.findUnique({
@@ -236,14 +270,15 @@ class PayStackService {
             throw new Error('Transaction not found');
         }
 
+        // Prevent re-processing
         if (transaction.status === TransactionStatus.COMPLETED) {
             return transaction;
         }
 
-        const amount = paystackData.amount / 100; // Convert to major units
-
+        const amount = paystackData.amount / 100;
+        // SUpdate transaction and wallet in a single Prisma transaction
         return await prismaClient.$transaction(async (prisma) => {
-            // Update transaction status
+            // Update transaction status and attach Paystack data
             const updatedTransaction = await prisma.transaction.update({
                 where: { id: transaction.id },
                 data: {
@@ -251,15 +286,21 @@ class PayStackService {
                     metadata: { ...(transaction.metadata as object), paystackData }
                 }
             });
-            // Update wallet balance
-            await prisma.wallet.update({
-                where: { id: transaction.walletId },
-                data: { balance: { increment: new Decimal(amount) } }
-            });
+
+            // Conditionally update wallet balance if walletId is present in metadata
+            if (metadata.walletId) {
+                await prisma.wallet.update({
+                    where: { id: metadata.walletId },
+                    data: {
+                        balance: { increment: new Decimal(amount) }
+                    }
+                });
+            }
 
             return updatedTransaction;
         });
     }
+
 }
 
 export default new PayStackService();

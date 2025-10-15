@@ -118,7 +118,6 @@ class Server {
         this.app.use("/api/tenants", TenantRouter);
         this.app.use("/api/docusign", DocuSignRouter);
         // this.app.use("/api/generator", GeneratorRouter);
-        // bank information routes
         this.app.use("/api/banks/", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);
         this.app.use("/api/suggestions", SuggestionRoutes);
