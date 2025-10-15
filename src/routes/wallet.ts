@@ -16,6 +16,8 @@ class WalletRouter {
         this.router.use(this.authenticateService.authorize)
         this.router.get('/', walletController.getUserWallet)
         this.router.get('/all', walletController.getUserWallets)
+        this.router.get('/user-wallet/:userId', walletController.getUserWalletsByUserId)
+        this.router.get('/all', walletController.getUserWallets)
         this.router.post('/fund', walletController.fundWallet)
         this.router.post('/transfer', walletController.transferBalance)
         this.router.post('/payout', walletController.initiatePayout)

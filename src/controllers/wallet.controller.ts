@@ -41,6 +41,17 @@ class WalletController {
             errorService.handleError(error, res);
         }
     }
+    getUserWalletsByUserId = async (req: CustomRequest, res: Response) => {
+
+        const userId = req.params.userId;
+        try {
+            const userWallets = await walletService.getUserWallets(userId);
+            res.status(200).json({ userWallets })
+
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
 
     async fundWallet(req: CustomRequest, res: Response) {
         const userId = String(req.user.id)
