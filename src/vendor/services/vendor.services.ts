@@ -1,6 +1,4 @@
-import { Transaction } from "@thirdweb-dev/sdk";
 import { prismaClient } from "../..";
-import {IService} from "../validations/interfaces"
 import { maintenanceDecisionStatus, maintenanceStatus, TransactionStatus } from ".prisma/client";
 
 interface VendorStats {
