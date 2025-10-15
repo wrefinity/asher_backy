@@ -161,46 +161,45 @@ class WalletService {
             });
 
             // Create transactions
-            let transferId = generateIDs('TRF');
+
+
+            let baseTransferId = generateIDs('TRF');
             const now = new Date();
 
             // Sender transaction
             await tx.transaction.create({
                 data: {
-                    wallet: {
-                        connect: { id: senderWalletId }
-                    },
+                    wallet: { connect: { id: senderWalletId } },
                     user: { connect: { id: senderWallet.user.id } },
-                    amount: amount,
+                    amount,
                     type: TransactionType.DEBIT,
                     status: TransactionStatus.COMPLETED,
                     description: `Transfer to ${receiverWallet.user?.email || receiverWalletId}`,
-                    referenceId: transferId,
+                    referenceId: `${baseTransferId}_OUT`,  // 👈 unique suffix
                     reference: TransactionReference.TRANSFER,
                     createdAt: now,
                     updatedAt: now,
-                    metadata: { receiverWalletId, direction: 'out' }
+                    metadata: { receiverWalletId, direction: 'out', baseTransferId }
                 }
             });
 
             // Receiver transaction
             await tx.transaction.create({
                 data: {
-                    wallet: {
-                        connect: { id: receiverWalletId }
-                    },
-                    amount: amount,
+                    wallet: { connect: { id: receiverWalletId } },
+                    user: { connect: { id: receiverWallet.user.id } },
+                    amount,
                     type: TransactionType.CREDIT,
                     status: TransactionStatus.COMPLETED,
-                    user: { connect: { id: receiverWallet.user.id } },
                     description: `Transfer from ${senderWallet.user?.email || senderWalletId}`,
-                    referenceId: transferId,
+                    referenceId: `${baseTransferId}_IN`,  // 👈 unique suffix
                     reference: TransactionReference.TRANSFER,
                     createdAt: now,
                     updatedAt: now,
-                    metadata: { senderWalletId, direction: 'in' }
+                    metadata: { senderWalletId, direction: 'in', baseTransferId }
                 }
             });
+
             return { success: true };
         });
     }
@@ -410,7 +409,7 @@ class WalletService {
             throw error;
         }
     }
-    
+
     async updateWalletBalance(
         walletId: string,
         amount: Decimal,
