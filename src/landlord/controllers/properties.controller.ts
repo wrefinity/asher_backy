@@ -439,7 +439,7 @@ class PropertyController {
             ErrorService.handleError(err, res);
         }
     }
-    // this code get landlord listing of properties including 
+
     // using filters base on property size, type and location
     getLandlordPropertyListing = async (req: CustomRequest, res: Response) => {
         try {
@@ -472,7 +472,7 @@ class PropertyController {
                         isActive: isActiveNumber === 1
                     };
                 } else {
-                    throw new Error(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
+                    return res.status(400).json(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
                 }
             }
 
@@ -482,7 +482,7 @@ class PropertyController {
                 if (isValidSpecificationType) {
                     filters.property = { ...filters.property, specificationType: String(specificationType) };
                 } else {
-                    throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(PropertySpecificationType).join(', ')}`);
+                    return res.status(400).json(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(PropertySpecificationType).join(', ')}`);
                 }
             }
             if (type) {
@@ -490,14 +490,12 @@ class PropertyController {
                 if (isValidType) {
                     filters.property = { ...filters.property, type: String(type) };
                 } else {
-                    throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
+                    return res.status(400).json(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
                 }
             }
 
             // Fetch the filtered properties
             const properties = await PropertyServices.getAllListedProperties(filters);
-
-            console.log(landlordId)
             // Check if properties are found
             if (!properties || properties.length === 0) {
                 return res.status(404).json({ message: "No properties found for this landlord with the given filters" });

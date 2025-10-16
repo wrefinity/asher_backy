@@ -239,8 +239,8 @@ class AuthControls {
                 id: user.id,
                 role: String(user.role),
                 email: String(user.email),
-                tenantCode: tenantCode,
-                tenantId: activeTenant.id
+                // tenantCode: tenantCode,
+                // tenantId: activeTenant.id
             });
 
             const { password, ...userDetails } = user;
@@ -370,7 +370,7 @@ class AuthControls {
             if (!email) throw ApiError.unauthorized("Invalid Google token: missing email");
 
 
-            let user: any = await userServices.getUserById(email);
+            let user: any = await userServices.findUserByEmail(email);
             if (!user) {
                 user = await userServices.createUserWithProfile(
                     { email, googleId, isVerified: true},
@@ -378,7 +378,7 @@ class AuthControls {
                 );
 
             }
-            user = await userServices.findUserByEmail(user?.id);
+            user = await userServices.findUserByEmail(email);
             await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
             const JWtokens = await this.tokenService.createToken({
                 id: user.id,

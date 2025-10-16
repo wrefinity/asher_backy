@@ -58,7 +58,7 @@ class PayStackService {
             const response = await axios.post<PaystackResponseType>(
                 `${this.payStackBaseUrl}/transaction/initialize`,
                 {
-                    amount: amount * 100, // convert to kobo
+                    amount: amount * 100,
                     email,
                     currency: currency || Currency.NGN,
                     metadata,
@@ -69,7 +69,7 @@ class PayStackService {
 
             const { reference, authorization_url } = response.data.data;
             // create payment basse on orderId or walletId
-    
+
             return {
                 authorizationUrl: authorization_url,
                 reference,
@@ -130,14 +130,22 @@ class PayStackService {
         if (!transactions) {
             console.error(`Transaction not found for reference: ${data.reference}`);
             return;
+        }       
+        // Prevent re-processing
+        if (transactions.status === TransactionStatus.COMPLETED) {
+            return transactions;
         }
-        await this.handleWalletTopUp(data);
-
+        if (transactions.reference === TransactionReference.FUND_WALLET) {
+            await this.handleWalletTopUp(data);
+        } else if (transactions.reference === TransactionReference.RECEIVE_PAYMENT) {
+            await this.handlePayeeCreatorPayment([transactions]);
+        }
+        
     }
 
     async handleWalletTopUp(data: any) {
         const { reference, amount, metadata } = data
-        const amountInNaira = amount / 100;
+        const actualAmount = amount / 100;
 
         await prismaClient.$transaction(async (prisma) => {
             await prisma.transaction.update({
@@ -146,7 +154,8 @@ class PayStackService {
             });
             await prisma.wallet.update({
                 where: { id: metadata.walletId },
-                data: { balance: { increment: new Decimal(amountInNaira) } }
+                data: { balance: { increment: new Decimal(actualAmount) } }
+                
             });
         });
     }

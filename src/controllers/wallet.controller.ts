@@ -78,7 +78,6 @@ class WalletController {
         // }
         const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const countryCode = await getCountryCodeFromIp(userIpAddress);
-        console.log('Country Code:', countryCode);
         try {
             const validAmount = Number(amount)
             const fundWallet = await walletService.fundWalletGeneral(userId, validAmount, currency.toString().toUpperCase(), countryCode, paymentGateway, payment_method)
