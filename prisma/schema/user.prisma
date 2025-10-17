@@ -78,6 +78,9 @@ model users {
   violation                violation[]                @relation("users")
   wallet                   wallet[]
   applicantion             application[]              @relation("applicationTousers")
+  @@index([email])
+  @@index([googleId])
+  @@index([profileId])
 }
 
 model UserLikedProperty {

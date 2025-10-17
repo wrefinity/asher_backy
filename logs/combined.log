@@ -15,3 +15,75 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-16 17:11:30"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-16 17:11:32"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-16 17:11:43"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:08:22"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:287:30)","timestamp":"2025-10-17 18:09:09"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:10:18"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:10:20"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:290:30)","timestamp":"2025-10-17 18:10:42"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:11:12"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:11:18"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:291:30)","timestamp":"2025-10-17 18:11:45"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:12:59"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:13:01"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:13:05"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:291:30)","timestamp":"2025-10-17 18:13:26"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:15:32"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:291:30)","timestamp":"2025-10-17 18:15:41"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:291:30)","timestamp":"2025-10-17 18:15:47"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:291:30)","timestamp":"2025-10-17 18:15:49"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:20"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:23"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:26"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:28"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:31"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:33"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:35"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:42"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:17:44"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:18:41"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:18:43"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:18:49"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:19:51"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:19:55"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:21:01"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:21:03"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:21:08"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:26:27"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:26:33"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:27:06"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:27:16"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:27:19"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1931:27)\n    at async getPropertyById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:291:30)","timestamp":"2025-10-17 18:28:04"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:31:06"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:31:30"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:59:52"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 18:59:58"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:00:25"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:00:57"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:00:59"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:01:02"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:01:05"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:01:34"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:02:13"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:02:16"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:05:12"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:06:18"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:06:20"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:06:23"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:07:51"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:07:53"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:08:15"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:08:32"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:08:37"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:08:52"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:08:53"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:08:57"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:09:01"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:09:03"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:18:20"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:23:18"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:29:18"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:30:05"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:30:07"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:38:20"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-17 19:51:15"}

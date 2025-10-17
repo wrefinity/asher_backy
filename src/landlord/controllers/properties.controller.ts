@@ -384,24 +384,22 @@ class PropertyController {
     }
 
     createPropertyListing = async (req: CustomRequest, res: Response) => {
-        const { error, value } = createPropertyListingSchema.validate(req.body);
-        if (error) return res.status(400).json({ error: error.details[0].message });
-
+        console.log("createPropertyListing service data:", req.body);
         try {
-            const data: PropertyListingDTO = value;
+            const data: PropertyListingDTO = req.body;
             const landlordId = req.user?.landlords?.id;
 
             const checkOwnership = await PropertyServices.checkLandlordPropertyExist(
                 landlordId,
-                value.propertyId
+                data.propertyId
             );
 
             if (!checkOwnership)
                 return res.status(400).json({ message: 'property does not exist under landlord' });
 
             // Validate array of unitIds
-            if (Array.isArray(value.unitId) && value.unitId.length > 0) {
-                for (const uid of value.unitId) {
+            if (Array.isArray(data.unitId) && data.unitId.length > 0) {
+                for (const uid of data.unitId) {
                     const unitExists = await propertyUnitService.getUnitById(uid);
                     if (!unitExists) {
                         return res.status(400).json({ message: `Invalid unit ID: ${uid}` });
@@ -410,8 +408,8 @@ class PropertyController {
             }
 
             // Validate array of roomIds
-            if (Array.isArray(value.roomId) && value.roomId.length > 0) {
-                for (const rid of value.roomId) {
+            if (Array.isArray(data.roomId) && data.roomId.length > 0) {
+                for (const rid of data.roomId) {
                     const roomExists = await propertyRoomService.getRoomById(rid);
                     if (!roomExists) {
                         return res.status(400).json({ message: `Invalid room ID: ${rid}` });
@@ -419,7 +417,7 @@ class PropertyController {
                 }
             }
 
-            const listing = await PropertyServices.createPropertyListing({data, listAs: checkOwnership.specificationType });
+            const listing = await PropertyServices.createPropertyListing({...data, listAs: checkOwnership.specificationType });
             return res.status(201).json(listing);
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -445,7 +443,7 @@ class PropertyController {
         try {
             // Extract landlordId from the authenticated user
             const landlordId = req.user?.landlords?.id;
-
+            
             if (!landlordId) {
                 return res.status(400).json({ message: "Landlord not found" });
             }
@@ -458,6 +456,8 @@ class PropertyController {
                 landlordId,
             };
 
+            console.log("checker", filters)
+
             // Add filters to the query if they are provided
             if (state) filters.property = { ...filters.property, state: String(state) };
             if (country) filters.property = { ...filters.property, country: String(country) };
@@ -465,11 +465,11 @@ class PropertyController {
             if (isActive) {
                 // Convert isActive to a number
                 const isActiveNumber = parseInt(isActive.toString(), 10);
-
+                console.log("checker", isActiveNumber)
                 if (!isNaN(isActiveNumber)) {
                     filters.property = {
                         ...filters.property,
-                        isActive: isActiveNumber === 1
+                        isActive: isActiveNumber == 1
                     };
                 } else {
                     return res.status(400).json(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);

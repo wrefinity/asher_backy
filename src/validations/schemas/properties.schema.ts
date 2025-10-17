@@ -192,14 +192,6 @@ export const createPropertyListingSchema = Joi.object({
       'any.only': `"propertySubType" must be one of ${propertyType.join(', ')}`,
     }),
 
-  // listAs: Joi.string()
-  //   .valid(...Object.values(PropertySpecificationType))
-  //   .required()
-  //   .messages({
-  //     'string.base': '"listAs" must be a string',
-  //     'any.only': `"listAs" must be one of ${Object.values(PropertySpecificationType).join(', ')}`,
-  //     'any.required': '"listAs" is required',
-  //   }),
 
   priceFrequency: Joi.string()
     .valid(...Object.values(PriceFrequency))
@@ -218,9 +210,8 @@ export const createPropertyListingSchema = Joi.object({
 }).custom((value, helpers) => {
   const { type, unitId = [], roomId = [] } = value;
 
-  // TypeScript type guard for Joi custom validation
   const createError = (message: string) => {
-    return helpers.error('any.custom', { message });
+    return helpers.error('any.custom', { message }); 
   };
 
   if (type === ListingType.ENTIRE_PROPERTY) {
@@ -249,7 +240,7 @@ export const createPropertyListingSchema = Joi.object({
 
   return value;
 }).messages({
-  'any.custom': '{{#error}}',
+  'any.custom': '{{#message}}', // ✅ changed from {{#error}} to {{#message}}
   'number.base': '{{#label}} must be a number',
   'number.positive': 'Price must be positive',
   'date.min': '{{#label}} must be in the future',

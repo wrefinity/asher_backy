@@ -1258,6 +1258,7 @@ class PropertyService {
 
 
     async createPropertyListing(data: PropertyListingDTO | any) {
+    
         const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
         const response: {
             success: boolean;
@@ -1284,6 +1285,7 @@ class PropertyService {
         return await prismaClient.$transaction(async (tx) => {
             // Check for existing ENTIRE_PROPERTY listing
             if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
+                
                 const existing = await tx.propertyListingHistory.findFirst({
                     where: {
                         propertyId,

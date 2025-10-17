@@ -145,9 +145,10 @@ class PropertyController {
             const pageSize = parseInt(limit as string, 10) || 10;
             const skip = (pageNumber - 1) * pageSize;
 
+            console.log("Final Filters:", filters);
+
             const totalProperties = await PropertyServices.countListedProperties(filters);
             const properties = await PropertyServices.getAllListedProperties(filters, skip, pageSize);
-
             if (!properties || properties.length === 0) {
                 return res.status(404).json({ message: "No properties found for the given filters" });
             }
@@ -284,6 +285,10 @@ class PropertyController {
     getPropertyById = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.id;
+            console.log(propertyId  )
+            if(!propertyId){
+                return res.status(400).json({ message: "propertyId is required" });
+            }
             const property = await PropertyServices.getPropertyById(propertyId)
             return res.status(200).json({ property })
         } catch (error) {

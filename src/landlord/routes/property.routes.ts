@@ -4,6 +4,8 @@ import PropertyController from "../controllers/properties.controller";
 import SettingController from "../controllers/setting.controller";
 import upload from "../../configs/multer";
 import {handlePropertyUploads } from "../../middlewares/multerCloudinary";
+import { validateBody } from "../../middlewares/validation";
+import { createPropertyListingSchema } from "../../validations/schemas/properties.schema";
 
 class ApartmentLandlordRouter {
     public router: Router;
@@ -18,9 +20,10 @@ class ApartmentLandlordRouter {
     private initializeRoutes() {
         // landlord properties
         this.router.get('/property/rentals', PropertyController.categorizedPropsInRentals)
-        this.router.post('/property/property-listing', PropertyController.createPropertyListing);
+        
+        this.router.post('/property/property-listing', validateBody(createPropertyListingSchema), PropertyController.createPropertyListing);
         this.router.delete('/property/property-unlisting/:propertyId', PropertyController.unListPropertyListing);
-        this.router.get('/property/property-listing', PropertyController.getLandlordPropertyListing);
+        this.router.get('/property/landlord-listed-properties', PropertyController.getLandlordPropertyListing);
         this.router.get('/property/property-listing/active', PropertyController.getActivePropsListing);
         this.router.get('/property/property-listing/inactive', PropertyController.getInactivePropsListing);
         this.router.patch('/property/property-listing/:listedId', PropertyController.updatePropsListing);
