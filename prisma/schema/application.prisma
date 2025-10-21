@@ -25,6 +25,14 @@ model applicationInvites {
   tenants                tenants?                @relation(fields: [tenantsId], references: [id])
   units                  UnitConfiguration?      @relation(fields: [unitId], references: [id])
   userInvited            users?                  @relation(fields: [userInvitedId], references: [id])
+
+  @@index([propertiesId, isDeleted])
+  @@index([tenantsId, isDeleted])
+  @@index([userInvitedId, response])
+  @@index([invitedByLandordId, createdAt])
+  @@index([createdAt])
+  @@index([response, isDeleted])
+  @@index([scheduleDate])
 }
 
 model AgreementDocument {
@@ -46,6 +54,13 @@ model AgreementDocument {
   variables          String[]
   application        application      @relation(fields: [applicationId], references: [id])
   documentTemplate   DocuTemplate     @relation(fields: [templateId], references: [id])
+
+  @@index([applicationId])
+  @@index([templateId, templateVersion])
+  @@index([agreementStatus])
+  @@index([createdAt])
+  @@index([sentAt])
+  @@index([completedAt])
 }
 
 model LeaseRenewal {
@@ -69,6 +84,9 @@ model LeaseRenewal {
 
   @@index([tenantId, status])
   @@index([propertyId, status])
+  @@index([status, proposedAt])
+  @@index([proposedAt])
+  @@index([createdAt])
 }
 
 model application {
@@ -131,6 +149,20 @@ model application {
   documents                    propertyDocument[]
   tenant                       tenants?                 @relation("ApplicationTenant")
   users                        users[]                  @relation("applicationTousers")
+
+  // Critical indexes for application reuse and common queries
+  @@index([userId, status, isDeleted])
+  @@index([propertiesId, status, isDeleted])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([isDeleted, status])
+  @@index([moveInDate])
+  @@index([leaseStartDate, leaseEndDate])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([applicationInviteId])
+  // Composite index for application reuse queries
+  @@index([userId, status, isDeleted, createdAt])
 }
 
 model applicantPersonalDetails {
@@ -152,6 +184,12 @@ model applicantPersonalDetails {
   user               users?        @relation(fields: [userId], references: [id])
   application        application[]
   nextOfKin          nextOfKin?
+
+  @@index([userId])
+  @@index([email])
+  @@index([phoneNumber])
+  @@index([identificationNo])
+  @@index([lastName, firstName])
 }
 
 model nextOfKin {
@@ -168,6 +206,11 @@ model nextOfKin {
   userId                     String
   applicantPersonalDetails   applicantPersonalDetails? @relation(fields: [applicantPersonalDetailsId], references: [id])
   user                       users                     @relation(fields: [userId], references: [id])
+
+  @@index([applicantPersonalDetailsId])
+  @@index([email])
+  @@index([phoneNumber])
+  @@index([lastName, firstName])
 }
 
 model PrevAddress {
@@ -176,6 +219,8 @@ model PrevAddress {
   lengthOfResidence        String
   residentialInformationId String?
   residentialInformation   residentialInformation? @relation(fields: [residentialInformationId], references: [id])
+
+  @@index([residentialInformationId])
 }
 
 model residentialInformation {
@@ -195,6 +240,10 @@ model residentialInformation {
   prevAddresses               PrevAddress[]
   application                 application[]
   user                        users?        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([city, state])
+  @@index([zipCode])
 }
 
 model guarantorInformation {
@@ -215,6 +264,12 @@ model guarantorInformation {
   guarantorAgreement      GuarantorAgreement?
   application             application[]
   user                    users?              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([email])
+  @@index([phoneNumber])
+  @@index([identificationNo])
+  @@index([fullName])
 }
 
 model emergencyContact {
@@ -226,6 +281,10 @@ model emergencyContact {
   userId      String?
   application application[]
   user        users?        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([email])
+  @@index([phoneNumber])
 }
 
 model referees {
@@ -241,6 +300,12 @@ model referees {
   userId                    String?
   application               application[] @relation("referee")
   user                      users?        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([personalEmail])
+  @@index([professionalEmail])
+  @@index([personalPhoneNumber])
+  @@index([professionalPhoneNumber])
 }
 
 model EmploymentInformation {
@@ -270,6 +335,13 @@ model EmploymentInformation {
   userId               String?
   user                 users?        @relation(fields: [userId], references: [id])
   application          application[]
+
+  @@index([userId])
+  @@index([employerCompany])
+  @@index([employerEmail])
+  @@index([employerPhone])
+  @@index([monthlyOrAnualIncome])
+  @@index([startDate])
 }
 
 model applicationQuestions {
@@ -282,6 +354,12 @@ model applicationQuestions {
   additionalInformation String?
   applicantId           String
   application           application  @relation(fields: [applicantId], references: [id])
+
+  @@index([applicantId])
+  @@index([havePet])
+  @@index([youSmoke])
+  @@index([requireParking])
+  @@index([haveOutstandingDebts])
 }
 
 model declaration {
@@ -292,8 +370,12 @@ model declaration {
   date            DateTime
   applicantId     String?
   application     application? @relation(fields: [applicantId], references: [id])
+
+  @@index([applicantId])
+  @@index([date])
 }
 
+// Enums remain the same...
 enum ApplicationStatus {
   PENDING
   DECLINED

@@ -55,7 +55,6 @@ class ApartmentLandlordRouter {
         this.router.put('/settings/global/:id', SettingController.updateLandlordGlobalSetting);
         // Route to delete a specific global setting
         this.router.delete('/settings/global/:id', SettingController.deleteLandlordGlobalSetting);
-
     }
 }
 

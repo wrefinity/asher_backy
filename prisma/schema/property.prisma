@@ -23,6 +23,19 @@ model propertyListingHistory {
   property             properties?                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   room                 RoomDetail?                @relation(fields: [roomId], references: [id])
   unit                 UnitConfiguration?         @relation(fields: [unitId], references: [id])
+
+  // Critical indexes for property search and filtering
+  @@index([propertyId, isActive, onListing])
+  @@index([isActive, onListing, createdAt])
+  @@index([availableFrom, availableTo])
+  @@index([price, priceFrequency])
+  @@index([listAs, propertySubType])
+  @@index([createdAt])
+  @@index([unitId, isActive])
+  @@index([roomId, isActive])
+  @@index([minStayDays, maxStayDays])
+  // Composite index for active listings search
+  @@index([isActive, onListing, propertyId, createdAt])
 }
 
 model SuitableUse {
@@ -30,6 +43,9 @@ model SuitableUse {
   name                 String
   commercialPropertyId String
   commercialProperty   CommercialProperty @relation(fields: [commercialPropertyId], references: [id], onDelete: Cascade)
+
+  @@index([commercialPropertyId])
+  @@index([name])
 }
 
 model AdditionalRule {
@@ -37,6 +53,8 @@ model AdditionalRule {
   rule       String
   shortletId String
   shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
+
+  @@index([shortletId])
 }
 
 model UnavailableDate {
@@ -44,6 +62,9 @@ model UnavailableDate {
   date       DateTime
   shortletId String
   shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
+
+  @@index([shortletId, date])
+  @@index([date])
 }
 
 model HostLanguage {
@@ -51,6 +72,9 @@ model HostLanguage {
   language   String
   shortletId String
   shortlet   ShortletProperty @relation(fields: [shortletId], references: [id], onDelete: Cascade)
+
+  @@index([shortletId])
+  @@index([language])
 }
 
 model properties {
@@ -122,6 +146,28 @@ model properties {
   violation              violation[]                @relation("violations")
 
   @@unique([landlordId, name, stateId, city])
+  
+  // Comprehensive indexing strategy for properties
+  @@index([landlordId, isDeleted, isListed])
+  @@index([agencyId, isDeleted, isListed])
+  @@index([stateId, city, isDeleted])
+  @@index([city, availability, isListed])
+  @@index([availability, isListed, isDeleted])
+  @@index([price, priceFrequency, availability])
+  @@index([specificationType, isListed, isDeleted])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([isListed, availability, createdAt])
+  @@index([longitude, latitude]) // For geospatial queries
+  @@index([zipcode, city])
+  @@index([yearBuilt])
+  @@index([marketValue])
+  // Full-text search indexes (if supported)
+  @@index([name])
+  @@index([address])
+  // Composite indexes for common queries
+  @@index([landlordId, isDeleted, availability, createdAt])
+  @@index([city, specificationType, availability, price])
 }
 
 model PropertySpecification {
@@ -142,6 +188,15 @@ model PropertySpecification {
   property          properties                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   residential       ResidentialProperty?      @relation(fields: [residentialId], references: [id])
   shortlet          ShortletProperty?         @relation(fields: [shortletId], references: [id])
+
+  // Critical indexes for property specification queries
+  @@index([propertyId, specificationType, isActive])
+  @@index([specificationType, propertySubType, isActive])
+  @@index([residentialId])
+  @@index([commercialId])
+  @@index([shortletId])
+  @@index([isActive, fromDate, toDate])
+  @@index([createdAt])
 }
 
 model SharedFacilities {
@@ -160,6 +215,13 @@ model SharedFacilities {
   CommercialProperty    CommercialProperty?  @relation(fields: [commercialPropertyId], references: [id])
   residentialProperty   ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: Cascade)
   ShortletProperty      ShortletProperty?    @relation(fields: [shortletPropertyId], references: [id])
+
+  @@index([residentialPropertyId])
+  @@index([commercialPropertyId])
+  @@index([shortletPropertyId])
+  // Index common amenity searches
+  @@index([parking, garden, garage])
+  @@index([kitchen, bathroom, laundry])
 }
 
 model UnitConfiguration {
@@ -196,6 +258,19 @@ model UnitConfiguration {
   tenants                tenants[]
   violation              violation[]
   images                 PropertyMediaFiles[]     @relation("UnitImages")
+
+  // Comprehensive unit configuration indexes
+  @@index([residentialPropertyId, isDeleted, availability])
+  @@index([commercialPropertyId, isDeleted, availability])
+  @@index([availability, isListed, isDeleted])
+  @@index([unitType, availability, isListed])
+  @@index([bedrooms, bathrooms, availability])
+  @@index([price, priceFrequency])
+  @@index([floorNumber])
+  @@index([ensuite, furnished])
+  // Composite indexes for search
+  @@index([residentialPropertyId, availability, bedrooms, bathrooms])
+  @@index([commercialPropertyId, availability, unitType])
 }
 
 model RoomDetail {
@@ -229,6 +304,19 @@ model RoomDetail {
   propertyListingHistory propertyListingHistory[]
   tenants                tenants[]
   images                 PropertyMediaFiles[]     @relation("RoomImages")
+
+  // Room detail indexes
+  @@index([residentialPropertyId, isDeleted, availability])
+  @@index([commercialPropertyId, isDeleted, availability])
+  @@index([shortletPropertyId, isDeleted, availability])
+  @@index([unitId, availability, isListed])
+  @@index([availability, isListed, isDeleted])
+  @@index([roomName])
+  @@index([price, priceFrequency])
+  @@index([ensuite, furnished])
+  // Composite indexes for room search
+  @@index([residentialPropertyId, availability, ensuite, furnished])
+  @@index([shortletPropertyId, availability, isListed, price])
 }
 
 model ResidentialProperty {
@@ -283,6 +371,19 @@ model ResidentialProperty {
   sharedFacilities          SharedFacilities?
   unitConfigurations        UnitConfiguration[]
   billsSubCategory          billsSubCategory[]      @relation("ResidentialPropertyTobillsSubCategory")
+
+  // Residential property search indexes
+  @@index([status])
+  @@index([bedrooms, bathrooms])
+  @@index([furnished])
+  @@index([yearBuilt])
+  @@index([totalArea])
+  @@index([isHMO, isHMOLicenced])
+  @@index([availableFrom])
+  @@index([epcRating, energyEfficiencyRating])
+  // Composite indexes
+  @@index([status, bedrooms, bathrooms, furnished])
+  @@index([yearBuilt, totalArea, status])
 }
 
 model CommercialProperty {
@@ -349,6 +450,21 @@ model CommercialProperty {
   sharedFacilities          SharedFacilities[]
   suitableFor               SuitableUse[]
   unitConfigurations        UnitConfiguration[]
+
+  // Commercial property indexes
+  @@index([buildingClass])
+  @@index([totalArea, areaUnit])
+  @@index([parkingSpaces])
+  @@index([officeLayout])
+  @@index([availableFrom])
+  @@index([leaseTermUnit, minimumLeaseTerm])
+  @@index([hasGreenCertification])
+  @@index([epcRating])
+  @@index([totalFloors, floorLevel])
+  @@index([workstations, meetingRooms])
+  // Composite indexes
+  @@index([buildingClass, totalArea, availableFrom])
+  @@index([parkingSpaces, officeLayout, hasGreenCertification])
 }
 
 model ShortletProperty {
@@ -421,6 +537,20 @@ model ShortletProperty {
   seasonalPricing          SeasonalPricing[]
   sharedFacilities         SharedFacilities[]
   unavailableDates         UnavailableDate[]
+
+  // Shortlet property indexes
+  @@index([availableFrom, availableTo])
+  @@index([bedrooms, bathrooms, maxGuests])
+  @@index([basePrice])
+  @@index([furnished])
+  @@index([instantBooking])
+  @@index([minStayDays, maxStayDays])
+  @@index([cancellationPolicy])
+  @@index([isSuperhost])
+  @@index([allowPets, allowSmoking, allowParties])
+  // Composite indexes for shortlet search
+  @@index([availableFrom, availableTo, bedrooms, basePrice])
+  @@index([isSuperhost, instantBooking, cancellationPolicy])
 }
 
 model CommercialPropertyFloor {
@@ -434,6 +564,11 @@ model CommercialPropertyFloor {
   amenities    String[]
   propertyId   String
   property     CommercialProperty @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId, available])
+  @@index([floorNumber])
+  @@index([available, floorNumber])
+  @@index([price])
 }
 
 model SeasonalPricing {
@@ -444,6 +579,10 @@ model SeasonalPricing {
   price      String
   propertyId String
   property   ShortletProperty @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId, startDate, endDate])
+  @@index([startDate, endDate])
+  @@index([price])
 }
 
 model Booking {
@@ -472,6 +611,21 @@ model Booking {
   roomDetail           RoomDetail?         @relation(fields: [roomDetailId], references: [id], onDelete: Cascade)
   unitConfiguration    UnitConfiguration?  @relation(fields: [unitConfigurationId], references: [id], onDelete: Cascade)
   user                 users?              @relation(fields: [userId], references: [id])
+
+  // Comprehensive booking indexes
+  @@index([propertyId, checkInDate, checkOutDate])
+  @@index([userId, createdAt])
+  @@index([status, paymentStatus])
+  @@index([checkInDate, checkOutDate])
+  @@index([guestEmail])
+  @@index([guestPhone])
+  @@index([createdAt])
+  @@index([unitConfigurationId, roomDetailId])
+  @@index([cancellationPolicy, isRefundable])
+  // Composite indexes
+  @@index([propertyId, status, checkInDate])
+  @@index([userId, status, createdAt])
+  @@index([checkInDate, status, paymentStatus])
 }
 
 model propertySettings {
@@ -493,8 +647,11 @@ model propertySettings {
   property          properties?         @relation(fields: [propertyId], references: [id])
 
   @@unique([propertyId, settingType])
+  @@index([landlordId])
+  @@index([propertyId])
+  @@index([settingType])
+  @@index([createdAt])
 }
-
 enum LatePaymentFeeType {
   ONE_TIME
   DAILY

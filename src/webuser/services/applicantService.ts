@@ -1,6 +1,6 @@
 import { prismaClient } from "../..";
 import { AgreementDocument, AgreementStatus, Prisma } from "@prisma/client";
-import { ApplicationStatus, InvitedResponse, ApplicationSaveState, userRoles } from '@prisma/client';
+import { ApplicationStatus, InvitedResponse, ApplicationSaveState, LogType } from '@prisma/client';
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
 import RefereesServices from "../../services/referees.services";
@@ -9,7 +9,6 @@ import EmploymentinfoServices from "../../services/employmentinfo.services";
 import PersonaldetailsServices from "../../services/personaldetails.services";
 import NextkinServices from "../../services/nextkin.services";
 import LogsServices from '../../services/logs.services';
-import { LogType } from "@prisma/client"
 import {
   RefreeIF,
   NextOfKinIF,
@@ -1041,10 +1040,14 @@ class ApplicantService {
 
   // Get application data for a user's last approved application
   getLastApplicationDataForUser = async (userId: string) => {
+
     const lastApplication = await prismaClient.application.findFirst({
       where: {
         userId: userId,
-        status: 'APPROVED'
+        
+        status: {
+            in: [ApplicationStatus.COMPLETED, ApplicationStatus.TENANT_CREATED, ApplicationStatus.APPROVED]
+          },
       },
       orderBy: {
         createdAt: 'desc'
