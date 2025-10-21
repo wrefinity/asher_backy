@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { Authorize } from "../../middlewares/authorize";
 import AnalyticsController from "../controllers/analytics.controller";
+import dashboardController from "../controllers/dashboard.controller";
 
 class AnalyticsRouter {
     public router: Router;
@@ -12,6 +12,7 @@ class AnalyticsRouter {
 
     private initializeRoutes() {
         // Dashboard Analytics
+        this.router.get('/generic', dashboardController.getDashboardStats);
         this.router.get('/dashboard', AnalyticsController.getDashboardAnalytics);
         this.router.get('/cash-flow', AnalyticsController.getCashFlowData);
         this.router.get('/property-performance', AnalyticsController.getPropertyPerformance);

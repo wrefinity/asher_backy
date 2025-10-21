@@ -81,6 +81,15 @@ class TodosService {
             },
         });
     }
+    async getLandlordTodo(landlordId: string) {
+        return prismaClient.todo.findMany({
+            where: {
+                users: {
+                    landlords: { id: landlordId }
+                }
+            },
+        })
+    }
 
     async deleteTodo(id: string, userId: string) {
         return prismaClient.todo.delete({

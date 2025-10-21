@@ -1,7 +1,8 @@
 
 import { ApplicationStatus, maintenanceStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "../..";
-
+import todosService from "../../services/todos.service";
+import LandlordSettingsService from '../services/propertySetting.service';
 class LandlordDashboardService {
 
   async getDashboardData(landlordId: string, filters: any, landlordUserId?: string) {
@@ -39,9 +40,9 @@ class LandlordDashboardService {
     const maintenanceStats = {
       total: maintenance.length,
       inProgress: maintenance.filter(m => m.status === maintenanceStatus.PENDING).length,
-      completed: maintenance.filter(m => m.status === 'COMPLETED').length,
-      unassigned: maintenance.filter(m => m.status === 'UNASSIGNED').length,
-      assigned: maintenance.filter(m => m.status === 'ASSIGNED').length,
+      completed: maintenance.filter(m => m.status === maintenanceStatus.COMPLETED).length,
+      unassigned: maintenance.filter(m => m.status === maintenanceStatus.UNASSIGNED).length,
+      assigned: maintenance.filter(m => m.status === maintenanceStatus.ASSIGNED).length,
     };
 
     const applications = await prismaClient.application.findMany({
@@ -73,13 +74,11 @@ class LandlordDashboardService {
         rent: income,
         otherCharges: 0,
         tenantCharges: 0,
-        latePayment: 2000 // example static for late fee
+
+
+        latePayment: await LandlordSettingsService.getAllGlobalSettings(landlordId),
       },
-      toDoList: [
-        'Prepare for the Tenant Move-In',
-        'Send an invite to Jane Austen',
-        'Add a property'
-      ],
+      toDoList: todosService.getLandlordTodo(landlordUserId),
     };
   }
 }
