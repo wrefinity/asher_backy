@@ -49,7 +49,7 @@ class TenantBills {
         })
       }
 
-       /**
+   /**
    * Get comprehensive overdue analysis for a tenant
    */
   async getTenantOverdueAnalysis(tenantId: string): Promise<OverdueAnalysis> {
@@ -352,7 +352,7 @@ class TenantBills {
 
     while (currentDate < endDate) {
       const periodEnd = new Date(currentDate.getTime() + frequencyConfig.milliseconds);
-      const dueDate = new Date(currentDate); // Rent is typically due at start of period
+      const dueDate = new Date(currentDate); 
       
       periods.push({
         startDate: new Date(currentDate),
