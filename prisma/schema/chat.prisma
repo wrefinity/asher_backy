@@ -13,6 +13,16 @@ model Message {
   chatRoom   ChatRoom  @relation(fields: [chatRoomId], references: [id])
   receiver   users     @relation("messagesReceived", fields: [receiverId], references: [id])
   sender     users     @relation("messagesSent", fields: [senderId], references: [id])
+
+  // Critical indexes for messaging performance
+  @@index([chatRoomId, createdAt]) // Primary index for loading messages in a room
+  @@index([senderId, createdAt])   // For user's sent messages
+  @@index([receiverId, createdAt]) // For user's received messages
+  @@index([createdAt])             // Global message ordering and cleanup
+  @@index([chatRoomId, senderId, createdAt]) // User activity in specific rooms
+  @@index([chatType, createdAt])   // Filter by chat type
+  // Composite index for pagination
+  @@index([chatRoomId, createdAt, id])
 }
 
 model ChatRoom {
@@ -28,6 +38,18 @@ model ChatRoom {
   maintenance   maintenance?
 
   @@unique([user1Id, user2Id])
+  
+  // Comprehensive chat room indexes
+  @@index([user1Id, updatedAt])    // User's chat list sorted by activity
+  @@index([user2Id, updatedAt])    // User's chat list sorted by activity
+  @@index([maintenanceId])         // Quick lookup for maintenance chats
+  @@index([createdAt])             // Room creation ordering
+  @@index([updatedAt])             // Activity-based sorting
+  // Composite indexes for user chat lists
+  @@index([user1Id, updatedAt, id])
+  @@index([user2Id, updatedAt, id])
+  // For finding rooms by either user
+  @@index([user1Id, user2Id, updatedAt])
 }
 
 enum chatType {

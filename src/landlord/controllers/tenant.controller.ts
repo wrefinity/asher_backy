@@ -1,15 +1,11 @@
-import fs from 'fs';
 import { Response } from "express"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
-import { getMimeTypeFromUrl } from "../../utils/helpers"
 import TenantService from "../../tenant/services/tenants.services"
-import { parseCSV, parseDateField } from '../../utils/filereader';
-import { parseDateFieldNew } from '../../utils/helpers';
 import UserServices from '../../services/user.services';
-import { userRoles, DocumentType } from '@prisma/client';
+import { userRoles } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
-import { tenantArraySchema, tenantSchema } from '../validations/schema/tenancy.schema';
+import { tenantArraySchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
 import { ViolationSchema } from '../../validations/schemas/violations';
 import LogsServices from '../../services/logs.services';
