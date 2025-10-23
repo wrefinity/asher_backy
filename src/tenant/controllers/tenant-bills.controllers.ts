@@ -109,10 +109,10 @@ class TenantBillController {
     if (!tenantBills || tenantBills.length < 1) {
       throw ApiError.notFound("No overdue bills found");
     }
-
+    const analysis = await tenantBillsService.getTenantOverdueAnalysis(tenantId);
     return res
       .status(200)
-      .json(ApiResponse.success(tenantBills, "Overdue bills retrieved successfully"));
+      .json(ApiResponse.success({ analysis, tenantBills}, "Overdue bills retrieved successfully"));
   });
 }
 

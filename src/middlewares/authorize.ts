@@ -42,8 +42,7 @@ export class Authorize {
             req.user = this.buildUserWithContext(user, decoded);
             return next();
         } catch (error) {
-            console.log("=====token verificatio reason failure======")
-            console.log(error)
+      
             if (error.name === "TokenExpiredError") {
                 return this.handleTokenRefresh(req, res, next);
             }
@@ -58,7 +57,6 @@ export class Authorize {
      * Builds user object with proper tenant/landlord/vendor context
      */
     private buildUserWithContext(user: any, decoded: JWTPayload): JWTPayload {
-        console.log("=====building user context======");
         console.log({ user, decoded });
 
         const baseUser = {
@@ -67,7 +65,7 @@ export class Authorize {
             email: user.email,
         };
 
-        // ✅ Tenant-specific context (from JWT)
+        // Tenant-specific context (from JWT)
         if (decoded.tenantId && decoded.tenantCode) {
             return {
                 ...baseUser,
@@ -79,7 +77,7 @@ export class Authorize {
             };
         }
 
-        // ✅ Landlord-specific context (from JWT)
+        //  Landlord-specific context (from JWT)
         if (decoded.landlords?.id) {
             return {
                 ...baseUser,
@@ -91,7 +89,7 @@ export class Authorize {
             };
         }
 
-        // ✅ Vendor-specific context (from JWT)
+        // Vendor-specific context (from JWT)
         if (decoded.vendors?.id) {
             return {
                 ...baseUser,
