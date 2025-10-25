@@ -4,6 +4,7 @@ import { Authorize } from "../../middlewares/authorize";
 import EventRoutes from "./events";
 import MaintenanceRoutes from "./maintenance";
 import servicesRoutes from "./services";
+import vendorAnalyticsController from "../controllers/vendor.analytics.controller";
 class VendorRouter {
     public router: Router;
     authenticateService: Authorize
@@ -18,6 +19,7 @@ class VendorRouter {
         this.router.use(this.authenticateService.authorize)
         this.router.use(this.authenticateService.authorizeRole(userRoles.VENDOR))
         // events modules under vendor
+        this.router.use("/analytics", vendorAnalyticsController.getVendorOverview)
         this.router.use("/events", EventRoutes)
         this.router.use("/maintenance", MaintenanceRoutes)
         this.router.use("/services", servicesRoutes)

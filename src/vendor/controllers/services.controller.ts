@@ -11,18 +11,16 @@ class ServiceControls {
     // Create Service
     createService = async (req: CustomRequest, res: Response) => {
         try {
-            const { error, value } = serviceSchema.validate(req.body);
-            if (error) return res.status(400).json({ error: error.details[0].message });
-            console.log(value)
+
             const vendorId:String = req.user?.vendors?.id;
             if(!vendorId) return res.status(403).json({message:"only vendor can create a service to be rendered"})
 
-            const categoryExist =  await CateoryService.getCategoryById(value.categoryId)
+            const categoryExist =  await CateoryService.getCategoryById(req.body.categoryId)
             if (!categoryExist) return res.status(400).json({message:"category doesnt exist"})
-            const subCategoryExist =  await SubCateoryService.getSubCategoryById(value.subcategoryId)
+            const subCategoryExist =  await SubCateoryService.getSubCategoryById(req.body.subcategoryId)
             if (!subCategoryExist) return res.status(400).json({message:"sub category doesnt exist"})
 
-            const service = await serviceService.createService({ ...value, vendorId});
+            const service = await serviceService.createService({ ...req.body, vendorId});
             res.status(201).json({ service });
         } catch (error) {
             console.log(error)

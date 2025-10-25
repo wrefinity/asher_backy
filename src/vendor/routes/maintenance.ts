@@ -2,7 +2,7 @@ import { Router } from "express";
 import MaintenanceController from '../controllers/maintenance.controller';
 import MaintenanceGeneralController from '../../controllers/maintenance.controller';
 import { Authorize } from "../../middlewares/authorize";
-import { handlePropertyUploads, uploadToCloudinaryGeneric } from '../../middlewares/multerCloudinary';
+import { uploadToCloudinaryGeneric } from '../../middlewares/multerCloudinary';
 import upload from "../../configs/multer";
 
 

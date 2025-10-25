@@ -1,5 +1,6 @@
 import { prismaClient } from "../..";
-import { maintenanceDecisionStatus, maintenanceStatus, TransactionStatus, vendorAvailability } from ".prisma/client";
+import { maintenanceDecisionStatus, maintenanceStatus, TransactionReference, TransactionStatus, vendorAvailability } from ".prisma/client";
+import maintenanceService from "../../services/maintenance.service";
 
 interface VendorStats {
   totalRevenue: number
@@ -152,6 +153,111 @@ class ServiceService {
     return count > 0;
   }
 
+  getVendorAnalytics = async (vendorId: string) => {
+    if (!vendorId) throw new Error("Vendor ID is required");
+    const { vendorCategoryIds, vendorSubcategoryIds } = await maintenanceService.getVendorServicesCategories(vendorId);
+    // Find all assignments for this vendor
+    const assignedMaintenances = await prismaClient.maintenanceAssignmentHistory.findMany({
+      where: { vendorId },
+      include: { maintenance: true },
+    });
+
+    const maintenanceIds = assignedMaintenances.map((m) => m.maintenanceId);
+
+    // Counts by maintenance status
+    const [
+      newRequests,
+      completed,
+      cancelled,
+      pendingApproval,
+      paidMaintenances,
+      totalEarnings,
+      latestMaintenances
+    ] = await Promise.all([
+      prismaClient.maintenance.count({
+        where: {
+          isDeleted: false,
+          status: maintenanceStatus.UNASSIGNED,
+          OR: [
+            { categoryId: { in: vendorCategoryIds } },
+            ...(vendorSubcategoryIds.length > 0
+              ? [{
+                subcategories: {
+                  some: { id: { in: vendorSubcategoryIds } },
+                },
+              },]
+              : []),
+          ],
+        }
+      }),
+
+      prismaClient.maintenance.count({
+        where: {
+          id: { in: maintenanceIds },
+          status: maintenanceStatus.COMPLETED,
+        },
+      }),
+
+      prismaClient.maintenance.count({
+        where: {
+          id: { in: maintenanceIds },
+          status: maintenanceStatus.CANCEL,
+        },
+      }),
+
+      prismaClient.maintenance.count({
+        where: {
+          id: { in: maintenanceIds },
+          status: maintenanceStatus.IN_PROGRESS,
+        },
+      }),
+
+      prismaClient.maintenance.count({
+        where: {
+          id: { in: maintenanceIds },
+          paymentStatus: TransactionStatus.COMPLETED,
+        },
+      }),
+
+      // Total earnings (sum of all completed or paid jobs)
+      prismaClient.transaction.aggregate({
+        _sum: {
+          amount: true,
+        },
+        where: {
+          reference: TransactionReference.MAINTENANCE_FEE,
+          status: TransactionStatus.COMPLETED,
+          user: { vendors: { id: vendorId } },
+        },
+      }),
+
+      // Latest distinct maintenances handled
+      prismaClient.maintenance.findMany({
+        where: {
+          id: { in: maintenanceIds },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          description: true,
+          status: true,
+          createdAt: true,
+          amount: true,
+        },
+      }),
+    ]);
+
+    return {
+      totalEarnings: Number(totalEarnings._sum.amount ?? 0),
+      newRequests,
+      completed,
+      cancelled,
+      pendingApproval,
+      paidMaintenances,
+      latestMaintenances,
+    };
+  }
 
   getVendorDashboardStatsOptimized = async (vendorId: string): Promise<VendorStats> => {
     const [

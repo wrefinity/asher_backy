@@ -237,6 +237,17 @@ class MaintenanceService {
     });
   }
 
+  getVendorServicesCategories = async (vendorId: string) => {
+        // Get vendor’s services (and extract categories/subcategories)
+    const vendorServices = await ServiceServices.getVendorServices(vendorId);
+    const vendorCategoryIds = vendorServices.map((s) => s.categoryId);
+    const vendorSubcategoryIds = vendorServices
+      .map((s) => s.subcategoryId)
+      .filter(Boolean);
+
+    return { vendorCategoryIds, vendorSubcategoryIds };
+  }
+
   /**
     * Get maintenance requests available for a specific vendor,
     * filtered by category/subcategory, status, search, and date range.
