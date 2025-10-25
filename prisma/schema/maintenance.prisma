@@ -45,6 +45,11 @@ model maintenance {
   reScheduleHistory         maintenanceRescheduleHistory[]
   maintenanceStatusHistory  maintenanceStatusHistory[]
   subcategories             subCategory[]                  @relation("SubCategoryMaintenance")
+
+  maintenanceAssignmentHistory maintenanceAssignmentHistory[]
+
+  @@index([vendorId])
+  @@index([status])
 }
 
 model maintenanceRescheduleHistory {
@@ -60,8 +65,22 @@ model maintenanceStatusHistory {
   maintenanceId String
   oldStatus     maintenanceStatus
   newStatus     maintenanceStatus
+  vendorId      String?
   changedAt     DateTime          @default(now())
   maintenance   maintenance       @relation(fields: [maintenanceId], references: [id])
+  vendor        vendors?           @relation(fields: [vendorId], references: [id])
+}
+
+model maintenanceAssignmentHistory {
+  id            String            @id @default(cuid())
+  maintenanceId String
+  vendorId      String?
+  assignedAt    DateTime          @default(now())
+  unassignedAt  DateTime?
+  reasonLeft    String?
+  state         maintenanceStatus @default(ASSIGNED)
+  maintenance   maintenance @relation(fields: [maintenanceId], references: [id])
+  vendor       vendors?   @relation(fields: [vendorId], references: [id])
 }
 
 model services {

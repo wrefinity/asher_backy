@@ -107,21 +107,7 @@ class MaintenanceController {
       status: maintenanceStatus.CANCELLATION_REQUEST
     });
   }
-  public confirmCancellationByVendor = async (req: CustomRequest, res: Response) => {
-    const maintenanceId = req.params.maintenanceId;
-    const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);;
 
-    const vendorId = req.user.vendors?.id;
-    // Ensure the vendor providing consent is the assigned vendor
-    if (maintenance.vendorId !== vendorId) {
-      throw new Error("Unauthorized: Only the assigned vendor can consent to cancellation.");
-    }
-    // Update the maintenance record to reflect vendor consent
-    await maintenanceService.updateMaintenance(maintenanceId, {
-      vendorConsentCancellation: true,
-      status: maintenanceStatus.CANCEL,
-    });
-  }
   public rescheduleMaintenanceController = async (req: CustomRequest, res: Response) => {
     try {
       const maintenanceId = req.params.maintenanceId;
@@ -136,7 +122,7 @@ class MaintenanceController {
   public createMaintenance = async (req: CustomRequest, res: Response) => {
     try {
 
-      const value = req.body 
+      const value = req.body
       const tenantId = req.user.tenant?.id;
       let landlordId = req.user.landlords?.id;
 
@@ -188,11 +174,7 @@ class MaintenanceController {
   createMaintenanceChat = async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
     // Fetch the maintenance request details
-    const { error, value } = maintenanceChatSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
+    const value = req.body;
     const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
     const senderId = req.user.id;
     if (!maintenance) {
@@ -252,71 +234,7 @@ class MaintenanceController {
     }
   };
 
-  public acceptMaintenanceOffer = async (req: CustomRequest, res: Response) => {
-    try {
-      const maintenanceId = req.params.maintenanceId;
-      const vendorId = req.user.id;
 
-      const maintenanceRequest = await maintenanceService.getMaintenanceById(maintenanceId);
-      if (!maintenanceRequest) {
-        res.status(404).json({ message: `maintenance with id: ${maintenanceId} doesnt exist` });
-      }
-
-      if (maintenanceRequest?.vendorId !== null) {
-        return res.status(400).json({ message: "job already assigned to a vendor" });
-      }
-
-      const vendorService = await ServiceServices.getSpecificVendorService(vendorId, maintenanceRequest.categoryId);
-      if (vendorService && vendorService.currentJobs > 1) {
-        return res.status(400).json({ message: "job level exceeded" });
-      }
-
-      await maintenanceService.updateMaintenance(
-        maintenanceId,
-        {
-          vendorId,
-          status: maintenanceStatus.ASSIGNED,
-          serviceId: vendorService.id,
-          availability: vendorService.currentJobs > 1 ? vendorAvailability.NO : vendorAvailability.YES
-        }
-      );
-
-      // increment job current count for vendor
-      await ServiceServices.incrementJobCount(vendorService.id, vendorId);
-
-      return res.status(201).json({ message: "maintenance offer accepted" });
-    } catch (error) {
-      ErrorService.handleError(error, res)
-    }
-  }
-  // this function is for vendor to update payment to completed
-  public updateMaintenanceToCompleted = async (req: CustomRequest, res: Response) => {
-    try {
-      const maintenanceId = req.params.maintenanceId;
-      const vendorId = req.user.id;
-
-      const maintenanceExits = await maintenanceService.getMaintenanceById(maintenanceId);
-      if (!maintenanceExits) {
-        return res.status(404).json({ message: `maintenance with id: ${maintenanceId} doesnt exist` });
-      }
-
-      //check if payment has beeen completed
-      if (maintenanceExits.paymentStatus !== TransactionStatus.COMPLETED) {
-        return res.status(400).json({ message: `Payment has not been completed yet` });
-      }
-
-      const maintenance = await maintenanceService.updateMaintenance(maintenanceId, { status: maintenanceStatus.COMPLETED });
-
-      // decrement job current count for vendor
-      await ServiceServices.decrementJobCount(maintenance.serviceId, vendorId);
-
-      await ServiceServices.updateService(maintenance.serviceId, { availability: vendorAvailability.YES });
-
-      return res.status(201).json({ message: `maintenance status updated: ${maintenanceStatus.COMPLETED}`, maintenance });
-    } catch (error) {
-      ErrorService.handleError(error, res)
-    }
-  };
 
   public deleteMaintenance = async (req: CustomRequest, res: Response) => {
     try {
@@ -357,7 +275,7 @@ class MaintenanceController {
     }
   }
 
-  
+
 
 }
 

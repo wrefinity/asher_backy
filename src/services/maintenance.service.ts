@@ -2,7 +2,7 @@ import { TransactionReference, maintenanceStatus, chatType, TransactionStatus, C
 import { prismaClient } from "..";
 import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
-import walletService from "./wallet.service";
+import ServiceServices from "../vendor/services/vendor.services";
 import { subDays, addDays, isBefore, isAfter, isToday } from 'date-fns';
 import { ApiError } from "../utils/ApiError";
 
@@ -235,9 +235,176 @@ class MaintenanceService {
     });
   }
 
+  /**
+    * Get maintenance requests available for a specific vendor,
+    * filtered by category/subcategory, status, search, and date range.
+    */
+  async getSpecificVendorMaintenanceRequest(
+    vendorId: string,
+    filter: {
+      status?: maintenanceStatus;
+      search?: string;
+      limit?: number;
+      page?: number;
+      state?: string;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ) {
+    const {
+      status,
+      search,
+      limit = 10,
+      page = 1,
+      state,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      startDate,
+      endDate,
+    } = filter;
+
+    // pagination
+    const skip = (page - 1) * limit;
+
+    // Get vendor’s services (and extract categories/subcategories)
+    const vendorServices = await ServiceServices.getVendorServices(vendorId);
+    const vendorCategoryIds = vendorServices.map((s) => s.categoryId);
+    const vendorSubcategoryIds = vendorServices
+      .map((s) => s.subcategoryId)
+      .filter(Boolean);
+
+    // Base where clause
+    const where: any = {
+      isDeleted: false,
+      OR: [
+        { categoryId: { in: vendorCategoryIds } },
+        ...(vendorSubcategoryIds.length > 0
+          ? [
+            {
+              subcategories: {
+                some: { id: { in: vendorSubcategoryIds } },
+              },
+            },
+          ]
+          : []),
+      ],
+    };
+
+    // Filter by status
+    if (status) {
+      where.status = status;
+    }
+
+    // Filter by property state if provided
+    if (state) {
+      where.property = { state };
+    }
+
+    // Filter by date range
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    // Filter by search (description or property name)
+    if (search) {
+      where.OR = [
+        ...where.OR,
+        {
+          description: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          property: {
+            name: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+        },
+      ];
+    }
+
+    // Sorting logic
+    let orderBy: any = {};
+    if (sortBy === "property") {
+      orderBy = { property: { name: sortOrder } };
+    } else if (sortBy === "category") {
+      orderBy = { category: { name: sortOrder } };
+    } else if (sortBy === "scheduleDate") {
+      orderBy = { scheduleDate: sortOrder };
+    } else {
+      orderBy = { [sortBy]: sortOrder };
+    }
+
+    // Execute queries
+    const [data, total] = await Promise.all([
+      prismaClient.maintenance.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: this.inclusion,
+      }),
+      prismaClient.maintenance.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  async getVendorsMaintenanceStates(vendorId: string, state: maintenanceStatus, limit: number, page: number) {
+    // Check if propertyId corresponds
+    const assignments = await prismaClient.maintenanceAssignmentHistory.findMany({
+      where: {
+        vendorId,
+        state,
+      },
+      orderBy: { assignedAt: "desc" },
+    
+      include: {
+        maintenance: true
+      },
+    });
+        // pagination
+    const skip = (page - 1) * limit;
+    const maintenanceIds = Array.from(new Set(assignments.map(a => a.maintenanceId)));
+       // Execute queries
+    const [data, total] = await Promise.all([
+      prismaClient.maintenance.findMany({
+        where: { id: { in: maintenanceIds } },
+        skip,
+        take: limit,
+         orderBy: { createdAt: "desc" },
+        include: this.inclusion,
+      }),
+      prismaClient.maintenance.count({ where: { id: { in: maintenanceIds } } }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+    return { data, meta: { page, limit, total, totalPages } };
+  }
+
+
   getMaintenanceById = async (id: string) => {
     return await prismaClient.maintenance.findUnique({
-      where: { id },
+      where: { id, isDeleted: false },
       include: this.inclusion,
     });
   }
@@ -362,7 +529,6 @@ class MaintenanceService {
         },
       });
 
-      console.log("Chat room created and message sent.");
       return { chatRoom, message };
     } catch (error) {
       console.error("Error creating maintenance chat:", error.message);
@@ -396,6 +562,82 @@ class MaintenanceService {
       where: { id },
       data: updateData,
       include: this.inclusion,
+    });
+  }
+
+
+  unassignVendorFromMaintenance = async (maintenanceId: string, reason?: string) => {
+    const maintenance = await prismaClient.maintenance.findFirst({
+      where: {
+        id: maintenanceId,
+        isDeleted: false,
+      },
+      include: {
+        vendor: true,
+      },
+    });
+
+    if (!maintenance) {
+      throw new Error('Maintenance request not found');
+    }
+
+    if (!maintenance.vendorId) {
+      throw new Error('No vendor assigned to this maintenance');
+    }
+
+    return await prismaClient.$transaction(async (tx) => {
+      // Update maintenance
+      const updatedMaintenance = await tx.maintenance.update({
+        where: { id: maintenanceId },
+        data: {
+          vendorId: null,
+          status: maintenanceStatus.UNASSIGNED,
+          serviceId: null,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Update assignment history
+      await tx.maintenanceAssignmentHistory.updateMany({
+        where: {
+          maintenanceId: maintenanceId,
+          vendorId: maintenance.vendorId,
+          unassignedAt: null,
+        },
+        data: {
+          unassignedAt: new Date(),
+          reasonLeft: reason,
+        },
+      });
+
+      // Create status history
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId: maintenanceId,
+          oldStatus: maintenance.status,
+          newStatus: maintenanceStatus.UNASSIGNED,
+          vendorId: maintenance.vendorId,
+        },
+      });
+
+      // Decrement vendor's current job count
+      const vendorService = await tx.services.findFirst({
+        where: {
+          vendorId: maintenance.vendorId,
+          categoryId: maintenance.categoryId,
+        },
+      });
+
+      if (vendorService) {
+        await tx.services.update({
+          where: { id: vendorService.id },
+          data: {
+            currentJobs: Math.max(0, vendorService.currentJobs - 1),
+          },
+        });
+      }
+
+      return updatedMaintenance;
     });
   }
 
@@ -678,31 +920,92 @@ class MaintenanceService {
   }
 
 
-  async updateStatus(maintenanceId: string, newStatus: maintenanceStatus) {
+  async updateStatus(maintenanceId: string, newStatus: maintenanceStatus, vendorId?: string) {
     const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });
     if (!maintenance) throw new Error("Maintenance not found");
 
-    // Record history
-    await prismaClient.maintenanceStatusHistory.create({
-      data: {
-        maintenanceId,
-        oldStatus: maintenance.status,
-        newStatus,
-      },
+    return await prismaClient.$transaction(async (tx) => {
+      // Record history
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId,
+          oldStatus: maintenance.status,
+          newStatus,
+        },
+      });
+      // update assignment history
+      if (vendorId) {
+        await tx.maintenanceAssignmentHistory.updateMany({
+          where: {
+            maintenanceId,
+            vendorId
+          },
+          data: {
+            state: newStatus,
+          },
+        });
+      }
+
+      // Update status
+      return tx.maintenance.update({
+        where: { id: maintenanceId },
+        data: { status: newStatus },
+        include: this.inclusion,
+      });
+    })
+
+
+  }
+
+  assignMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>, oldStatus?: maintenanceStatus) => {
+    const { subcategoryIds, ...rest } = maintenanceData;
+    const updateData: any = {
+      ...rest,
+      subcategories: subcategoryIds ? {
+        set: subcategoryIds.map(id => ({ id })),
+      } : undefined,
+    };
+    return await prismaClient.$transaction(async (tx) => {
+      // Update maintenance with vendor assignment
+      const updatedMaintenance = await tx.maintenance.update({
+        where: { id },
+        data: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+        include: this.inclusion,
+      });
+
+      // Create assignment history
+      await tx.maintenanceAssignmentHistory.create({
+        data: {
+          maintenanceId: id,
+          vendorId: maintenanceData.vendorId!,
+          assignedAt: new Date(),
+          state: maintenanceStatus.ASSIGNED,
+        },
+      });
+
+      // Create status history
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId: id,
+          oldStatus: oldStatus,
+          newStatus: maintenanceStatus.ASSIGNED,
+          vendorId: maintenanceData.vendorId!,
+        },
+      });
+
+      // Update vendor's current job count
+      await tx.services.update({
+        where: { id: maintenanceData.serviceId },
+        data: {
+          currentJobs: { increment: 1 },
+        },
+      });
+      return updatedMaintenance;
     });
 
-    // Update status
-    return prismaClient.maintenance.update({
-      where: { id: maintenanceId },
-      data: { status: newStatus },
-      include: this.inclusion,
-    });
-  }
-  async assignVendor(maintenanceId: string, vendorId: string) {
-    return prismaClient.maintenance.update({
-      where: { id: maintenanceId },
-      data: { vendorId, status: maintenanceStatus.ASSIGNED },
-    });
   }
 
   async getStatusHistory(maintenanceId: string) {

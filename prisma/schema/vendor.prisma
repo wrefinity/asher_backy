@@ -11,6 +11,10 @@ model vendors {
   services           services[]
   documents          vendorDocument[]
   user               users?               @relation(fields: [userId], references: [id])
+
+  maintenanceAssignmentHistory maintenanceAssignmentHistory[]
+
+  maintenanceStatusHistory maintenanceStatusHistory[]
 }
 
 model vendorDocument {

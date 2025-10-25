@@ -1,10 +1,9 @@
 import { Router } from "express";
 import MaintenanceController from '../controllers/maintenance.controller';
 import { Authorize } from "../middlewares/authorize";
-import { uploadToCloudinary } from '../middlewares/multerCloudinary';
-import upload from "../configs/multer";
 import { validateBody } from "../middlewares/validation";
-import { maintenanceSchema } from "../validations/schemas/maintenance.schema";
+import { maintenanceSchema, maintenanceChatSchema } from "../validations/schemas/maintenance.schema";
+
 
 class MaintenaceRoutes {
     public router: Router;
@@ -17,12 +16,9 @@ class MaintenaceRoutes {
         this.initializeRoutes();
     }
     private initializeRoutes(): void {
-        this.router.post('/accept/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.acceptMaintenanceOffer);
-        this.router.post('/chats/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.createMaintenanceChat);
+        this.router.post('/chats/:maintenanceId', this.authenticateService.authorize, validateBody(maintenanceChatSchema), MaintenanceController.createMaintenanceChat);
         this.router.get('/chats/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.getMaintenanceChat);
         this.router.get('/request-cancel/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.requestMaintenanceCancellation);
-        this.router.get('/request-confirm/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.confirmCancellationByVendor);
-        this.router.post('/completed/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.updateMaintenanceToCompleted);
         this.router.post('/reschedule/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.rescheduleMaintenanceController);
         this.router.post('/schedule/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.scheduleMaintenanceDate);
         this.router.post('/whitelisted', this.authenticateService.authorize,  MaintenanceController.checkIfMaintenanceWhitelisted);
