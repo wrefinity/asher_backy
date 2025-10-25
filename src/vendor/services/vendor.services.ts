@@ -1,6 +1,7 @@
 import { prismaClient } from "../..";
 import { maintenanceDecisionStatus, maintenanceStatus, TransactionReference, TransactionStatus, vendorAvailability } from ".prisma/client";
 import maintenanceService from "../../services/maintenance.service";
+import { ApiError } from "../../utils/ApiError";
 
 interface VendorStats {
   totalRevenue: number
@@ -153,8 +154,46 @@ class ServiceService {
     return count > 0;
   }
 
+   getMostRecentAppointmentByVendor = async (vendorId: string) => {
+      // Find the most recent maintenance assignment
+      const latestAssignment = await prismaClient.maintenanceAssignmentHistory.findFirst({
+        where: {
+          vendorId,
+          state: maintenanceStatus.ASSIGNED,
+          unassignedAt: null,
+        },
+        orderBy: {
+          assignedAt: 'desc',
+        },
+        include: {
+          maintenance: {
+            include: {
+              property: true,
+              tenant: true,
+              category: true,
+            },
+          },
+        },
+      });
+  
+      if (!latestAssignment) return null;
+  
+      const maintenance = latestAssignment.maintenance;
+  
+      // Step 2: Return formatted appointment data
+      return {
+        maintenanceId: maintenance.id,
+        description: maintenance.description,
+        scheduleDate: maintenance.scheduleDate,
+        propertyName: maintenance.property?.name || null,
+        category: maintenance.category?.name || null,
+        status: maintenance.status,
+        assignedAt: latestAssignment.assignedAt,
+      };
+    }
+
   getVendorAnalytics = async (vendorId: string) => {
-    if (!vendorId) throw new Error("Vendor ID is required");
+    if (!vendorId) throw ApiError.notFound("Vendor ID is required");
     const { vendorCategoryIds, vendorSubcategoryIds } = await maintenanceService.getVendorServicesCategories(vendorId);
     // Find all assignments for this vendor
     const assignedMaintenances = await prismaClient.maintenanceAssignmentHistory.findMany({
@@ -256,6 +295,7 @@ class ServiceService {
       pendingApproval,
       paidMaintenances,
       latestMaintenances,
+      latestAssignment: await this.getMostRecentAppointmentByVendor(vendorId)
     };
   }
 

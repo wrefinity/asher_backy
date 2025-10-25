@@ -248,6 +248,7 @@ class MaintenanceService {
     return { vendorCategoryIds, vendorSubcategoryIds };
   }
 
+ 
   /**
     * Get maintenance requests available for a specific vendor,
     * filtered by category/subcategory, status, search, and date range.
