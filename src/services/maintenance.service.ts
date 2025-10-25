@@ -952,6 +952,9 @@ class MaintenanceService {
         data: { status: newStatus },
         include: this.inclusion,
       });
+    }, {
+      timeout: 30000,
+      maxWait: 10000,
     })
 
 
@@ -1004,7 +1007,11 @@ class MaintenanceService {
         },
       });
       return updatedMaintenance;
-    });
+    },
+      {
+        timeout: 30000,
+        maxWait: 10000,
+      });
 
   }
 
@@ -1089,6 +1096,9 @@ class MaintenanceService {
         },
         include: this.inclusion,
       });
+    }, {
+      timeout: 30000,
+      maxWait: 10000,
     });
   }
 
@@ -1132,7 +1142,11 @@ class MaintenanceService {
         },
         include: this.inclusion,
       });
-    });
+    },
+      {
+        timeout: 30000,
+        maxWait: 10000,
+      });
   }
 }
 
