@@ -74,6 +74,8 @@ class MaintenanceService {
           application: true
         }
       },
+      maintenanceStatusHistory: 
+      { include: { vendor: true } },
       landlord: {
         include: {
           user: {
