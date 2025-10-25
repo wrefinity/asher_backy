@@ -10,7 +10,13 @@ class MaintenanceController {
   // Get all maintenances
   getMaintenances = asyncHandler(async (req: CustomRequest, res: Response) => {
     const vendorId = req.user.vendors.id;
-    const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {});
+    // Explicitly extract and convert pagination values safely
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+    const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {
+      page, limit
+    });
     return res
       .status(200)
       .json(ApiResponse.paginated(maintenances.data,
@@ -226,12 +232,12 @@ class MaintenanceController {
   pauseMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
     const { resumeDate } = req.body;
-
+    const vendorId = req.user?.vendors?.id;
     if (!resumeDate) {
       throw ApiError.badRequest("Resume date is required");
     }
 
-    const updated = await MaintenanceService.pauseMaintenance(maintenanceId, resumeDate);
+    const updated = await MaintenanceService.pauseMaintenance(maintenanceId, resumeDate, vendorId);
     return res
       .status(200)
       .json(ApiResponse.success(updated, "Work paused successfully"));
@@ -240,8 +246,8 @@ class MaintenanceController {
   // Resume maintenance
   resumeMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-
-    const updated = await MaintenanceService.resumeMaintenance(maintenanceId);
+    const vendorId = req.user?.vendors?.id;
+    const updated = await MaintenanceService.resumeMaintenance(maintenanceId, vendorId);
     return res
       .status(200)
       .json(ApiResponse.success(updated, "Work resumed successfully"));

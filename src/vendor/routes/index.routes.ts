@@ -3,6 +3,7 @@ import { userRoles } from '@prisma/client';
 import { Authorize } from "../../middlewares/authorize";
 import EventRoutes from "./events";
 import MaintenanceRoutes from "./maintenance";
+import servicesRoutes from "./services";
 class VendorRouter {
     public router: Router;
     authenticateService: Authorize
@@ -19,6 +20,7 @@ class VendorRouter {
         // events modules under vendor
         this.router.use("/events", EventRoutes)
         this.router.use("/maintenance", MaintenanceRoutes)
+        this.router.use("/services", servicesRoutes)
         
     }
 }

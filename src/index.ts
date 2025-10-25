@@ -23,7 +23,7 @@ import ProfileRouter from "./routes/profile";
 import PropertyRouter from "./routes/property";
 import PreferenceRoute from "./routes/preference";
 import ReviewsRouter from "./routes/reviews";
-import VendorServiceRouter from "./routes/services";
+import VendorServiceRouter from "./vendor/routes/services";
 import StatusRouter from "./routes/status";
 import StateRouter from "./routes/state";
 import LogRouter from "./routes/log";
@@ -100,7 +100,6 @@ class Server {
         this.app.use("/api/notification", NotificationRouter)
         this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);
-        this.app.use("/api/vendor/services", VendorServiceRouter);
         this.app.use("/api/vendors", VendorRouter);
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);

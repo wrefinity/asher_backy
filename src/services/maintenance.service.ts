@@ -377,21 +377,21 @@ class MaintenanceService {
         state,
       },
       orderBy: { assignedAt: "desc" },
-    
+
       include: {
         maintenance: true
       },
     });
-        // pagination
+    // pagination
     const skip = (page - 1) * limit;
     const maintenanceIds = Array.from(new Set(assignments.map(a => a.maintenanceId)));
-       // Execute queries
+    // Execute queries
     const [data, total] = await Promise.all([
       prismaClient.maintenance.findMany({
         where: { id: { in: maintenanceIds } },
         skip,
         take: limit,
-         orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" },
         include: this.inclusion,
       }),
       prismaClient.maintenance.count({ where: { id: { in: maintenanceIds } } }),
@@ -1053,41 +1053,46 @@ class MaintenanceService {
     return updated;
   }
 
-  async pauseMaintenance(maintenanceId: string, resumeDate: Date) {
-    const maintenance = await prismaClient.maintenance.findUnique({
-      where: { id: maintenanceId }
-    });
+  async pauseMaintenance(maintenanceId: string, resumeDate: Date, vendorId?: string) {
+    const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });
+    if (!maintenance) throw new Error("Maintenance not found");
 
-    if (!maintenance) {
-      throw ApiError.notFound("Maintenance not found");
-    }
-
-    const updated = await prismaClient.maintenance.update({
-      where: { id: maintenanceId },
-      data: {
-        status: maintenanceStatus.PAUSED,
-        pauseResumeDate: new Date(resumeDate),
-        isPaused: true,
-        maintenanceStatusHistory: {
-          create: {
-            oldStatus: maintenance.status,
-            newStatus: maintenanceStatus.PAUSED,
-          },
+    return await prismaClient.$transaction(async (tx) => {
+      // Record history
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId,
+          oldStatus: maintenance.status,
+          newStatus: maintenanceStatus.PAUSED,
         },
-      },
-      include: {
-        // Include necessary relations
-        tenant: true,
-        vendor: true,
-        property: true,
-        category: true,
+      });
+      // update assignment history
+      if (vendorId) {
+        await tx.maintenanceAssignmentHistory.updateMany({
+          where: {
+            maintenanceId,
+            vendorId
+          },
+          data: {
+            state: maintenanceStatus.PAUSED,
+          },
+        });
       }
-    });
 
-    return updated;
+      // Update status
+      return tx.maintenance.update({
+        where: { id: maintenanceId },
+        data: {
+          status: maintenanceStatus.PAUSED,
+          pauseResumeDate: new Date(resumeDate),
+          isPaused: true,
+        },
+        include: this.inclusion,
+      });
+    });
   }
 
-  async resumeMaintenance(maintenanceId: string) {
+  async resumeMaintenance(maintenanceId: string, vendorId?: string) {
     const maintenance = await prismaClient.maintenance.findUnique({
       where: { id: maintenanceId }
     });
@@ -1096,29 +1101,38 @@ class MaintenanceService {
       throw ApiError.notFound("Maintenance not found");
     }
 
-    const updated = await prismaClient.maintenance.update({
-      where: { id: maintenanceId },
-      data: {
-        status: maintenanceStatus.IN_PROGRESS,
-        pauseResumeDate: null,
-        isPaused: false,
-        maintenanceStatusHistory: {
-          create: {
-            oldStatus: maintenance.status,
-            newStatus: maintenanceStatus.IN_PROGRESS,
-          },
+    return await prismaClient.$transaction(async (tx) => {
+      // Record history
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId,
+          oldStatus: maintenance.status,
+          newStatus: maintenanceStatus.IN_PROGRESS,
         },
-      },
-      include: {
-        // Include necessary relations
-        tenant: true,
-        vendor: true,
-        property: true,
-        category: true,
+      });
+      // update assignment history
+      if (vendorId) {
+        await tx.maintenanceAssignmentHistory.updateMany({
+          where: {
+            maintenanceId,
+            vendorId
+          },
+          data: {
+            state: maintenanceStatus.IN_PROGRESS,
+          },
+        });
       }
+      // Update status
+      return tx.maintenance.update({
+        where: { id: maintenanceId },
+        data: {
+          status: maintenanceStatus.IN_PROGRESS,
+          pauseResumeDate: null,
+          isPaused: false,
+        },
+        include: this.inclusion,
+      });
     });
-
-    return updated;
   }
 }
 
