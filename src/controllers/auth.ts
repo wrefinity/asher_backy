@@ -239,8 +239,8 @@ class AuthControls {
                 id: user.id,
                 role: String(user.role),
                 email: String(user.email),
-                // tenantCode: tenantCode,
-                // tenantId: activeTenant.id
+                tenantCode: tenantCode,
+                tenantId: activeTenant.id
             });
 
             const { password, ...userDetails } = user;

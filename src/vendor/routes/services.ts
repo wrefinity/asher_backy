@@ -1,10 +1,8 @@
 import { Router } from "express";
 import VendorServiceController from '../controllers/services.controller';
-import MaintenanceServiceController from '../controllers/maintenance.controller';
 import { Authorize } from "../../middlewares/authorize";
 import { userRoles } from "@prisma/client";
-import { uploadToCloudinary, uploadToCloudinaryGeneric } from '../../middlewares/multerCloudinary';
-import upload from "../../configs/multer";
+
 class VendorServiceRoutes {
     public router: Router;
     protected authenticateService: Authorize

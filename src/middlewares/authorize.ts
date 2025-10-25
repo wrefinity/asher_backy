@@ -67,6 +67,7 @@ export class Authorize {
 
         // Tenant-specific context (from JWT)
         if (decoded.tenantId && decoded.tenantCode) {
+            console.log("Tenant context found:", { tenantId: decoded.tenantId, tenantCode: decoded.tenantCode });
             return {
                 ...baseUser,
                 tenantCode: decoded.tenantCode,
