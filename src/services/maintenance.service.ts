@@ -638,7 +638,10 @@ class MaintenanceService {
       }
 
       return updatedMaintenance;
-    });
+    },{
+        timeout: 30000,
+        maxWait: 10000,
+      });
   }
 
   deleteMaintenance = async (id: string) => {

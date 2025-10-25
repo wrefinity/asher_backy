@@ -90,7 +90,7 @@ class MaintenanceController {
 
   // Get maintenance by ID
   getMaintenancesById = asyncHandler(async (req: CustomRequest, res: Response) => {
-    const maintenanceId = req.params.id;
+    const maintenanceId = req.params.maintenanceId;
     const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
 
     if (!maintenance) {
