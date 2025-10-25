@@ -19,7 +19,6 @@ class MaintenaceRoutes {
     }
     private initializeRoutes(): void {
         this.router.get('/all', MaintenanceController.getMaintenances);
-        this.router.get('/:maintenanceId', MaintenanceController.getMaintenancesById);
 
         // Vendor actions
         this.router.post("/:maintenanceId/accept", MaintenanceController.acceptJob);
@@ -43,6 +42,8 @@ class MaintenaceRoutes {
         this.router.post('/reschedule/:maintenanceId', this.authenticateService.authorize, MaintenanceGeneralController.rescheduleMaintenanceController);
         this.router.post('/schedule/:maintenanceId', this.authenticateService.authorize, MaintenanceGeneralController.scheduleMaintenanceDate);
         this.router.get('/statuses', MaintenanceController.getMaintenancesByStatus);
+        this.router.get('/:maintenanceId', MaintenanceController.getMaintenancesById);
+
     }
 }
 
