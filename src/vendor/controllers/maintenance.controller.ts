@@ -14,7 +14,8 @@ class MaintenanceController {
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {
-      page, limit
+      page, limit,
+      status:  maintenanceStatus.UNASSIGNED || req.query.status as maintenanceStatus,
     });
     return res
       .status(200)
