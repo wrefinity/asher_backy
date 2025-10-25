@@ -14,6 +14,8 @@ class MaintenanceController {
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 10;
 
+  console.log("===========vendor check=====================");
+  console.log("vendorId", vendorId);
     const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {
       page, limit
     });
