@@ -154,43 +154,6 @@ class ServiceService {
     return count > 0;
   }
 
-   getMostRecentAppointmentByVendor = async (vendorId: string) => {
-      // Find the most recent maintenance assignment
-      const latestAssignment = await prismaClient.maintenanceAssignmentHistory.findFirst({
-        where: {
-          vendorId,
-          state: maintenanceStatus.ASSIGNED,
-          unassignedAt: null,
-        },
-        orderBy: {
-          assignedAt: 'desc',
-        },
-        include: {
-          maintenance: {
-            include: {
-              property: true,
-              tenant: true,
-              category: true,
-            },
-          },
-        },
-      });
-  
-      if (!latestAssignment) return null;
-  
-      const maintenance = latestAssignment.maintenance;
-  
-      // Step 2: Return formatted appointment data
-      return {
-        maintenanceId: maintenance.id,
-        description: maintenance.description,
-        scheduleDate: maintenance.scheduleDate,
-        propertyName: maintenance.property?.name || null,
-        category: maintenance.category?.name || null,
-        status: maintenance.status,
-        assignedAt: latestAssignment.assignedAt,
-      };
-    }
 
   getVendorAnalytics = async (vendorId: string) => {
     if (!vendorId) throw ApiError.notFound("Vendor ID is required");
@@ -211,7 +174,8 @@ class ServiceService {
       pendingApproval,
       paidMaintenances,
       totalEarnings,
-      latestMaintenances
+      latestMaintenances,
+      latestAssignment
     ] = await Promise.all([
       prismaClient.maintenance.count({
         where: {
@@ -285,7 +249,43 @@ class ServiceService {
           amount: true,
         },
       }),
+
+      // Most recent assignment as appointment
+      prismaClient.maintenanceAssignmentHistory.findFirst({
+        where: {
+          vendorId,
+          state: maintenanceStatus.ASSIGNED,
+          unassignedAt: null,
+        },
+        orderBy: {
+          assignedAt: "desc",
+        },
+        include: {
+          maintenance: {
+            include: {
+              property: true,
+              tenant: true,
+              category: true,
+            },
+          },
+        },
+      }),
+
     ]);
+
+    // Format the latest assignment result
+    const formattedLatestAssignment = latestAssignment
+      ? {
+        maintenanceId: latestAssignment.maintenance.id,
+        description: latestAssignment.maintenance.description,
+        scheduleDate: latestAssignment.maintenance.scheduleDate,
+        propertyName: latestAssignment.maintenance.property?.name || null,
+        category: latestAssignment.maintenance.category?.name || null,
+        status: latestAssignment.maintenance.status,
+        assignedAt: latestAssignment.assignedAt,
+      }
+      : null;
+
 
     return {
       totalEarnings: Number(totalEarnings._sum.amount ?? 0),
@@ -295,7 +295,7 @@ class ServiceService {
       pendingApproval,
       paidMaintenances,
       latestMaintenances,
-      latestAssignment: await this.getMostRecentAppointmentByVendor(vendorId)
+      latestAssignment: formattedLatestAssignment
     };
   }
 
