@@ -5,14 +5,15 @@ model Event {
   startTime   DateTime
   endTime     DateTime
   date        DateTime
- 
-  color       String?   @default("blue")
-  landlordId  String?
-  landlords   landlords? @relation(fields: [landlordId], references: [id], onDelete: Cascade)
-  vendorId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  vendor      vendors? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  reminder   Boolean    @default(false)
+  color      String?    @default("blue")
+  landlordId String?
+  landlords  landlords? @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  vendorId   String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  vendor     vendors?   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
   @@index([landlordId])
@@ -33,5 +34,3 @@ model VendorAvailability {
 
   @@unique([vendorId, dayOfWeek])
 }
-
-

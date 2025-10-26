@@ -3,6 +3,7 @@ export interface CreateEventDTO {
   description?: string;
   startTime: Date;
   endTime: Date;
+  reminder?: boolean;
   date: Date;
 }
 
@@ -12,6 +13,7 @@ export interface UpdateEventDTO {
   startTime?: Date;
   endTime?: Date;
   date?: Date;
+  reminder?: boolean;
 }
 
 export interface EventResponseDTO {
