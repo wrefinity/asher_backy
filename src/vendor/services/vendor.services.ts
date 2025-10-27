@@ -2,6 +2,21 @@ import { prismaClient } from "../..";
 import { maintenanceDecisionStatus, maintenanceStatus, TransactionReference, TransactionStatus, vendorAvailability } from ".prisma/client";
 import maintenanceService from "../../services/maintenance.service";
 import { ApiError } from "../../utils/ApiError";
+import { addDays, eachDayOfInterval, formatISO, startOfDay, endOfDay } from "date-fns";
+
+type Data = {
+  totalEarnings: number;
+  completionRate: number;
+  completedOrders: number;
+  newRequests: number;
+  completed: number;
+  cancelled: number;
+  inProgress: number;
+  paidMaintenances: number;
+  latestMaintenances: Array<any>;
+  earningsTrend: { labels: string[]; data: number[] };
+  orderPerformance: { labels: string[]; completed: number[]; cancelled: number[] };
+};
 
 interface VendorStats {
   totalRevenue: number
@@ -396,6 +411,144 @@ class ServiceService {
     }
 
     return stats
+  }
+
+  vendorGraph = async (vendorId: string, end: Date, start: Date) => {
+    try {
+
+      // ensure start <= end
+      const startDay = startOfDay(start);
+      const endDay = endOfDay(end);
+
+      // 1) Find all maintenance IDs assigned to this vendor (historical)
+      const assignedRecords = await prismaClient.maintenanceAssignmentHistory.findMany({
+        where: { vendorId },
+        select: { maintenanceId: true },
+      });
+      const maintenanceIds = assignedRecords.map((r) => r.maintenanceId);
+
+      // 2) Counts by status (overall, not only within date-range)
+      const [completed, cancelled, inProgress, paidMaintenances, newRequestsCount] = await Promise.all([
+        prismaClient.maintenance.count({
+          where: { id: { in: maintenanceIds }, status: maintenanceStatus.COMPLETED },
+        }),
+        prismaClient.maintenance.count({
+          where: { id: { in: maintenanceIds }, status: maintenanceStatus.CANCEL },
+        }),
+        prismaClient.maintenance.count({
+          where: { id: { in: maintenanceIds }, status: maintenanceStatus.IN_PROGRESS },
+        }),
+        prismaClient.maintenance.count({
+          where: { id: { in: maintenanceIds }, paymentStatus: TransactionStatus.COMPLETED },
+        }),
+        // new requests available to vendor (UNASSIGNED but in vendor's categories is complicated — simplified here)
+        prismaClient.maintenance.count({
+          where: { status: maintenanceStatus.UNASSIGNED, isDeleted: false },
+        }),
+      ]);
+
+      // 3) Total earnings: sum of transaction.amount for MAINTENANCE_FEE, COMPLETED, for vendor
+      const totalTrans = await prismaClient.transaction.aggregate({
+        _sum: { amount: true },
+        where: {
+          reference: "MAINTENANCE_FEE",
+          status: TransactionStatus.COMPLETED,
+          user: { vendors: { id: vendorId } },
+        },
+      });
+      const totalEarnings = Number(totalTrans._sum.amount ?? 0);
+
+      // 4) Latest distinct maintenances (most recent by createdAt) for vendor
+      const latestMaintenances = await prismaClient.maintenance.findMany({
+        where: { id: { in: maintenanceIds } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          description: true,
+          status: true,
+          createdAt: true,
+          amount: true,
+        },
+      });
+
+      // 5) Build per-day arrays for the date range for earnings and order counts
+      const days = eachDayOfInterval({ start: startDay, end: endDay });
+      const labels = days.map((d) => d.getDate().toString());
+
+      // For each day, compute sum of payments (transactions) and counts of completed/cancelled maintenances created that day.
+      // We'll use Promise.all to parallelize per-day queries (acceptable for small number of days)
+      const earningsDataPromises = days.map(async (d) => {
+        const dayStart = startOfDay(d);
+        const dayEnd = endOfDay(d);
+        // Earnings: sum transactions referencing MAINTENANCE_FEE completed that were created that day and for this vendor
+        const agg = await prismaClient.transaction.aggregate({
+          _sum: { amount: true },
+          where: {
+            reference: "MAINTENANCE_FEE",
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: dayStart, lte: dayEnd },
+            user: { vendors: { id: vendorId } },
+          },
+        });
+        return Number(agg._sum.amount ?? 0);
+      });
+
+      const completedCountsPromises = days.map(async (d) => {
+        const dayStart = startOfDay(d);
+        const dayEnd = endOfDay(d);
+        const c = await prismaClient.maintenance.count({
+          where: {
+            id: { in: maintenanceIds },
+            status: maintenanceStatus.COMPLETED,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+        });
+        return c;
+      });
+
+      const cancelledCountsPromises = days.map(async (d) => {
+        const dayStart = startOfDay(d);
+        const dayEnd = endOfDay(d);
+        const c = await prismaClient.maintenance.count({
+          where: {
+            id: { in: maintenanceIds },
+            status: maintenanceStatus.CANCEL,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+        });
+        return c;
+      });
+
+      const [earningsArr, completedArr, cancelledArr] = await Promise.all([
+        Promise.all(earningsDataPromises),
+        Promise.all(completedCountsPromises),
+        Promise.all(cancelledCountsPromises),
+      ]);
+
+      // 6) completion rate (for vendor) = completed / (completed + cancelled + inProgress) (or assignedTotal)
+      const assignedTotal = completed + cancelled + inProgress;
+      const completionRate = assignedTotal > 0 ? completed / assignedTotal : 0;
+
+      const payload: Data = {
+        totalEarnings,
+        completionRate,
+        completedOrders: completed,
+        newRequests: newRequestsCount,
+        completed,
+        cancelled,
+        inProgress,
+        paidMaintenances,
+        latestMaintenances,
+        earningsTrend: { labels, data: earningsArr },
+        orderPerformance: { labels, completed: completedArr, cancelled: cancelledArr },
+      };
+
+      return payload;
+    } catch (err) {
+      console.error(err);
+      throw ApiError.internal("Server error");
+    }
   }
 }
 

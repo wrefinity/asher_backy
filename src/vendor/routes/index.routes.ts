@@ -20,6 +20,7 @@ class VendorRouter {
         this.router.use(this.authenticateService.authorizeRole(userRoles.VENDOR))
         // events modules under vendor
         this.router.use("/analytics", vendorAnalyticsController.getVendorOverview)
+        this.router.use("/reports", vendorAnalyticsController.getVendorGraphs)
         this.router.use("/events", EventRoutes)
         this.router.use("/maintenance", MaintenanceRoutes)
         this.router.use("/services", servicesRoutes)
