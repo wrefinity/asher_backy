@@ -3,6 +3,7 @@ model state {
   name       String?
   isDeleted  Boolean      @default(false)
   properties properties[]
+
   @@index([id])
   @@index([name])
 }

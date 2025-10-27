@@ -7,6 +7,7 @@ model landlords {
   emailDomains         String?                @unique
   Broadcast            Broadcast[]
   BroadcastCategory    BroadcastCategory[]
+  Event                Event[]
   globalSettings       Settings[]
   SupportTicket        SupportTicket[]        @relation("TicketRaisedBy")
   applicationInvites   applicationInvites[]
@@ -19,6 +20,4 @@ model landlords {
   propertySettings     propertySettings[]
   reviews              reviews[]
   tenants              tenants[]
-
-  Event Event[]
 }

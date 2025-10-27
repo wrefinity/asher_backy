@@ -29,29 +29,36 @@ class TenantService {
     }
 
     getTenantWithUserAndProfile = async (id: string) => {
-        return await prismaClient.tenants.findFirst({
-            where: { id },
-            include: {
-                user: {
-                    include: {
-                        profile: true,
-                        nextOfKin: true,
-                        application: {
-                            include: {
-                                applicationQuestions: true,
-                                employmentInfo: true,
-                                emergencyInfo: true,
-                                guarantorInformation: true,
-                                referee: true
-                            }
+        console.log('🔍 Looking for tenant with ID:', id);
+        try {
+            const tenant = await prismaClient.tenants.findFirst({
+                where: { id },
+                include: {
+                    user: {
+                        include: {
+                            profile: true,
+                            nextOfKin: true,
+                            application: {
+                                include: {
+                                    applicationQuestions: true,
+                                    employmentInfo: true,
+                                    emergencyInfo: true,
+                                    guarantorInformation: true,
+                                    referee: true
+                                }
+                            },
                         },
                     },
+                    landlord: true,
+                    property: true
                 },
-                landlord: true,
-                property: true
-            },
-        });
-
+            });
+            console.log('🔍 Tenant found:', tenant ? 'YES' : 'NO');
+            return tenant;
+        } catch (error) {
+            console.error('❌ Error fetching tenant:', error);
+            throw error;
+        }
     };
 
     getPreviousTenantsForLandlord = async (landlordId: string) => {

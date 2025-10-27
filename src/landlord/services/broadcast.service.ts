@@ -1,7 +1,6 @@
 import { BroadcastType } from "@prisma/client";
 import { prismaClient } from "../..";
 import emailService from "../../services/emailService";
-import userServices from "../../services/user.services";
 
 class BroadcastService {
 

@@ -2,7 +2,6 @@ model users {
   id                       String                     @id @default(cuid())
   email                    String                     @unique
   password                 String?
-  googleId                 String?
   isVerified               Boolean                    @default(false)
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
@@ -10,6 +9,7 @@ model users {
   onlineStatus             onlineStatus?              @default(offline)
   profileId                String?                    @unique
   stripeCustomerId         String?                    @unique
+  googleId                 String?
   Ads                      Ads[]
   Booking                  Booking[]
   BroadcastCategoryMembers BroadcastCategoryMembers[]
@@ -78,6 +78,7 @@ model users {
   violation                violation[]                @relation("users")
   wallet                   wallet[]
   applicantion             application[]              @relation("applicationTousers")
+
   @@index([email])
   @@index([googleId])
   @@index([profileId])
@@ -88,10 +89,11 @@ model UserLikedProperty {
   userId     String?
   propertyId String?
   likedAt    DateTime    @default(now())
-  property   properties? @relation(fields: [propertyId], references: [id])
-  user       users?      @relation(fields: [userId], references: [id])
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+  property   properties? @relation(fields: [propertyId], references: [id])
+  user       users?      @relation(fields: [userId], references: [id])
+
   @@unique([userId, propertyId])
 }
 

@@ -9,7 +9,7 @@ class TenantController {
   constructor() {}
 
   getTenantById = asyncHandler(async (req: CustomRequest, res: Response) => {
-    const { tenantId } = req.params;
+    const tenantId = req.user?.tenant?.id;
 
     if (!tenantId) {
       throw ApiError.badRequest("Tenant ID is required");

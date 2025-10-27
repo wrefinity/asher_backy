@@ -90,7 +90,9 @@ class TenantBillController {
     const tenantBills = await tenantBillsService.getUpcomingBills(tenantId, days);
 
     if (!tenantBills || tenantBills.length < 1) {
-      throw ApiError.notFound("No upcoming bills found");
+      return res
+        .status(200)
+        .json(ApiResponse.success([], "No upcoming bills found"));
     }
 
     return res
@@ -107,7 +109,9 @@ class TenantBillController {
     const tenantBills = await tenantBillsService.getOverdueBills(tenantId);
 
     if (!tenantBills || tenantBills.length < 1) {
-      throw ApiError.notFound("No overdue bills found");
+      return res
+        .status(200)
+        .json(ApiResponse.success({ analysis: null, tenantBills: [] }, "No overdue bills found"));
     }
     const analysis = await tenantBillsService.getTenantOverdueAnalysis(tenantId);
     return res

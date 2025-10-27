@@ -87,7 +87,9 @@ class MaintenanceControls {
     const maintenances = await MaintenanceService.getPropertyTenantMaintenance(tenantId);
 
     if (!maintenances || maintenances.length === 0) {
-      throw ApiError.notFound("No maintenance records found for this tenant");
+      return res
+        .status(200)
+        .json(ApiResponse.success([], "No maintenance records found for this tenant"));
     }
 
     return res

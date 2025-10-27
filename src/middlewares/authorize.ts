@@ -57,7 +57,12 @@ export class Authorize {
      * Builds user object with proper tenant/landlord/vendor context
      */
     private buildUserWithContext(user: any, decoded: JWTPayload): JWTPayload {
-        console.log({ user, decoded });
+        console.log('🔧 Building user context:', { 
+            userId: user.id, 
+            decodedTenantId: decoded.tenantId, 
+            decodedTenantCode: decoded.tenantCode,
+            userTenants: user.tenants?.length || 0
+        });
 
         const baseUser = {
             id: user.id,
@@ -125,6 +130,19 @@ export class Authorize {
             if (!selectedTenant) {
                 selectedTenant = user.tenants[0];
             }
+        }
+
+        // If JWT already has tenant info, use it directly
+        if (decoded.tenantId && decoded.tenantCode) {
+            console.log('🔧 Using JWT tenant info:', { tenantId: decoded.tenantId, tenantCode: decoded.tenantCode });
+            return {
+                ...baseUser,
+                tenant: { id: decoded.tenantId },
+                tenantCode: decoded.tenantCode,
+                tenantId: decoded.tenantId,
+                landlords: user.landlords ? { id: user.landlords.id } : undefined,
+                vendors: user.vendors ? { id: user.vendors.id } : undefined,
+            };
         }
 
         return {

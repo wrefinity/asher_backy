@@ -150,7 +150,6 @@ model application {
   tenant                       tenants?                 @relation("ApplicationTenant")
   users                        users[]                  @relation("applicationTousers")
 
-  // Critical indexes for application reuse and common queries
   @@index([userId, status, isDeleted])
   @@index([propertiesId, status, isDeleted])
   @@index([status, createdAt])
@@ -161,7 +160,6 @@ model application {
   @@index([createdAt])
   @@index([updatedAt])
   @@index([applicationInviteId])
-  // Composite index for application reuse queries
   @@index([userId, status, isDeleted, createdAt])
 }
 
@@ -375,7 +373,6 @@ model declaration {
   @@index([date])
 }
 
-// Enums remain the same...
 enum ApplicationStatus {
   PENDING
   DECLINED
