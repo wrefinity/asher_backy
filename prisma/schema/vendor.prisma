@@ -1,20 +1,18 @@
 model vendors {
-  id                 String               @id @default(cuid())
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  userId             String?              @unique
-  Event              Event[]
-  VendorAvailability VendorAvailability[]
-  bankInfo           bankInfo[]
-  maintenances       maintenance[]        @relation("vendorUser")
-  reviews            reviews[]
-  services           services[]
-  documents          vendorDocument[]
-  user               users?               @relation(fields: [userId], references: [id])
-
+  id                           String                         @id @default(cuid())
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  userId                       String?                        @unique
+  Event                        Event[]
+  VendorAvailability           VendorAvailability[]
+  bankInfo                     bankInfo[]
+  maintenances                 maintenance[]                  @relation("vendorUser")
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
-
-  maintenanceStatusHistory maintenanceStatusHistory[]
+  maintenanceStatusHistory     maintenanceStatusHistory[]
+  reviews                      reviews[]
+  services                     services[]
+  documents                    vendorDocument[]
+  user                         users?                         @relation(fields: [userId], references: [id])
 }
 
 model vendorDocument {

@@ -133,11 +133,11 @@ class MaintenanceController {
       const isWhitelisted = await maintenanceService.checkWhitelist(
         landlordId,
         value.categoryId,
-        value.subcategoryId,
+        value.subcategoryIds?.[0], // Use first subcategory for whitelist check
         value.propertyId,
       );
       // Determine if maintenance should be handled by the landlord
-      const handleByLandlord = landlordId || isWhitelisted;
+      const handleByLandlord = !!landlordId || !!isWhitelisted;
 
       // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
       const property = await propertyService.getPropertyById(value?.propertyId);
@@ -156,7 +156,7 @@ class MaintenanceController {
       await logsServices.createLog({
         events: `${req.user.email} initiated a maintenance request for the property named ${property?.name}`,
         type: LogType.MAINTENANCE,
-        propertyId: property?.id,
+        propertyId: value.propertyId, // Use the original propertyId from the request
         createdById: req?.user?.id,
       });
 

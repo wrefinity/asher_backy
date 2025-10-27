@@ -24,6 +24,27 @@ model Email {
   receiver         users?           @relation("ReceivedEmails", fields: [receiverId], references: [id])
   sender           users            @relation("SentEmails", fields: [senderId], references: [id])
   states           UserEmailState[]
+
+  @@index([createdAt])
+  @@index([isArchived, receiverId, createdAt])
+  @@index([isArchived, senderId, createdAt])
+  @@index([isDraft, senderId])
+  @@index([isReadByReceiver, receiverId, createdAt])
+  @@index([isSent, senderId])
+  @@index([isSpam, receiverId, createdAt])
+  @@index([isStarred, receiverId, createdAt])
+  @@index([isStarred, senderId, createdAt])
+  @@index([parentEmailId])
+  @@index([receiverEmail])
+  @@index([receiverId, createdAt])
+  @@index([receiverId, isDeleted, createdAt])
+  @@index([receiverId, isDeleted, isSpam, isArchived, createdAt])
+  @@index([senderEmail])
+  @@index([senderId, createdAt])
+  @@index([senderId, isDeleted, createdAt])
+  @@index([senderId, isDeleted, isDraft, isSent, createdAt])
+  @@index([threadId, createdAt, id])
+  @@index([threadId, createdAt])
 }
 
 model UserEmailState {
@@ -40,4 +61,13 @@ model UserEmailState {
   user       users   @relation(fields: [userId], references: [id])
 
   @@unique([emailId, userId])
+  @@index([emailId])
+  @@index([userId, isArchived, isDeleted])
+  @@index([userId, isDeleted])
+  @@index([userId, isDraft])
+  @@index([userId, isRead, isArchived, isSpam, isDeleted])
+  @@index([userId, isRead, isDeleted])
+  @@index([userId, isSpam, isDeleted])
+  @@index([userId, isStarred, isDeleted])
+  @@index([userId, isStarred, isRead, isDeleted])
 }

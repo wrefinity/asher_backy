@@ -13,6 +13,14 @@ model Message {
   chatRoom   ChatRoom  @relation(fields: [chatRoomId], references: [id])
   receiver   users     @relation("messagesReceived", fields: [receiverId], references: [id])
   sender     users     @relation("messagesSent", fields: [senderId], references: [id])
+
+  @@index([chatRoomId, createdAt, id])
+  @@index([chatRoomId, createdAt])
+  @@index([chatRoomId, senderId, createdAt])
+  @@index([chatType, createdAt])
+  @@index([createdAt])
+  @@index([receiverId, createdAt])
+  @@index([senderId, createdAt])
 }
 
 model ChatRoom {
@@ -28,6 +36,14 @@ model ChatRoom {
   maintenance   maintenance?
 
   @@unique([user1Id, user2Id])
+  @@index([createdAt])
+  @@index([maintenanceId])
+  @@index([updatedAt])
+  @@index([user1Id, updatedAt, id])
+  @@index([user1Id, updatedAt])
+  @@index([user1Id, user2Id, updatedAt])
+  @@index([user2Id, updatedAt, id])
+  @@index([user2Id, updatedAt])
 }
 
 enum chatType {
