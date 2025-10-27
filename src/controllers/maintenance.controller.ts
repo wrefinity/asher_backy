@@ -122,28 +122,28 @@ class MaintenanceController {
   public createMaintenance = async (req: CustomRequest, res: Response) => {
     try {
 
-      const value = req.body
+      const { propertyId, ...value } = req.body
       const tenantId = req.user.tenant?.id;
       let landlordId = req.user.landlords?.id;
 
       if (!tenantId && !landlordId) {
         return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
       }
+      // check for property existance
+      const propertyExist = await propertyService.searchPropertyUnitRoom(value?.propertyId);
+      if (!propertyExist) return res.status(404).json({ message: `property with the id : ${value?.propertyId} doesn't exist` });
+
       // checking if the maitenance category is whitelisted by the landlord
       const isWhitelisted = await maintenanceService.checkWhitelist(
         landlordId,
         value.categoryId,
         value.subcategoryId,
-        value.propertyId,
+        propertyId,
       );
       // Determine if maintenance should be handled by the landlord
-      const handleByLandlord = landlordId || isWhitelisted;
+      const handleByLandlord = !!landlordId || !!isWhitelisted;
 
-      // const { cloudinaryUrls, cloudinaryDocumentUrls, cloudinaryVideoUrls, ...data } = value;
-      const property = await propertyService.getPropertyById(value?.propertyId);
-      if (!property) {
-        return res.status(404).json({ message: 'Property not found' });
-      }
+
       const maintenance = await maintenanceService.createMaintenance({
         ...value,
         handleByLandlord: handleByLandlord || false,
@@ -154,9 +154,11 @@ class MaintenanceController {
       });
 
       await logsServices.createLog({
-        events: `${req.user.email} initiated a maintenance request for the property named ${property?.name}`,
+        events: `${req.user.email} initiated a maintenance request for the property named ${propertyExist?.name}`,
         type: LogType.MAINTENANCE,
-        propertyId: property?.id,
+        unitId: propertyExist?.type === 'unit' ? propertyExist?.data.id : null,
+        roomId: propertyExist?.type === 'room' ? propertyExist?.data.id : null,
+        propertyId: propertyExist?.type === 'property' ? propertyExist?.data.id : null,
         createdById: req?.user?.id,
       });
 

@@ -5,6 +5,7 @@ import transferServices from "./transfer.services";
 import ServiceServices from "../vendor/services/vendor.services";
 import { subDays, addDays, isBefore, isAfter, isToday } from 'date-fns';
 import { ApiError } from "../utils/ApiError";
+import propertyServices from "./propertyServices";
 
 type SearchResult =
   | { type: "property"; data: properties }
@@ -74,8 +75,8 @@ class MaintenanceService {
           application: true
         }
       },
-      maintenanceStatusHistory: 
-      { include: { vendor: true } },
+      maintenanceStatusHistory:
+        { include: { vendor: true } },
       landlord: {
         include: {
           user: {
@@ -238,7 +239,7 @@ class MaintenanceService {
   }
 
   getVendorServicesCategories = async (vendorId: string) => {
-        // Get vendor’s services (and extract categories/subcategories)
+    // Get vendor’s services (and extract categories/subcategories)
     const vendorServices = await ServiceServices.getVendorServices(vendorId);
     const vendorCategoryIds = vendorServices.map((s) => s.categoryId);
     const vendorSubcategoryIds = vendorServices
@@ -248,7 +249,7 @@ class MaintenanceService {
     return { vendorCategoryIds, vendorSubcategoryIds };
   }
 
- 
+
   /**
     * Get maintenance requests available for a specific vendor,
     * filtered by category/subcategory, status, search, and date range.
@@ -652,10 +653,10 @@ class MaintenanceService {
       }
 
       return updatedMaintenance;
-    },{
-        timeout: 30000,
-        maxWait: 10000,
-      });
+    }, {
+      timeout: 30000,
+      maxWait: 10000,
+    });
   }
 
   deleteMaintenance = async (id: string) => {
@@ -676,13 +677,19 @@ class MaintenanceService {
   }
 
   checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, isActive: boolean = true) => {
+    // check for property existance
+    const propertyExist = await propertyServices.searchPropertyUnitRoom(propertyId);
+    if (!propertyExist) throw new Error(`property with the id : ${propertyId} doesn't exist`);
+
     return await prismaClient.maintenanceWhitelist.findFirst({
       where: {
         landlordId,
         categoryId,
         isActive,
         subcategoryId: subcategoryId ? subcategoryId : undefined,
-        propertyId: propertyId ? propertyId : undefined,
+        unitId: propertyExist?.type === 'unit' ? propertyExist?.data.id : null,
+        roomId: propertyExist?.type === 'room' ? propertyExist?.data.id : null,
+        propertyId: propertyExist?.type === 'property' ? propertyExist?.data.id : null,
       },
     });
   }

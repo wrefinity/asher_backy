@@ -1,6 +1,8 @@
 import { Router } from "express";
 import LogControls from '../controllers/logs.controller'
 import { Authorize } from "../middlewares/authorize";
+import { validateBody } from "../middlewares/validation";
+import { logSchema } from "../validations/schemas/log";
 
 class LogRoutes {
     public router: Router;
@@ -13,7 +15,7 @@ class LogRoutes {
         this.initializeRoutes();
     }
     private initializeRoutes(): void {
-        this.router.post('/', this.authenticateService.authorize, LogControls.createLog);
+        this.router.post('/', validateBody(logSchema), this.authenticateService.authorize, LogControls.createLog);
         this.router.get('/property/:propertyId', LogControls.getProperyLog);
     }
 }

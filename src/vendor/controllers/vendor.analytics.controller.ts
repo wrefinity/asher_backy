@@ -32,7 +32,9 @@ class VendorAnalyticsController {
      const start = req.query.start ? new Date(req.query.start as string) : addDays(end, -8);
 
      if (!vendorId) {
-         throw ApiError.badRequest("Vendor context missing or unauthorized");
+         return res.status(401).json( 
+          ApiError.unauthorized("Vendor context missing or unauthorized")
+        )
      }
 
      const analytics = await vendorServices.vendorGraph(vendorId, end, start);

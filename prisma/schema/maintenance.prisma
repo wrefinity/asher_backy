@@ -45,7 +45,6 @@ model maintenance {
   reScheduleHistory         maintenanceRescheduleHistory[]
   maintenanceStatusHistory  maintenanceStatusHistory[]
   subcategories             subCategory[]                  @relation("SubCategoryMaintenance")
-
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
 
   @@index([vendorId])

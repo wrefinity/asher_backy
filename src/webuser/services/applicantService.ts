@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-import { AgreementDocument, AgreementStatus, Prisma } from "@prisma/client";
+import { AgreementDocument, AgreementStatus, InvitedStatus, Prisma } from "@prisma/client";
 import { ApplicationStatus, InvitedResponse, ApplicationSaveState, LogType } from '@prisma/client';
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
@@ -1094,6 +1094,200 @@ class ApplicantService {
         unit: lastApplication.units,
         room: lastApplication.rooms
       }
+    };
+  }
+  async createApplicationFromLast(userId: string, inviteId?: string) {
+    // Step 1: Get the last completed application
+    const lastApplication = await prismaClient.application.findFirst({
+      where: {
+        userId,
+        status: {
+          in: [
+            ApplicationStatus.COMPLETED,
+            ApplicationStatus.TENANT_CREATED,
+            ApplicationStatus.APPROVED,
+          ],
+        },
+        isDeleted: false,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        personalDetails: { include: { nextOfKin: true } },
+        residentialInfo: { include: { prevAddresses: true } },
+        emergencyInfo: true,
+        employmentInfo: true,
+        guarantorInformation: true,
+        referee: true,
+        applicationQuestions: true,
+        declaration: true,
+      },
+    });
+
+    if (!lastApplication) {
+      throw new Error('No completed or approved application found for this user.');
+    }
+
+    // Step 2: Clone each related record (deep copy to allow editing per application)
+    const newPersonal = await prismaClient.applicantPersonalDetails.create({
+      data: {
+        title: lastApplication.personalDetails.title,
+        firstName: lastApplication.personalDetails.firstName,
+        middleName: lastApplication.personalDetails.middleName,
+        lastName: lastApplication.personalDetails.lastName,
+        dob: lastApplication.personalDetails.dob,
+        email: lastApplication.personalDetails.email,
+        phoneNumber: lastApplication.personalDetails.phoneNumber,
+        maritalStatus: lastApplication.personalDetails.maritalStatus,
+        nationality: lastApplication.personalDetails.nationality,
+        identificationType: lastApplication.personalDetails.identificationType,
+        identificationNo: lastApplication.personalDetails.identificationNo,
+        issuingAuthority: lastApplication.personalDetails.issuingAuthority,
+        expiryDate: lastApplication.personalDetails.expiryDate,
+        userId,
+      },
+    });
+
+    if (lastApplication.personalDetails.nextOfKin) {
+      await prismaClient.nextOfKin.create({
+        data: {
+          lastName: lastApplication.personalDetails.nextOfKin.lastName,
+          firstName: lastApplication.personalDetails.nextOfKin.firstName,
+          middleName: lastApplication.personalDetails.nextOfKin.middleName,
+          relationship: lastApplication.personalDetails.nextOfKin.relationship,
+          email: lastApplication.personalDetails.nextOfKin.email,
+          phoneNumber: lastApplication.personalDetails.nextOfKin.phoneNumber,
+          userId,
+          applicantPersonalDetailsId: newPersonal.id,
+        },
+      });
+    }
+
+    let newResidential = null;
+    if (lastApplication.residentialInfo) {
+      newResidential = await prismaClient.residentialInformation.create({
+        data: {
+          address: lastApplication.residentialInfo.address,
+          addressStatus: lastApplication.residentialInfo.addressStatus,
+          city: lastApplication.residentialInfo.city,
+          state: lastApplication.residentialInfo.state,
+          country: lastApplication.residentialInfo.country,
+          zipCode: lastApplication.residentialInfo.zipCode,
+          lengthOfResidence: lastApplication.residentialInfo.lengthOfResidence,
+          reasonForLeaving: lastApplication.residentialInfo.reasonForLeaving,
+          landlordOrAgencyPhoneNumber: lastApplication.residentialInfo.landlordOrAgencyPhoneNumber,
+          landlordOrAgencyEmail: lastApplication.residentialInfo.landlordOrAgencyEmail,
+          landlordOrAgencyName: lastApplication.residentialInfo.landlordOrAgencyName,
+          userId,
+          prevAddresses: {
+            create: lastApplication.residentialInfo.prevAddresses.map((prev) => ({
+              address: prev.address,
+              lengthOfResidence: prev.lengthOfResidence,
+            })),
+          },
+        },
+      });
+    }
+
+    const newEmergency = lastApplication.emergencyInfo
+      ? await prismaClient.emergencyContact.create({
+          data: {
+            fullname: lastApplication.emergencyInfo.fullname,
+            phoneNumber: lastApplication.emergencyInfo.phoneNumber,
+            email: lastApplication.emergencyInfo.email,
+            address: lastApplication.emergencyInfo.address,
+            userId,
+          },
+        })
+      : null;
+
+    const newEmployment = lastApplication.employmentInfo
+      ? await prismaClient.employmentInformation.create({
+          data: {
+            ...lastApplication.employmentInfo,
+            id: undefined,
+            userId,
+          },
+        })
+      : null;
+
+    const newGuarantor = lastApplication.guarantorInformation
+      ? await prismaClient.guarantorInformation.create({
+          data: {
+            ...lastApplication.guarantorInformation,
+            id: undefined,
+            userId,
+          },
+        })
+      : null;
+
+    const newReferee = lastApplication.referee
+      ? await prismaClient.referees.create({
+          data: {
+            ...lastApplication.referee,
+            id: undefined,
+            userId,
+          },
+        })
+      : null;
+
+    // Step 3: Create new application record
+    const newApplication = await prismaClient.application.create({
+      data: {
+        userId,
+        applicantPersonalDetailsId: newPersonal.id,
+        residentialId: newResidential?.id || null,
+        emergencyContactId: newEmergency?.id || null,
+        employmentInformationId: newEmployment?.id || null,
+        guarantorInformationId: newGuarantor?.id || null,
+        refereeId: newReferee?.id || null,
+        status: ApplicationStatus.PENDING,
+        invited: InvitedStatus.NO,
+        stepCompleted: 1,
+        createdById: userId,
+        applicationInviteId: inviteId ?? null,
+      },
+      include: { personalDetails: true },
+    });
+
+    // Step 4: Copy applicationQuestions and declaration (if any)
+    if (lastApplication.applicationQuestions.length > 0) {
+      await prismaClient.applicationQuestions.createMany({
+        data: lastApplication.applicationQuestions.map((q) => ({
+          havePet: q.havePet,
+          youSmoke: q.youSmoke,
+          requireParking: q.requireParking,
+          haveOutstandingDebts: q.haveOutstandingDebts,
+          additionalInformation: q.additionalInformation,
+          additionalOccupants: q.additionalOccupants,
+          applicantId: newApplication.id,
+        })),
+      });
+    }
+
+    if (lastApplication.declaration.length > 0) {
+      await prismaClient.declaration.createMany({
+        data: lastApplication.declaration.map((d) => ({
+          declaration: d.declaration,
+          additionalNotes: d.additionalNotes,
+          date: new Date(),
+          signature: d.signature,
+          applicantId: newApplication.id,
+        })),
+      });
+    }
+
+    // Step 5 (Optional): Link the application invite if provided
+    if (inviteId) {
+      await prismaClient.applicationInvites.update({
+        where: { id: inviteId },
+        data: { application: { connect: { id: newApplication.id } } },
+      });
+    }
+
+    return {
+      message: 'New application created successfully from last application data.',
+      applicationId: newApplication.id,
+      application: newApplication,
     };
   }
 

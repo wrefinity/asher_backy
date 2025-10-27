@@ -9,7 +9,7 @@ import { PrismaClient } from "@prisma/client";
 import { APP_SECRET, PORT } from "./secrets";
 
 import AuthRouter from "./routes/auth";
-import ApplicationRouter from "./routes/applicant";
+import ApplicationRouter from "./routes/application";
 import ComplaintRoutes from "./routes/complaint";
 import SuggestionRoutes from "./routes/suggestion";
 import FileUploads from './routes/fileuploads';

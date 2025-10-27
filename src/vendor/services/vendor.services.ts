@@ -427,7 +427,7 @@ class ServiceService {
       });
       const maintenanceIds = assignedRecords.map((r) => r.maintenanceId);
 
-      // 2) Counts by status (overall, not only within date-range)
+      // Counts by status (overall, not only within date-range)
       const [completed, cancelled, inProgress, paidMaintenances, newRequestsCount] = await Promise.all([
         prismaClient.maintenance.count({
           where: { id: { in: maintenanceIds }, status: maintenanceStatus.COMPLETED },
