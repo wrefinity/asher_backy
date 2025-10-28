@@ -1,3 +1,4 @@
+import { maintenanceStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { ApiError } from '../utils/ApiError';
 
@@ -43,12 +44,12 @@ class QuoteService {
         throw ApiError.notFound('Maintenance request not found');
       }
 
-      if (!maintenance.handleByLandlord) {
-        throw ApiError.badRequest('This maintenance is not handled by landlord');
-      }
+      // if (!maintenance.handleByLandlord) {
+      //   throw ApiError.badRequest('This maintenance is not handled by landlord');
+      // }
 
-      if (maintenance.status !== 'UNASSIGNED' && maintenance.status !== 'PENDING') {
-        throw ApiError.badRequest('Cannot submit quote for this maintenance status');
+      if (maintenance.status !== maintenanceStatus.UNASSIGNED ) {
+        throw ApiError.badRequest('maintenance assigned to a vendor already');
       }
 
       // Check if vendor has already submitted a quote
