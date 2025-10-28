@@ -6,6 +6,7 @@ import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import ServiceServices from "../services/vendor.services";
 import { maintenanceStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
+import { CreateQuoteInput, quoteService, UpdateQuoteInput } from "../../services/quote.service";
 class MaintenanceController {
   // Get all maintenances
   getMaintenances = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -15,7 +16,7 @@ class MaintenanceController {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {
       page, limit,
-      status:  maintenanceStatus.UNASSIGNED || req.query.status as maintenanceStatus,
+      status: maintenanceStatus.UNASSIGNED || req.query.status as maintenanceStatus,
     });
     return res
       .status(200)
@@ -277,6 +278,84 @@ class MaintenanceController {
       )
     );
   })
+
+  // quotation for maintenance
+  // Vendor submits a quote
+  createQuote = asyncHandler( async (req: CustomRequest, res: Response) => {
+
+      const vendorId = req.user.vendors.id; 
+      const input: CreateQuoteInput = {
+        ...req.body,
+        vendorId
+      };
+
+      const quote = await quoteService.createQuote(input);
+      res.status(201).json({
+        success: true,
+        data: quote
+      });
+ 
+  });
+
+  // Get quotes for a maintenance (landlord/vendor view)
+  getMaintenanceQuotes = asyncHandler(async (req: CustomRequest, res: Response) => {
+
+      const { maintenanceId } = req.params;
+      const quotes = await quoteService.getMaintenanceQuotes(maintenanceId);
+      return res.json(
+        ApiResponse.success(
+          quotes
+        )
+      );
+
+  });
+
+  // Get vendor's quotes
+  getVendorQuotes = asyncHandler( async (req: CustomRequest, res: Response) => {
+
+      const vendorId = req.user.vendors.id;
+      const quotes = await quoteService.getVendorQuotes(vendorId);
+
+      res.json({
+        success: true,
+        data: quotes
+      });
+  
+  });
+
+  // Vendor updates their quote
+  updateQuote = asyncHandler (async (req: CustomRequest, res: Response) => {
+      const vendorId = req.user.vendors.id;
+      const { quoteId } = req.params;
+      const input: UpdateQuoteInput = req.body;
+
+      const quote = await quoteService.updateQuote(quoteId, vendorId, input);
+
+      return res.status(200).json(
+        ApiResponse.success(
+          quote,
+        )
+      );
+   
+  });
+
+  // Vendor deletes their quote
+  deleteQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
+
+    const vendorId = req.user.id;
+    const { quoteId } = req.params;
+
+    await quoteService.deleteQuote(quoteId, vendorId);
+
+    return res.status(200).json(
+      ApiResponse.success(
+        {},
+        'Quote deleted successfully'
+      )
+    );
+  });
+
+
 }
 
 export default new MaintenanceController();

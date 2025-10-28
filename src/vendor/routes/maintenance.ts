@@ -4,6 +4,8 @@ import MaintenanceGeneralController from '../../controllers/maintenance.controll
 import { Authorize } from "../../middlewares/authorize";
 import { uploadToCloudinaryGeneric } from '../../middlewares/multerCloudinary';
 import upload from "../../configs/multer";
+import { validateBody } from "../../middlewares/validation";
+import { createQuoteValidation, updateQuoteValidation } from "../../validations/schemas/maintenance.schema";
 
 
 
@@ -44,6 +46,12 @@ class MaintenaceRoutes {
         this.router.get('/statuses', MaintenanceController.getMaintenancesByStatus);
         this.router.get('/:maintenanceId', MaintenanceController.getMaintenancesById);
 
+        // maintenance quotation
+        this.router.post('/quotes', validateBody(createQuoteValidation), this.authenticateService.authorize, MaintenanceController.createQuote);
+        this.router.get('/quotes/maintenance/:maintenanceId', validateBody(updateQuoteValidation    ), this.authenticateService.authorize, MaintenanceController.getMaintenanceQuotes);
+        this.router.get('/quotes/mine', this.authenticateService.authorize, MaintenanceController.getVendorQuotes);
+        this.router.patch('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.updateQuote);
+        this.router.delete('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.deleteQuote);
     }
 }
 

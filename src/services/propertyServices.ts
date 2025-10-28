@@ -4,7 +4,6 @@ import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
-import property from "../routes/property";
 
 interface InactiveListingResult {
     property: any; // Replace 'any' with your Property type

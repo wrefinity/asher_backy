@@ -1,51 +1,52 @@
 model maintenance {
-  id                        String                         @id @default(cuid())
-  description               String
-  attachments               String[]
-  offer                     String[]
-  scheduleDate              DateTime?
-  reScheduleMax             Int?                           @default(1)
-  reScheduleDate            DateTime?
-  createdAt                 DateTime                       @default(now())
-  updatedAt                 DateTime                       @updatedAt
-  isDeleted                 Boolean                        @default(false)
-  handleByLandlord          Boolean                        @default(false)
-  landlordDecision          maintenanceDecisionStatus?
-  cancelReason              String?
-  flagCancellation          Boolean?                       @default(false)
-  vendorConsentCancellation Boolean?
-  tenantId                  String?
-  landlordId                String?
-  vendorId                  String?
-  propertyId                String?
-  categoryId                String
-  chatRoomId                String?                        @unique
-  status                    maintenanceStatus              @default(UNASSIGNED)
-  serviceId                 String?
-  paymentStatus             TransactionStatus              @default(PENDING)
-  amount                    Decimal?                       @db.Decimal(18, 2)
-  roomId                    String?
-  unitId                    String?
-  endAttachments            String[]
-  startAttachments          String[]
-  isPaused                  Boolean                        @default(false)
-  pauseResumeDate           DateTime?
-  rescheduleReason          String?
-  rescheduleRequestDate     DateTime?
-  rescheduleRequestStatus   maintenanceRescheduleStatus?   @default(PENDING)
-  category                  category                       @relation(fields: [categoryId], references: [id])
-  chatRoom                  ChatRoom?                      @relation(fields: [chatRoomId], references: [id])
-  landlord                  landlords?                     @relation("landlordUser", fields: [landlordId], references: [id])
-  property                  properties?                    @relation(fields: [propertyId], references: [id])
-  rooms                     RoomDetail?                    @relation(fields: [roomId], references: [id])
-  services                  services?                      @relation(fields: [serviceId], references: [id])
-  tenant                    tenants?                       @relation("tenantUser", fields: [tenantId], references: [id])
-  units                     UnitConfiguration?             @relation(fields: [unitId], references: [id])
-  vendor                    vendors?                       @relation("vendorUser", fields: [vendorId], references: [id])
-  reScheduleHistory         maintenanceRescheduleHistory[]
-  maintenanceStatusHistory  maintenanceStatusHistory[]
-  subcategories             subCategory[]                  @relation("SubCategoryMaintenance")
+  id                           String                         @id @default(cuid())
+  description                  String
+  attachments                  String[]
+  offer                        String[]
+  scheduleDate                 DateTime?
+  reScheduleMax                Int?                           @default(1)
+  reScheduleDate               DateTime?
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  isDeleted                    Boolean                        @default(false)
+  handleByLandlord             Boolean                        @default(false)
+  landlordDecision             maintenanceDecisionStatus?
+  cancelReason                 String?
+  flagCancellation             Boolean?                       @default(false)
+  vendorConsentCancellation    Boolean?
+  tenantId                     String?
+  landlordId                   String?
+  vendorId                     String?
+  propertyId                   String?
+  categoryId                   String
+  chatRoomId                   String?                        @unique
+  status                       maintenanceStatus              @default(UNASSIGNED)
+  serviceId                    String?
+  paymentStatus                TransactionStatus              @default(PENDING)
+  amount                       Decimal?                       @db.Decimal(18, 2)
+  roomId                       String?
+  unitId                       String?
+  endAttachments               String[]
+  startAttachments             String[]
+  isPaused                     Boolean                        @default(false)
+  pauseResumeDate              DateTime?
+  rescheduleReason             String?
+  rescheduleRequestDate        DateTime?
+  rescheduleRequestStatus      maintenanceRescheduleStatus?   @default(PENDING)
+  category                     category                       @relation(fields: [categoryId], references: [id])
+  chatRoom                     ChatRoom?                      @relation(fields: [chatRoomId], references: [id])
+  landlord                     landlords?                     @relation("landlordUser", fields: [landlordId], references: [id])
+  property                     properties?                    @relation(fields: [propertyId], references: [id])
+  rooms                        RoomDetail?                    @relation(fields: [roomId], references: [id])
+  services                     services?                      @relation(fields: [serviceId], references: [id])
+  tenant                       tenants?                       @relation("tenantUser", fields: [tenantId], references: [id])
+  units                        UnitConfiguration?             @relation(fields: [unitId], references: [id])
+  vendor                       vendors?                       @relation("vendorUser", fields: [vendorId], references: [id])
+  reScheduleHistory            maintenanceRescheduleHistory[]
+  maintenanceStatusHistory     maintenanceStatusHistory[]
+  subcategories                subCategory[]                  @relation("SubCategoryMaintenance")
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
+  MaintenanceQuote             MaintenanceQuote[]
 
   @@index([vendorId])
   @@index([status])
@@ -67,7 +68,7 @@ model maintenanceStatusHistory {
   vendorId      String?
   changedAt     DateTime          @default(now())
   maintenance   maintenance       @relation(fields: [maintenanceId], references: [id])
-  vendor        vendors?           @relation(fields: [vendorId], references: [id])
+  vendor        vendors?          @relation(fields: [vendorId], references: [id])
 }
 
 model maintenanceAssignmentHistory {
@@ -78,8 +79,8 @@ model maintenanceAssignmentHistory {
   unassignedAt  DateTime?
   reasonLeft    String?
   state         maintenanceStatus @default(ASSIGNED)
-  maintenance   maintenance @relation(fields: [maintenanceId], references: [id])
-  vendor       vendors?   @relation(fields: [vendorId], references: [id])
+  maintenance   maintenance       @relation(fields: [maintenanceId], references: [id])
+  vendor        vendors?          @relation(fields: [vendorId], references: [id])
 }
 
 model services {
@@ -99,6 +100,35 @@ model services {
   subcategory        subCategory?       @relation(fields: [subcategoryId], references: [id])
   tenant             tenants?           @relation(fields: [tenantId], references: [id])
   vendor             vendors            @relation(fields: [vendorId], references: [id])
+}
+
+model MaintenanceQuote {
+  id            String      @id @default(cuid())
+  maintenanceId String
+  vendorId      String
+  amount        Decimal     @db.Decimal(18, 2)
+  description   String?
+  breakdown     Json? // Array of line items with description and cost
+  attachments   String[]
+  status        QuoteStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  isDeleted     Boolean     @default(false)
+
+  maintenance maintenance @relation(fields: [maintenanceId], references: [id])
+  vendor      vendors     @relation(fields: [vendorId], references: [id])
+
+  @@unique([maintenanceId, vendorId])
+  @@index([maintenanceId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+enum QuoteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
 model maintenanceWhitelist {

@@ -24,7 +24,7 @@
     "src/**/*.ts",
     "src/**/**/*.ts",
     "src/**/*.js" 
-  ],
+, "src/vendor/controllers/.controller.ts"  ],
   "exclude": [
     "node_modules",
     "build"

@@ -35,3 +35,67 @@ export const rescheduleMaintenanceSchema = Joi.object({
   // maintenanceId: Joi.string().required(),
   scheduleDate: Joi.date().greater('now').required(),
 });
+
+
+
+
+export const createQuoteValidation = Joi.object({
+  maintenanceId: Joi.string().required().messages({
+    'string.empty': 'Maintenance ID is required',
+    'any.required': 'Maintenance ID is required'
+  }),
+  amount: Joi.number().min(0).required().messages({
+    'number.base': 'Amount must be a number',
+    'number.min': 'Amount cannot be negative',
+    'any.required': 'Amount is required'
+  }),
+  description: Joi.string().optional().allow(''),
+  estimatedCompletionTime: Joi.string().optional().allow(''),
+  breakdown: Joi.array().items(
+    Joi.object({
+      item: Joi.string().required().messages({
+        'string.empty': 'Item name is required',
+        'any.required': 'Item name is required'
+      }),
+      description: Joi.string().optional().allow(''),
+      cost: Joi.number().min(0).required().messages({
+        'number.base': 'Cost must be a number',
+        'number.min': 'Cost cannot be negative',
+        'any.required': 'Cost is required'
+      }),
+      quantity: Joi.number().min(1).default(1).messages({
+        'number.base': 'Quantity must be a number',
+        'number.min': 'Quantity must be at least 1'
+      })
+    })
+  ).optional(),
+  attachments: Joi.array().items(Joi.string()).optional()
+});
+
+export const updateQuoteValidation = Joi.object({
+  amount: Joi.number().min(0).optional().messages({
+    'number.base': 'Amount must be a number',
+    'number.min': 'Amount cannot be negative'
+  }),
+  description: Joi.string().optional().allow(''),
+  estimatedCompletionTime: Joi.string().optional().allow(''),
+  breakdown: Joi.array().items(
+    Joi.object({
+      item: Joi.string().required().messages({
+        'string.empty': 'Item name is required',
+        'any.required': 'Item name is required'
+      }),
+      description: Joi.string().optional().allow(''),
+      cost: Joi.number().min(0).required().messages({
+        'number.base': 'Cost must be a number',
+        'number.min': 'Cost cannot be negative',
+        'any.required': 'Cost is required'
+      }),
+      quantity: Joi.number().min(1).default(1).messages({
+        'number.base': 'Quantity must be a number',
+        'number.min': 'Quantity must be at least 1'
+      })
+    })
+  ).optional(),
+  attachments: Joi.array().items(Joi.string()).optional()
+});

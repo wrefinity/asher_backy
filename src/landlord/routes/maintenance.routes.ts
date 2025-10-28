@@ -19,6 +19,8 @@ class LandlordMaintenanceRoute {
         this.router.get('/property/:propertyId', LandlordMaintenanceControls.getPropertyMaintenance);
 
         this.router.post('/accept/:maintenanceId', LandlordMaintenanceControls.acceptMaintenaceRequest);
+        this.router.post('/accept-quotation/:quoteId', LandlordMaintenanceControls.acceptQuote);
+        this.router.post('/reject-quotation/:quoteId', LandlordMaintenanceControls.rejectQuote);
         this.router.post('/decline/:maintenanceId', LandlordMaintenanceControls.declineMaintenaceRequest);
         this.router.get('/tenants/:tenantId', LandlordMaintenanceControls.getTenantsMaintenances);
         this.router.delete('/:maintenanceId', LandlordMaintenanceControls.deleteMaintenance);

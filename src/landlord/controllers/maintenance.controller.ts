@@ -7,6 +7,9 @@ import CateoryService from "../../services/category.service"
 import SubCateoryService from "../../services/subcategory.service"
 import PropertyService from "../../services/propertyServices"
 import { maintenanceWhitelistSchema, updateWhitelistSchema } from "../validations/schema/maintenance";
+import { quoteService } from "../../services/quote.service";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { ApiResponse } from "../../utils/ApiResponse";
 
 class MaintenanceControls {
     // <========= whitelisting section ========>
@@ -182,6 +185,36 @@ class MaintenanceControls {
             ErrorService.handleError(error, res)
         }
     }
+
+      // Landlord accepts a quote
+  acceptQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
+
+    const landlordId = req.user.landlords.id;
+    const { quoteId } = req.params;
+
+    const quote = await quoteService.acceptQuote(quoteId, landlordId);
+
+    return res.status(200).json({
+      success: true,
+      data: quote,
+      message: 'Quote accepted successfully'
+    });
+  });
+
+  // Landlord rejects a quote
+  rejectQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
+
+    const landlordId = req.user.landlords.id;
+    const { quoteId } = req.params;
+
+    const quote = await quoteService.rejectQuote(quoteId, landlordId);
+    return res.status(200).json(
+      ApiResponse.success(
+        quote,
+        'Quote rejected'
+      )
+    );
+  });
 }
 
 
