@@ -63,6 +63,7 @@ class MaintenanceService {
               images: true
             }
           },
+          MaintenanceQuote: true,
           agent: {
             include: {
               user: {
