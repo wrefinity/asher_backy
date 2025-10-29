@@ -42,7 +42,7 @@ export class Authorize {
             req.user = this.buildUserWithContext(user, decoded);
             return next();
         } catch (error) {
-      
+
             if (error.name === "TokenExpiredError") {
                 return this.handleTokenRefresh(req, res, next);
             }
@@ -66,8 +66,14 @@ export class Authorize {
         };
 
         // Tenant-specific context (from JWT)
+
+        // **FIX: Check for tenant context from JWT FIRST**
         if (decoded.tenantId && decoded.tenantCode) {
-            console.log("Tenant context found:", { tenantId: decoded.tenantId, tenantCode: decoded.tenantCode });
+            console.log("Tenant context from JWT:", {
+                tenantId: decoded.tenantId,
+                tenantCode: decoded.tenantCode
+            });
+
             return {
                 ...baseUser,
                 tenantCode: decoded.tenantCode,
@@ -77,6 +83,37 @@ export class Authorize {
                 vendors: undefined,
             };
         }
+
+        // **FIX: Check if user has tenants array and find matching tenant**
+        if (Array.isArray(user.tenants) && user.tenants.length > 0) {
+            let selectedTenant = null;
+
+            // Try to find tenant by tenantCode from JWT
+            if (decoded.tenantCode) {
+                selectedTenant = user.tenants.find(
+                    (t: any) => t.tenantCode === decoded.tenantCode
+                );
+                console.log("Found tenant by tenantCode:", selectedTenant);
+            }
+
+            // If not found, use the first tenant
+            if (!selectedTenant) {
+                selectedTenant = user.tenants[0];
+                console.log("Using first tenant:", selectedTenant);
+            }
+
+            if (selectedTenant) {
+                return {
+                    ...baseUser,
+                    tenant: { id: selectedTenant.id },
+                    tenantCode: selectedTenant.tenantCode,
+                    tenantId: selectedTenant.id,
+                    landlords: user.landlords ? { id: user.landlords.id } : undefined,
+                    vendors: user.vendors ? { id: user.vendors.id } : undefined,
+                };
+            }
+        }
+
 
         //  Landlord-specific context (from JWT)
         if (decoded.landlords?.id) {

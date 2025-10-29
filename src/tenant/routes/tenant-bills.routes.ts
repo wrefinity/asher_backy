@@ -13,8 +13,7 @@ class TenantBillRouter {
     }
 
     private initializeRoutes() {
-        this.router.use(this.authenticateService.authorize)
-        this.router.get('/bills', tenantBillsControllers.getTenantBill);
+        this.router.get('/my-bills', tenantBillsControllers.getTenantBill);
         this.router.get('/overdue-bills', tenantBillsControllers.getOverdueBills);
         this.router.get('/upcoming-bills', tenantBillsControllers.getUpcomingBills);
     }

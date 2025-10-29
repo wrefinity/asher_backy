@@ -19,14 +19,14 @@ class TenantRouter {
     }
 
     private initializeRoutes() {
-        this.router.get('/:tenantId', this.authenticateService.authorize, TenantController.getTenantById)
         this.router.use(this.authenticateService.authorize, this.authenticateService.authorizeRole(userRoles.TENANT))
-        this.router.use('/dashboard', TenantDashboardRouter)
         this.router.use('/bills', TenantBillRouter)
-        this.router.get('/scores', PerformanceController.getTenantPerformance)
+        this.router.use('/dashboard', TenantDashboardRouter)
         this.router.use('/maintenances', MaintenanceRouter)
         this.router.use('/profile', ProfileRouter)
         this.router.use('/properties', PropertyRouter)
+        this.router.get('/tenant-scores', PerformanceController.getTenantPerformance)
+        this.router.get('/:tenantId', this.authenticateService.authorize, TenantController.getTenantById)
     }
 }
 

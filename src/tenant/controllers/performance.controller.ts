@@ -10,7 +10,6 @@ class PerformanceController {
 
     getTenantPerformance = async (req: CustomRequest, res: Response) => {
         try {
-       
             const tenantId = req.user.tenant?.id;
             const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
 
