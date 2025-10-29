@@ -63,7 +63,6 @@ class MaintenanceService {
               images: true
             }
           },
-          MaintenanceQuote: true,
           agent: {
             include: {
               user: {
@@ -76,6 +75,7 @@ class MaintenanceService {
           application: true
         }
       },
+      MaintenanceQuote: true,
       maintenanceStatusHistory:
         { include: { vendor: true } },
       landlord: {
