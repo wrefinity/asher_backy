@@ -217,3 +217,15 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-29 17:30:05"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-29 17:30:36"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-29 17:30:53"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 16:15:52"}
+{"level":"error","message":"An unexpected error occurred Listing not found","service":"api-service","stack":"Error: Listing not found\n    at PropertyService.getPropertyListingByListingIdNew (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:1859:23)\n    at async getPropertyListingById (/Users/apple/Desktop/asher/asher_backy/src/controllers/property.controller.ts:301:30)","timestamp":"2025-10-31 16:20:04"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 16:21:03"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:04:43"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:04:50"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:05:08"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:05:20"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:08:47"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:08:53"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:09:02"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:10:03"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-10-31 17:10:04"}

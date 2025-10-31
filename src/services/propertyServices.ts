@@ -2700,151 +2700,82 @@ class PropertyService {
     }
 
     async searchPropertiesForRecommendation(filters: PropertySearchDto) {
-        const {
-            propertyType,
-            location,
-            bedrooms,
-            bathrooms,
-            minRent,
-            maxRent,
-            leaseDuration,
-            moveInDate,
-            minSize,
-            maxSize,
-        } = filters;
+    const {
+      propertyCategory,
+      propertyType,
+      location,
+      bedrooms,
+      bathrooms,
+      minRent,
+      maxRent,
+      leaseDuration,
+      moveInDate,
+      minSize,
+      maxSize,
+    } = filters;
 
-        let specTypeFilter: PropertySpecificationType[] = [
-            PropertySpecificationType.RESIDENTIAL,
-            PropertySpecificationType.COMMERCIAL,
-            PropertySpecificationType.SHORTLET,
-        ];
-
-        if (filters.propertyCategory) {
-            specTypeFilter = [filters.propertyCategory];
-        }
-
-        // Build the where clause
-        const whereClause: any = {
-            isDeleted: false,
-            isListed: true,
-            specificationType: { in: specTypeFilter },
-        };
-
-        // Add property type filter
-        if (propertyType) {
-            whereClause.specification = {
-                some: { propertySubType: propertyType }
-            };
-        }
-
-        // Add location filter
-        if (location) {
-            whereClause.OR = [
-                { city: { contains: location, mode: "insensitive" } },
-                { state: { name: { contains: location, mode: "insensitive" } } },
-            ];
-        }
-
-        // Add specification filters (bedrooms, bathrooms, etc.)
-        const specificationFilters: any[] = [];
-
-        if (bedrooms) {
-            specificationFilters.push({
-                residential: {
-                    bedrooms: { gte: bedrooms }
-                }
-            });
-        }
-
-        if (bathrooms) {
-            specificationFilters.push({
-                residential: {
-                    bathrooms: { gte: bathrooms }
-                }
-            });
-        }
-
-        // Add commercial size filters if needed
-        if (minSize || maxSize) {
-            const sizeFilter: any = {};
-            if (minSize) sizeFilter.gte = minSize;
-            if (maxSize) sizeFilter.lte = maxSize;
-
-            specificationFilters.push({
-                commercial: {
-                    totalArea: sizeFilter
-                }
-            });
-        }
-
-        // Add specification filters to where clause if any exist
-        if (specificationFilters.length > 0) {
-            whereClause.specification = {
-                ...whereClause.specification,
-                some: {
-                    AND: specificationFilters
-                }
-            };
-        }
-
-        // Add price filters
-        if (minRent || maxRent) {
-            whereClause.price = {};
-            if (minRent) whereClause.price.gte = minRent;
-            if (maxRent) whereClause.price.lte = maxRent;
-        }
-
-        // Add move-in date filter - this needs to check the specification availability
-        if (moveInDate) {
-            // For shortlet properties, check availableFrom in ShortletProperty
-            whereClause.specification = {
-                ...whereClause.specification,
-                some: {
-                    OR: [
-                        // For shortlet properties
-                        {
-                            shortlet: {
-                                availableFrom: {
-                                    lte: moveInDate
-                                }
-                            }
-                        },
-                        // For commercial properties
-                        {
-                            commercial: {
-                                availableFrom: {
-                                    lte: moveInDate
-                                }
-                            }
-                        },
-                        // For residential properties (if they have availability)
-                        {
-                            residential: {
-                                availableFrom: {
-                                    lte: moveInDate
-                                }
-                            }
-                        }
-                    ].filter(condition => Object.keys(condition).length > 0) // Remove empty conditions
-                }
-            };
-        }
-
-        return prismaClient.properties.findMany({
-            where: whereClause,
-            include: {
+    const listings = await prismaClient.propertyListingHistory.findMany({
+      where: {
+        isActive: true,
+        onListing: true,
+        ...(propertyCategory && { listAs: propertyCategory }),
+        ...(propertyType && { propertySubType: propertyType }),
+        ...(minRent || maxRent
+          ? {
+              price: {
+                gte: minRent ?? 0,
+                lte: maxRent ?? undefined,
+              },
+            }
+          : {}),
+        ...(moveInDate && {
+          availableFrom: {
+            lte: moveInDate,
+          },
+          availableTo: {
+            gte: moveInDate,
+          },
+        }),
+        property: {
+          isDeleted: false,
+          isListed: true,
+          ...(location && {
+            OR: [
+              { city: { contains: location, mode: 'insensitive' } },
+              { address: { contains: location, mode: 'insensitive' } },
+              { state: { name: { contains: location, mode: 'insensitive' } } },
+            ],
+          }),
+          ...(bedrooms || bathrooms
+            ? {
                 specification: {
-                    include: {
-                        residential: true,
-                        commercial: true,
-                        shortlet: true,
+                  some: {
+                    residential: {
+                      ...(bedrooms && { bedrooms: { gte: bedrooms } }),
+                      ...(bathrooms && { bathrooms: { gte: bathrooms } }),
                     },
+                  },
                 },
-                images: true,
-                landlord: { select: { id: true } },
-            },
-        });
-    }
+              }
+            : {}),
+        },
+      },
+      include: {
+        property: {
+          include: {
+            specification: true,
+            images: true,
+            landlord: true,
+          },
+        },
+        unit: true,
+        room: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return listings;
+  }
 
 }
 

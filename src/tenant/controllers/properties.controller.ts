@@ -12,7 +12,7 @@ class ProperyController {
         const filters = req.body;
         const properties = await propertyServices.searchPropertiesForRecommendation(filters as PropertySearchDto);
         res.status(200).json(
-            ApiResponse.success({ success: true, data: properties })
+            ApiResponse.success(properties)
         );
     })
 

@@ -99,3 +99,5 @@ export const updateQuoteValidation = Joi.object({
   ).optional(),
   attachments: Joi.array().items(Joi.string()).optional()
 });
+
+
