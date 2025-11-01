@@ -7,6 +7,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import ServiceServices from "../services/vendor.services";
 import { maintenanceStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
 import { CreateQuoteInput, quoteService, UpdateQuoteInput } from "../../services/quote.service";
+import { stat } from "fs";
 class MaintenanceController {
   // Get all maintenances
   getMaintenances = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -56,7 +57,7 @@ class MaintenanceController {
 
   getMaintenancesByStatus = asyncHandler(async (req: CustomRequest, res: Response) => {
     const vendorId = req.user?.vendors?.id;
-    const { status } = req.query;
+    const { status  } = req.query;
 
     if (!vendorId) {
       return res.status(400).json(ApiError.badRequest('Vendor not found for this user'));
@@ -69,10 +70,15 @@ class MaintenanceController {
     // Explicitly extract and convert pagination values safely
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 10;
-
+    let statuses : maintenanceStatus[] = [];
+    if ( status == maintenanceStatus.PENDING) {
+      statuses = [maintenanceStatus.PENDING, maintenanceStatus.RESUMED, maintenanceStatus.PAUSED, maintenanceStatus.IN_PROGRESS];
+    }else{
+      statuses = [status as maintenanceStatus];
+    }
     const maintenances = await MaintenanceService.getVendorsMaintenanceStates(
       vendorId,
-      status as maintenanceStatus,
+      statuses,
       limit,
       page
     );

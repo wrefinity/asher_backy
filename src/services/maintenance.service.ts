@@ -398,12 +398,12 @@ class MaintenanceService {
     };
   }
 
-  async getVendorsMaintenanceStates(vendorId: string, state: maintenanceStatus, limit: number, page: number) {
+  async getVendorsMaintenanceStates(vendorId: string, state: maintenanceStatus[], limit: number, page: number) {
     // Check if propertyId corresponds
     const assignments = await prismaClient.maintenanceAssignmentHistory.findMany({
       where: {
         vendorId,
-        state,
+        state: { in: state },
       },
       orderBy: { assignedAt: "desc" },
 
