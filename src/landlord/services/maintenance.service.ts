@@ -28,7 +28,7 @@ class LandlordMaintenanceService {
       category: true,
       rooms: true,
       units: true,
-    };
+    }
   }
   getMaintenanceCounts = async (landlordId: string): Promise<MaintenanceCounts> => {
     // Count maintenance records with status "PENDING"
@@ -96,16 +96,219 @@ class LandlordMaintenanceService {
         ...(status && { status: status as any }),
       },
       include: {
-        landlord: true,
-        vendor: true,
-        property: true,
-        category: true,
-        rooms: true,
-        units: true,
-        reScheduleHistory: true,
-        tenant: true,
-        subcategories: true,
-        chatRoom: true
+        tenant: {
+          include: {
+            user: {
+              include: {
+                profile: true // Populate user profile
+              }
+            },
+            property: {
+              include: {
+                landlord: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true // Populate landlord user profile
+                      }
+                    }
+                  }
+                },
+                state: true,
+                agency: true,
+                agents: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true // Populate agent user profile
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            unit: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                images: true
+              }
+            },
+            room: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true,
+                unit: true,
+                images: true
+              }
+            },
+            agent: {
+              include: {
+                user: {
+                  include: {
+                    profile: true // Populate agent user profile
+                  }
+                }
+              }
+            },
+            application: true
+          }
+        },
+        MaintenanceQuote: {
+          include: {
+            vendor: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        maintenanceStatusHistory:
+          { include: { vendor: true } },
+        landlord: {
+          include: {
+            user: {
+              include: {
+                profile: true
+              }
+            }
+          }
+        },
+        vendor: {
+          include: {
+            user: {
+              include: {
+                profile: true // Populate vendor user profile
+              }
+            },
+            services: true
+          }
+        },
+        property: {
+          include: {
+            landlord: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            state: true,
+            agency: true,
+            agents: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            images: true,
+            videos: true,
+            specification: true
+          }
+        },
+        units: {
+          include: {
+            ResidentialProperty: true,
+            CommercialProperty: true,
+            images: true,
+            RoomDetail: {
+              include: {
+                images: true,
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true
+              }
+            }
+          }
+        },
+        rooms: {
+          include: {
+            ResidentialProperty: true,
+            CommercialProperty: true,
+            ShortletProperty: true,
+            unit: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                images: true
+              }
+            },
+            images: true
+          }
+        },
+        category: {
+          include: {
+            subCategory: true
+          }
+        },
+        subcategories: {
+          include: {
+            category: true
+          }
+        },
+        services: {
+          include: {
+            vendor: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            category: true,
+            subcategory: true,
+            tenant: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        chatRoom: {
+          include: {
+            user1: {
+              include: {
+                profile: true
+              }
+            },
+            user2: {
+              include: {
+                profile: true
+              }
+            },
+            messages: {
+              include: {
+                sender: {
+                  include: {
+                    profile: true
+                  }
+                },
+                receiver: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        reScheduleHistory: true
       },
     });
     return maintenanceRequests;
@@ -120,10 +323,220 @@ class LandlordMaintenanceService {
         ...(status && { status: status as any }),
         isDeleted: false,
       },
-      include: {
-        landlord: true,
-        tenant: true,
-        ...this.inclusion,
+         include: {
+        tenant: {
+          include: {
+            user: {
+              include: {
+                profile: true // Populate user profile
+              }
+            },
+            property: {
+              include: {
+                landlord: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true // Populate landlord user profile
+                      }
+                    }
+                  }
+                },
+                state: true,
+                agency: true,
+                agents: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true // Populate agent user profile
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            unit: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                images: true
+              }
+            },
+            room: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true,
+                unit: true,
+                images: true
+              }
+            },
+            agent: {
+              include: {
+                user: {
+                  include: {
+                    profile: true // Populate agent user profile
+                  }
+                }
+              }
+            },
+            application: true
+          }
+        },
+        MaintenanceQuote: {
+          include: {
+            vendor: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        maintenanceStatusHistory:
+          { include: { vendor: true } },
+        landlord: {
+          include: {
+            user: {
+              include: {
+                profile: true
+              }
+            }
+          }
+        },
+        vendor: {
+          include: {
+            user: {
+              include: {
+                profile: true // Populate vendor user profile
+              }
+            },
+            services: true
+          }
+        },
+        property: {
+          include: {
+            landlord: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            state: true,
+            agency: true,
+            agents: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            images: true,
+            videos: true,
+            specification: true
+          }
+        },
+        units: {
+          include: {
+            ResidentialProperty: true,
+            CommercialProperty: true,
+            images: true,
+            RoomDetail: {
+              include: {
+                images: true,
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true
+              }
+            }
+          }
+        },
+        rooms: {
+          include: {
+            ResidentialProperty: true,
+            CommercialProperty: true,
+            ShortletProperty: true,
+            unit: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                images: true
+              }
+            },
+            images: true
+          }
+        },
+        category: {
+          include: {
+            subCategory: true
+          }
+        },
+        subcategories: {
+          include: {
+            category: true
+          }
+        },
+        services: {
+          include: {
+            vendor: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            category: true,
+            subcategory: true,
+            tenant: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        chatRoom: {
+          include: {
+            user1: {
+              include: {
+                profile: true
+              }
+            },
+            user2: {
+              include: {
+                profile: true
+              }
+            },
+            messages: {
+              include: {
+                sender: {
+                  include: {
+                    profile: true
+                  }
+                },
+                receiver: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        reScheduleHistory: true
       },
     });
   }
@@ -171,9 +584,220 @@ class LandlordMaintenanceService {
         isDeleted: false,
         ...(status && { status: status as any }),
       },
-      include: {
-        tenant: true,
-        ...this.inclusion,
+         include: {
+        tenant: {
+          include: {
+            user: {
+              include: {
+                profile: true // Populate user profile
+              }
+            },
+            property: {
+              include: {
+                landlord: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true // Populate landlord user profile
+                      }
+                    }
+                  }
+                },
+                state: true,
+                agency: true,
+                agents: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true // Populate agent user profile
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            unit: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                images: true
+              }
+            },
+            room: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true,
+                unit: true,
+                images: true
+              }
+            },
+            agent: {
+              include: {
+                user: {
+                  include: {
+                    profile: true // Populate agent user profile
+                  }
+                }
+              }
+            },
+            application: true
+          }
+        },
+        MaintenanceQuote: {
+          include: {
+            vendor: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        maintenanceStatusHistory:
+          { include: { vendor: true } },
+        landlord: {
+          include: {
+            user: {
+              include: {
+                profile: true
+              }
+            }
+          }
+        },
+        vendor: {
+          include: {
+            user: {
+              include: {
+                profile: true // Populate vendor user profile
+              }
+            },
+            services: true
+          }
+        },
+        property: {
+          include: {
+            landlord: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            state: true,
+            agency: true,
+            agents: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            images: true,
+            videos: true,
+            specification: true
+          }
+        },
+        units: {
+          include: {
+            ResidentialProperty: true,
+            CommercialProperty: true,
+            images: true,
+            RoomDetail: {
+              include: {
+                images: true,
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true
+              }
+            }
+          }
+        },
+        rooms: {
+          include: {
+            ResidentialProperty: true,
+            CommercialProperty: true,
+            ShortletProperty: true,
+            unit: {
+              include: {
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                images: true
+              }
+            },
+            images: true
+          }
+        },
+        category: {
+          include: {
+            subCategory: true
+          }
+        },
+        subcategories: {
+          include: {
+            category: true
+          }
+        },
+        services: {
+          include: {
+            vendor: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            category: true,
+            subcategory: true,
+            tenant: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        chatRoom: {
+          include: {
+            user1: {
+              include: {
+                profile: true
+              }
+            },
+            user2: {
+              include: {
+                profile: true
+              }
+            },
+            messages: {
+              include: {
+                sender: {
+                  include: {
+                    profile: true
+                  }
+                },
+                receiver: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        reScheduleHistory: true
       },
     });
   }

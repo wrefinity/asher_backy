@@ -75,7 +75,19 @@ class MaintenanceService {
           application: true
         }
       },
-      MaintenanceQuote: true,
+      MaintenanceQuote: {
+        include: {
+          vendor: {
+            include: {
+              user: {
+                include: {
+                  profile: true
+                }
+              }
+            }
+          }
+        }
+      },
       maintenanceStatusHistory:
         { include: { vendor: true } },
       landlord: {
