@@ -1242,6 +1242,43 @@ class MaintenanceService {
       maxWait: 10000,
     });
   }
+
+   // Create a new note for a maintenance
+  addNote = async (maintenanceId: string, userId: string, note: string, attachments?: string[]) => {
+    const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });
+    if (!maintenance) throw new Error('Maintenance not found');
+
+    return await prismaClient.maintenanceNote.create({
+      data: {
+        maintenanceId,
+        userId,
+        note,
+        attachments: attachments || [],
+      },
+      include: {
+        user: { select: { id: true, profile: true, email: true } },
+      },
+    });
+  }
+
+  // Get all notes for a maintenance
+  getNotesByMaintenance = async (maintenanceId: string) => {
+    return await prismaClient.maintenanceNote.findMany({
+      where: { maintenanceId },
+      include: {
+        user: { select: { id: true, profile: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  deleteNote = async (noteId: string, userId: string) => {
+    const note = await prismaClient.maintenanceNote.findUnique({ where: { id: noteId } });
+    if (!note) throw new Error('Note not found');
+    if (note.userId !== userId) throw new Error('Unauthorized action');
+
+    return await prismaClient.maintenanceNote.delete({ where: { id: noteId } });
+  }
 }
 
 export default new MaintenanceService();

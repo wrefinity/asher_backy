@@ -50,6 +50,7 @@ model maintenance {
 
   @@index([vendorId])
   @@index([status])
+  MaintenanceNote MaintenanceNote[]
 }
 
 model maintenanceRescheduleHistory {
@@ -100,6 +101,19 @@ model services {
   subcategory        subCategory?       @relation(fields: [subcategoryId], references: [id])
   tenant             tenants?           @relation(fields: [tenantId], references: [id])
   vendor             vendors            @relation(fields: [vendorId], references: [id])
+}
+
+model MaintenanceNote {
+  id             String      @id @default(cuid())
+  maintenanceId  String
+  userId         String
+  note           String
+  attachments    String[]    
+  createdAt      DateTime    @default(now())
+
+  // Relations
+  maintenance    maintenance @relation(fields: [maintenanceId], references: [id])
+  user           users        @relation(fields: [userId], references: [id])
 }
 
 model MaintenanceQuote {

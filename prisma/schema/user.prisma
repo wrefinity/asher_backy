@@ -81,6 +81,7 @@ model users {
   @@index([email])
   @@index([googleId])
   @@index([profileId])
+  MaintenanceNote MaintenanceNote[]
 }
 
 model UserLikedProperty {

@@ -234,6 +234,27 @@ class MaintenanceControls {
       )
     );
   });
+  createNote = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId, note, attachments } = req.body;
+      const userId = req.user.id; 
+    const newNote = await GeneralMaitnenanceservice.addNote(maintenanceId, userId, note, attachments);
+    return res.status(200).json(
+      ApiResponse.success(
+        newNote,
+        'note created'
+      )
+    );
+  });
+  getNotes = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const notes = await GeneralMaitnenanceservice.getNotesByMaintenance(maintenanceId);
+    return res.status(200).json(
+      ApiResponse.success(
+        notes,
+        'notes retrieved'
+      )
+    );
+  });
 }
 
 

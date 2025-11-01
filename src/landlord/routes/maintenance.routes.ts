@@ -31,6 +31,8 @@ class LandlordMaintenanceRoute {
         this.router.get('/whitelist/all', LandlordMaintenanceControls.getMaintenanceWithWhiteListed);
         this.router.patch('/whitelist/:whitelistId', LandlordMaintenanceControls.updateWhitelist);
         this.router.patch('/cancel-maintenance-request/:maintenanceId/:vendorId', LandlordMaintenanceControls.cancelMaintenance);
+        this.router.get('/all-notes/:maintenanceId', LandlordMaintenanceControls.getNotes);
+        this.router.post('/create-notes', LandlordMaintenanceControls.createNote);
     }
 
 }
