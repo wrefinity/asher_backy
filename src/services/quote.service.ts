@@ -238,7 +238,9 @@ class QuoteService {
     const maintenance = await prismaClient.maintenance.findFirst({
       where: {
         id: quote.maintenanceId,
-        landlordId
+        property: {
+          landlordId
+        }
       }
     });
 
