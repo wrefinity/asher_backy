@@ -83,7 +83,8 @@ class MaintenanceService {
                 include: {
                   profile: true
                 }
-              }
+              },
+              services: true
             }
           }
         }
