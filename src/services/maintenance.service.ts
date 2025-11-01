@@ -1186,8 +1186,62 @@ class MaintenanceService {
         maxWait: 10000,
       });
   }
+
+    async cancelMaintenance(maintenanceId: string, cancelReason: string, vendorId: string) {
+    return await prismaClient.$transaction(async (tx) => {
+      // 1Find the current maintenance and vendor assignment
+      const maintenance = await tx.maintenance.findUnique({
+        where: { id: maintenanceId } 
+      });
+
+      if (!maintenance) throw new Error('Maintenance not found');
+
+
+      // 2Update the current assignment history to CANCEL
+      if (vendorId) {
+        await tx.maintenanceAssignmentHistory.updateMany({
+          where: {
+            maintenanceId,
+            vendorId
+          },
+           data: {
+            state: maintenanceStatus.CANCEL,
+            unassignedAt: new Date(),
+            reasonLeft: cancelReason,
+          },
+        });
+      }
+
+      // Record this transition in maintenanceStatusHistory
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId,
+          vendorId: vendorId,
+          oldStatus: maintenance.status,
+          newStatus: maintenanceStatus.CANCEL,
+        },
+      });
+
+      //  Update the maintenance main record
+      const updatedMaintenance = await tx.maintenance.update({
+        where: { id: maintenanceId },
+        data: {
+          status: maintenanceStatus.UNASSIGNED, // enable others to pick it up
+          flagCancellation: true,
+          cancelReason,
+          vendorConsentCancellation: true,
+          vendorId: null, // vendor released
+          updatedAt: new Date(),
+        },
+        include: this.inclusion,
+      });
+
+      return updatedMaintenance;
+    }, {
+      timeout: 30000,
+      maxWait: 10000,
+    });
+  }
 }
-
-
 
 export default new MaintenanceService();

@@ -30,6 +30,7 @@ class LandlordMaintenanceRoute {
         this.router.get('/whitelist', LandlordMaintenanceControls.getWhitelistByLandlord);
         this.router.get('/whitelist/all', LandlordMaintenanceControls.getMaintenanceWithWhiteListed);
         this.router.patch('/whitelist/:whitelistId', LandlordMaintenanceControls.updateWhitelist);
+        this.router.patch('/cancel-maintenance-request/:maintenanceId/:vendorId', LandlordMaintenanceControls.cancelMaintenance);
     }
 
 }

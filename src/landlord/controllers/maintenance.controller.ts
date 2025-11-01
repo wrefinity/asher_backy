@@ -1,6 +1,7 @@
 import { Response } from "express"
 import { CustomRequest } from "../../utils/types"
 import MaintenanceService from "../services/maintenance.service"
+import GeneralMaitnenanceservice from "../../services/maintenance.service"
 import { maintenanceStatus, maintenanceDecisionStatus } from '@prisma/client';
 import ErrorService from "../../services/error.service";
 import CateoryService from "../../services/category.service"
@@ -79,6 +80,24 @@ class MaintenanceControls {
         }
     }
     // Update a maintenance whitelist entry
+    cancelMaintenance = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user.landlords?.id;
+            if (!landlordId) return res.status(403).json({ error: "Unauthorized" });
+
+            const maintenanceId = req.params.maintenanceId;
+            const vendorId = req.params.vendorId;
+            const cancelReason = req.body.cancelReason;
+
+            if(!cancelReason){
+                return  res.status(400).json({ message: "Please provide a reason for cancellation" });
+            }
+            const canceledMaintenance = await GeneralMaitnenanceservice.cancelMaintenance(maintenanceId, cancelReason, vendorId);
+            return res.status(200).json({ message: "Maintenance request canceled successfully", data: canceledMaintenance });
+        }   catch (err) {       
+            ErrorService.handleError(err, res)
+        }
+    }
     updateWhitelist = async (req: CustomRequest, res: Response) => {
         try {
             const { error } = updateWhitelistSchema.validate(req.body);
