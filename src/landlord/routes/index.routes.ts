@@ -25,6 +25,7 @@ import LeaseRenewalRouter from './leaseRenewal.routes';
 import LandlordEventRouter from './landlordEvent.routes';
 import PropertyValueRouter from './propertyValue.routes';
 import StorageAnalyticsRouter from './storageAnalytics.routes';
+import violationRoutes from "./violation.routes";
 class LandlordRouter {
     public router: Router;
     authenticateService: Authorize
@@ -130,6 +131,7 @@ class LandlordRouter {
         // property value routes
         this.router.use('/property-values', PropertyValueRouter)
         // storage analytics routes
+        this.router.use('/violation', violationRoutes)
         this.router.use('/storage', StorageAnalyticsRouter)
     }
 }
