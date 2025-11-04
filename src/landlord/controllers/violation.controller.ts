@@ -12,7 +12,7 @@ class ViolationController {
 
 
   createViolation = asyncHandler(async (req: CustomRequest, res: Response) => {
- 
+
     const {
       description,
       severityLevel,
@@ -57,7 +57,7 @@ class ViolationController {
 
     const violation = await ViolationService.deleteViolation(id);
 
-    if(!violation){
+    if (!violation) {
       return res.status(404).json(ApiError.notFound("Violation not found"));
     }
     return res.status(200).json(
@@ -73,7 +73,7 @@ class ViolationController {
 
     const violation = await ViolationService.getLandlordTenantViolation(userId);
 
-    if(!violation){
+    if (!violation) {
       return res.status(404).json(ApiError.notFound("Violation not found"));
     }
     return res.status(200).json(
@@ -81,7 +81,16 @@ class ViolationController {
     );
 
   })
-
+  getViolationById = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json(ApiError.badRequest("Violation Response ID is required"));
+    }
+    const result = await ViolationService.getViolationById(id!);
+    return res.status(200).json(
+      ApiResponse.success({ data: result })
+    );
+  })
 
 }
 
