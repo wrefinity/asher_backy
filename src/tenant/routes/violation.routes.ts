@@ -16,7 +16,8 @@ class ViolationRouter {
     private initializeRoutes() {
         this.router.post('/', upload.array('files'), uploadToCloudinary, validateBody(ViolationResponseSchema), ViolationController.createViolationResponse);
         this.router.get('/id', ViolationController.getViolationById);
-        this.router.get('/tenant-violation-response', ViolationController.getByTenant);
+        this.router.get('/tenant-violation', ViolationController.getByTenant);
+        this.router.get('/tenant-violation-response', ViolationController.getTenantViolationResponses);
         this.router.get('/violation-responses/:violationId', ViolationController.getViolationResponsesById);
 
     }
