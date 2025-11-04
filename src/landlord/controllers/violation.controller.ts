@@ -12,9 +12,7 @@ class ViolationController {
 
 
   createViolation = asyncHandler(async (req: CustomRequest, res: Response) => {
-
-
-  
+ 
     const {
       description,
       severityLevel,

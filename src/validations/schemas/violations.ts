@@ -54,15 +54,19 @@ export const ViolationSchema = Joi.object({
         }),
 
     propertyId: Joi.string()
+        .allow(null)
         .optional()
         .messages({
             'string.base': 'Property ID must be a string',
         }),
+
     unitId: Joi.string()
+        .allow(null)
         .optional()
         .messages({
-            'string.base': 'Property ID must be a string',
+            'string.base': 'Unit ID must be a string',
         }),
+
 });
 
 
