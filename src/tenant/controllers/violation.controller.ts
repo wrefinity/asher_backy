@@ -30,8 +30,9 @@ class ViolationController {
   getByTenant = asyncHandler(async (req: CustomRequest, res: Response) => {
     const tenantId = req.user?.tenant?.id;
     const result = await ViolationResponseService.getViolationTenantId(tenantId!);
+    const statistics = await ViolationResponseService.getTenantViolationDashboard(tenantId!);
     return res.status(200).json(
-      ApiResponse.success({ data: result })
+      ApiResponse.success({ result, statistics })
     );
   })
   getTenantViolationResponses = asyncHandler(async (req: CustomRequest, res: Response) => {

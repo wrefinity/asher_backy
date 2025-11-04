@@ -1,51 +1,51 @@
 model violation {
-  id             String             @id @default(cuid())
-  actionTaken    String?
-  noticeType     NoticeType?
-  deliveryMethod DeliveryMethod?
-  description    String
-  severityLevel  SeverityLevel?     @default(LOW)
-  propertyId     String?
-  tenantId       String?
-  createdById    String?
-  unitId         String?
-  isDeleted      Boolean            @default(false)
-  dueDate        DateTime?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  amount         Decimal?           @default(0.00) @db.Decimal(18, 2)
-  user           users?             @relation("users", fields: [createdById], references: [id])
-  property       properties?        @relation("violations", fields: [propertyId], references: [id])
-  tenant         tenants?           @relation("tenant", fields: [tenantId], references: [id])
-  unit           UnitConfiguration? @relation(fields: [unitId], references: [id])
-
+  id                String              @id @default(cuid())
+  actionTaken       String?
+  noticeType        NoticeType?
+  deliveryMethod    DeliveryMethod?
+  description       String
+  severityLevel     SeverityLevel?      @default(LOW)
+  propertyId        String?
+  tenantId          String?
+  createdById       String?
+  unitId            String?
+  isDeleted         Boolean             @default(false)
+  dueDate           DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  amount            Decimal?            @default(0.00) @db.Decimal(18, 2)
+  user              users?              @relation("users", fields: [createdById], references: [id])
+  property          properties?         @relation("violations", fields: [propertyId], references: [id])
+  tenant            tenants?            @relation("tenant", fields: [tenantId], references: [id])
+  unit              UnitConfiguration?  @relation(fields: [unitId], references: [id])
+  status            ViolationStatus?    @default(PENDING)
   ViolationResponse ViolationResponse[]
 }
 
 enum ResponseType {
-  FULL_PAYMENT              // I will pay the outstanding amount
-  PARTIAL_PAYMENT           // I can make a partial payment
-  DISPUTE                   // I dispute this notice
-  FINANCIAL_HARDSHIP        // I am experiencing financial hardship
+  FULL_PAYMENT // I will pay the outstanding amount
+  PARTIAL_PAYMENT // I can make a partial payment
+  DISPUTE // I dispute this notice
+  FINANCIAL_HARDSHIP // I am experiencing financial hardship
 }
 
 model ViolationResponse {
-  id                String             @id @default(cuid())
+  id                String       @id @default(cuid())
   violationId       String
   tenantId          String
   responseType      ResponseType
-  paymentAmount     Decimal?           @db.Decimal(10, 2)
+  paymentAmount     Decimal?     @db.Decimal(10, 2)
   paymentDate       DateTime?
   paymentMethod     String?
   reasonForDispute  String?
-  evidenceUrl       String?            // For uploaded documents like receipts, statements
+  evidenceUrl       String? // For uploaded documents like receipts, statements
   additionalComment String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   // Relations
-  violation         violation          @relation(fields: [violationId], references: [id])
-  tenant            tenants            @relation(fields: [tenantId], references: [id])
+  violation violation @relation(fields: [violationId], references: [id])
+  tenant    tenants   @relation(fields: [tenantId], references: [id])
 }
 
 model TenantLeaseBreach {

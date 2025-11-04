@@ -4,6 +4,7 @@ import {
   ViolationResponseIF,
   ViolationIF,
 } from "../validations/interfaces/violation.interface";
+import { ApiError } from "../utils/ApiError";
 
 class ViolationService {
   private violationInclude: any;
@@ -13,7 +14,10 @@ class ViolationService {
       tenant: {
         include: {
           user: {
-            include: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
               profile: true,
             },
           },
@@ -169,6 +173,51 @@ class ViolationService {
       },
     });
   }
+
+  async getTenantViolationDashboard(tenantId: string) {
+    if (!tenantId) throw ApiError.badRequest("Tenant ID is required");
+
+    // Fetch all tenant violations
+    const violations = await prismaClient.violation.findMany({
+      where: { tenantId },
+      include: {
+        ViolationResponse: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Compute dashboard metrics
+    const totalNotices = violations.length;
+    const activeNotices = violations.filter(v => v.status !== "DELIVERED").length;
+    const pendingResponse = violations.filter(
+      v => !v.ViolationResponse || v.ViolationResponse.length === 0
+    ).length;
+    const resolved = violations.filter(v => v.status === "DELIVERED").length;
+
+    // Extract recent notices (latest 5)
+    const recentNotices = violations.slice(0, 5).map(v => ({
+      id: v.id,
+      title: v.noticeType?.replace(/_/g, " ") || "Unknown Notice",
+      dateIssued: v.createdAt,
+      description: v.description,
+      dueDate: v.dueDate,
+      severityLevel: v.severityLevel,
+      status: v.status || "PENDING",
+      responseStatus: v.ViolationResponse?.[0]?.responseType || "No Response",
+    }));
+
+    // Return dashboard data
+    return {
+      stats: {
+        totalNotices,
+        activeNotices,
+        pendingResponse,
+        resolved,
+      },
+      recentNotices,
+    };
+  }
+
 }
 
 export default new ViolationService();
