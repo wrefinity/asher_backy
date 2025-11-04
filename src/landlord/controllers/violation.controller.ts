@@ -65,6 +65,22 @@ class ViolationController {
     );
 
   })
+  getTenantViolation = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user.id
+
+    if (!id) return res.status(400).json(ApiError.badRequest("Violation ID is required"));
+
+    const violation = await ViolationService.getLandlordTenantViolation(userId);
+
+    if(!violation){
+      return res.status(404).json(ApiError.notFound("Violation not found"));
+    }
+    return res.status(200).json(
+      ApiResponse.success(violation, "Violation deleted successfully")
+    );
+
+  })
 
 
 }

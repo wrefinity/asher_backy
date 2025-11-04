@@ -10,16 +10,23 @@ class ViolationService {
 
   constructor() {
     this.violationInclude = {
-      tenant: true,
+      tenant: {
+        include: {
+          user: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+      },
       property: true,
       unit: true,
       user: {
         select: {
           id: true,
           email: true,
-          include: {
-            profile: true
-          }
+          role: true,
+          profile: true,
         },
       },
       ViolationResponse: true
@@ -27,10 +34,20 @@ class ViolationService {
   }
 
   /** Fetch all tenant violations created by a landlord */
-  getTenantViolation = async (landlordUserId: string) => {
+  getLandlordTenantViolation = async (landlordUserId: string) => {
     return await prismaClient.violation.findMany({
       where: {
         createdById: landlordUserId,
+        isDeleted: false,
+      },
+      include: this.violationInclude,
+      orderBy: { createdAt: "desc" },
+    });
+  };
+  getTenantViolation = async (tenantId: string) => {
+    return await prismaClient.violation.findMany({
+      where: {
+        tenantId: tenantId,
         isDeleted: false,
       },
       include: this.violationInclude,
@@ -56,25 +73,25 @@ class ViolationService {
   };
 
   /** Create a new violation record */
-create = async (data: ViolationIF) => {
-  return await prismaClient.violation.create({
-    data: {
-      description: data.description,
-      noticeType: data.noticeType,
-      deliveryMethod: data.deliveryMethod,
-      severityLevel: data.severityLevel || SeverityLevel.LOW,
-      actionTaken: data.actionTaken,
-      dueDate: data.dueDate,
-      tenant: { connect: { id: data.tenantId } },
-      user: { connect: { id: data.createdById } },
+  create = async (data: ViolationIF) => {
+    return await prismaClient.violation.create({
+      data: {
+        description: data.description,
+        noticeType: data.noticeType,
+        deliveryMethod: data.deliveryMethod,
+        severityLevel: data.severityLevel || SeverityLevel.LOW,
+        actionTaken: data.actionTaken,
+        dueDate: data.dueDate,
+        tenant: { connect: { id: data.tenantId } },
+        user: { connect: { id: data.createdById } },
 
-      // Optional relationships
-      ...(data.propertyId ? { property: { connect: { id: data.propertyId } } } : {}),
-      ...(data.unitId ? { unit: { connect: { id: data.unitId } } } : {}),
-    },
-    include: this.violationInclude,
-  });
-};
+        // Optional relationships
+        ...(data.propertyId ? { property: { connect: { id: data.propertyId } } } : {}),
+        ...(data.unitId ? { unit: { connect: { id: data.unitId } } } : {}),
+      },
+      include: this.violationInclude,
+    });
+  };
 
 
   /** Soft delete violation */
