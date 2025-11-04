@@ -10,49 +10,19 @@ class ViolationService {
 
   constructor() {
     this.violationInclude = {
-      tenant: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-        },
-      },
-      property: {
-        select: {
-          id: true,
-          name: true,
-          address: true,
-        },
-      },
-      unit: {
-        select: {
-          id: true,
-          unitNumber: true,
-          floor: true,
-        },
-      },
+      tenant: true,
+      property: true,
+      unit: true,
       user: {
         select: {
           id: true,
-          name: true,
           email: true,
+          include: {
+            profile: true
+          }
         },
       },
-      ViolationResponse: {
-        select: {
-          id: true,
-          responseType: true,
-          paymentAmount: true,
-          paymentDate: true,
-          reasonForDispute: true,
-          evidenceUrl: true,
-          additionalComment: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      },
+      ViolationResponse: true
     };
   }
 
