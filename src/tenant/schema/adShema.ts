@@ -17,6 +17,9 @@ const adSchema = Joi.object({
     contactInfo: Joi.string().optional(),
     amountPaid: Joi.number().positive().optional(),
     cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
 
 })
 

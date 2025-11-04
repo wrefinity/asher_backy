@@ -47,4 +47,6 @@ model tenants {
   unit                  UnitConfiguration?     @relation(fields: [unitId], references: [id])
   user                  users                  @relation(fields: [userId], references: [id])
   violation             violation[]            @relation("tenant")
+
+  ViolationResponse ViolationResponse[]
 }

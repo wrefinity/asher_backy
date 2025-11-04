@@ -8,6 +8,7 @@ import ProfileRouter from "./profile.routes";
 import TenantDashboardRouter from "./dashboard.routes";
 import PropertyRouter from "./properties.routes";
 import PerformanceController from "../controllers/performance.controller";
+import ViolationRoutes from "./violation.routes";
 class TenantRouter {
     public router: Router;
     authenticateService: Authorize
@@ -21,6 +22,7 @@ class TenantRouter {
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize, this.authenticateService.authorizeRole(userRoles.TENANT))
         this.router.use('/bills', TenantBillRouter)
+        this.router.use('/violations', ViolationRoutes)
         this.router.use('/dashboard', TenantDashboardRouter)
         this.router.use('/maintenances', MaintenanceRouter)
         this.router.use('/profile', ProfileRouter)

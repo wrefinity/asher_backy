@@ -23,6 +23,9 @@ class AdController {
     const data = { ...value };
     const attachment = req.body.cloudinaryUrls;
     delete data["cloudinaryUrls"];
+    delete data["cloudinaryVideoUrls"];
+    delete data["cloudinaryDocumentUrls"];
+    delete data["cloudinaryAudioUrls"];
 
     const ad = await adsServices.createAd(
       { ...data, attachment },

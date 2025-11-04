@@ -18,6 +18,34 @@ model violation {
   property       properties?        @relation("violations", fields: [propertyId], references: [id])
   tenant         tenants?           @relation("tenant", fields: [tenantId], references: [id])
   unit           UnitConfiguration? @relation(fields: [unitId], references: [id])
+
+  ViolationResponse ViolationResponse[]
+}
+
+enum ResponseType {
+  FULL_PAYMENT              // I will pay the outstanding amount
+  PARTIAL_PAYMENT           // I can make a partial payment
+  DISPUTE                   // I dispute this notice
+  FINANCIAL_HARDSHIP        // I am experiencing financial hardship
+}
+
+model ViolationResponse {
+  id                String             @id @default(cuid())
+  violationId       String
+  tenantId          String
+  responseType      ResponseType
+  paymentAmount     Decimal?           @db.Decimal(10, 2)
+  paymentDate       DateTime?
+  paymentMethod     String?
+  reasonForDispute  String?
+  evidenceUrl       String?            // For uploaded documents like receipts, statements
+  additionalComment String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  // Relations
+  violation         violation          @relation(fields: [violationId], references: [id])
+  tenant            tenants            @relation(fields: [tenantId], references: [id])
 }
 
 model TenantLeaseBreach {

@@ -14,6 +14,7 @@ class ViolationRouter {
     private initializeRoutes() {
         // Dashboard Analytics
         this.router.post('/', validateBody(ViolationSchema), ViolationController.createViolation    );
+        this.router.delete('/:id', ViolationController.deleteViolation);
  
     }
 }

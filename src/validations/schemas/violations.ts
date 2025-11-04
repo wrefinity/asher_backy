@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { SeverityLevel, DeliveryMethod, NoticeType } from "@prisma/client";
+import { SeverityLevel, ResponseType, DeliveryMethod, NoticeType } from "@prisma/client";
 
 // Get the list of severity levels from the Prisma `SeverityLevel` enum
 const severityLevels = Object.values(SeverityLevel);
@@ -64,3 +64,29 @@ export const ViolationSchema = Joi.object({
             'string.base': 'Property ID must be a string',
         }),
 });
+
+const responsesTypes = Object.values(ResponseType);
+export const ViolationResponseSchema = Joi.object({
+    violationId: Joi.string().required().messages({
+        "any.required": "violationId is required",
+        "string.base": "violationId must be a string",
+    }),
+    responseType: Joi.string()
+        .valid(...responsesTypes)
+        .required()
+        .messages({
+            "any.only": `responseType must be one of: ${responsesTypes.join(", ")}`,
+            "any.required": "responseType is required",
+        }),
+    paymentAmount: Joi.number().positive().precision(2).optional(),
+    paymentDate: Joi.date().optional(),
+    paymentMethod: Joi.string().max(100).optional(),
+    reasonForDispute: Joi.string().max(500).optional(),
+    evidenceUrl: Joi.string().uri().optional(),
+    additionalComment: Joi.string().max(1000).optional(),
+    cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryVideoUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryDocumentUrls: Joi.array().items(Joi.string().uri()).optional(),
+    cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),
+});
+
