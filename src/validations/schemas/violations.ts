@@ -1,10 +1,10 @@
 import Joi from 'joi';
 import { SeverityLevel, ResponseType, DeliveryMethod, NoticeType } from "@prisma/client";
 
-// Get the list of severity levels from the Prisma `SeverityLevel` enum
 const severityLevels = Object.values(SeverityLevel);
 const noticeType = Object.values(NoticeType);
 const deliveryMethod = Object.values(DeliveryMethod);
+const responsesTypes = Object.values(ResponseType);
 
 // Joi Schema for Violation
 export const ViolationSchema = Joi.object({
@@ -65,7 +65,7 @@ export const ViolationSchema = Joi.object({
         }),
 });
 
-const responsesTypes = Object.values(ResponseType);
+
 export const ViolationResponseSchema = Joi.object({
     violationId: Joi.string().required().messages({
         "any.required": "violationId is required",

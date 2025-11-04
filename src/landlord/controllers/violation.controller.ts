@@ -14,10 +14,7 @@ class ViolationController {
   createViolation = asyncHandler(async (req: CustomRequest, res: Response) => {
 
 
-    const { error } = ViolationSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
-    }
+  
     const {
       description,
       severityLevel,

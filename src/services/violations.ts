@@ -86,23 +86,26 @@ class ViolationService {
   };
 
   /** Create a new violation record */
-  create = async (data: ViolationIF) => {
-    return await prismaClient.violation.create({
-      data: {
-        description: data.description,
-        noticeType: data.noticeType,
-        deliveryMethod: data.deliveryMethod,
-        severityLevel: data.severityLevel || SeverityLevel.LOW,
-        actionTaken: data.actionTaken,
-        dueDate: data.dueDate,
-        tenant: { connect: { id: data.tenantId } },
-        property: { connect: { id: data.propertyId } },
-        unit: { connect: { id: data.unitId } },
-        user: { connect: { id: data.createdById } },
-      },
-      include: this.violationInclude,
-    });
-  };
+create = async (data: ViolationIF) => {
+  return await prismaClient.violation.create({
+    data: {
+      description: data.description,
+      noticeType: data.noticeType,
+      deliveryMethod: data.deliveryMethod,
+      severityLevel: data.severityLevel || SeverityLevel.LOW,
+      actionTaken: data.actionTaken,
+      dueDate: data.dueDate,
+      tenant: { connect: { id: data.tenantId } },
+      user: { connect: { id: data.createdById } },
+
+      // Optional relationships
+      ...(data.propertyId ? { property: { connect: { id: data.propertyId } } } : {}),
+      ...(data.unitId ? { unit: { connect: { id: data.unitId } } } : {}),
+    },
+    include: this.violationInclude,
+  });
+};
+
 
   /** Soft delete violation */
   public async deleteViolation(id: string) {
