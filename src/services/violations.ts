@@ -122,7 +122,7 @@ class ViolationService {
         additionalComment: data.additionalComment,
       },
       include: {
-        violation: this.violationInclude,
+        violation: true,
         tenant: true,
       },
     });
@@ -133,7 +133,7 @@ class ViolationService {
     return await prismaClient.violationResponse.findUnique({
       where: { id },
       include: {
-        violation: this.violationInclude,
+        violation: true,
         tenant: true,
       },
     });
@@ -144,7 +144,7 @@ class ViolationService {
     return await prismaClient.violationResponse.findMany({
       where: { violationId },
       include: {
-        violation: this.violationInclude,
+        violation: true,
         tenant: true,
       },
       orderBy: { createdAt: "desc" },
@@ -156,7 +156,7 @@ class ViolationService {
     return await prismaClient.violationResponse.findMany({
       where: { tenantId },
       include: {
-        violation: this.violationInclude,
+        violation: true,
         tenant: true,
       },
       orderBy: { createdAt: "desc" },
@@ -168,7 +168,7 @@ class ViolationService {
     return await prismaClient.violationResponse.delete({
       where: { id },
       include: {
-        violation: this.violationInclude,
+        violation: true,
         tenant: true,
       },
     });
