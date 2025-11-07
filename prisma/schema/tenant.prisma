@@ -49,4 +49,6 @@ model tenants {
   violation             violation[]            @relation("tenant")
 
   ViolationResponse ViolationResponse[]
+
+  PropertyEnquiry PropertyEnquiry[]
 }

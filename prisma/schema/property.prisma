@@ -168,6 +168,7 @@ model properties {
   // Composite indexes for common queries
   @@index([landlordId, isDeleted, availability, createdAt])
   @@index([city, specificationType, availability, price])
+  PropertyEnquiry PropertyEnquiry[]
 }
 
 model PropertySpecification {
@@ -271,6 +272,7 @@ model UnitConfiguration {
   // Composite indexes for search
   @@index([residentialPropertyId, availability, bedrooms, bathrooms])
   @@index([commercialPropertyId, availability, unitType])
+  PropertyEnquiry PropertyEnquiry[]
 }
 
 model RoomDetail {
@@ -317,6 +319,7 @@ model RoomDetail {
   // Composite indexes for room search
   @@index([residentialPropertyId, availability, ensuite, furnished])
   @@index([shortletPropertyId, availability, isListed, price])
+  PropertyEnquiry PropertyEnquiry[]
 }
 
 model ResidentialProperty {

@@ -895,3 +895,74 @@ export const propertySearchSchema = Joi.object({
     }
     return value;
   }, "Custom validation");
+
+
+
+export const createPropertyEnquirySchema = Joi.object({
+ 
+
+  landlordId: Joi.string()
+    .trim()
+    .required()
+    .messages({
+      "any.required": "Landlord ID is required",
+      "string.empty": "Landlord ID cannot be empty"
+    }),
+
+  subject: Joi.string()
+    .trim()
+    .min(3)
+    .max(200)
+    .required()
+    .messages({
+      "any.required": "Subject is required",
+      "string.min": "Subject must be at least 3 characters",
+      "string.max": "Subject must not exceed 200 characters"
+    }),
+
+  message: Joi.string()
+    .trim()
+    .min(10)
+    .max(1000)
+    .required()
+    .messages({
+      "any.required": "Message is required",
+      "string.min": "Message must be at least 10 characters",
+      "string.max": "Message must not exceed 1000 characters"
+    }),
+
+  propertyId: Joi.string().optional().allow(null, ""),
+  unitId: Joi.string().optional().allow(null, ""),
+  roomId: Joi.string().optional().allow(null, "")
+}).custom((value, helpers) => {
+  if (!value.propertyId && !value.unitId && !value.roomId) {
+    return helpers.error("any.custom", { message: "At least one of propertyId, unitId, or roomId must be provided" });
+  }
+  return value;
+})
+.messages({
+  "any.custom": "{{#message}}"
+});
+
+export const respondToEnquirySchema = Joi.object({
+  response: Joi.string()
+    .trim()
+    .min(3)
+    .max(1000)
+    .required()
+    .messages({
+      "any.required": "Response is required",
+      "string.min": "Response must be at least 3 characters",
+      "string.max": "Response must not exceed 1000 characters"
+    }),
+});
+
+export const closeEnquirySchema = Joi.object({
+  reason: Joi.string()
+    .trim()
+    .max(500)
+    .optional()
+    .messages({
+      "string.max": "Closure reason must not exceed 500 characters"
+    })
+});

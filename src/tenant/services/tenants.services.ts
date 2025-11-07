@@ -82,6 +82,36 @@ class TenantService {
             include: this.inclusion
         });
     }
+
+
+    getTenantsWithEnquiries = async (landlordId: string) => {
+        return await prismaClient.tenants.findMany({
+            where: {
+                PropertyEnquiry: {
+                    some: {
+                        landlordId: landlordId
+                    }
+                },
+                landlord: {
+                    isDeleted: false
+                }
+            },
+            include: {
+                user: true, // if tenant has user info
+                PropertyEnquiry: {
+                    where: {
+                        landlordId: landlordId
+                    },
+                    include: {
+                        property: true, // optional: include property details
+                        unit: true,     // optional
+                        room: true      // optional
+                    }
+                }
+            }
+        });
+    };
+
     getCurrentTenantsGeneric = async () => {
         // Get current tenants
         return await prismaClient.tenants.findMany({
@@ -173,7 +203,7 @@ class TenantService {
 
         return tenant;
     };
-   
+
 }
 
 export default new TenantService();

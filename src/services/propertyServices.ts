@@ -992,7 +992,7 @@ class PropertyService {
 
             // Build hierarchy information
             const hierarchy = this.buildHierarchy(property);
-            
+
             // Get related listings
             const relatedListings = await this.getRelatedListings(property.property.id, property.id);
 
@@ -1011,7 +1011,7 @@ class PropertyService {
                 }
             };
         }));
-        
+
         return transformedProperties;
     };
 
@@ -1020,7 +1020,7 @@ class PropertyService {
         const breadcrumb = [];
         let context = '';
         let level: 'property' | 'unit' | 'room' = 'property';
-        
+
         // Always start with property
         breadcrumb.push({
             id: property.property.id,
@@ -1028,7 +1028,7 @@ class PropertyService {
             type: 'property',
             url: `/property/${property.property.id}`
         });
-        
+
         if (property.type === 'SINGLE_UNIT' && property.unit) {
             level = 'unit';
             breadcrumb.push({
@@ -1039,7 +1039,7 @@ class PropertyService {
             });
             context = `${property.unit.unitType} ${property.unit.unitNumber || ''} in ${property.property.name}`.trim();
         }
-        
+
         if (property.type === 'ROOM' && property.room) {
             level = 'room';
             if (property.unit) {
@@ -1058,11 +1058,11 @@ class PropertyService {
             });
             context = `${property.room.roomName} in ${property.unit ? `${property.unit.unitType} ${property.unit.unitNumber || ''}` : 'Unit'} in ${property.property.name}`.trim();
         }
-        
+
         if (property.type === 'ENTIRE_PROPERTY') {
             context = property.property.name;
         }
-        
+
         return {
             level,
             propertyId: property.property.id,
@@ -1088,10 +1088,10 @@ class PropertyService {
                 room: true
             }
         });
-        
+
         const units = related.filter(r => r.type === 'SINGLE_UNIT');
         const rooms = related.filter(r => r.type === 'ROOM');
-        
+
         return {
             units: units.map(u => ({
                 id: u.id,
@@ -1257,7 +1257,7 @@ class PropertyService {
 
 
     async createPropertyListing(data: PropertyListingDTO | any) {
-    
+
         const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
         const response: {
             success: boolean;
@@ -1284,7 +1284,7 @@ class PropertyService {
         return await prismaClient.$transaction(async (tx) => {
             // Check for existing ENTIRE_PROPERTY listing
             if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
-                
+
                 const existing = await tx.propertyListingHistory.findFirst({
                     where: {
                         propertyId,
@@ -2700,82 +2700,122 @@ class PropertyService {
     }
 
     async searchPropertiesForRecommendation(filters: PropertySearchDto) {
-    const {
-      propertyCategory,
-      propertyType,
-      location,
-      bedrooms,
-      bathrooms,
-      minRent,
-      maxRent,
-      leaseDuration,
-      moveInDate,
-      minSize,
-      maxSize,
-    } = filters;
+        const {
+            propertyCategory,
+            propertyType,
+            location,
+            bedrooms,
+            bathrooms,
+            minRent,
+            maxRent,
+            leaseDuration,
+            moveInDate,
+            minSize,
+            maxSize,
+        } = filters;
 
-    const listings = await prismaClient.propertyListingHistory.findMany({
-      where: {
-        isActive: true,
-        onListing: true,
-        ...(propertyCategory && { listAs: propertyCategory }),
-        ...(propertyType && { propertySubType: propertyType }),
-        ...(minRent || maxRent
-          ? {
-              price: {
-                gte: minRent ?? 0,
-                lte: maxRent ?? undefined,
-              },
-            }
-          : {}),
-        ...(moveInDate && {
-          availableFrom: {
-            lte: moveInDate,
-          },
-          availableTo: {
-            gte: moveInDate,
-          },
-        }),
-        property: {
-          isDeleted: false,
-          isListed: true,
-          ...(location && {
-            OR: [
-              { city: { contains: location, mode: 'insensitive' } },
-              { address: { contains: location, mode: 'insensitive' } },
-              { state: { name: { contains: location, mode: 'insensitive' } } },
-            ],
-          }),
-          ...(bedrooms || bathrooms
-            ? {
-                specification: {
-                  some: {
-                    residential: {
-                      ...(bedrooms && { bedrooms: { gte: bedrooms } }),
-                      ...(bathrooms && { bathrooms: { gte: bathrooms } }),
+        const listings = await prismaClient.propertyListingHistory.findMany({
+            where: {
+                isActive: true,
+                onListing: true,
+                ...(propertyCategory && { listAs: propertyCategory }),
+                ...(propertyType && { propertySubType: propertyType }),
+                ...(minRent || maxRent
+                    ? {
+                        price: {
+                            gte: minRent ?? 0,
+                            lte: maxRent ?? undefined,
+                        },
+                    }
+                    : {}),
+                ...(moveInDate && {
+                    availableFrom: {
+                        lte: moveInDate,
                     },
-                  },
+                    availableTo: {
+                        gte: moveInDate,
+                    },
+                }),
+                property: {
+                    isDeleted: false,
+                    isListed: true,
+                    ...(location && {
+                        OR: [
+                            { city: { contains: location, mode: 'insensitive' } },
+                            { address: { contains: location, mode: 'insensitive' } },
+                            { state: { name: { contains: location, mode: 'insensitive' } } },
+                        ],
+                    }),
+                    ...(bedrooms || bathrooms
+                        ? {
+                            specification: {
+                                some: {
+                                    residential: {
+                                        ...(bedrooms && { bedrooms: { gte: bedrooms } }),
+                                        ...(bathrooms && { bathrooms: { gte: bathrooms } }),
+                                    },
+                                },
+                            },
+                        }
+                        : {}),
                 },
-              }
-            : {}),
-        },
-      },
-      include: {
-        property: {
-          include: {
-            specification: true,
-            images: true,
-            landlord: true,
-          },
-        },
-        unit: true,
-        room: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+            },
+            include: {
+                property: {
+                    include: {
+                        specification: true,
+                        images: true,
+                        landlord: true,
+                    },
+                },
+                unit: true,
+                room: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
 
-    return listings;
-  }
+        return listings;
+    }
+
+    async createEnquiry(data: {
+        tenantId: string;
+        landlordId: string;
+        subject: string;
+        message: string;
+        propertyId?: string;
+        unitId?: string;
+        roomId?: string;
+    }) {
+        return prismaClient.propertyEnquiry.create({ data });
+    }
+
+
+    async getLandlordEnquiries(landlordId: string) {
+        return prismaClient.propertyEnquiry.findMany({
+            where: { landlordId },
+            include: {
+                tenant: {
+                    select: { 
+                        id: true, 
+                        tenantWebUserEmail: true, 
+                        user: { 
+                            select: { id: true, email: true } 
+                        } 
+                    },
+                },
+                property: true,
+                unit: true,
+                room: true,
+            },
+            orderBy: { createdAt: "desc" },
+        });
+    }
+    async getEnquiryById(id: string) {
+        return prismaClient.propertyEnquiry.findUnique({
+            where: { id },
+            include: { tenant: true, landlord: true, property: true, unit: true, room: true },
+        });
+    }
 
 }
 

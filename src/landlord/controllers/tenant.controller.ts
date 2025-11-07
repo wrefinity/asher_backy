@@ -43,12 +43,20 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+    // getCurrentTenant = async (req: CustomRequest, res: Response) => {
+    //     const landlordId = req.user?.landlords?.id;
+    //     if (!landlordId) {
+    //         return res.status(404).json({ error: 'kindly login as landlord' });
+    //     }
+    //     const currentTenants = await TenantService.getCurrenntTenantsForLandlord(landlordId);
+    //     return res.status(200).json({ currentTenants });
+    // }
     getCurrentTenant = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
         if (!landlordId) {
             return res.status(404).json({ error: 'kindly login as landlord' });
         }
-        const currentTenants = await TenantService.getCurrenntTenantsForLandlord(landlordId);
+        const currentTenants = await TenantService.getTenantsWithEnquiries(landlordId);
         return res.status(200).json({ currentTenants });
     }
     getAllCurrentTenant = async (req: CustomRequest, res: Response) => {

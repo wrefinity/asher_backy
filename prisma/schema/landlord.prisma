@@ -21,4 +21,6 @@ model landlords {
   tenants              tenants[]
 
   Event Event[]
+
+  PropertyEnquiry PropertyEnquiry[]
 }
