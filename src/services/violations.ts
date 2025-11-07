@@ -17,7 +17,6 @@ class ViolationService {
             select: {
               id: true,
               email: true,
-              name: true,
               profile: true,
             },
           },

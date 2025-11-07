@@ -2777,7 +2777,7 @@ class PropertyService {
         return listings;
     }
 
-    async createEnquiry(data: {
+    createEnquiry = async (data: {
         tenantId: string;
         landlordId: string;
         subject: string;
@@ -2785,12 +2785,12 @@ class PropertyService {
         propertyId?: string;
         unitId?: string;
         roomId?: string;
-    }) {
-        return prismaClient.propertyEnquiry.create({ data });
+    }) =>{
+        return  await prismaClient.propertyEnquiry.create({ data });
     }
 
 
-    async getLandlordEnquiries(landlordId: string) {
+    getLandlordEnquiries = async (landlordId: string) => {
         return prismaClient.propertyEnquiry.findMany({
             where: { landlordId },
             include: {
@@ -2810,7 +2810,7 @@ class PropertyService {
             orderBy: { createdAt: "desc" },
         });
     }
-    async getEnquiryById(id: string) {
+    getEnquiryById = async (id: string) => {
         return prismaClient.propertyEnquiry.findUnique({
             where: { id },
             include: { tenant: true, landlord: true, property: true, unit: true, room: true },
