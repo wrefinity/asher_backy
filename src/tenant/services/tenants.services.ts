@@ -1,4 +1,5 @@
 import { prismaClient } from "../..";
+import PerformanceCalculator from "../../services/PerformanceCalculator";
 
 class TenantService {
     protected inclusion: object;
@@ -85,7 +86,8 @@ class TenantService {
 
 
     getTenantsWithEnquiries = async (landlordId: string) => {
-        return await prismaClient.tenants.findMany({
+
+        const tenants = await prismaClient.tenants.findMany({
             where: {
                 PropertyEnquiry: {
                     some: {
@@ -97,20 +99,42 @@ class TenantService {
                 }
             },
             include: {
-                user: true, // if tenant has user info
+                user: true,
                 PropertyEnquiry: {
                     where: {
                         landlordId: landlordId
                     },
                     include: {
-                        property: true, // optional: include property details
-                        unit: true,     // optional
-                        room: true      // optional
+                        property: true,
+                        unit: true,
+                        room: true
                     }
                 }
             }
         });
+
+        // Calculate performance scores for all tenants in parallel
+        const tenantsWithScores = await Promise.all(
+            tenants.map(async (tenant) => {
+                try {
+                    const performance = await PerformanceCalculator.calculateOverallScore(tenant.userId);
+                    return {
+                        ...tenant,
+                        performanceScore: performance
+                    };
+                } catch (error) {
+                    console.error(`Failed to calculate score for tenant ${tenant.userId}:`, error);
+                    return {
+                        ...tenant,
+                        performanceScore: null
+                    };
+                }
+            })
+        );
+
+        return tenantsWithScores;
     };
+
 
     getCurrentTenantsGeneric = async () => {
         // Get current tenants
