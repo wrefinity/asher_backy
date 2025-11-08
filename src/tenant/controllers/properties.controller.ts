@@ -18,10 +18,10 @@ class ProperyController {
         );
     })
     createPropertyEnquiry = asyncHandler(async (req: CustomRequest, res: Response) => {
-        const enquiryData = req.body;
+        const {propertyListingId, ...enquiryData} = req.body;
         const tenantId = req.user?.tenant?.id;
         const createdById = req.user?.id;
-        const propertyListingId = enquiryData.propertyListingId;
+
     
         const propertyListing = await propertyServices.getPropertyListingByListingId(propertyListingId);
         if (!propertyListing) {

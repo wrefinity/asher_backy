@@ -96,7 +96,14 @@ class TenantService {
                 },
                 landlord: {
                     isDeleted: false
-                }
+                },
+                    ...(enquireStatus
+      ? {
+          logs: {
+            enquireStatus: enquireStatus,
+          },
+        }
+      : {}),
             },
             include: {
                 user: true,
