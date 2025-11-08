@@ -9,7 +9,7 @@ model vendors {
   maintenances       maintenance[]        @relation("vendorUser")
   reviews            reviews[]
   services           services[]
-  documents          vendorDocument[]
+  documents          vendorDocument[]     @relation("VendorDocuments")
   user               users?               @relation(fields: [userId], references: [id])
 
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
@@ -25,5 +25,5 @@ model vendorDocument {
   type      String
   vendorId  String
   createdAt DateTime @default(now())
-  vendor    vendors  @relation(fields: [vendorId], references: [id])
+  vendor    vendors  @relation("VendorDocuments", fields: [vendorId], references: [id])
 }
