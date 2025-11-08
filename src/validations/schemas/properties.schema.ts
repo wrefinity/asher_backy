@@ -932,15 +932,7 @@ export const createPropertyEnquirySchema = Joi.object({
   //   propertyId: Joi.string().optional().allow(null, ""),
   // unitId: Joi.string().optional().allow(null, ""),
   // roomId: Joi.string().optional().allow(null, "")
-}).custom((value, helpers) => {
-  if (!value.propertyId && !value.unitId && !value.roomId) {
-    return helpers.error("any.custom", { message: "At least one of propertyId, unitId, or roomId must be provided" });
-  }
-  return value;
 })
-  .messages({
-    "any.custom": "{{#message}}"
-  });
 
 export const respondToEnquirySchema = Joi.object({
   response: Joi.string()

@@ -1,6 +1,6 @@
 import { prismaClient } from "../..";
 import PerformanceCalculator from "../../services/PerformanceCalculator";
-
+import {EnquiryStatus} from "@prisma/client"
 class TenantService {
     protected inclusion: object;
     constructor() {
@@ -85,7 +85,7 @@ class TenantService {
     }
 
 
-    getTenantsWithEnquiries = async (landlordId: string) => {
+    getTenantsWithEnquiries = async (landlordId: string, enquireStatus?: EnquiryStatus) => {
 
         const tenants = await prismaClient.tenants.findMany({
             where: {
