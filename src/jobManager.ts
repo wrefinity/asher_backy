@@ -10,5 +10,4 @@ class JobManager {
         propertyPerformance.rungenerateReport()
     }
 }
-
 export default JobManager

@@ -6,7 +6,6 @@ const noticeType = Object.values(NoticeType);
 const deliveryMethod = Object.values(DeliveryMethod);
 const responsesTypes = Object.values(ResponseType);
 
-// Joi Schema for Violation
 export const ViolationSchema = Joi.object({
     description: Joi.string()
         .min(10)
