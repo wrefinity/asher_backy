@@ -1,8 +1,14 @@
+enum EnquireStatus {
+  EXISTING_TENANT
+  NEW_TENANT
+}
+
 model Log {
   id                 String                  @id @default(cuid())
   subjects           String?
   viewAgain          YesNo?
   considerRenting    YesNo?
+  enquireStatus      EnquireStatus?
   events             String
   type               LogType?
   status             logTypeStatus?
@@ -22,6 +28,8 @@ model Log {
   transaction        Transaction?            @relation("transactions", fields: [transactionId], references: [id])
   units              UnitConfiguration?      @relation(fields: [unitId], references: [id])
   applicationInvites applicationInvites[]
+    // One-to-one relation with PropertyEnquiry
+  propertyEnquiry    PropertyEnquiry?        @relation("LogToPropertyEnquiry")
 }
 
 enum LogType {

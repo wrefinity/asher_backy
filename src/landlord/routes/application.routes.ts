@@ -3,6 +3,8 @@ import { Authorize } from "../../middlewares/authorize";
 import ApplicationController from "../controllers/applicant.controller";
 import upload, { uploadcsv } from "../../configs/multer";
 import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
+import { validateBody } from "../../middlewares/validation";
+import { createApplicationInviteSchema } from "../validations/schema/applicationInvitesSchema";
 
 
 class ApplicationLandlordRouter {
@@ -28,7 +30,7 @@ class ApplicationLandlordRouter {
 
         this.router.get('/leasing', ApplicationController.getEnquiredProps);
         this.router.patch('/leasing/reject/:enquireId', ApplicationController.updateEnquireToRejected);
-        this.router.post('/invites/:enquiryId/enquire', ApplicationController.createInvite);
+        this.router.post('/invites/:enquiryId/enquire', validateBody(createApplicationInviteSchema), ApplicationController.createInvite);
         this.router.post('/existing-user-invites', ApplicationController.createInviteForExistingUser);
         this.router.get('/invites', ApplicationController.getInvites);
         this.router.get('/invites/:id', ApplicationController.getInvite);

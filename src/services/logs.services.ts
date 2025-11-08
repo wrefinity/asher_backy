@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { LogType, InvitedResponse, logTypeStatus, YesNo } from "@prisma/client"
+import { LogType, InvitedResponse, logTypeStatus, YesNo, EnquireStatus } from "@prisma/client"
 import applicationServices from "./application.services";
 // Interface for Log creation
 export interface LogIF {
@@ -12,6 +12,7 @@ export interface LogIF {
   type?: LogType;
   status?: logTypeStatus,
   response?: InvitedResponse;
+  enquireStatus?: EnquireStatus;
   transactionId?: string;
   viewAgain?: YesNo;
   considerRenting?: YesNo;
@@ -44,6 +45,7 @@ class LogService {
       status: data.status || undefined,
       viewAgain: data.viewAgain,
       considerRenting: data.considerRenting,
+      enquireStatus: data?.enquireStatus,
       transactionId: data?.transactionId || undefined,
       // createdById: data?.createdById || undefined,
       application: data.applicationId

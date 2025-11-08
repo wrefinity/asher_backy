@@ -22,12 +22,12 @@ export const updatePropertySchemaNew = Joi.object({
   description: Joi.string().optional(),
   propertySize: Joi.number().integer().optional(),
   isDeleted: Joi.boolean().optional(),
-  
+
   // Pricing
   marketValue: Joi.number().optional(),
   price: Joi.number().optional(),
   securityDeposit: Joi.number().optional(),
-  
+
   // Location
   city: Joi.string().optional(),
   stateId: Joi.string().optional(),
@@ -37,7 +37,7 @@ export const updatePropertySchemaNew = Joi.object({
   address2: Joi.string().optional(),
   latitude: Joi.number().optional(),
   longitude: Joi.number().optional(),
-  
+
   // Property Details
   areaUnit: Joi.string().valid('SQFT', 'SQM').optional(),
   yearBuilt: Joi.number().integer().optional(),
@@ -45,25 +45,25 @@ export const updatePropertySchemaNew = Joi.object({
   priceFrequency: Joi.string().valid('DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'PER_SQFT').optional(),
   rentalPeriod: Joi.string().optional(),
   availability: Joi.string().valid('OCCUPIED', 'VACANT', 'RENTED', 'RESERVED', 'COMING_SOON', 'SOLD', 'PENDING', 'MAINTENANCE').optional(),
-  
+
   // UK Specifics
   businessRateVerified: Joi.boolean().optional(),
   postalCodeVerified: Joi.boolean().optional(),
   isListed: Joi.boolean().optional(),
   landRegistryNumber: Joi.string().optional(),
   vatStatus: Joi.string().valid('VAT_EXEMPT', 'VAT_APPLICABLE', 'VAT_OPTIONAL').optional(),
-  
+
   // Property Features
   keyFeatures: Joi.array().items(Joi.string()).optional(),
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
-  
+
   // Specification
   specificationType: Joi.string().valid('COMMERCIAL', 'RESIDENTIAL', 'SHORTLET').optional(),
-  
+
   // Media (for future use)
   images: Joi.array().items(Joi.string().uri()).optional(),
   videos: Joi.array().items(Joi.string().uri()).optional(),
-  
+
   // Read-only fields (should not be updated via this endpoint)
   landlordId: Joi.string().forbidden(),
   agencyId: Joi.string().forbidden(),
@@ -211,7 +211,7 @@ export const createPropertyListingSchema = Joi.object({
   const { type, unitId = [], roomId = [] } = value;
 
   const createError = (message: string) => {
-    return helpers.error('any.custom', { message }); 
+    return helpers.error('any.custom', { message });
   };
 
   if (type === ListingType.ENTIRE_PROPERTY) {
@@ -899,8 +899,6 @@ export const propertySearchSchema = Joi.object({
 
 
 export const createPropertyEnquirySchema = Joi.object({
- 
-
   landlordId: Joi.string()
     .trim()
     .required()
@@ -930,19 +928,19 @@ export const createPropertyEnquirySchema = Joi.object({
       "string.min": "Message must be at least 10 characters",
       "string.max": "Message must not exceed 1000 characters"
     }),
-
-  propertyId: Joi.string().optional().allow(null, ""),
-  unitId: Joi.string().optional().allow(null, ""),
-  roomId: Joi.string().optional().allow(null, "")
+  propertyListingId: Joi.string().required(),
+  //   propertyId: Joi.string().optional().allow(null, ""),
+  // unitId: Joi.string().optional().allow(null, ""),
+  // roomId: Joi.string().optional().allow(null, "")
 }).custom((value, helpers) => {
   if (!value.propertyId && !value.unitId && !value.roomId) {
     return helpers.error("any.custom", { message: "At least one of propertyId, unitId, or roomId must be provided" });
   }
   return value;
 })
-.messages({
-  "any.custom": "{{#message}}"
-});
+  .messages({
+    "any.custom": "{{#message}}"
+  });
 
 export const respondToEnquirySchema = Joi.object({
   response: Joi.string()

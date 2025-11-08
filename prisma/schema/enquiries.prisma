@@ -8,6 +8,8 @@ model PropertyEnquiry {
   subject        String
   message        String
   status         EnquiryStatus      @default(PENDING)
+
+  logId          String? @unique
   response       String?
   respondedAt    DateTime?
   createdAt      DateTime @default(now())
@@ -18,6 +20,7 @@ model PropertyEnquiry {
   property       properties? @relation(fields: [propertyId], references: [id])
   unit           UnitConfiguration? @relation(fields: [unitId], references: [id])
   room           RoomDetail? @relation(fields: [roomId], references: [id])
+  logs           Log?       @relation("LogToPropertyEnquiry", fields: [logId], references: [id])
 
   @@index([tenantId, landlordId])
   @@index([propertyId, unitId, roomId])

@@ -182,9 +182,7 @@ class ApplicationControls {
             if (!enquire) {
                 return res.status(400).json({ message: "invalid enquire id" });
             }
-            const { error, value } = createApplicationInviteSchema.validate(req.body);
-            if (error) return res.status(400).json({ error: error.details[0].message });
-
+            const  value = req.body
             const invitedByLandordId = req.user?.landlords?.id;
             const { ...rest } = value
 

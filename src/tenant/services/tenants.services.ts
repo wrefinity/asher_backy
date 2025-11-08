@@ -107,7 +107,8 @@ class TenantService {
                     include: {
                         property: true,
                         unit: true,
-                        room: true
+                        room: true,
+                        logs: true,
                     }
                 }
             }
