@@ -37,6 +37,7 @@ class MaintenaceRoutes {
         this.router.post("/:maintenanceId/reschedule", MaintenanceController.rescheduleMaintenance);
         this.router.post("/:maintenanceId/pause", MaintenanceController.pauseMaintenance);
         this.router.post("/:maintenanceId/resume", MaintenanceController.resumeMaintenance);
+        this.router.post("/:maintenanceId/cancel", MaintenanceController.cancelMaintenance);
 
         // main ==================================
         this.router.get('/request-confirm/:maintenanceId', this.authenticateService.authorize, MaintenanceController.confirmCancellationByVendor);

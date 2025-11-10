@@ -258,6 +258,18 @@ class MaintenanceController {
       .status(200)
       .json(ApiResponse.success(updated, "Work resumed successfully"));
   });
+  cancelMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const vendorId = req.user?.vendors?.id;
+    const reason = req.body.reason;
+    if (!reason) {
+      return res.status(400).json(ApiError.badRequest("Cancellation reason is required"));
+    }
+    const updated = await MaintenanceService.cancelMaintenance(maintenanceId, reason, vendorId);
+    return res
+      .status(200)
+      .json(ApiResponse.success(updated, "Work cancelled successfully"));
+  });
 
   confirmCancellationByVendor = asyncHandler(async (req: CustomRequest, res: Response) => {
     const maintenanceId = req.params.maintenanceId;

@@ -3,7 +3,7 @@ import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import TenantService from "../../tenant/services/tenants.services"
 import UserServices from '../../services/user.services';
-import { userRoles } from '@prisma/client';
+import { EnquireStatus, userRoles } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantArraySchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
@@ -56,7 +56,7 @@ class TenantControls {
         if (!landlordId) {
             return res.status(404).json({ error: 'kindly login as landlord' });
         }
-        const currentTenants = await TenantService.getTenantsWithEnquiries(landlordId);
+        const currentTenants = await TenantService.getTenantsWithEnquiries(landlordId, EnquireStatus.EXISTING_TENANT);
         return res.status(200).json({ currentTenants });
     }
     getAllCurrentTenant = async (req: CustomRequest, res: Response) => {

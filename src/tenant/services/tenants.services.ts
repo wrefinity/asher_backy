@@ -1,6 +1,6 @@
 import { prismaClient } from "../..";
 import PerformanceCalculator from "../../services/PerformanceCalculator";
-import {EnquiryStatus} from "@prisma/client"
+import { EnquireStatus } from "@prisma/client"
 class TenantService {
     protected inclusion: object;
     constructor() {
@@ -85,7 +85,7 @@ class TenantService {
     }
 
 
-    getTenantsWithEnquiries = async (landlordId: string, enquireStatus?: EnquiryStatus) => {
+    getTenantsWithEnquiries = async (landlordId: string, enquireStatus?: EnquireStatus) => {
 
         const tenants = await prismaClient.tenants.findMany({
             where: {
@@ -97,13 +97,13 @@ class TenantService {
                 landlord: {
                     isDeleted: false
                 },
-                    ...(enquireStatus
-      ? {
-          logs: {
-            enquireStatus: enquireStatus,
-          },
-        }
-      : {}),
+                ...(enquireStatus
+                    ? {
+                        logs: {
+                            enquireStatus: enquireStatus,
+                        },
+                    }
+                    : {}),
             },
             include: {
                 user: true,

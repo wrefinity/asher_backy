@@ -202,7 +202,6 @@ class ApplicationInvitesService {
             }
         });
     }
-
     async getDashboardData(userId: String) {
         const [recentInvites, recentFeedback, recentSavedProperties, scheduledInvite, activeApplications, completedApplications] = await Promise.all([
             prismaClient.applicationInvites.findMany({
