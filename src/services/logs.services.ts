@@ -32,7 +32,7 @@ class LogService {
       units: true,
       rooms: true,
       users: {
-        select: { email: true, id: true, profile: true }
+        select: { email: true, id: true, profile: true, tenants: true }
       },
       applicationInvites: true,
     }
