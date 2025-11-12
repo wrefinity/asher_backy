@@ -1146,6 +1146,7 @@ class ApplicantService {
         userId,
       },
     });
+    
 
     if (lastApplication.personalDetails.nextOfKin) {
       await prismaClient.nextOfKin.create({

@@ -89,7 +89,8 @@ class TenantControls {
     createApplicationFromLast = async (req: CustomRequest, res: Response) => {
         const userId = req.params.userId;
         const inviteId = req.params.inviteId;
-        const applicationFee = req.body.applicationFee;
+        const { applicationFee } = req.body;
+        
         if (!applicationFee) {
             return res.status(400).json({
                 error: `applicationFee is required in the request body as one of: ${Object.values(YesNo).join(', ')}`

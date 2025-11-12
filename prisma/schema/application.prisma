@@ -172,7 +172,7 @@ model applicantPersonalDetails {
   middleName         String?
   lastName           String
   dob                DateTime
-  email              String?       @unique
+  email              String?
   phoneNumber        String
   maritalStatus      String
   nationality        String?
@@ -186,7 +186,6 @@ model applicantPersonalDetails {
   nextOfKin          nextOfKin?
 
   @@index([userId])
-  @@index([email])
   @@index([phoneNumber])
   @@index([identificationNo])
   @@index([lastName, firstName])

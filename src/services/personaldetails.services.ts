@@ -47,7 +47,7 @@ class ApplicantPersonalDetailsService {
 
   // Get Applicant Personal Details by email
   getApplicantPersonalDetailsByEmail = async (email: string) => {
-    return await prismaClient.applicantPersonalDetails.findUnique({
+    return await prismaClient.applicantPersonalDetails.findFirst({
       where: { email },
     });
   };
