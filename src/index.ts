@@ -95,8 +95,8 @@ class Server {
         this.app.use("/api/file-uploads", FileUploads);
         this.app.use("/api/status", StatusRouter);
         this.app.use("/api/state", StateRouter);
-        this.app.use("/api/logs/", LogRouter);
-        this.app.use("/api/todos/", TodoRouter);
+        this.app.use("/api/logs", LogRouter);
+        this.app.use("/api/todos", TodoRouter);
         this.app.use("/api/notification", NotificationRouter)
         this.app.use("/api/categories", CategoryRouter)
         this.app.use("/api/profile", ProfileRouter);
@@ -117,7 +117,7 @@ class Server {
         this.app.use("/api/tenants", TenantRouter);
         this.app.use("/api/docusign", DocuSignRouter);
         // this.app.use("/api/generator", GeneratorRouter);
-        this.app.use("/api/banks/", BankRouter);
+        this.app.use("/api/banks", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);
         this.app.use("/api/suggestions", SuggestionRoutes);
 

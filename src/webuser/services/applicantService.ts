@@ -899,7 +899,7 @@ class ApplicantService {
     });
   }
 
-   copyApplicationDataToTenant = async (applicationId: string) =>{
+  copyApplicationDataToTenant = async (applicationId: string) => {
     const application = await prismaClient.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -973,7 +973,7 @@ class ApplicantService {
     return updatedTenant;
   }
 
-    // Get tenant with application data
+  // Get tenant with application data
   getTenantWithApplicationData = async (tenantId: string) => {
     return await prismaClient.tenants.findUnique({
       where: { id: tenantId },
@@ -1022,7 +1022,7 @@ class ApplicantService {
     // residentialInfo?: any;
     // applicationQuestions?: any;
     // declarationInfo?: any;
-  }) =>{
+  }) => {
     return await prismaClient.tenants.update({
       where: { id: tenantId },
       data: {
@@ -1031,9 +1031,9 @@ class ApplicantService {
         ...(data.employmentInfo && { employmentInfo: data.employmentInfo }),
         ...(data.guarantorInfo && { guarantorInfo: data.guarantorInfo }),
         ...(data.emergencyContactInfo && { emergencyContactInfo: data.emergencyContactInfo }),
-      //   ...(data.residentialInfo && { residentialInfo: data.residentialInfo }),
-      //   ...(data.applicationQuestions && { applicationQuestions: data.applicationQuestions }),
-      //   ...(data.declarationInfo && { declarationInfo: data.declarationInfo })
+        //   ...(data.residentialInfo && { residentialInfo: data.residentialInfo }),
+        //   ...(data.applicationQuestions && { applicationQuestions: data.applicationQuestions }),
+        //   ...(data.declarationInfo && { declarationInfo: data.declarationInfo })
       }
     });
   }
@@ -1044,10 +1044,10 @@ class ApplicantService {
     const lastApplication = await prismaClient.application.findFirst({
       where: {
         userId: userId,
-        
+
         status: {
-            in: [ApplicationStatus.COMPLETED, ApplicationStatus.TENANT_CREATED, ApplicationStatus.APPROVED]
-          },
+          in: [ApplicationStatus.COMPLETED, ApplicationStatus.TENANT_CREATED, ApplicationStatus.APPROVED]
+        },
       },
       orderBy: {
         createdAt: 'desc'
@@ -1096,7 +1096,7 @@ class ApplicantService {
       }
     };
   }
-  async createApplicationFromLast(userId: string, inviteId?: string) {
+  async createApplicationFromLast(userId: string, inviteId: string) {
     // Step 1: Get the last completed application
     const lastApplication = await prismaClient.application.findFirst({
       where: {
@@ -1190,44 +1190,44 @@ class ApplicantService {
 
     const newEmergency = lastApplication.emergencyInfo
       ? await prismaClient.emergencyContact.create({
-          data: {
-            fullname: lastApplication.emergencyInfo.fullname,
-            phoneNumber: lastApplication.emergencyInfo.phoneNumber,
-            email: lastApplication.emergencyInfo.email,
-            address: lastApplication.emergencyInfo.address,
-            userId,
-          },
-        })
+        data: {
+          fullname: lastApplication.emergencyInfo.fullname,
+          phoneNumber: lastApplication.emergencyInfo.phoneNumber,
+          email: lastApplication.emergencyInfo.email,
+          address: lastApplication.emergencyInfo.address,
+          userId,
+        },
+      })
       : null;
 
     const newEmployment = lastApplication.employmentInfo
       ? await prismaClient.employmentInformation.create({
-          data: {
-            ...lastApplication.employmentInfo,
-            id: undefined,
-            userId,
-          },
-        })
+        data: {
+          ...lastApplication.employmentInfo,
+          id: undefined,
+          userId,
+        },
+      })
       : null;
 
     const newGuarantor = lastApplication.guarantorInformation
       ? await prismaClient.guarantorInformation.create({
-          data: {
-            ...lastApplication.guarantorInformation,
-            id: undefined,
-            userId,
-          },
-        })
+        data: {
+          ...lastApplication.guarantorInformation,
+          id: undefined,
+          userId,
+        },
+      })
       : null;
 
     const newReferee = lastApplication.referee
       ? await prismaClient.referees.create({
-          data: {
-            ...lastApplication.referee,
-            id: undefined,
-            userId,
-          },
-        })
+        data: {
+          ...lastApplication.referee,
+          id: undefined,
+          userId,
+        },
+      })
       : null;
 
     // Step 3: Create new application record
@@ -1284,6 +1284,14 @@ class ApplicantService {
       });
     }
 
+    if (inviteId) {
+      await prismaClient.applicationInvites.update({
+        where: { id: inviteId },
+        data: { application: { connect: { id: newApplication.id } } },
+      });
+    }
+
+
     return {
       message: 'New application created successfully from last application data.',
       applicationId: newApplication.id,
@@ -1292,7 +1300,7 @@ class ApplicantService {
   }
 
   // Attach last application data to tenant
-  attachLastApplicationDataToTenant =  async (tenantId: string) =>{
+  attachLastApplicationDataToTenant = async (tenantId: string) => {
     const tenant = await prismaClient.tenants.findUnique({
       where: { id: tenantId },
       include: { user: true }

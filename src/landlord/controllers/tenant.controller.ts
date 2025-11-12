@@ -12,6 +12,7 @@ import LogsServices from '../../services/logs.services';
 import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
 import PerformanceCalculator from '../../services/PerformanceCalculator';
+import applicantService from "../../webuser/services/applicantService";
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -83,6 +84,21 @@ class TenantControls {
         }
         const previousTenants = await TenantService.getPreviousTenantsForLandlord(landlordId);
         return res.status(200).json({ previousTenants });
+    }
+    createApplicationFromLast = async (req: CustomRequest, res: Response) => {
+        const tenantId = req.params.tenantId;
+        const inviteId = req.params.inviteId;
+        
+        const landlordId = req.user?.landlords?.id;
+        if (!landlordId) {
+            return res.status(404).json({ error: 'kindly login as landlord' });
+        }
+
+        const tenant = await TenantService.getTenantWithUserAndProfile(tenantId);
+        const userId = tenant?.userId;
+
+        const application = await applicantService.createApplicationFromLast(userId, inviteId);
+        return res.status(200).json({ application });
     }
 
     bulkTenantUpload = async (req: CustomRequest, res: Response) => {
