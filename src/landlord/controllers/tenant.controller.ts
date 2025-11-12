@@ -3,7 +3,7 @@ import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import TenantService from "../../tenant/services/tenants.services"
 import UserServices from '../../services/user.services';
-import { EnquireStatus, userRoles } from '@prisma/client';
+import { EnquireStatus, userRoles, YesNo } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantArraySchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
@@ -13,6 +13,7 @@ import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
 import PerformanceCalculator from '../../services/PerformanceCalculator';
 import applicantService from "../../webuser/services/applicantService";
+import { object } from "joi/lib";
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -88,7 +89,12 @@ class TenantControls {
     createApplicationFromLast = async (req: CustomRequest, res: Response) => {
         const userId = req.params.userId;
         const inviteId = req.params.inviteId;
-        
+        const applicationFee = req.body.applicationFee;
+        if (!applicationFee) {
+            return res.status(400).json({
+                error: `applicationFee is required in the request body as one of: ${Object.values(YesNo).join(', ')}`
+            });
+        }
         const landlordId = req.user?.landlords?.id;
         if (!landlordId) {
             return res.status(404).json({ error: 'kindly login as landlord' });
@@ -99,8 +105,8 @@ class TenantControls {
         if (!user) {
             return res.status(404).json({ error: `User with ID ${userId} not found.` });
         }
-    
-        const application = await applicantService.createApplicationFromLast(userId, inviteId);
+
+        const application = await applicantService.createApplicationFromLast(userId, inviteId, applicationFee);
         return res.status(200).json({ application });
     }
 

@@ -1,5 +1,5 @@
 import { prismaClient } from "../..";
-import { AgreementDocument, AgreementStatus, InvitedStatus, Prisma } from "@prisma/client";
+import { AgreementDocument, AgreementStatus, InvitedStatus, Prisma, YesNo } from "@prisma/client";
 import { ApplicationStatus, InvitedResponse, ApplicationSaveState, LogType } from '@prisma/client';
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
@@ -1096,7 +1096,7 @@ class ApplicantService {
       }
     };
   }
-  async createApplicationFromLast(userId: string, inviteId: string) {
+  async createApplicationFromLast(userId: string, inviteId: string, applicationFee: YesNo = YesNo.NO) {
     // Step 1: Get the last completed application
     const lastApplication = await prismaClient.application.findFirst({
       where: {
@@ -1280,7 +1280,20 @@ class ApplicantService {
     if (inviteId) {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
-        data: { application: { connect: { id: newApplication.id } } },
+        data: {
+          response: InvitedResponse.SUBMITTED,
+          applicationFee,
+          responseStepsCompleted: {
+            push: [
+              InvitedResponse.SUBMITTED,
+              InvitedResponse.APPLICATION_STARTED,
+              InvitedResponse.SUBMITTED,
+            ],
+          },
+          application: {
+            connect: { id: newApplication.id },
+          },
+        },
       });
     }
 
