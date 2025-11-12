@@ -86,39 +86,49 @@ class TenantService {
 
 
     getTenantsWithEnquiries = async (landlordId: string, enquireStatus?: EnquireStatus) => {
-
         const tenants = await prismaClient.tenants.findMany({
             where: {
+                landlord: {
+                    isDeleted: false,
+                },
                 PropertyEnquiry: {
                     some: {
-                        landlordId: landlordId
-                    }
+                        landlordId: landlordId,
+                        ...(enquireStatus
+                            ? {
+                                logs: {
+                                    is: {
+                                        enquireStatus: enquireStatus,
+                                    },
+                                },
+                            }
+                            : {}),
+                    },
                 },
-                landlord: {
-                    isDeleted: false
-                },
-                ...(enquireStatus
-                    ? {
-                        logs: {
-                            enquireStatus: enquireStatus,
-                        },
-                    }
-                    : {}),
             },
             include: {
                 user: true,
                 PropertyEnquiry: {
                     where: {
-                        landlordId: landlordId
+                        landlordId: landlordId,
+                        ...(enquireStatus
+                            ? {
+                                logs: {
+                                    is: {
+                                        enquireStatus: enquireStatus,
+                                    },
+                                },
+                            }
+                            : {}),
                     },
                     include: {
                         property: true,
                         unit: true,
                         room: true,
                         logs: true,
-                    }
-                }
-            }
+                    },
+                },
+            },
         });
 
         // Calculate performance scores for all tenants in parallel
@@ -128,13 +138,13 @@ class TenantService {
                     const performance = await PerformanceCalculator.calculateOverallScore(tenant.userId);
                     return {
                         ...tenant,
-                        performanceScore: performance
+                        performanceScore: performance,
                     };
                 } catch (error) {
                     console.error(`Failed to calculate score for tenant ${tenant.userId}:`, error);
                     return {
                         ...tenant,
-                        performanceScore: null
+                        performanceScore: null,
                     };
                 }
             })
@@ -142,6 +152,7 @@ class TenantService {
 
         return tenantsWithScores;
     };
+
 
 
     getCurrentTenantsGeneric = async () => {
