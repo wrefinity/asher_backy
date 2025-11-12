@@ -86,7 +86,7 @@ class TenantControls {
         return res.status(200).json({ previousTenants });
     }
     createApplicationFromLast = async (req: CustomRequest, res: Response) => {
-        const tenantId = req.params.tenantId;
+        const userId = req.params.userId;
         const inviteId = req.params.inviteId;
         
         const landlordId = req.user?.landlords?.id;
@@ -94,9 +94,12 @@ class TenantControls {
             return res.status(404).json({ error: 'kindly login as landlord' });
         }
 
-        const tenant = await TenantService.getTenantWithUserAndProfile(tenantId);
-        const userId = tenant?.userId;
+        const user = await UserServices.getUserById(userId);
 
+        if (!user) {
+            return res.status(404).json({ error: `User with ID ${userId} not found.` });
+        }
+    
         const application = await applicantService.createApplicationFromLast(userId, inviteId);
         return res.status(200).json({ application });
     }

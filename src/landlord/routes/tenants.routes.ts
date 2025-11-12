@@ -30,7 +30,7 @@ class TenantsLandlordRouter {
         this.router.get('/violations/:tenantId', TenantLandlordController.getTenantViolations)
         this.router.get('/get/:tenantId', TenantLandlordController.getTenant)
         this.router.get('/documents/:tenantId', TenantLandlordController.getterTenantsDocument)
-        this.router.patch('/create-tenant-application-info/:tenantId/:inviteId', TenantLandlordController.createApplicationFromLast)
+        this.router.patch('/create-tenant-application-info/:userId/:inviteId', TenantLandlordController.createApplicationFromLast)
     }
 }
 
