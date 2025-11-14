@@ -1105,7 +1105,7 @@ class ApplicantService {
           in: [
             ApplicationStatus.COMPLETED,
             ApplicationStatus.TENANT_CREATED,
-            ApplicationStatus.APPROVED,
+            ApplicationStatus.APPROVED
           ],
         },
         isDeleted: false,
@@ -1146,7 +1146,7 @@ class ApplicantService {
         userId,
       },
     });
-    
+
 
     if (lastApplication.personalDetails.nextOfKin) {
       await prismaClient.nextOfKin.create({
@@ -1232,6 +1232,21 @@ class ApplicantService {
       : null;
 
     // Step 3: Create new application record
+    const statuesCompleted: ApplicationStatus[] = [
+      ApplicationStatus.APPROVED,
+      ApplicationStatus.AGREEMENTS
+    ];
+    const completedSteps: ApplicationSaveState[] = [
+      ApplicationSaveState.PERSONAL_KIN,
+      ApplicationSaveState.RESIDENTIAL_ADDRESS,
+      ApplicationSaveState.EMPLOYMENT,
+      ApplicationSaveState.ADDITIONAL_INFO,
+      ApplicationSaveState.REFEREE,
+      ApplicationSaveState.DOCUMENT_UPLOAD,
+      ApplicationSaveState.GUARANTOR_INFO,
+      ApplicationSaveState.DECLARATION
+    ];
+
     const newApplication = await prismaClient.application.create({
       data: {
         userId,
@@ -1241,9 +1256,12 @@ class ApplicantService {
         employmentInformationId: newEmployment?.id || null,
         guarantorInformationId: newGuarantor?.id || null,
         refereeId: newReferee?.id || null,
-        status: ApplicationStatus.PENDING,
+        status: ApplicationStatus.SUBMITTED,
+        lastStep: ApplicationSaveState.DECLARATION,
+        statuesCompleted: statuesCompleted,
+        completedSteps:completedSteps,
         invited: InvitedStatus.NO,
-        stepCompleted: 1,
+        stepCompleted: 8,
         createdById: userId,
         applicationInviteId: inviteId ?? null,
       },
@@ -1277,7 +1295,7 @@ class ApplicantService {
       });
     }
 
-    // Step 5 (Optional): Link the application invite if provided
+    // Step 5: Link the application invite if provided
     if (inviteId) {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
@@ -1286,7 +1304,7 @@ class ApplicantService {
           applicationFee,
           responseStepsCompleted: {
             push: [
-              InvitedResponse.SUBMITTED,
+              InvitedResponse.APPLY,
               InvitedResponse.APPLICATION_STARTED,
               InvitedResponse.SUBMITTED,
             ],
@@ -1304,7 +1322,6 @@ class ApplicantService {
         data: { application: { connect: { id: newApplication.id } } },
       });
     }
-
 
     return {
       message: 'New application created successfully from last application data.',

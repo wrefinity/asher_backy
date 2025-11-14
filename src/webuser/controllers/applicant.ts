@@ -237,9 +237,10 @@ class ApplicantControls {
       if (!application) {
         return res.status(400).json({ error: 'Application not updated' });
       }
-      await ApplicantService.updateInvites(application.applicationInviteId, { response: InvitedResponse.SUBMITTED });
-      // Send notifications (fire and forget)
-      sendApplicationCompletionEmails(applicationExist);
+      await Promise.all([
+        ApplicantService.updateInvites(application.applicationInviteId, { response: InvitedResponse.SUBMITTED }),
+        sendApplicationCompletionEmails(applicationExist)
+      ]);
       return res.status(200).json(application);
     } catch (error) {
       res.status(500).json({ error: error.message });

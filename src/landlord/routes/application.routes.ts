@@ -4,7 +4,7 @@ import ApplicationController from "../controllers/applicant.controller";
 import upload, { uploadcsv } from "../../configs/multer";
 import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
 import { validateBody } from "../../middlewares/validation";
-import { createApplicationInviteSchema } from "../validations/schema/applicationInvitesSchema";
+import { agreementDocumentSchema, createApplicationInviteSchema } from "../validations/schema/applicationInvitesSchema";
 
 
 class ApplicationLandlordRouter {
@@ -40,7 +40,7 @@ class ApplicationLandlordRouter {
 
         /// screening phase
         // this.router.post('/send-agreement-doc/:id',  upload.array('files'), uploadToCloudinary, ApplicationController.sendAgreementForm);
-        this.router.post('/send-agreement-doc/:id',  ApplicationController.sendAgreementForm);
+        this.router.post('/send-agreement-doc/:id', validateBody(agreementDocumentSchema), ApplicationController.sendAgreementForm);
         // this.router.post('/sign-agreement-doc/:id',  ApplicationController.signAgreementForm);
         this.router.get('/get-agreement-doc',  ApplicationController.getCurrentLandlordAgreementForm);
         this.router.patch('/references/screening/:id', ApplicationController.updateApplicationVerificationStatus);

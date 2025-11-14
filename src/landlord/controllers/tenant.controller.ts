@@ -13,7 +13,7 @@ import ComplaintServices from '../../services/complaintServices';
 import ViolationService from '../../services/violations';
 import PerformanceCalculator from '../../services/PerformanceCalculator';
 import applicantService from "../../webuser/services/applicantService";
-import { object } from "joi/lib";
+import { sendApplicationCompletionEmails } from "../../utils/emailer";
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -108,6 +108,10 @@ class TenantControls {
         }
 
         const application = await applicantService.createApplicationFromLast(userId, inviteId, applicationFee);
+        if (!application) {
+            return res.status(400).json({ error: 'Failed to create application.' });
+        }
+        await sendApplicationCompletionEmails(application);
         return res.status(200).json({ application });
     }
 
@@ -190,136 +194,7 @@ class TenantControls {
             return res.status(500).json({ error: 'Server error occurred.', details: error.message });
         }
     };
-    // bulkTenantUpload = async (req: CustomRequest, res: Response) => {
-    //     try {
-    //         const landlordId = req.user?.landlords?.id;
-    //         if (!landlordId) {
-    //             return res.status(403).json({ error: 'Access denied. Please log in as a landlord.' });
-    //         }
 
-    //         if (!req.file) {
-    //             return res.status(400).json({ error: 'No CSV file uploaded. Please upload a valid file.' });
-    //         }
-
-    //         const filePath = req.file.path;
-
-    //         let uploaded: any[] = [];
-    //         interface UploadError {
-    //             email: string;
-    //             errors: string[];
-    //             row?: any;
-    //         }
-    //         let uploadErrors: UploadError[] = [];
-
-    //         // Fetch landlord details
-    //         const landlord = await this.landlordService.getLandlordById(landlordId);
-    //         if (!landlord) {
-    //             return res.status(403).json({ error: "Invalid landlord. Please re-login." });
-    //         }
-
-    //         // Read CSV file safely
-    //         let dataFetched;
-    //         try {
-    //             dataFetched = await parseCSV(filePath);
-    //         } catch (err) {
-    //             return res.status(500).json({ error: 'Error parsing CSV file.', details: err.message });
-    //         }
-
-    //         // Process each row
-    //         for (const row of dataFetched) {
-    //             let rowErrors: string[] = [];
-    //             try {
-    //                 if (!row.email) {
-    //                     rowErrors.push("Missing email field.");
-    //                 }
-
-    //                 // Format and validate phone number
-    //                 row.phoneNumber = normalizePhoneNumber(row.phoneNumber);
-
-    //                 if (!row.phoneNumber || row.phoneNumber.length < 10) {
-    //                     rowErrors.push(`Invalid phone number format: "${row.phoneNumber}"`);
-    //                 }
-
-    //                 // Convert date fields safely
-    //                 const dateFields = [
-    //                     { key: "dateOfFirstRent", label: "Date of First Rent" },
-    //                     { key: "leaseStartDate", label: "Lease Start Date" },
-    //                     { key: "leaseEndDate", label: "Lease End Date" },
-    //                     { key: "dateOfBirth", label: "Date of Birth" },
-    //                     { key: "expiryDate", label: "Expiry Date" },
-    //                     { key: "employmentStartDate", label: "Employment Start Date" }
-    //                 ];
-
-    //                 for (const field of dateFields) {
-    //                     try {
-    //                         if (row[field.key]) {
-    //                             row[field.key] = parseDateFieldNew(row[field.key]?.toString(), field.label);
-    //                         }
-    //                     } catch (dateError) {
-    //                         rowErrors.push(dateError.message);
-    //                     }
-    //                 }
-
-    //                 // Validate row data
-    //                 const { error } = tenantSchema.validate(row, { abortEarly: false });
-    //                 if (error) {
-    //                     rowErrors.push(...error.details.map(detail => detail.message));
-    //                 }
-
-    //                 // Check for existing user
-    //                 const existingUser = await UserServices.findUserByEmail(row.email.toString());
-    //                 if (existingUser) {
-    //                     rowErrors.push("User already exists.");
-    //                 }
-
-    //                 if (rowErrors.length > 0) {
-    //                     let existingError = uploadErrors.find(err => err.email === row.email);
-    //                     if (existingError) {
-    //                         existingError.errors.push(...rowErrors);
-    //                     } else {
-    //                         uploadErrors.push({ email: row.email, errors: rowErrors });
-    //                     }
-    //                     continue; // Skip processing for this row
-    //                 }
-
-    //                 // Generate tenant email
-    //                 const userEmail = row.email.toString().split('@')[0];
-    //                 const tenantEmail = `${userEmail}${landlord.emailDomains}`;
-
-    //                 // Create new user
-    //                 const newUser = await UserServices.createUser({
-    //                     ...row,
-    //                     landlordId,
-    //                     role: userRoles.TENANT,
-    //                     tenantWebUserEmail: tenantEmail,
-    //                 }, true);
-
-
-
-    //                 uploaded.push(newUser);
-    //             } catch (err) {
-    //                 let existingError = uploadErrors.find(err => err.email === row.email);
-    //                 if (existingError) {
-    //                     existingError.errors.push(`Unexpected error: ${err.message}`);
-    //                 } else {
-    //                     uploadErrors.push({ email: row.email, errors: [`Unexpected error: ${err.message}`] });
-    //                 }
-    //             }
-    //         }
-
-    //         // Delete the CSV file
-    //         fs.unlinkSync(filePath);
-
-    //         // Return response
-    //         if (uploaded.length > 0) {
-    //             return res.status(200).json({ uploaded, uploadErrors });
-    //         } else {
-    //             return res.status(400).json({ error: 'No users were uploaded.', uploadErrors });
-    //         }
-    //     } catch (error) {
-    //         return res.status(500).json({ error: 'Server error occurred.', details: error.message });
-    //     }
-    // };
     // tenants milestone section
     createTenantMileStones = async (req: CustomRequest, res: Response) => {
 

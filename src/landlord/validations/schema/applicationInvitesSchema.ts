@@ -53,10 +53,16 @@ export const agreementDocumentSchema = Joi.object({
   }),
   processedContent: Joi.string().required(),
   variables: Joi.array().items(Joi.string()).required().messages({
-  'array.base': 'Variables must be an array',
-  'string.base': 'Each variable must be a string',
-  'any.required': 'Variables are required (meaning the array of variable names to replace)'
-}),
+    'array.base': 'Variables must be an array',
+    'string.base': 'Each variable must be a string',
+    'any.required': 'Variables are required (meaning the array of variable names to replace)'
+  }),
+  // applicationCreator: Joi.object({
+  //   userId: Joi.string().required(),
+  //   inviteId: Joi.string().required(),
+  //   applicationFee: Joi.string().required()
+  // }).optional(),
+
   metadata: Joi.object().optional(),
   cloudinaryUrls: Joi.array().items(Joi.string().uri()).optional(),
   cloudinaryAudioUrls: Joi.array().items(Joi.string().uri()).optional(),

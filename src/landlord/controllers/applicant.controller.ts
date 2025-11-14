@@ -182,7 +182,7 @@ class ApplicationControls {
             if (!enquire) {
                 return res.status(400).json({ message: "invalid enquire id" });
             }
-            const  value = req.body
+            const value = req.body
             const invitedByLandordId = req.user?.landlords?.id;
             const { ...rest } = value
 
@@ -518,12 +518,14 @@ class ApplicationControls {
                 return res.status(403).json({ error: "Unauthorized: Missing landlord information" });
             }
             // Check if the landlord is authorized to send reminders for this application
-            const landlord = await this.landlordService.getLandlordById(landlordId);
+            const [landlord, applicationLandlord] = await Promise.all([
+                this.landlordService.getLandlordById(landlordId),
+                this.landlordService.getLandlordById(application.properties?.landlordId)
+            ]);
             if (!landlord) {
                 return res.status(403).json({ error: "Unauthorized: Landlord not found" });
             }
             // Check if the landlord is associated with the application
-            const applicationLandlord = await this.landlordService.getLandlordById(application.properties?.landlordId);
             if (!applicationLandlord) {
                 return res.status(403).json({ error: "Unauthorized: Landlord not associated with this property application" });
             }
@@ -682,13 +684,8 @@ class ApplicationControls {
             if (!landlordId) {
                 return res.status(403).json({ error: 'kindly login' });
             }
-            const { error, value } = agreementDocumentSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
-            }
-
+            const {applicationCreator, ...value} = req.body;
             const applicationId = req.params.id;
-
             // Validate application ID
             if (!applicationId) {
                 return res.status(400).json({
@@ -696,7 +693,6 @@ class ApplicationControls {
                     details: ["Missing application ID in URL parameters"]
                 });
             }
-
             // Fetch application
             const application = await applicantService.getApplicationById(applicationId);
             if (!application) {
@@ -713,6 +709,9 @@ class ApplicationControls {
                 });
             }
 
+            if(applicationCreator){
+
+            }
             // Get recipient email
             const recipientEmail = application.user.email;
             if (!recipientEmail) {
@@ -748,16 +747,6 @@ class ApplicationControls {
             if (!mailBox) {
                 return res.status(400).json({ message: "mail not sent" })
             }
-            // Send email
-            await sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent);
-
-            await logsServices.createLog({
-                applicationId,
-                subjects: "Asher Agreement Letter",
-                events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
-                createdById: application.user.id,
-                type: LogType.EMAIL,
-            })
 
             // Combine all provided URLs into a single array
             const documentUrls = [
@@ -769,11 +758,20 @@ class ApplicationControls {
 
             // Extract needed values
             const { documentUrl = documentUrls[0], cloudinaryVideoUrls, cloudinaryUrls, cloudinaryAudioUrls, cloudinaryDocumentUrls, ...data } = value;
-
-
-            await applicantService.upsertAgreementDocument({ ...data, documentUrl, applicationId }, req.user.id)
-            // Update the application with the agreement document URL
-            await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS);
+            Promise.all([
+                // Send email
+                await sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent),
+                await logsServices.createLog({
+                    applicationId,
+                    subjects: "Asher Agreement Letter",
+                    events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
+                    createdById: application.user.id,
+                    type: LogType.EMAIL,
+                }),
+                await applicantService.upsertAgreementDocument({ ...data, documentUrl, applicationId }, req.user.id),
+                // Update the application with the agreement document URL
+                await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS)
+            ])
             return res.status(200).json({
                 message: "Agreement form email sent successfully",
                 recipient: recipientEmail,
