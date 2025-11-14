@@ -168,6 +168,7 @@ class BillService {
             ];
         }
 
+        console.log(where)
         const include: any = {};
         if (includeTenant) include.tenants = true;
         if (includeProperty) include.property = true;

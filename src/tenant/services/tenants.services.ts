@@ -149,11 +149,8 @@ class TenantService {
                 }
             })
         );
-
         return tenantsWithScores;
     };
-
-
 
     getCurrentTenantsGeneric = async () => {
         // Get current tenants
@@ -243,7 +240,6 @@ class TenantService {
                 }
             },
         });
-
         return tenant;
     };
 

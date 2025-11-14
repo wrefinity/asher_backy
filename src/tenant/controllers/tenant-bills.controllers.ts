@@ -6,6 +6,7 @@ import { PayableBy } from "@prisma/client";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
+import tenantsServices from "../../services/tenant.service";
 
 interface TenantBillQueryParams {
   page?: string;
@@ -27,10 +28,15 @@ class TenantBillController {
       throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
+    // get property linked to tenant
+    const tenant = await tenantsServices.getTenantById(tenantId);
+
+    const propertyId = tenant?.propertyId || req.query.propertyId || null;
+    console.log("propertyId", propertyId);
+    console.log("tenant", tenant);
     const {
       page = "1",
       limit = "10",
-      propertyId,
       billId,
       payableBy,
       status,
@@ -56,8 +62,8 @@ class TenantBillController {
 
     const result = await landlordBillsService.getBills(
       {
-        tenantId,
-        propertyId,
+        // tenantId,
+        propertyId: String(propertyId),
         billId,
         payableBy: payableBy as PayableBy,
         dateRange,
