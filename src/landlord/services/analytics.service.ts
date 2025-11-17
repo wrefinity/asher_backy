@@ -1,8 +1,146 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, TransactionReference, TransactionType, TransactionStatus } from '@prisma/client';
 import { prismaClient } from '../..';
 
 class AnalyticsService {
     // Dashboard Analytics
+
+    getFinancialAnalyticLandlord = async (userId: string) => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+        const [
+            currentIncome,
+            previousIncome,
+            currentExpenses,
+            previousExpenses,
+            currentOverdue,
+            previousOverdue
+        ] = await Promise.all([
+            // Current month income
+            prismaClient.transaction.aggregate({
+                where: {
+                    userId,
+                    type: TransactionType.CREDIT,
+                    status: TransactionStatus.COMPLETED,
+                    createdAt: { gte: startOfMonth, lte: endOfMonth },
+                    reference: { in: ["RENT_PAYMENT", "RECEIVE_PAYMENT", "FUND_WALLET"] }
+                },
+                _sum: { amount: true }
+            }),
+
+            // Previous month income
+            prismaClient.transaction.aggregate({
+                where: {
+                    userId,
+                    type: TransactionType.CREDIT,
+                    status: TransactionStatus.COMPLETED,
+                    createdAt: { gte: startOfPreviousMonth, lte: endOfPreviousMonth }
+                },
+                _sum: { amount: true }
+            }),
+
+            // Current month expenses
+            prismaClient.transaction.aggregate({
+                where: {
+                    userId,
+                    type: TransactionType.DEBIT,
+                    status: TransactionStatus.COMPLETED,
+                    createdAt: { gte: startOfMonth, lte: endOfMonth }
+                },
+                _sum: { amount: true }
+            }),
+
+            // Previous month expenses
+            prismaClient.transaction.aggregate({
+                where: {
+                    userId,
+                    type: TransactionType.DEBIT,
+                    status: TransactionStatus.COMPLETED,
+                    createdAt: { gte: startOfPreviousMonth, lte: endOfPreviousMonth }
+                },
+                _sum: { amount: true }
+            }),
+
+            // Current overdue (this month)
+            prismaClient.transaction.aggregate({
+                where: {
+                    userId,
+                    reference: TransactionReference.RENT_DUE,
+                    status: TransactionStatus.PENDING,
+                    isDue: true,
+                    createdAt: { gte: startOfMonth, lte: endOfMonth }
+                },
+                _sum: { amount: true }
+            }),
+
+            // Previous month overdue
+            prismaClient.transaction.aggregate({
+                where: {
+                    userId,
+                    reference: TransactionReference.RENT_DUE,
+                    status: TransactionStatus.PENDING,
+                    isDue: true,
+                    createdAt: { gte: startOfPreviousMonth, lte: endOfPreviousMonth }
+                },
+                _sum: { amount: true }
+            })
+        ]);
+
+        // Convert Decimal → number
+        const income = currentIncome._sum.amount?.toNumber() ?? 0;
+        const previousIncomeAmount = previousIncome._sum.amount?.toNumber() ?? 0;
+        const expenses = currentExpenses._sum.amount?.toNumber() ?? 0;
+        const previousExpensesAmount = previousExpenses._sum.amount?.toNumber() ?? 0;
+
+        const overdueAmount = currentOverdue._sum.amount?.toNumber() ?? 0;
+        const previousOverdueAmount = previousOverdue._sum.amount?.toNumber() ?? 0;
+
+        return {
+            totalIncome: {
+                amount: income,
+                changePercent:
+                    previousIncomeAmount === 0
+                        ? 100
+                        : ((income - previousIncomeAmount) / previousIncomeAmount) * 100,
+                lastMonth: previousIncomeAmount
+            },
+            totalExpenses: {
+                amount: expenses,
+                changePercent:
+                    previousExpensesAmount === 0
+                        ? 100
+                        : ((expenses - previousExpensesAmount) / previousExpensesAmount) * 100,
+                lastMonth: previousExpensesAmount
+            },
+
+            // Overdue section fully dynamic
+            overduePayment: {
+                amount: overdueAmount,
+                changePercent:
+                    previousOverdueAmount === 0
+                        ? 100
+                        : ((overdueAmount - previousOverdueAmount) / previousOverdueAmount) * 100,
+                lastMonth: previousOverdueAmount
+            },
+
+            netProfit: {
+                amount: income - expenses,
+                changePercent:
+                    previousIncomeAmount - previousExpensesAmount === 0
+                        ? 100
+                        : (
+                            ((income - expenses) -
+                                (previousIncomeAmount - previousExpensesAmount)) /
+                            (previousIncomeAmount - previousExpensesAmount)
+                        ) * 100,
+                lastMonth: previousIncomeAmount - previousExpensesAmount
+            }
+        };
+    };
     async getDashboardAnalytics(landlordId: string) {
         try {
             // Use fewer concurrent queries to avoid connection pool exhaustion
@@ -118,7 +256,7 @@ class AnalyticsService {
     async getCashFlowData(landlordId: string, period: string) {
         // Implementation for cash flow data based on period
         const startDate = this.getPeriodStartDate(period);
-        
+
         const income = await prismaClient.transaction.aggregate({
             where: {
                 property: { landlordId },
@@ -201,7 +339,7 @@ class AnalyticsService {
     // Financial Analytics
     async getIncomeStatistics(landlordId: string, period: string) {
         const startDate = this.getPeriodStartDate(period);
-        
+
         const incomeBySource = await prismaClient.transaction.groupBy({
             by: ['reference'],
             where: {
@@ -229,7 +367,7 @@ class AnalyticsService {
 
     async getExpenseBreakdown(landlordId: string, period: string) {
         const startDate = this.getPeriodStartDate(period);
-        
+
         const expensesByCategory = await prismaClient.transaction.groupBy({
             by: ['reference'],
             where: {
@@ -256,7 +394,7 @@ class AnalyticsService {
 
     async getFinancialSummary(landlordId: string, period: string) {
         const startDate = this.getPeriodStartDate(period);
-        
+
         const [income, expenses] = await Promise.all([
             this.getIncomeStatistics(landlordId, period),
             this.getExpenseBreakdown(landlordId, period)
@@ -371,7 +509,7 @@ class AnalyticsService {
     // Property Listing Analytics - for property rental website analytics
     async getPropertyListingAnalytics(landlordId: string, propertyId: string, period: string = '30days') {
         const startDate = this.getPeriodStartDate(period);
-        
+
         // Get property details
         const property = await prismaClient.properties.findFirst({
             where: { id: propertyId, landlordId },
@@ -406,7 +544,7 @@ class AnalyticsService {
 
         // Calculate engagement rate
         const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
-        
+
         // Calculate average time spent per visit
         const averageTimeSpent = totalVisits > 0 ? totalTimeSpent / totalVisits : 0;
 
@@ -461,7 +599,7 @@ class AnalyticsService {
                 createdAt: { gte: startDate }
             }
         });
-        
+
         // Add likes count
         const likes = await prismaClient.userLikedProperty.count({
             where: {
@@ -469,7 +607,7 @@ class AnalyticsService {
                 createdAt: { gte: startDate }
             }
         });
-        
+
         return engagement + likes;
     }
 
@@ -504,7 +642,7 @@ class AnalyticsService {
             },
             distinct: ['createdById']
         });
-        
+
         return uniqueVisitors.length;
     }
 
@@ -679,7 +817,7 @@ class AnalyticsService {
                 size: true
             }
         });
-        
+
         const totalSize = files.reduce((sum, file) => {
             const size = file.size ? parseFloat(file.size) : 0;
             return sum + size;
@@ -692,7 +830,7 @@ class AnalyticsService {
             where: { landlordId },
             select: { marketValue: true, price: true }
         });
-        
+
         return properties.reduce((sum, property) => {
             return sum + Number(property.marketValue || property.price || 0);
         }, 0);
@@ -737,7 +875,7 @@ class AnalyticsService {
             const transactionDate = new Date(t.createdAt);
             const currentDate = new Date();
             return transactionDate.getMonth() === currentDate.getMonth() &&
-                   transactionDate.getFullYear() === currentDate.getFullYear();
+                transactionDate.getFullYear() === currentDate.getFullYear();
         });
         return monthlyTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
     }
@@ -766,13 +904,13 @@ class AnalyticsService {
     private calculateAverageResolutionTime(maintenance: any[]): number {
         const completedMaintenance = maintenance.filter(m => m.status === 'COMPLETED');
         if (completedMaintenance.length === 0) return 0;
-        
+
         const totalTime = completedMaintenance.reduce((sum, m) => {
             const startTime = new Date(m.createdAt).getTime();
             const endTime = new Date(m.updatedAt).getTime();
             return sum + (endTime - startTime);
         }, 0);
-        
+
         return totalTime / completedMaintenance.length / (1000 * 60 * 60 * 24); // Convert to days
     }
 
@@ -829,6 +967,125 @@ class AnalyticsService {
         const income = transactions.filter(t => t.type === 'CREDIT').reduce((sum, t) => sum + Number(t.amount), 0);
         const expenses = transactions.filter(t => t.type === 'DEBIT').reduce((sum, t) => sum + Number(t.amount), 0);
         return income > 0 ? ((income - expenses) / income) * 100 : 0;
+    }
+
+
+
+    async getLandlordFinancialCashFlow(userId: string) {
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const endOfYear = new Date(now.getFullYear(), 11, 31);
+
+        // Fetch all landlord transactions for the last 12 months
+        const transactions = await prismaClient.transaction.findMany({
+            where: {
+                userId,
+                createdAt: { gte: startOfYear, lte: endOfYear },
+                status: TransactionStatus.COMPLETED,
+            },
+        });
+
+        // Group by month helper
+        const monthlyData = Array.from({ length: 12 }).map((_, i) => {
+            const monthTransactions = transactions.filter(
+                t => new Date(t.createdAt).getMonth() === i
+            );
+
+            const income = monthTransactions
+                .filter(t => t.type === TransactionType.CREDIT)
+                .reduce((sum, t) => sum + Number(t.amount), 0);
+
+            const expenses = monthTransactions
+                .filter(t => t.type === TransactionType.DEBIT)
+                .reduce((sum, t) => sum + Number(t.amount), 0);
+
+            return {
+                month: new Date(2024, i, 1).toLocaleString("default", { month: "short" }),
+                income,
+                expenses,
+                net: income - expenses,
+            };
+        });
+
+        // -----------------------------
+        // Income Statistics Breakdown
+        // -----------------------------
+        const incomeCategories = [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES];
+
+        const incomeStats = incomeCategories.map(ref => ({
+            reference: ref,
+            data: Array.from({ length: 12 }).map((_, i) => {
+                const filtered = transactions.filter(
+                    t =>
+                        t.reference === ref &&
+                        t.type === TransactionType.CREDIT &&
+                        new Date(t.createdAt).getMonth() === i
+                );
+
+                return filtered.reduce((sum, t) => sum + Number(t.amount), 0);
+            }),
+        }));
+
+        // -----------------------------
+        // Expense Statistics Breakdown
+        // -----------------------------
+        const expenseCategories = [TransactionReference.MAINTENANCE_FEE, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS];
+
+        const expenseStats = expenseCategories.map(ref => ({
+            reference: ref,
+            data: Array.from({ length: 12 }).map((_, i) => {
+                const filtered = transactions.filter(
+                    t =>
+                        t.reference === ref &&
+                        t.type === TransactionType.DEBIT &&
+                        new Date(t.createdAt).getMonth() === i
+                );
+
+                return filtered.reduce((sum, t) => sum + Number(t.amount), 0);
+            }),
+        }));
+
+        // -----------------------------
+        // Budget Summary
+        // -----------------------------
+        const budgets = await prismaClient.budget.findMany({
+            where: {
+                property: {
+                    landlord: {
+                        user: { id: userId }
+                    }
+                },
+            },
+        });
+
+        const budgetSummary = budgets.map(b => ({
+            id: b.id,
+            propertyId: b.propertyId,
+            transactionType: b.transactionType,
+            budgetAmount: b.budgetAmount,
+            currentAmount: b.currentAmount,
+            usedPercentage: (b.currentAmount / b.budgetAmount) * 100,
+            frequency: b.frequency,
+            alertThreshold: b.alertThreshold,
+        }));
+
+        // -----------------------------
+        // Subscription Information
+        // -----------------------------
+        const subscription = await prismaClient.subscription.findFirst({
+            where: { userId },
+        });
+
+        // -----------------------------
+        // Final Response Structure
+        // -----------------------------
+        return {
+            cashFlow: monthlyData,            // Income + Expenses + Net (12 months)
+            incomeStatistics: incomeStats,    // Rent, Late Fee, Charges
+            expenseStatistics: expenseStats,  // Maintenance, Supplies, Equipment
+            budgets: budgetSummary,           // Budget UI
+            subscription: subscription || null,
+        };
     }
 
 }

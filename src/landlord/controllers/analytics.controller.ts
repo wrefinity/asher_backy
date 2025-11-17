@@ -9,6 +9,16 @@ class AnalyticsController {
     async getDashboardAnalytics(req: CustomRequest, res: Response) {
         try {
             const landlordId = req.user?.id;
+            const data = await AnalyticsService.getFinancialAnalyticLandlord(landlordId);
+            const data2 = await AnalyticsService.getLandlordFinancialCashFlow(landlordId);
+            res.status(200).json( ApiResponse.success({ ...data, ...data2 }, 'Financial analytics retrieved successfully'));
+        } catch (error) {
+            res.status(500).json(new ApiResponse(500, null, error.message));
+        }
+    }
+    async getDashboardAnalyticsx(req: CustomRequest, res: Response) {
+        try {
+            const landlordId = req.user?.id;
             const data = await AnalyticsService.getDashboardAnalytics(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Dashboard analytics retrieved successfully'));
         } catch (error) {
