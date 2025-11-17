@@ -29,7 +29,6 @@ class MaintenanceController {
 
   // this function is for vendor to update payment to completed
   updateMaintenanceToCompleted = asyncHandler(async (req: CustomRequest, res: Response) => {
-
     const maintenanceId = req.params.maintenanceId;
     const vendorId = req.user?.vendors?.id;
     const maintenanceExits = await MaintenanceService.getMaintenanceById(maintenanceId);
@@ -42,7 +41,7 @@ class MaintenanceController {
       return res.status(400).json({ message: `Payment has not been completed yet` });
     }
 
-    const maintenance = await MaintenanceService.updateStatus(maintenanceId, maintenanceStatus.COMPLETED, vendorId);
+    const maintenance = await MaintenanceService.completeMaintenance(maintenanceId, vendorId);
 
     // decrement job current count for vendor
     await ServiceServices.decrementJobCount(maintenance.serviceId, vendorId);
@@ -57,7 +56,7 @@ class MaintenanceController {
 
   getMaintenancesByStatus = asyncHandler(async (req: CustomRequest, res: Response) => {
     const vendorId = req.user?.vendors?.id;
-    const { status  } = req.query;
+    const { status } = req.query;
 
     if (!vendorId) {
       return res.status(400).json(ApiError.badRequest('Vendor not found for this user'));
@@ -70,10 +69,10 @@ class MaintenanceController {
     // Explicitly extract and convert pagination values safely
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 10;
-    let statuses : maintenanceStatus[] = [];
-    if ( status == maintenanceStatus.PENDING) {
+    let statuses: maintenanceStatus[] = [];
+    if (status == maintenanceStatus.PENDING) {
       statuses = [maintenanceStatus.PENDING, maintenanceStatus.RESUMED, maintenanceStatus.PAUSED, maintenanceStatus.IN_PROGRESS];
-    }else{
+    } else {
       statuses = [status as maintenanceStatus];
     }
     const maintenances = await MaintenanceService.getVendorsMaintenanceStates(
@@ -298,62 +297,62 @@ class MaintenanceController {
 
   // quotation for maintenance
   // Vendor submits a quote
-  createQuote = asyncHandler( async (req: CustomRequest, res: Response) => {
+  createQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
 
-      const vendorId = req.user.vendors.id; 
-      const input: CreateQuoteInput = {
-        ...req.body,
-        vendorId
-      };
+    const vendorId = req.user.vendors.id;
+    const input: CreateQuoteInput = {
+      ...req.body,
+      vendorId
+    };
 
-      const quote = await quoteService.createQuote(input);
-      res.status(201).json({
-        success: true,
-        data: quote
-      });
- 
+    const quote = await quoteService.createQuote(input);
+    res.status(201).json({
+      success: true,
+      data: quote
+    });
+
   });
 
   // Get quotes for a maintenance (landlord/vendor view)
   getMaintenanceQuotes = asyncHandler(async (req: CustomRequest, res: Response) => {
 
-      const { maintenanceId } = req.params;
-      const quotes = await quoteService.getMaintenanceQuotes(maintenanceId);
-      return res.json(
-        ApiResponse.success(
-          quotes
-        )
-      );
+    const { maintenanceId } = req.params;
+    const quotes = await quoteService.getMaintenanceQuotes(maintenanceId);
+    return res.json(
+      ApiResponse.success(
+        quotes
+      )
+    );
 
   });
 
   // Get vendor's quotes
-  getVendorQuotes = asyncHandler( async (req: CustomRequest, res: Response) => {
+  getVendorQuotes = asyncHandler(async (req: CustomRequest, res: Response) => {
 
-      const vendorId = req.user.vendors.id;
-      const quotes = await quoteService.getVendorQuotes(vendorId);
+    const vendorId = req.user.vendors.id;
+    const quotes = await quoteService.getVendorQuotes(vendorId);
 
-      res.json({
-        success: true,
-        data: quotes
-      });
-  
+    res.json({
+      success: true,
+      data: quotes
+    });
+
   });
 
   // Vendor updates their quote
-  updateQuote = asyncHandler (async (req: CustomRequest, res: Response) => {
-      const vendorId = req.user.vendors.id;
-      const { quoteId } = req.params;
-      const input: UpdateQuoteInput = req.body;
+  updateQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const vendorId = req.user.vendors.id;
+    const { quoteId } = req.params;
+    const input: UpdateQuoteInput = req.body;
 
-      const quote = await quoteService.updateQuote(quoteId, vendorId, input);
+    const quote = await quoteService.updateQuote(quoteId, vendorId, input);
 
-      return res.status(200).json(
-        ApiResponse.success(
-          quote,
-        )
-      );
-   
+    return res.status(200).json(
+      ApiResponse.success(
+        quote,
+      )
+    );
+
   });
 
   // Vendor deletes their quote

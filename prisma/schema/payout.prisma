@@ -1,0 +1,53 @@
+enum PayoutStatus {
+  PENDING
+  IN_TRANSIT
+  PAID
+  CANCELED
+  FAILED
+  REVERSED
+}
+model Payout {
+  id                        String              @id @default(cuid())
+  stripePayoutId            String              @unique
+  vendorId                    String
+  amount                    Decimal             @db.Decimal(18, 2)
+  currency                  Currency             @default(USD)
+  status                    PayoutStatus        @default(PENDING)
+  destination               String              // Bank account ID or card ID
+  description               String?
+  failureCode               String?
+  failureMessage            String?
+  failureBalanceTransaction String?
+  arrivalDate               DateTime?
+  method                    String              // 'instant' | 'standard'
+  sourceType                String              // 'card' | 'bank_account'
+  automatic                 Boolean             @default(true)
+  livemode                  Boolean             @default(false)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  
+  // Relations
+  vendor                   vendors               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  transactions              PayoutTransaction[]
+  metadata                  Json?
+  
+  @@index([vendorId])
+  @@index([stripePayoutId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PayoutTransaction {
+  id            String   @id @default(cuid())
+  payoutId      String
+  transactionId String
+  createdAt     DateTime @default(now())
+  
+  payout        Payout      @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  
+  @@unique([payoutId, transactionId])
+  @@index([payoutId])
+  @@index([transactionId])
+}
+

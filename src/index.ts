@@ -23,7 +23,7 @@ import ProfileRouter from "./routes/profile";
 import PropertyRouter from "./routes/property";
 import PreferenceRoute from "./routes/preference";
 import ReviewsRouter from "./routes/reviews";
-import VendorServiceRouter from "./vendor/routes/services";
+import PayoutRouter from "./routes/payout";
 import StatusRouter from "./routes/status";
 import StateRouter from "./routes/state";
 import LogRouter from "./routes/log";
@@ -115,6 +115,7 @@ class Server {
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenants", TenantRouter);
+        this.app.use("/api/payouts", PayoutRouter);
         this.app.use("/api/docusign", DocuSignRouter);
         // this.app.use("/api/generator", GeneratorRouter);
         this.app.use("/api/banks", BankRouter);

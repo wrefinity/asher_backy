@@ -17,6 +17,8 @@ model vendors {
   maintenanceStatusHistory maintenanceStatusHistory[]
 
   MaintenanceQuote MaintenanceQuote[]
+
+  payouts Payout[]
 }
 
 model vendorDocument {

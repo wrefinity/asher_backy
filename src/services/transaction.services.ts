@@ -105,6 +105,7 @@ class TransactionService {
         type: TransactionType;
         reference: TransactionReference;
         status: TransactionStatus;
+        currency?: string;
         referenceId: string;
         paymentGateway?: PaymentGateway;
         stripePaymentIntentId?: string;

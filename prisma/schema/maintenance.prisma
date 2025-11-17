@@ -29,6 +29,9 @@ model maintenance {
   endAttachments               String[]
   startAttachments             String[]
   isPaused                     Boolean                        @default(false)
+  timeSpent                    String?                          
+  destinationReached           Boolean                        @default(false)
+  jobStarted           Boolean                        @default(false)
   pauseResumeDate              DateTime?
   rescheduleReason             String?
   rescheduleRequestDate        DateTime?
@@ -47,10 +50,10 @@ model maintenance {
   subcategories                subCategory[]                  @relation("SubCategoryMaintenance")
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
   MaintenanceQuote             MaintenanceQuote[]
+  MaintenanceNote              MaintenanceNote[]
 
   @@index([vendorId])
   @@index([status])
-  MaintenanceNote MaintenanceNote[]
 }
 
 model maintenanceRescheduleHistory {
@@ -104,16 +107,16 @@ model services {
 }
 
 model MaintenanceNote {
-  id             String      @id @default(cuid())
-  maintenanceId  String
-  userId         String
-  note           String
-  attachments    String[]    
-  createdAt      DateTime    @default(now())
+  id            String   @id @default(cuid())
+  maintenanceId String
+  userId        String
+  note          String
+  attachments   String[]
+  createdAt     DateTime @default(now())
 
   // Relations
-  maintenance    maintenance @relation(fields: [maintenanceId], references: [id])
-  user           users        @relation(fields: [userId], references: [id])
+  maintenance maintenance @relation(fields: [maintenanceId], references: [id])
+  user        users       @relation(fields: [userId], references: [id])
 }
 
 model MaintenanceQuote {

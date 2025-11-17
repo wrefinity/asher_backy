@@ -1187,11 +1187,11 @@ class MaintenanceService {
       });
   }
 
-    async cancelMaintenance(maintenanceId: string, cancelReason: string, vendorId: string) {
+  async cancelMaintenance(maintenanceId: string, cancelReason: string, vendorId: string) {
     return await prismaClient.$transaction(async (tx) => {
       // 1Find the current maintenance and vendor assignment
       const maintenance = await tx.maintenance.findUnique({
-        where: { id: maintenanceId } 
+        where: { id: maintenanceId }
       });
 
       if (!maintenance) throw new Error('Maintenance not found');
@@ -1204,7 +1204,7 @@ class MaintenanceService {
             maintenanceId,
             vendorId
           },
-           data: {
+          data: {
             state: maintenanceStatus.CANCEL,
             unassignedAt: new Date(),
             reasonLeft: cancelReason,
@@ -1243,7 +1243,55 @@ class MaintenanceService {
     });
   }
 
-   // Create a new note for a maintenance
+  async completeMaintenance(maintenanceId: string, vendorId: string) {
+    return await prismaClient.$transaction(async (tx) => {
+      // Find the current maintenance and vendor assignment
+      const maintenance = await tx.maintenance.findUnique({
+        where: { id: maintenanceId }
+      });
+
+      if (!maintenance) throw ApiError.notFound('Maintenance not found');
+      // 2Update the current assignment history to CANCEL
+      if (vendorId) {
+        await tx.maintenanceAssignmentHistory.updateMany({
+          where: {
+            maintenanceId,
+            vendorId
+          },
+          data: {
+            state: maintenanceStatus.COMPLETED,
+          },
+        });
+      }
+
+      // Record this transition in maintenanceStatusHistory
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          maintenanceId,
+          vendorId: vendorId,
+          oldStatus: maintenance.status,
+          newStatus: maintenanceStatus.COMPLETED,
+        },
+      });
+
+      //  Update the maintenance main record
+      const updatedMaintenance = await tx.maintenance.update({
+        where: { id: maintenanceId },
+        data: {
+          status: maintenanceStatus.COMPLETED,
+          updatedAt: new Date(),
+        },
+        include: this.inclusion,
+      });
+
+      return updatedMaintenance;
+    }, {
+      timeout: 30000,
+      maxWait: 10000,
+    });
+  }
+
+  // Create a new note for a maintenance
   addNote = async (maintenanceId: string, userId: string, note: string, attachments?: string[]) => {
     const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });
     if (!maintenance) throw new Error('Maintenance not found');

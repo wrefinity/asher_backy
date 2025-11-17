@@ -27,6 +27,8 @@ model Transaction {
   user                      users                @relation(fields: [userId], references: [id])
   wallet                    wallet?              @relation(fields: [walletId], references: [id])
   billsSubCategory          billsSubCategory[]   @relation("TransactionTobillsSubCategory")
+
+  payoutTransactions PayoutTransaction[]
 }
 
 model tenantPaymentHistory {
@@ -78,6 +80,7 @@ enum TransactionReference {
   SUPPLIES
   EQUIPMENTS
   TRANSFER
+  PAYOUT
 }
 
 enum TransactionType {
