@@ -257,6 +257,15 @@ class MaintenanceController {
       .status(200)
       .json(ApiResponse.success(updated, "Work resumed successfully"));
   });
+ 
+  destinationReached = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const vendorId = req.user?.vendors?.id;
+    const updated = await MaintenanceService.destinationReached(maintenanceId, vendorId);
+    return res
+      .status(200)
+      .json(ApiResponse.success(updated, "Work started successfully"));
+  });
   cancelMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
     const vendorId = req.user?.vendors?.id;

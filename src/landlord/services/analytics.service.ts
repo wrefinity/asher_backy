@@ -969,8 +969,6 @@ class AnalyticsService {
         return income > 0 ? ((income - expenses) / income) * 100 : 0;
     }
 
-
-
     async getLandlordFinancialCashFlow(userId: string) {
         const now = new Date();
         const startOfYear = new Date(now.getFullYear(), 0, 1);

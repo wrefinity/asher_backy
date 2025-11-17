@@ -1187,6 +1187,25 @@ class MaintenanceService {
       });
   }
 
+  async destinationReached(maintenanceId: string, vendorId?: string) {
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId }
+    });
+
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance not found");
+    }
+
+    return await prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        destinationReached: true,
+        jobStarted: true
+      },
+      include: this.inclusion,
+    });
+  }
+
   async cancelMaintenance(maintenanceId: string, cancelReason: string, vendorId: string) {
     return await prismaClient.$transaction(async (tx) => {
       // 1Find the current maintenance and vendor assignment

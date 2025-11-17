@@ -38,7 +38,8 @@ class MaintenaceRoutes {
         this.router.post("/:maintenanceId/pause", MaintenanceController.pauseMaintenance);
         this.router.post("/:maintenanceId/resume", MaintenanceController.resumeMaintenance);
         this.router.post("/:maintenanceId/cancel", MaintenanceController.cancelMaintenance);
-        
+        this.router.patch("/:maintenanceId/destination-reached", MaintenanceController.destinationReached);
+
         this.router.get('/request-confirm/:maintenanceId', this.authenticateService.authorize, MaintenanceController.confirmCancellationByVendor);
         this.router.post('/completed/:maintenanceId', this.authenticateService.authorize, MaintenanceController.updateMaintenanceToCompleted);
         this.router.post('/reschedule/:maintenanceId', this.authenticateService.authorize, MaintenanceGeneralController.rescheduleMaintenanceController);
