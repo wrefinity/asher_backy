@@ -10,7 +10,7 @@ import { FRONTEND_URL } from "../secrets";
 import { prismaClient } from "..";
 import { subDays, startOfDay, endOfDay, format } from "date-fns";
 import { SupportService } from "../services/support.services";
-import { logger } from "ethers";
+import logger from "../utils/loggers";
 
 interface InviteLandlordData {
   email: string;
