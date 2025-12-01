@@ -17,7 +17,7 @@ class InspectionRoutes {
     this.router.get('/statistics', InspectionController.getStatistics.bind(InspectionController));
 
     // GET /api/landlord/inspections - Get all inspections
-    this.router.get('/', InspectionController.getLandlordInspections.bind(InspectionController));
+    this.router.get('/all-inspections', InspectionController.getLandlordInspections.bind(InspectionController));
 
     // POST /api/landlord/inspections - Create new inspection
     this.router.post('/', InspectionController.createInspection.bind(InspectionController));
