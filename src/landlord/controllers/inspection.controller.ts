@@ -10,6 +10,8 @@ import {
 import { CustomRequest } from '../../utils/types';
 import propertyServices from '../../services/propertyServices';
 import { prismaClient } from '../..';
+import { logger } from 'ethers';
+import { info } from 'console';
 
 class InspectionController {
 
@@ -94,13 +96,14 @@ class InspectionController {
     try {
       // Check if user has landlord record
       const landlordId = req.user.landlords.id;
+      logger.info('[checker]: Landlord ID:', landlordId);
       if (!landlordId) {
         return res.status(403).json({ error: 'Landlord not found' });
       }
       const inspections = await prismaClient.inspection.findMany({
         where: {
           property: {
-            landlordId: landlordId, // RELATIONAL FILTER (THE BEST METHOD ✅)
+            landlordId: landlordId,
           },
         },
         include: {
@@ -112,7 +115,7 @@ class InspectionController {
         },
       });
 
-      return res.json(inspections);
+      return res.status(200).json(inspections);
     } catch (error: any) {
       console.error('Error fetching inspections:', error);
       const errorMessage = error?.message || 'Failed to fetch inspections';
@@ -121,7 +124,7 @@ class InspectionController {
   }
 
 
-  getInspections = async (req: CustomRequest, res: Response) => {
+  getLandlordPropertyInspection = async (req: CustomRequest, res: Response) => {
     try {
       // Check if user has landlord record
       const landlordId = req.user.landlords.id;
@@ -129,7 +132,7 @@ class InspectionController {
         return res.status(403).json({ error: 'Landlord not found' });
       }
 
-      const propertyId = req.query.propertyId as string;
+      const propertyId = req.params.propertyId as string;
 
       // If propertyId is provided, get inspections for that property
       if (propertyId) {
