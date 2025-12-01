@@ -10,8 +10,8 @@ import {
 import { CustomRequest } from '../../utils/types';
 import propertyServices from '../../services/propertyServices';
 import { prismaClient } from '../..';
-import { logger } from 'ethers';
-import { info } from 'console';
+import logger from '../../utils/loggers';
+
 
 class InspectionController {
 
