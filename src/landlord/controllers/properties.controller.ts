@@ -99,7 +99,6 @@ class PropertyController {
                         uploadedFiles,
                         req.user?.id
                     );
-
                     results.created.push(property);
                 } catch (error) {
                     const numberedName = `${value.name} ${i.toString().padStart(2, '0')}`;

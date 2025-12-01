@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import InspectionService  from '../../services/inspection.services';
+import InspectionService from '../../services/inspection.services';
 import InspectionPhotoService from '../../services/inspectionPhoto.service';
 import InspectionCertificateService from '../../services/inspectionCertificate.service';
 import NotificationService from '../../services/notification.service';
@@ -14,10 +14,10 @@ import { prismaClient } from '../..';
 class InspectionController {
 
 
-    createInspection = async (req: CustomRequest, res: Response) => {
+  createInspection = async (req: CustomRequest, res: Response) => {
     try {
       console.log('📝 Creating inspection with data:', JSON.stringify(req.body, null, 2));
-      
+
       const { error } = createInspectionSchema.validate(req.body);
       if (error) {
         console.error('❌ Validation error:', error.details);
@@ -38,7 +38,7 @@ class InspectionController {
         console.error('❌ Property not found:', req.body.propertyId);
         return res.status(404).json({ error: 'Property not found' });
       }
-      
+
       if (property.landlordId !== landlordId) {
         console.error('❌ Unauthorized: Property landlordId:', property.landlordId, 'User landlordId:', landlordId);
         return res.status(403).json({ error: 'Unauthorized: You do not own this property' });
@@ -79,7 +79,7 @@ class InspectionController {
         meta: error.meta,
         name: error.name,
       });
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to create inspection',
         message: process.env.NODE_ENV === 'development' ? error.message : undefined,
         details: process.env.NODE_ENV === 'development' ? {
@@ -90,10 +90,41 @@ class InspectionController {
     }
   }
 
-  getInspections = async (req: CustomRequest, res: Response) =>{
+  getLandlordInspections = async (req: CustomRequest, res: Response) => {
     try {
       // Check if user has landlord record
-      const landlordId = req.user.landlords?.id || req.user.id;
+      const landlordId = req.user.landlords.id;
+      if (!landlordId) {
+        return res.status(403).json({ error: 'Landlord not found' });
+      }
+      const inspections = await prismaClient.inspection.findMany({
+        where: {
+          property: {
+            landlordId: landlordId, // RELATIONAL FILTER (THE BEST METHOD ✅)
+          },
+        },
+        include: {
+          tenant: true,
+          property: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      return res.json(inspections);
+    } catch (error: any) {
+      console.error('Error fetching inspections:', error);
+      const errorMessage = error?.message || 'Failed to fetch inspections';
+      res.status(500).json({ error: errorMessage });
+    }
+  }
+
+
+  getInspections = async (req: CustomRequest, res: Response) => {
+    try {
+      // Check if user has landlord record
+      const landlordId = req.user.landlords.id;
       if (!landlordId) {
         return res.status(403).json({ error: 'Landlord not found' });
       }
@@ -104,8 +135,8 @@ class InspectionController {
       if (propertyId) {
         // Verify landlord owns the property EFFICIENTLY
         const property = await prismaClient.properties.findFirst({
-            where: { id: propertyId, landlordId: landlordId },
-            select: { id: true }
+          where: { id: propertyId, landlordId: landlordId },
+          select: { id: true }
         });
         if (!property) {
           return res.status(403).json({ error: 'Unauthorized or Property not found' });
@@ -120,19 +151,19 @@ class InspectionController {
       // If no propertyId, return all inspections for landlord's properties
       const allProperties = await propertyServices.getLandlordProperties(landlordId);
       const propertyIds = allProperties.map((p: any) => p.id);
-      
+
       if (propertyIds.length === 0) {
         return res.json([]);
       }
 
       // Fetch all inspections for the landlord's properties in a single query
       const allInspections = await prismaClient.inspection.findMany({
-          where: {
-              propertyId: {
-                  in: propertyIds,
-              },
+        where: {
+          propertyId: {
+            in: propertyIds,
           },
-          include: { tenant: true },
+        },
+        include: { tenant: true },
       });
 
       res.json(allInspections);
@@ -166,7 +197,7 @@ class InspectionController {
     }
   }
 
-  updateInspection = async (req: CustomRequest, res: Response) =>{
+  updateInspection = async (req: CustomRequest, res: Response) => {
     try {
       const { error } = updateInspectionSchema.validate(req.body);
       if (error) {
@@ -235,7 +266,7 @@ class InspectionController {
     }
   }
 
-  deleteInspection = async (req: CustomRequest, res: Response) =>{
+  deleteInspection = async (req: CustomRequest, res: Response) => {
     try {
       const inspection = await InspectionService.getInspectionById(
         req.params.id
