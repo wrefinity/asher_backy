@@ -689,9 +689,54 @@ class CommunityService {
         const member = await this.getMemberInCommunity(communityId, userId);
         return member && member.status === MembershipStatus.MEMBER;
     }
+    // Check if user can access a community (landlord or their tenant)
+    async canUserAccessCommunity(userId: string, communityId: string): Promise<boolean> {
+        const community = await prismaClient.community.findUnique({
+            where: { id: communityId },
+            include: {
+                owner: {
+                    include: {
+                        landlords: true
+                    }
+                }
+            }
+        });
 
+        if (!community) return false;
 
+        // Owner can always access
+        if (community.ownerId === userId) return true;
 
+        // Check if user is a member (tenant)
+        const membership = await prismaClient.communityMember.findUnique({
+            where: {
+                communityId_usersId: {
+                    communityId: communityId,
+                    usersId: userId
+                }
+            }
+        });
+
+        if (!membership) return false;
+
+        // Check if tenant is suspended (status is BANNED)
+        if (membership.status === MembershipStatus.BANNED) return false;
+
+        // Verify tenant belongs to the landlord who owns the community
+        const user = await prismaClient.users.findUnique({
+            where: { id: userId },
+            include: {
+                tenants: {
+                    where: {
+                        landlordId: community.owner?.landlords?.id,
+                        isCurrentLease: true
+                    }
+                }
+            }
+        });
+
+        return user?.tenants && user.tenants.length > 0;
+    }
 }
 
 export default new CommunityService();

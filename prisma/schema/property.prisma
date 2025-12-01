@@ -90,6 +90,8 @@ model properties {
   marketValue            Decimal?                   @default(0.00) @db.Decimal(18, 2)
   price                  Decimal?                   @default(0.00) @db.Decimal(18, 2)
   securityDeposit        Decimal?                   @default(0.00) @db.Decimal(18, 2)
+  propertyValue          Decimal?                   @db.Decimal(18, 2)
+  purchaseType           String?
   areaUnit               AreaUnit                   @default(SQFT)
   yearBuilt              Int?
   city                   String
@@ -144,9 +146,9 @@ model properties {
   taskManagement         taskManagement[]
   tenants                tenants[]
   violation              violation[]                @relation("violations")
+  PropertyEnquiry        PropertyEnquiry[]
 
   @@unique([landlordId, name, stateId, city])
-  
   // Comprehensive indexing strategy for properties
   @@index([landlordId, isDeleted, isListed])
   @@index([agencyId, isDeleted, isListed])
@@ -168,7 +170,6 @@ model properties {
   // Composite indexes for common queries
   @@index([landlordId, isDeleted, availability, createdAt])
   @@index([city, specificationType, availability, price])
-  PropertyEnquiry PropertyEnquiry[]
 }
 
 model PropertySpecification {
@@ -259,6 +260,7 @@ model UnitConfiguration {
   tenants                tenants[]
   violation              violation[]
   images                 PropertyMediaFiles[]     @relation("UnitImages")
+  PropertyEnquiry        PropertyEnquiry[]
 
   // Comprehensive unit configuration indexes
   @@index([residentialPropertyId, isDeleted, availability])
@@ -272,7 +274,6 @@ model UnitConfiguration {
   // Composite indexes for search
   @@index([residentialPropertyId, availability, bedrooms, bathrooms])
   @@index([commercialPropertyId, availability, unitType])
-  PropertyEnquiry PropertyEnquiry[]
 }
 
 model RoomDetail {
@@ -306,6 +307,7 @@ model RoomDetail {
   propertyListingHistory propertyListingHistory[]
   tenants                tenants[]
   images                 PropertyMediaFiles[]     @relation("RoomImages")
+  PropertyEnquiry        PropertyEnquiry[]
 
   // Room detail indexes
   @@index([residentialPropertyId, isDeleted, availability])
@@ -319,7 +321,6 @@ model RoomDetail {
   // Composite indexes for room search
   @@index([residentialPropertyId, availability, ensuite, furnished])
   @@index([shortletPropertyId, availability, isListed, price])
-  PropertyEnquiry PropertyEnquiry[]
 }
 
 model ResidentialProperty {
@@ -655,6 +656,7 @@ model propertySettings {
   @@index([settingType])
   @@index([createdAt])
 }
+
 enum LatePaymentFeeType {
   ONE_TIME
   DAILY

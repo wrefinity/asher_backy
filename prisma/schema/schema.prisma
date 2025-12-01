@@ -106,7 +106,18 @@ model creditScore {
   rentalHistory     Float
   maintainanceScore Float
   reviewScore       Float
+  // New professional scoring fields
+  financialBehavior Float?
+  propertyCare      Float?
+  communication     Float?
+  bonusPoints       Int?     @default(0)
+  penaltyPoints     Int?     @default(0)
+  dataQuality       String? // "SUFFICIENT" | "INSUFFICIENT" | "EXCELLENT"
+  scoreBreakdown    Json? // Detailed breakdown for transparency
   user              users    @relation(fields: [userId], references: [id])
+
+  @@index([score])
+  @@index([lastUpdated])
 }
 
 model status {

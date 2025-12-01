@@ -235,7 +235,7 @@ class PropertyService {
             ...specificDetails,
         };
     }
-
+    
     // Function to aggregate properties by state for the current landlord
     aggregatePropertiesByState = async (landlordId: string) => {
         const groupedProperties = await prismaClient.properties.groupBy({
@@ -2036,7 +2036,7 @@ class PropertyService {
         const { shortlet, specificationType, residential, commercial } = specification;
 
         return prismaClient.$transaction(async (tx) => {
-            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, ...rest } = data;
+            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, ...rest } = data;
 
             if (!landlordId || !stateId) {
                 throw new Error("Missing required fields: landlordId or stateId.");
@@ -2057,6 +2057,7 @@ class PropertyService {
                     ...rest,
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
                     marketValue: marketValue ? new Prisma.Decimal(marketValue) : null, // Convert if exist
+                    propertyValue: propertyValue ? new Prisma.Decimal(propertyValue) : null, // Convert if exist
                     keyFeatures: { set: keyFeatures },
                     specificationType,
                     landlord: { connect: { id: landlordId } },
@@ -2697,6 +2698,90 @@ class PropertyService {
             throw new Error('No matching property, unit, or room found');
         }
         return result;
+    }
+
+    async updateShortletSettings(propertyId: string, data: Partial<IShortletDTO>) {
+        return await prismaClient.$transaction(async (tx) => {
+            // Verify property exists and get current active specification
+            const property = await tx.properties.findUnique({
+                where: { id: propertyId },
+                include: {
+                    specification: {
+                        where: { isActive: true },
+                        include: {
+                            shortlet: true
+                        }
+                    }
+                }
+            });
+
+            if (!property) {
+                throw new Error(`Property ${propertyId} not found`);
+            }
+
+            const activeSpec = property.specification?.find(spec => spec.isActive);
+            if (!activeSpec || !activeSpec.shortlet) {
+                throw new Error(`Property ${propertyId} is not configured as a shortlet`);
+            }
+
+            const shortletId = activeSpec.shortlet.id;
+
+            // Prepare update data - exclude nested relations
+            const {
+                safetyFeatures,
+                buildingAmenityFeatures,
+                outdoorsSpacesFeatures,
+                roomDetails,
+                seasonalPricing,
+                unavailableDates,
+                additionalRules,
+                hostLanguages,
+                sharedFacilities,
+                bookings,
+                ...updateData
+            } = data;
+
+            // // Update shortlet property
+            // const updatedShortlet = await tx.shortletProperty.update({
+            //     where: { id: shortletId },
+            //     data: {
+            //         ...updateData,
+            //         ...(safetyFeatures !== undefined && { safetyFeatures: { set: safetyFeatures } }),
+            //         ...(buildingAmenityFeatures !== undefined && { buildingAmenityFeatures: { set: buildingAmenityFeatures } }),
+            //         ...(outdoorsSpacesFeatures !== undefined && { outdoorsSpacesFeatures: { set: outdoorsSpacesFeatures } }),
+            //     },
+            //     include: {
+            //         bookings: true,
+            //         seasonalPricing: true,
+            //         unavailableDates: true,
+            //         additionalRules: true,
+            //         hostLanguages: true,
+            //         roomDetails: true,
+            //         sharedFacilities: true,
+            //     }
+            // });
+
+            // Return updated property with flattened structure
+            const updatedProperty = await tx.properties.findUnique({
+                where: { id: propertyId },
+                include: {
+                    state: true,
+                    specification: this.specificationInclusion,
+                    agency: true,
+                    application: true,
+                    reviews: true,
+                    UserLikedProperty: true,
+                    landlord: this.landlordInclusion,
+                }
+            });
+
+            if (!updatedProperty) {
+                throw new Error(`Property ${propertyId} not found after update`);
+            }
+
+            // return this.flatten(updatedProperty);
+            return this.flatten(updatedProperty as any);
+        });
     }
 
     async searchPropertiesForRecommendation(filters: PropertySearchDto) {

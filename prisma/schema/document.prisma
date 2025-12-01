@@ -4,6 +4,9 @@ model propertyDocument {
   documentUrl   String[]
   size          String?
   type          String?
+  views         Int                 @default(0) // Track how many times document is viewed
+  systemId      String?             // System ID (1=Tenant Portal, 2=Vendor App, 3=Listing Website, 4=Rent Mgmt, 5=Admin)
+  isPublished   Boolean             @default(true) // Publish status for library documents
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   idType        IdType?
@@ -16,6 +19,10 @@ model propertyDocument {
   application   application?        @relation(fields: [applicationId], references: [id])
   properties    properties?         @relation(fields: [propertyId], references: [id])
   users         users?              @relation(fields: [uploadedBy], references: [id])
+
+  @@index([systemId])
+  @@index([isPublished])
+  @@index([views])
 }
 
 model PropertyMediaFiles {

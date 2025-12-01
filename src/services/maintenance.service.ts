@@ -731,67 +731,170 @@ class MaintenanceService {
   }
 
   // Fetch vendors for a property based on their maintenance services
+  // Returns transformed data matching frontend expectations
   getVendorsForPropertyMaintenance = async (propertyId: string) => {
     try {
       const maintenanceRecords = await prismaClient.maintenance.findMany({
         where: {
           propertyId: propertyId,
-          isDeleted: false, // Ensure you are not fetching deleted records
+          isDeleted: false,
         },
         include: {
           vendor: {
             include: {
               user: {
-                select: { id: true, email: true, role: true, profileId: true, profile: true }
+                select: { 
+                  id: true, 
+                  email: true, 
+                  role: true, 
+                  profileId: true, 
+                  profile: true 
+                }
+              },
+              services: {
+                select: {
+                  id: true,
+                  category: {
+                    select: { name: true }
+                  },
+                  subcategory: {
+                    select: { name: true }
+                  }
+                }
               }
             }
-          }, // Fetch vendors directly assigned
+          },
           services: {
             include: {
               vendor: {
                 include: {
                   user: {
-                    select: { id: true, email: true, role: true, profileId: true, profile: true }
+                    select: { 
+                      id: true, 
+                      email: true, 
+                      role: true, 
+                      profileId: true, 
+                      profile: true 
+                    }
+                  },
+                  services: {
+                    select: {
+                      id: true,
+                      category: {
+                        select: { name: true }
+                      },
+                      subcategory: {
+                        select: { name: true }
+                      }
+                    }
                   }
                 }
-              }  // Fetch vendors through services
+              }
             },
           },
+          category: {
+            select: { name: true }
+          },
         },
-      });
-
-      const today = new Date();
-
-      const categorizedVendors = {
-        current: new Set(),
-        previous: new Set(),
-        future: new Set(),
-      };
-
-      maintenanceRecords.forEach((record) => {
-        const scheduleDate = record.scheduleDate;
-        if (!scheduleDate) return; // Skip if no scheduleDate
-
-        let vendor = record.vendor || (record.services?.vendor ?? null);
-        if (!vendor) return; // Skip if no vendor
-
-        if (isToday(scheduleDate)) {
-          categorizedVendors.current.add(vendor);
-        } else if (isBefore(scheduleDate, today)) {
-          categorizedVendors.previous.add(vendor);
-        } else if (isAfter(scheduleDate, today)) {
-          categorizedVendors.future.add(vendor);
+        orderBy: {
+          scheduleDate: 'desc'
         }
       });
 
-      // Convert sets to arrays before returning
+      const today = new Date();
+      const vendorMap = new Map<string, any>();
+
+      // Process maintenance records and group by vendor
+      maintenanceRecords.forEach((record) => {
+        const scheduleDate = record.scheduleDate;
+        if (!scheduleDate) return;
+
+        // Get vendor (either directly assigned or through service)
+        const vendor = record.vendor || record.services?.vendor;
+        if (!vendor || !vendor.user?.profile) return;
+
+        const vendorId = vendor.id;
+        const vendorName = vendor.user.profile.fullname || vendor.user.email || 'Unknown Vendor';
+        const vendorAvatar = vendor.user.profile.profileUrl || '/default-avatar.png';
+
+        // Get services as string array
+        const serviceNames = vendor.services?.map((s: any) => 
+          s.subcategory?.name || s.category?.name || 'Service'
+        ) || [];
+
+        // Initialize vendor in map if not exists
+        if (!vendorMap.has(vendorId)) {
+          vendorMap.set(vendorId, {
+            id: vendorId,
+            name: vendorName,
+            avatar: vendorAvatar,
+            services: [...new Set(serviceNames)], // Remove duplicates
+            history: [],
+            rating: 0, // Will be calculated from reviews if available
+          });
+        }
+
+        const vendorData = vendorMap.get(vendorId);
+
+        // Add maintenance record to history
+        const historyEntry = {
+          id: record.id,
+          date: scheduleDate.toISOString().split('T')[0],
+          description: record.description || record.category?.name || 'Maintenance',
+          cost: record.amount ? Number(record.amount) : 0,
+          status: record.status,
+          receiptUrl: (record as any).receiptUrl || null,
+          receiptNumber: (record as any).receiptNumber || null,
+          receiptGeneratedAt: (record as any).receiptGeneratedAt || null,
+        };
+
+        vendorData.history.push(historyEntry);
+
+        // Categorize vendor based on most recent maintenance
+        if (!vendorData.category) {
+          if (isToday(scheduleDate)) {
+            vendorData.category = 'current';
+          } else if (isBefore(scheduleDate, today)) {
+            vendorData.category = 'previous';
+          } else if (isAfter(scheduleDate, today)) {
+            vendorData.category = 'future';
+          }
+        }
+      });
+
+      // Separate vendors into current and past
+      const current: any[] = [];
+      const past: any[] = [];
+
+      vendorMap.forEach((vendor) => {
+        // Sort history by date (most recent first)
+        vendor.history.sort((a: any, b: any) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        // Determine if vendor is current or past based on most recent job
+        const mostRecentJob = vendor.history[0];
+        if (mostRecentJob) {
+          const jobDate = new Date(mostRecentJob.date);
+          if (isToday(jobDate) || isAfter(jobDate, today)) {
+            current.push(vendor);
+          } else {
+            // For past vendors, only include if they have completed jobs
+            if (mostRecentJob.status === 'COMPLETED') {
+              past.push(vendor);
+            }
+          }
+        }
+      });
+
       return {
-        current: Array.from(categorizedVendors.current),
-        previous: Array.from(categorizedVendors.previous),
-        future: Array.from(categorizedVendors.future),
+        current,
+        previous: past, // Map to 'past' in controller
+        future: [], // Not used by frontend currently
       };
-    } catch (error) {
-      throw new Error('Error fetching vendors for property maintenance');
+    } catch (error: any) {
+      console.error('Error fetching vendors for property maintenance:', error);
+      throw new Error('Error fetching vendors for property maintenance: ' + error.message);
     }
   };
   // backups

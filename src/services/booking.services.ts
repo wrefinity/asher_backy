@@ -192,61 +192,131 @@ class BookingService {
       },
     });
   }
-//   getAllLandlordBookings = async  (landlordId: string) =>{
-//     const bookings = await prismaClient.booking.findMany({
-//       where: {
-//         OR: [
-//           {
-//             // Booking made directly on a shortlet property
-//             shortlet: {
-//               propertySpecification: {
-//                 property: {
-//                   landlordId,
-//                 },
-//               },
-//             },
-//           },
-//           {
-//             // Booking made on a unit configuration
-//             unitConfiguration: {
-//               residentialProperty: {
-//                 specification: {
-//                   some: {
-//                     property: {
-//                       landlordId,
-//                     },
-//                   },
-//                 },
-//               },
-//             },
-//           },
-//           {
-//             // Booking made on a room detail
-//             roomDetail: {
-//               residentialProperty: {
-//                 specification: {
-//                   some: {
-//                     property: {
-//                       landlordId,
-//                     },
-//                   },
-//                 },
-//               },
-//             },
-//           },
-//         ],
-//       },
-//       include: {
-//         shortlet: true,
-//         unitConfiguration: true,
-//         roomDetail: true,
-//         user: true, // customer info
-//       },
-//     });
-  
-//     return bookings;
-//   }
-  
+
+  public async getBookingsByPropertyId(propertyId: string) {
+    // Get bookings for a specific shortlet property
+    // First, find the shortlet property ID from the property specification
+    const property = await prismaClient.properties.findUnique({
+      where: { id: propertyId },
+      include: {
+        specification: {
+          where: { isActive: true },
+          include: {
+            shortlet: true,
+          },
+        },
+      },
+    });
+
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    const activeSpec = property.specification.find((s: any) => s.isActive);
+    const shortletId = activeSpec?.shortletId;
+
+    if (!shortletId) {
+      // Property is not configured as shortlet
+      return [];
+    }
+
+    // Get bookings for this shortlet property
+    const bookings = await prismaClient.booking.findMany({
+      where: {
+        propertyId: shortletId,
+      },
+      include: this.bookingInclusion,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return bookings;
+  }
+
+  public async getAllLandlordBookings(landlordId: string) {
+    const bookings = await prismaClient.booking.findMany({
+      where: {
+        OR: [
+          {
+            // Booking made directly on a shortlet property
+            property: {
+              PropertySpecification: {
+                some: {
+                  shortlet: {
+                    isNot: null,
+                  },
+                  property: {
+                    landlordId,
+                  },
+                },
+              },
+            },
+          },
+          {
+            // Booking made on a unit configuration
+            unitConfiguration: {
+              ResidentialProperty: {
+                PropertySpecification: {
+                  some: {
+                    property: {
+                      landlordId,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          {
+            // Booking made on a room detail
+            roomDetail: {
+              OR: [
+                {
+                  ResidentialProperty: {
+                    PropertySpecification: {
+                      some: {
+                        property: {
+                          landlordId,
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  CommercialProperty: {
+                    PropertySpecification: {
+                      some: {
+                        property: {
+                          landlordId,
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  ShortletProperty: {
+                    PropertySpecification: {
+                      some: {
+                        property: {
+                          landlordId,
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      include: this.bookingInclusion,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return bookings;
+  }
 }
 
 export default new BookingService();

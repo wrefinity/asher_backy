@@ -36,9 +36,11 @@ class ApartmentLandlordRouter {
         this.router.post('/upload', PropertyController.createPropertiesBulk)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
+        this.router.patch('/property/shortlet/:propertyId', PropertyController.updateShortletSettings)
         this.router.get('/property/tenants/:propertyId', PropertyController.getTenantsForProperty)
         this.router.get('/property/without-tenants', PropertyController.getPropertiesWithoutTenants)
         this.router.get('/property/user-preferences/:userId', PropertyController.getPropertyBasedOnUserPreference)
+        this.router.get('/property/vendors/:propertyId', PropertyController.getVendorsForProperty)
 
         //   settings 
         this.router.post('/settings', SettingController.createPropApartmentSetting);

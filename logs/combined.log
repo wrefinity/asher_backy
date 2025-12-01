@@ -315,3 +315,5 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-11-14 19:27:13"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-11-14 19:27:37"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-11-14 19:28:27"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-11-26 18:16:29"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-01 16:43:49"}

@@ -1,27 +1,288 @@
 import { prismaClient } from '..';
-import Notification, { INotification } from '../model/notification';
 import { UpdateNotificationPreferencesInput } from '../validations/interfaces/profile.interface';
 import {NotificationCategory, NotificationChannel, Prisma} from "@prisma/client"
+import { 
+    shouldSendNotification, 
+    mapNotificationTypeToCategory,
+    getEnabledChannels 
+} from '../utils/notificationPreferenceChecker';
+
+// Notification data interface (matches Prisma model)
+interface NotificationData {
+    sourceId?: string;
+    destId: string;
+    title: string;
+    message: string;
+    category?: NotificationCategory;
+}
+
 class NotificationService {
-    public async createNotification(data: INotification) {
-        const notification = new Notification(data);
-        return await notification.save();
+    /**
+     * Create a notification after checking user preferences
+     * @param data - Notification data
+     * @param category - Optional category override (if not provided, will be inferred from type)
+     * @returns Created notification or null if user has disabled this notification type
+     */
+    public async createNotification(
+        data: NotificationData, 
+        category?: NotificationCategory
+    ) {
+        // Determine category from notification type if not provided
+        const notificationCategory = category || 
+            mapNotificationTypeToCategory(data.title || data.message || '') || 
+            'COMMUNICATION'; // Default category
+
+        // Check if user should receive this notification
+        const shouldSend = await shouldSendNotification(
+            data.destId,
+            notificationCategory as NotificationCategory,
+            data.title || '',
+            'IN_APP' // Check IN_APP channel for database notifications
+        );
+
+        if (!shouldSend) {
+            console.log(`Notification blocked by user preferences: ${data.destId}, category: ${notificationCategory}`);
+            return null; // Don't create notification if user has disabled it
+        }
+
+        // Create and save notification using Prisma (PostgreSQL)
+        try {
+            const notification = await prismaClient.notification.create({
+                data: {
+                    sourceId: data.sourceId || null,
+                    destId: data.destId,
+                    title: data.title,
+                    message: data.message,
+                    category: notificationCategory,
+                    isRead: false,
+                },
+                include: {
+                    source: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    },
+                    dest: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            return notification;
+        } catch (error) {
+            console.error('Error saving notification to database:', error);
+            return null; // Return null on error instead of throwing
+        }
     }
 
-    public async getAllNotifications(destId) {
-        return await Notification.find({ destId });
+    public async getAllNotifications(destId: string) {
+        try {
+            return await prismaClient.notification.findMany({
+                where: { destId },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    source: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            return [];
+        }
     }
 
     public async getNotificationById(id: string) {
-        return await Notification.findById(id);
+        try {
+            return await prismaClient.notification.findUnique({
+                where: { id },
+                include: {
+                    source: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    },
+                    dest: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching notification:', error);
+            return null;
+        }
     }
 
-    public async updateNotification(id: string, data: any) {
-        return await Notification.findByIdAndUpdate(id, data, { new: true });
+    public async updateNotification(id: string, data: Partial<NotificationData>) {
+        try {
+            return await prismaClient.notification.update({
+                where: { id },
+                data: {
+                    ...(data.title && { title: data.title }),
+                    ...(data.message && { message: data.message }),
+                    ...(data.category && { category: data.category }),
+                },
+                include: {
+                    source: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error updating notification:', error);
+            return null;
+        }
     }
 
     public async deleteNotification(id: string) {
-        return await Notification.findByIdAndDelete(id);
+        try {
+            return await prismaClient.notification.delete({
+                where: { id }
+            });
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+            return null;
+        }
+    }
+
+    public async getUnreadNotifications(userId: string) {
+        try {
+            return await prismaClient.notification.findMany({
+                where: { 
+                    destId: userId, 
+                    isRead: false 
+                },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    source: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching unread notifications:', error);
+            return [];
+        }
+    }
+
+    public async markAsRead(id: string) {
+        try {
+            return await prismaClient.notification.update({
+                where: { id },
+                data: { isRead: true },
+                include: {
+                    source: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            return null;
+        }
+    }
+
+    public async markAllAsRead(userId: string) {
+        try {
+            const result = await prismaClient.notification.updateMany({
+                where: { 
+                    destId: userId, 
+                    isRead: false 
+                },
+                data: { isRead: true }
+            });
+            return { acknowledged: true, modifiedCount: result.count };
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+            return { acknowledged: false, modifiedCount: 0 };
+        }
+    }
+
+    public async clearAllNotifications(userId: string) {
+        try {
+            const result = await prismaClient.notification.deleteMany({
+                where: { destId: userId }
+            });
+            return { acknowledged: true, deletedCount: result.count };
+        } catch (error) {
+            console.error('Error clearing notifications:', error);
+            return { acknowledged: false, deletedCount: 0 };
+        }
     }
 
     public async getUserNotificationPreferences(userId: string) {

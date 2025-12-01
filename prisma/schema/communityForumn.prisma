@@ -52,25 +52,32 @@ model CommunityInvitation {
 }
 
 model Forum {
-  id          String             @id @default(cuid())
-  communityId String
-  name        String
-  description String?
-  order       Int                @default(0)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  postCount   Int                @default(0)
-  threadCount Int                @default(0)
-  isDeleted   Boolean            @default(false)
-  imageUrl    String[]
-  ownerId     String
-  threads     DiscussionThread[]
-  community   Community          @relation("CommunityForums", fields: [communityId], references: [id])
-  owner       users              @relation("ForumOwner", fields: [ownerId], references: [id])
-  categories  ForumCategory[]
-  ForumMember ForumMember[]
+  id                String             @id @default(cuid())
+  communityId       String
+  name              String
+  description       String?
+  order             Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  postCount         Int                @default(0)
+  threadCount       Int                @default(0)
+  isDeleted         Boolean            @default(false)
+  imageUrl          String[]
+  ownerId           String
+  // Forum membership criteria
+  membershipType    String             @default("INDIVIDUAL") // INDIVIDUAL, LOCATION, PROPERTY, FLOOR
+  locationCriteria  Json? // { city: string, stateId: string } for location-based membership
+  propertyIds       String[]           @default([]) // Array of property IDs for property-based membership
+  floorIds          String[]           @default([]) // Array of floor IDs for floor-based membership
+  individualUserIds String[]           @default([]) // Array of user IDs for individual selection
+  threads           DiscussionThread[]
+  community         Community          @relation("CommunityForums", fields: [communityId], references: [id])
+  owner             users              @relation("ForumOwner", fields: [ownerId], references: [id])
+  categories        ForumCategory[]
+  ForumMember       ForumMember[]
 
   @@index([communityId])
+  @@index([membershipType])
 }
 
 model ForumMember {
@@ -133,6 +140,7 @@ model CommunityPost {
   poll          CommunityPostPoll?
   shares        CommunityPostShare[]
   views         CommunityPostView[]
+  pins          CommunityPostPin[]
 
   @@index([categoryId])
   @@index([authorId])
@@ -211,6 +219,17 @@ model CommunityPostShare {
   @@index([usersId])
 }
 
+model CommunityPostPin {
+  id       String        @id @default(cuid())
+  postId   String
+  usersId  String
+  pinnedAt DateTime      @default(now())
+  post     CommunityPost @relation(fields: [postId], references: [id])
+  users    users         @relation(fields: [usersId], references: [id])
+
+  @@unique([postId, usersId])
+}
+
 model Comment {
   id              String        @id @default(cuid())
   postId          String
@@ -255,6 +274,7 @@ model DiscussionThread {
   locked          Boolean               @default(false)
   viewsCount      Int                   @default(0)
   commentsCount   Int                   @default(0)
+  flagsCount      Int                   @default(0)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
   isDeleted       Boolean               @default(false)
@@ -335,6 +355,7 @@ model DiscussionComment {
   parentCommentId        String?
   depth                  Int                      @default(0)
   likesCount             Int                      @default(0)
+  flagsCount             Int                      @default(0)
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   shareCount             Int                      @default(0)

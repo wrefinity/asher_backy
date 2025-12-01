@@ -1,11 +1,137 @@
-model inspection {
-  id         String     @id @default(cuid())
-  propertyId String
-  tenantId   String
-  score      Int
-  notes      String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  property   properties @relation(fields: [propertyId], references: [id])
+model inspectionSection {
+  id           String   @id @default(cuid())
+  inspectionId String
+  sectionType  String   // 'exterior' | 'interior' | 'kitchen' | 'bathroom'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  inspection inspection        @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  items      inspectionItem[]
+  photos     inspectionPhoto[] // NEW: Added for photos relation
+
+  @@index([inspectionId])
+  @@index([inspectionId, sectionType])
+  @@map("inspection_section")
+}
+
+model inspectionItem {
+  id             String   @id @default(cuid())
+  sectionId      String
+  itemName       String   // 'Roof', 'Walls', 'Flooring', 'Appliances', etc.
+  condition      String   // 'Good' | 'Fair' | 'Poor' | 'N/A'
+  notes          String?  @db.Text
+  actionRequired Boolean  @default(false)
+  severity       String?  // 'Low' | 'Medium' | 'High' | 'Critical'
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  section inspectionSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  photos  inspectionPhoto[]
+
+  @@index([sectionId])
+  @@index([actionRequired])
+  @@index([severity])
+  @@map("inspection_item")
+}
+
+// ============================================
+// Inspection Photos
+// ============================================
+model inspectionPhoto {
+  id        String   @id @default(cuid())
+  itemId    String?
+  sectionId String? // Optional: photo can belong to section or specific item
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  item    inspectionItem?    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  section inspectionSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([sectionId])
+  @@map("inspection_photo")
+}
+
+// ============================================
+// Inspection Certificates (Landlord & Tenant PDFs)
+// ============================================
+model inspectionCertificate {
+  id           String   @id @default(cuid())
+  inspectionId String
+  type         String   // 'landlord' | 'tenant'
+  pdfUrl       String
+  generatedAt  DateTime @default(now())
+  generatedBy  String
+
+  // Relations
+  inspection inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  user       users      @relation(fields: [generatedBy], references: [id])
+
+  @@index([inspectionId])
+  @@index([inspectionId, type])
+  @@map("inspection_certificate")
+}
+
+
+model inspectionAcknowledgment {
+  id             String    @id @default(cuid())
+  inspectionId   String    @unique
+  tenantId       String
+  acknowledged   Boolean   @default(false)
+  signature      String?   @db.Text // Base64 signature data or signature URL
+  comments       String?   @db.Text
+  disputed       Boolean   @default(false)
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  inspection inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   tenant     tenants    @relation(fields: [tenantId], references: [id])
+
+  @@index([inspectionId])
+  @@index([tenantId])
+  @@index([acknowledged])
+  @@map("inspection_acknowledgment")
+}
+
+model inspection {
+  id               String     @id @default(cuid())
+  propertyId       String
+  tenantId         String?
+  type             String?
+  scheduledDate    DateTime?
+  scheduledTime    String?
+  inspector        String?
+  inspectorId      String?
+  status           String?    @default("Scheduled")
+  priority         String?
+  score            Int?
+  findings         Int?       @default(0)
+  criticalIssues   Int?       @default(0)
+  overallCondition String?
+  generalNotes     String?    @db.Text
+  recommendations  String?    @db.Text
+  notes            String?    @db.Text // Kept for backward compatibility
+  completedAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  property         properties                 @relation(fields: [propertyId], references: [id])
+  tenant           tenants?                   @relation(fields: [tenantId], references: [id])
+
+  // NEW RELATIONS (Added for enhanced inspection system)
+  sections         inspectionSection[]
+  certificates     inspectionCertificate[]
+  acknowledgment   inspectionAcknowledgment?
+  chatRoom         ChatRoom?
+
+  @@index([propertyId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([type])
+  @@map("inspection")
 }

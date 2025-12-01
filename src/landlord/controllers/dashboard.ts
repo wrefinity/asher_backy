@@ -7,8 +7,6 @@ import { analyticsService } from "../services/landlord.analytics.service";
 class BillController {
     constructor() { }
 
-
-
     getDashboardData = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.id;

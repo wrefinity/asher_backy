@@ -29,6 +29,9 @@ model tenants {
   nextOfKinInfo         Json?
   personalInfo          Json?
   residentialInfo       Json?
+  refereeInfo           Json?
+  applicationMetadata   Json?
+  agreementInfo         Json?
   leaseRenewals         LeaseRenewal[]
   SupportTicket         SupportTicket[]        @relation("TicketTenantRaisedBy")
   TenantLeaseBreach     TenantLeaseBreach[]
@@ -51,4 +54,7 @@ model tenants {
   ViolationResponse ViolationResponse[]
 
   PropertyEnquiry PropertyEnquiry[]
+
+  // NEW RELATION (Added for enhanced inspection system)
+  inspectionAcknowledgments inspectionAcknowledgment[]
 }

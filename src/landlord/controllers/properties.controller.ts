@@ -19,6 +19,7 @@ import propertyRoomService from '../../services/property.room.service';
 import propertyUnitService from '../../services/property.unit.service';
 import commercialServices from '../../services/commercial.services';
 import residentialServices from '../../services/residential.services';
+import maintenanceService from '../../services/maintenance.service';
 
 
 class PropertyController {
@@ -794,5 +795,68 @@ class PropertyController {
             ErrorService.handleError(err, res);
         }
     }
+
+      updateShortletSettings = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+
+            // Verify that the property belongs to the landlord
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property || property.landlordId !== landlordId) {
+                return res.status(404).json({ message: "Property not found or access denied" });
+            }
+
+            const updatedProperty = await PropertyServices.updateShortletSettings(propertyId, req.body);
+
+            return res.status(200).json({ success: true, property: updatedProperty });
+
+        } catch (err: any) {
+            // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+    }
+
+    // Get vendors for a property (with landlord authorization)
+    getVendorsForProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(403).json({ error: 'Landlord authorization required' });
+            }
+
+            // Verify the property belongs to this landlord
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property) {
+                return res.status(404).json({ message: 'Property not found' });
+            }
+
+            if (property.landlordId !== landlordId) {
+                return res.status(403).json({ error: 'Unauthorized: Property does not belong to this landlord' });
+            }
+
+            // Get vendors for this property
+            const vendors = await maintenanceService.getVendorsForPropertyMaintenance(propertyId);
+            
+            // Transform the response to match frontend expectations
+            // The service returns { current, previous, future } but frontend expects { current, past }
+            const transformedVendors = {
+                current: vendors.current || [],
+                past: vendors.previous || [], // Map previous to past
+            };
+
+            return res.status(200).json({ vendors: transformedVendors });
+        } catch (error: any) {
+            ErrorService.handleError(error, res);
+        }
+    }
 }
 export default new PropertyController() 
+
+

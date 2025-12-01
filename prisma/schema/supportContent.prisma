@@ -1,0 +1,87 @@
+
+model FAQ {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  category    String // e.g., 'maintenance', 'leasing', 'finance', 'properties', 'reports', 'general'
+  order       Int      @default(0) // For custom ordering
+  isPublished Boolean  @default(true)
+  views       Int      @default(0) // Track how many times FAQ is viewed
+  systemId    String?  // System ID (1=Tenant Portal, 2=Vendor App, 3=Listing Website, 4=Rent Mgmt, 5=Admin)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String? // Admin user ID who created it
+  updatedBy   String? // Admin user ID who last updated it
+  creator     users?   @relation("FAQCreatedBy", fields: [createdBy], references: [id])
+  updater     users?   @relation("FAQUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([category])
+  @@index([isPublished])
+  @@index([order])
+  @@index([createdAt])
+  @@index([systemId])
+}
+
+model HelpArticle {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  content     String   @db.Text // Full article content
+  category    String // e.g., 'Getting Started', 'Finance', 'Communication', 'Leasing', 'Reports'
+  readTime    String // e.g., '8 min read'
+  views       Int      @default(0)
+  thumbnail   String? // URL to thumbnail image
+  isPublished Boolean  @default(true)
+  systemId    String?  // System ID (1=Tenant Portal, 2=Vendor App, 3=Listing Website, 4=Rent Mgmt, 5=Admin)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String? // Admin user ID who created it
+  updatedBy   String? // Admin user ID who last updated it
+  creator     users?   @relation("HelpArticleCreatedBy", fields: [createdBy], references: [id])
+  updater     users?   @relation("HelpArticleUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([category])
+  @@index([isPublished])
+  @@index([createdAt])
+  @@index([views])
+  @@index([systemId])
+}
+
+model VideoTutorial {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  videoUrl    String // URL to video (YouTube, Vimeo, or direct link)
+  thumbnail   String // URL to thumbnail image
+  duration    String // e.g., '12:30'
+  category    String // e.g., 'Getting Started', 'Properties', 'Tenants', 'Finance', 'Reports'
+  views       Int      @default(0)
+  isPublished Boolean  @default(true)
+  systemId    String?  // System ID (1=Tenant Portal, 2=Vendor App, 3=Listing Website, 4=Rent Mgmt, 5=Admin)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String? // Admin user ID who created it
+  updatedBy   String? // Admin user ID who last updated it
+  creator     users?   @relation("VideoTutorialCreatedBy", fields: [createdBy], references: [id])
+  updater     users?   @relation("VideoTutorialUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([category])
+  @@index([isPublished])
+  @@index([createdAt])
+  @@index([views])
+  @@index([systemId])
+}
+
+// Support Agent Model (for chat/support functionality)
+model SupportAgent {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  isActive  Boolean  @default(true)
+  role      String? // e.g., 'admin', 'support', 'specialist'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      users    @relation("SupportAgentUser", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isActive])
+}

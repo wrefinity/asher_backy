@@ -91,6 +91,8 @@ export interface CreateLandlordIF {
         phoneNumber?: string;
         address?: string;
         dateOfBirth?: Date;
+        firstName?: string;
+        lastName?: string;
         fullname?: string;
         profileUrl?: string;
     };

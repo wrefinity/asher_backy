@@ -24,6 +24,7 @@ model users {
   CommunityPostPollVote    CommunityPostPollVote[]
   CommunityPostShare       CommunityPostShare[]
   communityPostViews       CommunityPostView[]
+  CommunityPostPin         CommunityPostPin[]
   Complaint                Complaint[]
   ComplaintMessage         ComplaintMessage[]
   DiscussionComment        DiscussionComment[]
@@ -44,11 +45,14 @@ model users {
   messagesReceived         Message[]                  @relation("messagesReceived")
   messagesSent             Message[]                  @relation("messagesSent")
   NotificationPreference   NotificationPreference[]
+  notificationsReceived    Notification[]             @relation("NotificationDest")
+  notificationsSent        Notification[]             @relation("NotificationSource")
   ratingsGiven             Rating[]                   @relation("ratedByUser")
   ratingsReceived          Rating[]                   @relation("userRated")
   Subscription             Subscription[]
   Suggestion               Suggestion[]
   SupportTicketAssigned    SupportTicket[]            @relation("TicketAssignedTo")
+  TicketMessages           TicketMessage[]
   Todo                     Todo[]
   transactions             Transaction[]
   assignedTemplates        UserDocuTemplate[]
@@ -78,10 +82,21 @@ model users {
   violation                violation[]                @relation("users")
   wallet                   wallet[]
   applicantion             application[]              @relation("applicationTousers")
+  MaintenanceNote          MaintenanceNote[]
+  FAQCreatedBy             FAQ[]                      @relation("FAQCreatedBy")
+  FAQUpdatedBy             FAQ[]                      @relation("FAQUpdatedBy")
+  HelpArticleCreatedBy     HelpArticle[]              @relation("HelpArticleCreatedBy")
+  HelpArticleUpdatedBy     HelpArticle[]              @relation("HelpArticleUpdatedBy")
+  VideoTutorialCreatedBy   VideoTutorial[]            @relation("VideoTutorialCreatedBy")
+  VideoTutorialUpdatedBy   VideoTutorial[]            @relation("VideoTutorialUpdatedBy")
+  SupportAgent             SupportAgent?              @relation("SupportAgentUser")
+
+  // NEW RELATION (Added for enhanced inspection system)
+  inspectionCertificatesGenerated inspectionCertificate[]
+
   @@index([email])
   @@index([googleId])
   @@index([profileId])
-  MaintenanceNote MaintenanceNote[]
 }
 
 model UserLikedProperty {
@@ -93,6 +108,7 @@ model UserLikedProperty {
   user       users?      @relation(fields: [userId], references: [id])
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+
   @@unique([userId, propertyId])
 }
 

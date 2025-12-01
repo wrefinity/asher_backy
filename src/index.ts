@@ -41,6 +41,9 @@ import flutterWaveService from './services/flutterWave.service';
 import { ApiError } from "./utils/ApiError";
 import PaymentNotificationService from "./services/paymentNotification.service";
 import loggers from "./utils/loggers";
+import supportContentRoutes from "./routes/supportContent.routes";
+import adminRouter from "./routes/admin.routes";
+import CreditScoreRouter from "./routes/creditScore.routes";
 
 // WebSocket tracking
 export const prismaClient = new PrismaClient({ log: ['query'] });
@@ -87,8 +90,12 @@ class Server {
     }
 
     private configureRoutes() {
-        // Add routes here
+           // Health check routes
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
+        this.app.get("/health", (req, res) => this.healthCheck(req, res));
+        this.app.get("/health/websocket", (req, res) => this.websocketHealthCheck(req, res));
+
+        // Webhooks
         // this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
         this.app.post("/flutterwave/webhook", (req, res) => flutterWaveService.handleWebhook(req, res))
         this.app.use("/api/auth", AuthRouter);
@@ -109,6 +116,8 @@ class Server {
         this.app.use("/api/properties", PropertyRouter);
         this.app.use("/api/maintenance", MaintenanceRouter);
         this.app.use("/api/community", communityRoutes);
+        this.app.use("/api/credit-score", CreditScoreRouter);
+        this.app.use("/api/admin", adminRouter);
         this.app.use("/api/ads", AdsRouter);
         this.app.use("/api/transactions", TransactionRouter);
         this.app.use("/api/reviews", ReviewsRouter);
@@ -121,6 +130,7 @@ class Server {
         this.app.use("/api/banks", BankRouter);
         this.app.use("/api/complaints", ComplaintRoutes);
         this.app.use("/api/suggestions", SuggestionRoutes);
+        this.app.use("/api/support-content", supportContentRoutes);
 
         // Global error handler must come last
         this.app.use(
@@ -150,6 +160,58 @@ class Server {
                 });
             }
         );
+    }
+
+    // Health check endpoint
+    private healthCheck(req: express.Request, res: express.Response) {
+        const { getMongoStatus } = require('./db/mongo_connnect');
+        const mongoStatus = getMongoStatus();
+
+        // App is healthy if MongoDB is connected OR if it's intentionally disabled
+        const isHealthy = mongoStatus.status === 'connected' || mongoStatus.disabled;
+
+        const health = {
+            status: isHealthy ? 'healthy' : 'degraded',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            socketIO: {
+                connected: this.io.engine.clientsCount || 0,
+            },
+            webSocket: {
+                emailConnections: userSockets.size,
+            },
+            mongodb: {
+                status: mongoStatus.status,
+                readyState: mongoStatus.readyState,
+                disabled: mongoStatus.disabled,
+                note: mongoStatus.disabled ? 'MongoDB is optional - app running without it' : undefined,
+            },
+            queue: {
+                // Queue health will be checked separately
+                status: 'unknown',
+            },
+        };
+
+        res.status(200).json(health);
+    }
+
+    // WebSocket-specific health check
+    private websocketHealthCheck(req: express.Request, res: express.Response) {
+        const wsHealth = {
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            socketIO: {
+                namespace: '/',
+                connected: this.io.engine.clientsCount || 0,
+                rooms: Array.from(this.io.sockets.adapter.rooms.keys()),
+            },
+            emailWebSocket: {
+                connected: userSockets.size,
+                users: Array.from(userSockets.keys()),
+            },
+        };
+
+        res.status(200).json(wsHealth);
     }
 
     // Socket.IO – Real-time chat messages

@@ -782,6 +782,8 @@ export const IBasePropertyDTOSchema = Joi.object({
   currency: Joi.string().valid(...Object.values(Currency)).optional(),
   marketValue: Joi.number().optional(),
   price: Joi.string().optional(),
+  propertyValue: Joi.number().optional(),
+  purchaseType: Joi.string().optional(),
   securityDeposit: Joi.number().optional(),
   // initialDeposit: Joi.number().optional(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({

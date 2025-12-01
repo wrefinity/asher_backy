@@ -1,0 +1,20 @@
+model Notification {
+  id        String                @id @default(cuid())
+  sourceId  String? // User ID who created the notification (optional)
+  destId    String // User ID who should receive the notification
+  title     String
+  message   String                @db.Text
+  category  NotificationCategory?
+  isRead    Boolean               @default(false)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  // Relations
+  source users? @relation("NotificationSource", fields: [sourceId], references: [id])
+  dest   users  @relation("NotificationDest", fields: [destId], references: [id])
+
+  @@index([destId])
+  @@index([destId, isRead])
+  @@index([createdAt])
+  @@map("notification")
+}

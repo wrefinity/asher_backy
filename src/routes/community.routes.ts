@@ -22,18 +22,25 @@ class CommunityRoutes {
 
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize);
+        
+        // Specific routes must come before parameterized routes to prevent route conflicts
         this.router.post('/', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.createCommunity);
         this.router.get('/landlord', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.getLandlordCommunities);
         this.router.get('/', CommunityController.getFilteredCommunities);
+        this.router.delete('/bulk', CommunityController.deleteCommunity);
+        
+        // Invitation route - must come before /:communityId to prevent conflicts
+        this.router.patch('/:inviteCode/invite', CommunityController.joinCommunityViaInviteLink);
+        
+        // Owner and members routes - specific nested routes before general :communityId
         this.router.get('/owner/:communityId', CommunityController.getCommunityOwner);
-        this.router.get('/:communityId/members', CommunityController.getCommunityMembers)
+        this.router.get('/:communityId/members', CommunityController.getCommunityMembers);
 
+        // Parameterized routes - must come after all specific routes
         this.router.get('/:communityId', CommunityController.getCommunityById);
         this.router.patch('/:communityId', CommunityController.updateCommunity);
-        this.router.delete('/bulk', CommunityController.deleteCommunity);
-
-        //invitation url
-        this.router.patch('/:inviteCode/invite', CommunityController.joinCommunityViaInviteLink);
+        
+        // Commented out - implement when ready
         // this.router.get('/:communityId/invitations', CommunityController.getInvitationLink);
 
         // post session
@@ -53,6 +60,10 @@ class CommunityRoutes {
         this.router.get('/post-likes/:postId', communityPostControllers.getPostLikes);
         this.router.get('/post-views/:postId', communityPostControllers.getPostViews);
         this.router.get('/post-shares/:postId', communityPostControllers.getPostShares);
+
+        //pin/bookmark
+        this.router.patch('/post/:postId/pin-toggle', communityPostControllers.togglePinPost);
+        this.router.get('/post-pinned/mine', communityPostControllers.getPinnedPosts);
         this.router.post('/post-comment', communityPostCommentControllers.create);
         this.router.get('/post-comment/:postId', communityPostCommentControllers.getByPost);
         this.router.get('/post-comment/comment/:commentId', communityPostCommentControllers.getById);

@@ -3,6 +3,10 @@ import { CustomRequest } from "../../utils/types";
 import errorService from "../../services/error.service";
 import { CreateSupportTicketSchema, UpdateSupportTicketSchema, UpdateSupportTicketStatusSchema } from "../validations/schema/supportSchema";
 import { SupportService } from "../../services/support.services";
+import NotificationService from "../../services/notification.service";
+import { prismaClient } from "../..";
+import { userRoles } from "@prisma/client";
+import userServices from "../../services/user.services";
 class SupportController {
     createTicket = async (req: CustomRequest, res: Response) => {
         try {
@@ -44,6 +48,44 @@ class SupportController {
                 tenantId: isTenant || null,
                 payload: data,
             });
+
+            // Create notifications for all admin users
+            try {
+                const adminUsers = await prismaClient.users.findMany({
+                    where: {
+                        role: {
+                            has: userRoles.ADMIN
+                        }
+                    },
+                    select: {
+                        id: true,
+                        email: true,
+                    }
+                });
+                const user = await userServices.getUserById(req.user.id) as any;
+
+                // Get user name for notification
+                const userName = user?.profile?.fullname
+                    || (user?.profile?.firstName && user?.profile?.lastName
+                        ? `${user.profile.firstName} ${user.profile.lastName}`
+                        : user?.email || 'A user');
+
+                // Create notification for each admin user
+                const notificationPromises = adminUsers.map(admin => 
+                    NotificationService.createNotification({
+                        sourceId: user?.id,
+                        destId: admin.id,
+                        title: 'New Support Ticket',
+                        message: `${userName} created a new support ticket: "${data.subject}"`,
+                        category: 'COMMUNICATION',
+                    })
+                );
+
+                await Promise.allSettled(notificationPromises);
+            } catch (notifError) {
+                // Log error but don't fail ticket creation
+                console.error('Error creating notifications for ticket:', notifError);
+            }
 
             return res.status(201).json(ticket);
         } catch (error: any) {
@@ -140,11 +182,57 @@ class SupportController {
     getTicket = async (req: CustomRequest, res: Response) => {
         try {
             const { ticketId } = req.params;
-            const ticket = await SupportService.getTicketById(ticketId);
+            
+            // Try to find by ID first, then by ticketCode
+            let ticket = await SupportService.getTicketById(ticketId);
+            
+            // If not found by ID, try by ticketCode
+            if (!ticket) {
+                ticket = await SupportService.getTicketByCode(ticketId);
+            }
+            
             if (!ticket) {
                 return res.status(404).json({ message: "Ticket not found" });
             }
-            res.json(ticket);
+            
+            // Ensure the response includes ticketCode and all necessary fields
+            res.json({
+                ...ticket,
+                ticketCode: ticket.ticketCode,
+                status: ticket.status,
+            });
+        } catch (error: any) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    addMessage = async (req: CustomRequest, res: Response) => {
+        try {
+            const { ticketId } = req.params;
+            const { content, attachments = [], isInternal = false } = req.body;
+
+            if (!content || !content.trim()) {
+                return res.status(400).json({ message: "Message content is required" });
+            }
+
+            const senderId = req.user.id;
+            const message = await SupportService.addMessageToTicket(
+                ticketId,
+                senderId,
+                content.trim(),
+                attachments,
+                isInternal
+            );
+
+            // Get updated ticket with all messages
+            const updatedTicket = await SupportService.getTicketById(ticketId);
+
+            res.status(201).json({
+                success: true,
+                data: message,
+                ticket: updatedTicket,
+                message: "Message added successfully",
+            });
         } catch (error: any) {
             errorService.handleError(error, res);
         }

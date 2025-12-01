@@ -578,6 +578,68 @@ class CommunityService {
         });
     }
 
+
+        async togglePinPost(postId: string, usersId: string) {
+        const existingPin = await prismaClient.communityPostPin.findUnique({
+            where: {
+                postId_usersId: {
+                    postId,
+                    usersId
+                }
+            }
+        });
+
+        if (existingPin) {
+            // Unpin
+            await prismaClient.communityPostPin.delete({
+                where: {
+                    postId_usersId: {
+                        postId,
+                        usersId
+                    }
+                }
+            });
+            return { pinned: false, message: 'Post unpinned successfully' };
+        } else {
+            // Pin
+            await prismaClient.communityPostPin.create({
+                data: {
+                    postId,
+                    usersId
+                }
+            });
+            return { pinned: true, message: 'Post pinned successfully' };
+        }
+    }
+
+    async getPinnedPosts(usersId: string) {
+        return prismaClient.communityPostPin.findMany({
+            where: { usersId },
+            include: {
+                post: {
+                    include: {
+                        author: {
+                            select: {
+                                id: true,
+                                email: true,
+                                profile: {
+                                    select: {
+                                        firstName: true,
+                                        lastName: true,
+                                        profileUrl: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                pinnedAt: 'desc'
+            }
+        });
+    }
+
 }
 
 export default new CommunityService();

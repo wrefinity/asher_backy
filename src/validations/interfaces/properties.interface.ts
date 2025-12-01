@@ -1,5 +1,7 @@
-import { PropertyType,PropertyStatus, TensureType, AvailabilityStatus, Currency, VatStatus, RoomDetail, GarageType, GlazingType, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType, 
-    MediaType, BookingStatus, ShortletProperty, ResidentialProperty, CommercialProperty, bills } from "@prisma/client"
+import {
+    PropertyType, PropertyStatus, TensureType, AvailabilityStatus, Currency, VatStatus, RoomDetail, GarageType, GlazingType, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType,
+    MediaType, BookingStatus, ShortletProperty, ResidentialProperty, CommercialProperty, bills
+} from "@prisma/client"
 
 export interface IPropertyDocument {
     id?: string;
@@ -83,7 +85,8 @@ export interface IBasePropertyDTO {
     address2?: string;
     latitude?: number;
     longitude?: number;
-
+    propertyValue?: number;
+    purchaseType?: string;
     //
     currency?: Currency;
     marketValue?: number;
@@ -285,7 +288,7 @@ export interface IResidentialDTO {
     additionalNotes?: string
 }
 
-export interface ICommercialDTO   {
+export interface ICommercialDTO {
 
     id?: string;
     totalArea: String;
@@ -483,17 +486,17 @@ export interface IPropertySpecificationDTO {
 }
 
 export interface PropertySearchDto {
-  propertyCategory?: PropertySpecificationType; // RESIDENTIAL | COMMERCIAL | SHORTLET
-  propertyType?: PropertyType;                  // Subtype (e.g., APARTMENT, OFFICE, SHOP)
-  location?: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  minRent?: number;
-  maxRent?: number;
-  leaseDuration?: number;
-  moveInDate?: Date;
+    propertyCategory?: PropertySpecificationType; // RESIDENTIAL | COMMERCIAL | SHORTLET
+    propertyType?: PropertyType;                  // Subtype (e.g., APARTMENT, OFFICE, SHOP)
+    location?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    minRent?: number;
+    maxRent?: number;
+    leaseDuration?: number;
+    moveInDate?: Date;
 
-  // 🔹 Commercial-specific
-  minSize?: number; // floor size min
-  maxSize?: number; // floor size max
+    // 🔹 Commercial-specific
+    minSize?: number; // floor size min
+    maxSize?: number; // floor size max
 }

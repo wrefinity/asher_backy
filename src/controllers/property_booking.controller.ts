@@ -91,6 +91,30 @@ class PropertyBookingController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+
+    getBookingsByPropertyId = async (req: CustomRequest, res: Response) => {
+        try {
+            const { propertyId } = req.params;
+            const bookings = await BookingService.getBookingsByPropertyId(propertyId);
+            res.status(200).json({ success: true, data: bookings });
+        } catch (error: any) {
+            ErrorService.handleError(error, res);
+        }
+    }
+
+    getAllLandlordBookings = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(401).json({ success: false, message: "Landlord ID not found" });
+            }
+            const bookings = await BookingService.getAllLandlordBookings(landlordId);
+            res.status(200).json({ success: true, data: bookings });
+        } catch (error: any) {
+            ErrorService.handleError(error, res);
+        }
+    }
 }
 
 export default new PropertyBookingController()

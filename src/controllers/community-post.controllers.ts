@@ -8,34 +8,82 @@ import communityServices from "../services/community.services"
 class CommunityPostController {
     constructor() { }
 
-    async createPost(req: CustomRequest, res: Response) {
 
-        const communityId = req.params.communityId || String(req.user.id);
-        const community = await communityServices.getCommunityById(communityId)
-        if (!community) {
-            return res.status(404).json({ message: "No community found for this landlord." });
-        }
-        const { error, value } = createCommunityPostSchema.validate(req.body)
-        if (error) return res.status(400).json({ error: error.details[0].message })
+       async createPost(req: CustomRequest, res: Response) {
+        let userId: string | undefined;
+        let community: any;
 
         try {
-            const userId = String(req.user.id)
-            const { cloudinaryAudioUrls, cloudinaryImageUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, ...data } = value
+            const communityId = req.params.communityId || String(req.user.id);
+            community = await communityServices.getCommunityById(communityId);
+            
+            if (!community) {
+                return res.status(404).json({ message: "No community found for this landlord." });
+            }
+
+            const { error, value } = createCommunityPostSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ error: error.details[0].message });
+            }
+
+            // Use the actual user ID for ownership check (community.ownerId is user ID, not landlord ID)
+            // But we'll pass both to the service so it can check both ownership and membership
+            const userActualId = String(req.user?.id);
+            const landlordId = req.user?.landlords?.id ? String(req.user.landlords.id) : null;
+            
+            if (!userActualId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            const { cloudinaryAudioUrls, cloudinaryImageUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, ...data } = value;
 
             const imageUrl = cloudinaryAudioUrls || [];
             const videoUrl = cloudinaryVideoUrls || [];
 
-            const post = await communityPostServices.createCommunityPost(userId, {
+            // Pass the user ID (for ownership check) - the service will also check membership if needed
+            const post = await communityPostServices.createCommunityPost(userActualId, {
                 ...data,
                 communityId: community.id,
                 imageUrl,
                 videoUrl,
-            })
-            return res.status(201).json(post)
+            });
+            
+            console.log('✅ Post created and returned to frontend:', post.id);
+            return res.status(201).json({ 
+                data: post,
+                message: 'Post created successfully'
+            });
 
-        } catch (error) {
-            errorService.handleError(error, res)
+        } catch (error: any) {
+            console.error('❌ Error creating community post:', error);
+            console.error('Error details:', {
+                message: error?.message,
+                stack: error?.stack,
+                userId: userId || 'not set',
+                communityId: community?.id || 'not found',
+                errorName: error?.name,
+                errorCode: error?.code,
+            });
+            
+            // Provide more specific error messages
+            if (error?.message?.includes('not a community member')) {
+                return res.status(403).json({ 
+                    success: false,
+                    message: 'You are not a member of this community',
+                    code: 'NOT_MEMBER'
+                });
+            }
+            
+            if (error?.message?.includes('Community not found')) {
+                return res.status(404).json({ 
+                    success: false,
+                    message: 'Community not found',
+                    code: 'COMMUNITY_NOT_FOUND'
+                });
+            }
 
+            // Use error service for other errors
+            errorService.handleError(error, res);
         }
     }
 
@@ -97,7 +145,11 @@ class CommunityPostController {
             const communityPost = await communityPostServices.getCommunityPostById(postId)
             if (!communityPost) return res.status(404).json({ message: "Post not found" })
 
-            const userId = String(req.user.id)
+            // Standardized user ID extraction pattern
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
 
             if (communityPost.authorId !== userId) return res.status(403).json({ message: "Unauthorized to edit this post" })
 
@@ -117,7 +169,11 @@ class CommunityPostController {
             const communityPost = await communityPostServices.getCommunityPostById(postId)
             if (!communityPost) return res.status(404).json({ message: "Post not found" })
 
-            const userId = String(req.user.id)
+            // Standardized user ID extraction pattern
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
             if (communityPost.authorId !== userId) return res.status(403).json({ message: "Unauthorized to delete this post" })
 
             const deleted = await communityPostServices.deleteCommunityPost(postId)
@@ -132,8 +188,13 @@ class CommunityPostController {
     }
     voteOnPoll = async (req: CustomRequest, res: Response) => {
         try {
+            // Standardized user ID extraction pattern
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
             const { optionId } = req.body;
-            const result = await communityPostServices.voteOnPoll(req.user.id, optionId);
+            const result = await communityPostServices.voteOnPoll(userId, optionId);
             res.json(result);
         } catch (error) {
             res.status(500).json({ message: error.message });
@@ -143,7 +204,11 @@ class CommunityPostController {
     async likePost(req: CustomRequest, res: Response) {
         try {
             const { postId } = req.params;
-            const userId = String(req.user.id);
+            // Standardized user ID extraction pattern
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
             const result = await communityPostServices.likeCommunityPost(postId, userId);
             return res.status(200).json(result);
         } catch (error) {
@@ -153,7 +218,11 @@ class CommunityPostController {
     async sharePost(req: CustomRequest, res: Response) {
         try {
             const { postId } = req.params;
-            const userId = String(req.user.id);
+            // Standardized user ID extraction pattern
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
             const result = await communityPostServices.sharePost(postId, userId);
             return res.status(200).json(result);
         } catch (error) {
@@ -164,8 +233,11 @@ class CommunityPostController {
     async viewPost(req: CustomRequest, res: Response) {
         try {
             const { postId } = req.params;
-            const userId = String(req.user.id);
-            const result = await communityPostServices.viewCommunityPost(postId, userId);
+            // Standardized user ID extraction pattern - views can be anonymous, so userId is optional
+            const userId = req.user ? String(req.user?.landlords?.id || req.user?.id) : undefined;
+            const ipAddress = req.ip || req.socket.remoteAddress;
+            const userAgent = req.get('user-agent');
+            const result = await communityPostServices.viewCommunityPost(postId, userId, ipAddress, userAgent);
             return res.status(200).json(result);
         } catch (error) {
             errorService.handleError(error, res)
@@ -207,6 +279,38 @@ class CommunityPostController {
             errorService.handleError(error, res)
         }
     }
+
+    async togglePinPost(req: CustomRequest, res: Response) {
+        try {
+            const { postId } = req.params;
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            const result = await communityPostServices.togglePinPost(postId, userId);
+            return res.status(200).json(result);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getPinnedPosts(req: CustomRequest, res: Response) {
+        try {
+            const userId = String(req.user?.landlords?.id || req.user?.id);
+            if (!userId) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            const pinnedPosts = await communityPostServices.getPinnedPosts(userId);
+            return res.status(200).json(pinnedPosts);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    
+
 }
 
 export default new CommunityPostController()
