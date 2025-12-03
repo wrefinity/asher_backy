@@ -18,18 +18,14 @@ class InspectionController {
 
   createInspection = async (req: CustomRequest, res: Response) => {
     try {
-      console.log('📝 Creating inspection with data:', JSON.stringify(req.body, null, 2));
-
       const { error } = createInspectionSchema.validate(req.body);
       if (error) {
-        console.error('❌ Validation error:', error.details);
         return res.status(400).json({ error: error.details[0].message });
       }
 
       // Verify landlord owns the property
       const landlordId = req.user.landlords?.id || req.user.id;
       if (!landlordId) {
-        console.error('❌ No landlord ID found for user:', req.user.id);
         return res.status(403).json({ error: 'Landlord not found' });
       }
 

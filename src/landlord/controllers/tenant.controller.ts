@@ -2,6 +2,7 @@ import { Response } from "express"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import TenantService from "../../tenant/services/tenants.services"
+import TenantServiceMain from "../../services/tenant.service"
 import UserServices from '../../services/user.services';
 import { EnquireStatus, userRoles, YesNo } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
@@ -45,6 +46,16 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
+    getTenanciesCategorized = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const landlordId = req.user?.landlords?.id;
+            const currentTenants = await TenantServiceMain.getTenantsByLeaseStatus(propertyId);
+            res.status(200).json({ currentTenants });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
     // getCurrentTenant = async (req: CustomRequest, res: Response) => {
     //     const landlordId = req.user?.landlords?.id;
     //     if (!landlordId) {
@@ -59,6 +70,15 @@ class TenantControls {
             return res.status(404).json({ error: 'kindly login as landlord' });
         }
         const currentTenants = await TenantService.getTenantsWithEnquiries(landlordId, EnquireStatus.EXISTING_TENANT);
+        return res.status(200).json({ currentTenants });
+    }
+    getCurrentTenantOnProperty = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        if (!landlordId) {
+            return res.status(404).json({ error: 'kindly login as landlord' });
+        }
+        const propertyId = req.params.propertyId;
+        const currentTenants = await TenantService.getAllTenantsOnProperty(landlordId, propertyId);
         return res.status(200).json({ currentTenants });
     }
     getAllCurrentTenant = async (req: CustomRequest, res: Response) => {

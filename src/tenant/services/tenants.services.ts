@@ -178,6 +178,19 @@ class TenantService {
             include: this.inclusion,
         });
     }
+    getAllTenantsOnProperty = async (landlordId: string, propertyId: string) => {
+        return prismaClient.tenants.findMany({
+            where: {
+                landlordId: landlordId,
+                landlord: { 
+                    isDeleted: false,
+                },
+                            isCurrentLease: true,
+                propertyId: propertyId,
+            },
+            include: this.inclusion,
+        });
+    }
 
     getTenantByUserIdAndLandlordId = async (userId?: string, landlordId?: string, tenantId?: string) => {
         const tenant = await prismaClient.tenants.findFirst({
