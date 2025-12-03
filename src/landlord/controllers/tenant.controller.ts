@@ -58,6 +58,7 @@ class TenantControls {
     getTenanciesCategorizedByProperty = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
+            console.log("Property ID:", propertyId); // Debug log
             const tenants = await TenantServiceMain.getTenantsByLeaseStatus(propertyId);
             res.status(200).json({ tenants });
         } catch (error) {

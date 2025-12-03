@@ -62,7 +62,7 @@ class TenantService {
   // Fetch all tenants for a given property
   getTenantsForLandlord = async (landlordId: string) => {
     // Query the tenants table to get all tenants linked to the landlordId
-    const allTenants = await prismaClient.tenants.findMany({
+    const tenants = await prismaClient.tenants.findMany({
       where: {
         landlordId: landlordId,
       },
@@ -71,74 +71,86 @@ class TenantService {
       },
     });
     const currentDate = new Date();
-    // Categorize tenants into previous, current, and future
     const categorizedTenants = {
-      current: [],
-      previous: [],
-      future: []
+      current: [] as any[],
+      previous: [] as any[],
+      future: [] as any[]
     };
-    allTenants.forEach((tenant) => {
-      // Check if the tenant's lease is currently active
-      if (tenant.leaseStartDate && tenant.leaseEndDate) {
-        const leaseStart = new Date(tenant.leaseStartDate);
-        const leaseEnd = new Date(tenant.leaseEndDate);
 
-        // Current tenant: lease is active
-        if (leaseStart <= currentDate && leaseEnd >= currentDate) {
-          categorizedTenants.current.push(tenant);
-        }
-        // Previous tenant: lease has ended
-        else if (leaseEnd < currentDate) {
-          categorizedTenants.previous.push(tenant);
-        }
-        // Future tenant: lease hasn't started yet
-        else if (leaseStart > currentDate) {
-          categorizedTenants.future.push(tenant);
-        }
+    tenants.forEach((tenant) => {
+      if (!tenant.leaseStartDate) return;
+
+      const leaseStart = new Date(tenant.leaseStartDate);
+      const leaseEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : null;
+
+      // CURRENT TENANT
+      if (
+        tenant.isCurrentLease === true ||
+        (leaseStart <= currentDate && (!leaseEnd || leaseEnd >= currentDate))
+      ) {
+        categorizedTenants.current.push(tenant);
+        return;
+      }
+
+      // PREVIOUS TENANT
+      if (leaseEnd && leaseEnd < currentDate) {
+        categorizedTenants.previous.push(tenant);
+        return;
+      }
+
+      // FUTURE TENANT
+      if (leaseStart > currentDate) {
+        categorizedTenants.future.push(tenant);
+        return;
       }
     });
+
     return categorizedTenants;
   }
 
 
   // Get all tenants for a given property and categorize them into previous, current, and future
   getTenantsByLeaseStatus = async (propertyId: string) => {
-    // Get the current date to compare with lease dates
     const currentDate = new Date();
-
-    // Fetch tenants for the given property
     const tenants = await this.getTenantsForProperty(propertyId);
 
-    // Categorize tenants into previous, current, and future
     const categorizedTenants = {
-      current: [],
-      previous: [],
-      future: []
+      current: [] as any[],
+      previous: [] as any[],
+      future: [] as any[]
     };
 
     tenants.forEach((tenant) => {
-      // Check if the tenant's lease is currently active
-      if (tenant.leaseStartDate && tenant.leaseEndDate) {
-        const leaseStart = new Date(tenant.leaseStartDate);
-        const leaseEnd = new Date(tenant.leaseEndDate);
+      if (!tenant.leaseStartDate) return;
 
-        // Current tenant: lease is active
-        if (leaseStart <= currentDate && leaseEnd >= currentDate) {
-          categorizedTenants.current.push(tenant);
-        }
-        // Previous tenant: lease has ended
-        else if (leaseEnd < currentDate) {
-          categorizedTenants.previous.push(tenant);
-        }
-        // Future tenant: lease hasn't started yet
-        else if (leaseStart > currentDate) {
-          categorizedTenants.future.push(tenant);
-        }
+      const leaseStart = new Date(tenant.leaseStartDate);
+      const leaseEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : null;
+
+      // CURRENT TENANT
+      if (
+        tenant.isCurrentLease === true ||
+        (leaseStart <= currentDate && (!leaseEnd || leaseEnd >= currentDate))
+      ) {
+        categorizedTenants.current.push(tenant);
+        return;
+      }
+
+      // PREVIOUS TENANT
+      if (leaseEnd && leaseEnd < currentDate) {
+        categorizedTenants.previous.push(tenant);
+        return;
+      }
+
+      // FUTURE TENANT
+      if (leaseStart > currentDate) {
+        categorizedTenants.future.push(tenant);
+        return;
       }
     });
 
     return categorizedTenants;
-  }
+  };
+
 }
 
 export default new TenantService();
