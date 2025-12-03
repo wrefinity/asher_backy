@@ -59,6 +59,48 @@ class TenantService {
     });
     return tenants;
   }
+  // Fetch all tenants for a given property
+  getTenantsForLandlord = async (landlordId: string) => {
+    // Query the tenants table to get all tenants linked to the landlordId
+    const allTenants = await prismaClient.tenants.findMany({
+      where: {
+        landlordId: landlordId,
+      },
+      include: {
+        user: true,
+      },
+    });
+    const currentDate = new Date();
+    // Categorize tenants into previous, current, and future
+    const categorizedTenants = {
+      current: [],
+      previous: [],
+      future: []
+    };
+    allTenants.forEach((tenant) => {
+      // Check if the tenant's lease is currently active
+      if (tenant.leaseStartDate && tenant.leaseEndDate) {
+        const leaseStart = new Date(tenant.leaseStartDate);
+        const leaseEnd = new Date(tenant.leaseEndDate);
+
+        // Current tenant: lease is active
+        if (leaseStart <= currentDate && leaseEnd >= currentDate) {
+          categorizedTenants.current.push(tenant);
+        }
+        // Previous tenant: lease has ended
+        else if (leaseEnd < currentDate) {
+          categorizedTenants.previous.push(tenant);
+        }
+        // Future tenant: lease hasn't started yet
+        else if (leaseStart > currentDate) {
+          categorizedTenants.future.push(tenant);
+        }
+      }
+    });
+    return categorizedTenants;
+  }
+
+
   // Get all tenants for a given property and categorize them into previous, current, and future
   getTenantsByLeaseStatus = async (propertyId: string) => {
     // Get the current date to compare with lease dates

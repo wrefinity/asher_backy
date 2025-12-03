@@ -48,10 +48,18 @@ class TenantControls {
     }
     getTenanciesCategorized = async (req: CustomRequest, res: Response) => {
         try {
-            const propertyId = req.params.propertyId;
             const landlordId = req.user?.landlords?.id;
-            const currentTenants = await TenantServiceMain.getTenantsByLeaseStatus(propertyId);
-            res.status(200).json({ currentTenants });
+            const tenants = await TenantServiceMain.getTenantsForLandlord(landlordId);
+            res.status(200).json({ tenants });
+        } catch (error) {
+            errorService.handleError(error, res)
+        }
+    }
+    getTenanciesCategorizedByProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const tenants = await TenantServiceMain.getTenantsByLeaseStatus(propertyId);
+            res.status(200).json({ tenants });
         } catch (error) {
             errorService.handleError(error, res)
         }

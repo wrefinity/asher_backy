@@ -16,7 +16,8 @@ class TenantsLandlordRouter {
         // tenants modules under landlord
         this.router.get('/get', TenantLandlordController.getTenancies);
         this.router.get('/currents', TenantLandlordController.getCurrentTenant);
-        this.router.get('/current-present-future/:propertyId', TenantLandlordController.getTenanciesCategorized);
+        this.router.get('/current-present-future/:propertyId', TenantLandlordController.getTenanciesCategorizedByProperty);
+        this.router.get('/current-present-future-all', TenantLandlordController.getTenanciesCategorized);
         this.router.get('/property/:propertyId', TenantLandlordController.getCurrentTenantOnProperty);
         this.router.get('/currents/all', TenantLandlordController.getAllCurrentTenant);
         this.router.get('/previous', TenantLandlordController.getPreviousTenant);
