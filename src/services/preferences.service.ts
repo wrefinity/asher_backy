@@ -55,6 +55,35 @@ createOrUpdatePreferences = async (userId: string, data: any) => {
             data: settings
         });
     }
+    // Get dashboard layout for user
+    getDashboardLayout = async (userId: string) => {
+        try {
+            const preferences = await prismaClient.userPreferences.findUnique({
+                where: { userId },
+                select: { dashboardLayout: true }
+            });
+            // Return null if no preferences exist (user hasn't customized layout yet)
+            return preferences?.dashboardLayout || null;
+        } catch (error) {
+            // If user preferences don't exist, return null instead of throwing
+            // This allows the frontend to use default layout
+            return null;
+        }
+    }
+
+    // Update dashboard layout for user (creates preferences if they don't exist)
+    updateDashboardLayout = async (userId: string, layout: any) => {
+        return prismaClient.userPreferences.upsert({
+            where: { userId },
+            update: { dashboardLayout: layout },
+            create: {
+                userId,
+                dashboardLayout: layout
+            }
+        });
+    }
+
+
 }
 
 

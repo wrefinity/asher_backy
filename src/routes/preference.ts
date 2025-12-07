@@ -17,7 +17,9 @@ class PreferenceRoutes {
     private initializeRoutes(): void {
         this.router.get('/', this.authenticateService.authorize, PreferencesController.getPreferences);
         this.router.patch('/', this.authenticateService.authorize, PreferencesController.updatePreferences);
-        this.router.patch('/privacy', this.authenticateService.authorize, PreferencesController.updatePrivacySettings)
+        this.router.patch('/privacy', this.authenticateService.authorize, PreferencesController.updatePrivacySettings);
+        this.router.get('/dashboard-layout', this.authenticateService.authorize, PreferencesController.getDashboardLayout);
+        this.router.post('/dashboard-layout', this.authenticateService.authorize, PreferencesController.updateDashboardLayout);
     }
 }
 

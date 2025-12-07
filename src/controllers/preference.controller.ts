@@ -60,6 +60,51 @@ class PreferencesController {
             ErrorService.handleError(error, res);
         }
     }
+
+    getDashboardLayout = async (req: CustomRequest, res: Response) => {
+        try {
+            // Validate user is authenticated
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const userId = req.user.id;
+            const layout = await PreferencesService.getDashboardLayout(userId);
+            
+            // Return layout (can be null if user has no preferences yet)
+            res.json({ 
+                dashboardLayout: layout,
+                success: true 
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    }
+
+    updateDashboardLayout = async (req: CustomRequest, res: Response) => {
+        try {
+            // Validate user is authenticated
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const userId = req.user.id;
+            const { cardOrder } = req.body;
+
+            if (!Array.isArray(cardOrder)) {
+                return res.status(400).json({ error: 'cardOrder must be an array' });
+            }
+
+            const updated = await PreferencesService.updateDashboardLayout(userId, { cardOrder });
+            res.json({ 
+                success: true, 
+                message: 'Dashboard layout updated successfully',
+                dashboardLayout: updated.dashboardLayout 
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    }
 }
 
 export default new PreferencesController()

@@ -9,6 +9,7 @@ model UserPreferences {
   language                Language    @default(ENGLISH)
   showBasicProfile        Boolean     @default(true)
   showContactDetails      Boolean     @default(false)
+  dashboardLayout         Json?
   userId                  String      @unique
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt

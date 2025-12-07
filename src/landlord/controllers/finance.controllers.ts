@@ -182,11 +182,18 @@ class FinanceController {
     async getRecentTransactions(req: CustomRequest, res: Response) {
         const { landlords } = req.user;
         const landlordId = landlords.id;
-        const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+        // Parse limit with validation - default to 5 if invalid or undefined
+        let limit = 5;
+        if (req.query.limit) {
+            const parsedLimit = parseInt(req.query.limit as string, 10);
+            if (!isNaN(parsedLimit) && parsedLimit > 0) {
+                limit = parsedLimit;
+            }
+        }
         try {
             const txs = await financeService.getRecentTransactions(landlordId, limit);
             return res.status(200).json({
-                message: "No recent transactions",
+                message: "Recent transactions retrieved successfully",
                 txs
             });
         } catch (error) {

@@ -81,12 +81,10 @@ class LandlordRouter {
             '/locations/list',
             LandlordControl.getCurrentLocations
         );
-
         this.router.get(
             '/properties/list',
             LandlordControl.getLandlordProperties
         );
-
         // complaints modules under landlord
         this.router.use("/complaints", ComplaintRouterRouter)
         // document modules under landlord
@@ -119,7 +117,6 @@ class LandlordRouter {
         
         // Reports routes  
         this.router.use("/reports", ReportsRouter);
-
         //broadcast routes
         this.router.use('/broadcast', BroadcastRouter)
         // inspections
