@@ -2701,6 +2701,9 @@ searchPropertyUnitRoom = async (id: string) => {
         return { type: 'room', data: room };
     }
 
+    console.log("=========== No match found for id:", id);
+    console.log(property)
+
     throw new Error("No matching property, unit, or room found");
 };
 
