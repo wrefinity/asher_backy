@@ -2665,40 +2665,45 @@ class PropertyService {
         });
     }
 
-    searchPropertyUnitRoom = async (id: string) => {
-        // Search all three entities in parallel
-        const [property, unit, room] = await Promise.all([
-            prismaClient.properties.findFirst({
-                where: {
-                    id, isDeleted: false,
-                    propertyListingHistory: {
-                        some: {
-                            isActive: true,
-                            onListing: true
-                        }
-                    }
-                }
-            }),
-            prismaClient.unitConfiguration.findFirst({
-                where: { id, isDeleted: false }
-            }),
-            prismaClient.roomDetail.findFirst({
-                where: { id, isDeleted: false }
-            })
-        ]);
-        // Determine which entity was found
-        let result;
-        if (property) {
-            result = { type: 'property', data: property };
-        } else if (unit) {
-            result = { type: 'unit', data: unit };
-        } else if (room) {
-            result = { type: 'room', data: room };
-        } else {
-            throw new Error('No matching property, unit, or room found');
+searchPropertyUnitRoom = async (id: string) => {
+    // First search the property without strict filters
+    const property = await prismaClient.properties.findFirst({
+        where: { id, isDeleted: false },
+        include: {
+            propertyListingHistory: true
         }
-        return result;
+    });
+
+    const unit = await prismaClient.unitConfiguration.findFirst({
+        where: { id, isDeleted: false }
+    });
+
+    const room = await prismaClient.roomDetail.findFirst({
+        where: { id, isDeleted: false }
+    });
+
+    if (property) {
+        // Determine if property is actually active on listing
+        const isListed = property.propertyListingHistory?.some(h => h.isActive && h.onListing);
+
+        return {
+            type: 'property',
+            data: property,
+            isListed
+        };
     }
+
+    if (unit) {
+        return { type: 'unit', data: unit };
+    }
+
+    if (room) {
+        return { type: 'room', data: room };
+    }
+
+    throw new Error("No matching property, unit, or room found");
+};
+
 
     async updateShortletSettings(propertyId: string, data: Partial<IShortletDTO>) {
         return await prismaClient.$transaction(async (tx) => {

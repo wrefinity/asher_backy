@@ -332,3 +332,22 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-03 20:20:21"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-03 20:38:37"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-05 21:15:01"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 19:27:19"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 19:45:54"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 19:45:58"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 19:55:51"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 19:56:00"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 20:01:09"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 20:02:06"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 20:03:28"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-10 20:03:33"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:11:59"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:40:58"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:41:04"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:41:12"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:41:17"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:41:19"}
+{"level":"error","message":"An unexpected error occurred No matching property, unit, or room found","service":"api-service","stack":"Error: No matching property, unit, or room found\n    at PropertyService.searchPropertyUnitRoom (/Users/apple/Desktop/asher/asher_backy/src/services/propertyServices.ts:2698:19)\n    at async MaintenanceService.checkWhitelist (/Users/apple/Desktop/asher/asher_backy/src/services/maintenance.service.ts:694:27)\n    at async createMaintenance (/Users/apple/Desktop/asher/asher_backy/src/controllers/maintenance.controller.ts:137:29)","timestamp":"2025-12-12 18:43:30"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:47:03"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:48:08"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-12 18:50:47"}

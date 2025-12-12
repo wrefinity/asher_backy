@@ -1234,7 +1234,7 @@ class ApplicantService {
     // Step 3: Create new application record
     const statuesCompleted: ApplicationStatus[] = [
       ApplicationStatus.APPROVED,
-      ApplicationStatus.AGREEMENTS
+      ApplicationStatus.COMPLETED,
     ];
     const completedSteps: ApplicationSaveState[] = [
       ApplicationSaveState.PERSONAL_KIN,
@@ -1256,10 +1256,10 @@ class ApplicantService {
         employmentInformationId: newEmployment?.id || null,
         guarantorInformationId: newGuarantor?.id || null,
         refereeId: newReferee?.id || null,
-        status: ApplicationStatus.SUBMITTED,
+        status: ApplicationStatus.COMPLETED,
         lastStep: ApplicationSaveState.DECLARATION,
         statuesCompleted: statuesCompleted,
-        completedSteps:completedSteps,
+        completedSteps: completedSteps,
         invited: InvitedStatus.NO,
         stepCompleted: 8,
         createdById: userId,
@@ -1319,7 +1319,7 @@ class ApplicantService {
     if (inviteId) {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
-        data: { application: { connect: { id: newApplication.id } } },
+        data: { application: { connect: { id: newApplication.id } },   response: InvitedResponse.APPROVED},
       });
     }
 
