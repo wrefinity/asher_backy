@@ -2,9 +2,8 @@ import { Request, Response } from "express";
 import geminiOCRService, { OCRResult, VerificationResult } from "../utils/openai";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiError } from "../utils/ApiError";
-import { logger } from "ethers";
 import { ApiResponse } from "../utils/ApiResponse";
-
+import logger from "../utils/loggers";
 
 class DocumentVerificationController {
   /**
