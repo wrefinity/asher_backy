@@ -19,8 +19,11 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# BUILD TYPESCRIPT
-RUN npm run build-dev
+# Compile TypeScript code to JavaScript
+RUN npx tsc
+
+# Set the environment variable to production mode
+ENV NODE_ENV=production
 
 # Start compiled app
 CMD ["npm", "start"]
