@@ -35,7 +35,8 @@
     "pre-commit": "^1.2.2",
     "rimraf": "^6.0.1",
     "tsc-alias": "^1.8.10",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
