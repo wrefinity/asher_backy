@@ -5,6 +5,7 @@ import logsServices from "./logs.services";
 import applicantService from "../webuser/services/applicantService";
 import { VerificationUpdateIF } from "../validations/interfaces/references.interfaces"
 import { stat } from "fs";
+import { string } from "joi/lib";
 class ApplicationInvitesService {
     private userInclusion = { email: true, profile: true, id: true };
     private applicationInclusion = {
@@ -202,64 +203,90 @@ class ApplicationInvitesService {
             }
         });
     }
-    async getDashboardData(userId: String) {
-        const [recentInvites, recentFeedback, recentSavedProperties, scheduledInvite, activeApplications, completedApplications] = await Promise.all([
-            prismaClient.applicationInvites.findMany({
-                orderBy: { createdAt: "desc" },
-                take: 3,
-                include: this.inviteInclude,
-            }),
-            prismaClient.log.findMany({
-                orderBy: { createdAt: "desc" },
-                take: 3,
-                include: {
-                    property: true,
-                    users: {
-                        select: { email: true, id: true, profile: true }
-                    },
-                    applicationInvites: true,
-                }
+async getDashboardData(userId: string) {
+    const [
+        recentInvites,
+        recentFeedback,
+        recentSavedProperties,
+        scheduledInvite,
+        activeApplications,
+        completedApplications
+    ] = await Promise.all([
+        
+        prismaClient.applicationInvites.findMany({
+            where: { userInvitedId: userId },
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            include: this.inviteInclude,
+        }),
 
-            }),
-            prismaClient.userLikedProperty.findMany({
-                where: { userId: String(userId) },  // Fixed line
-                include: { property: true },
-                orderBy: { likedAt: "desc" },
-                take: 3,
-            }),
-            prismaClient.applicationInvites.findFirst({
-                where: { response: InvitedResponse.SCHEDULED },
-                orderBy: { createdAt: "desc" },
-            }),
-            prismaClient.applicationInvites.count({
-                where: {
-
-                    NOT: [
-                        {
-                            responseStepsCompleted: {
-                                hasSome: [
-                                    InvitedResponse.COMPLETED,
-                                    InvitedResponse.REJECTED,
-                                    InvitedResponse.CANCELLED,]
-                            }
-                        }
-                    ]
-                },
-            }),
-            prismaClient.applicationInvites.count({ where: { response: InvitedResponse.COMPLETED } }),
-        ]);
-
-        return {
-            recentInvites,
-            recentFeedback,
-            recentSavedProperties,
-            scheduledInvite,
-            applications: {
-                activeApplications,
-                completedApplications,
+        prismaClient.log.findMany({
+            where: {
+                createdById: userId
             },
-        };
-    }
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            include: {
+                property: true,
+                users: {
+                    select: { email: true, id: true, profile: true }
+                },
+                applicationInvites: true,
+            }
+        }),
+
+        prismaClient.userLikedProperty.findMany({
+            where: { userId },
+            include: { property: true },
+            orderBy: { likedAt: "desc" },
+            take: 3,
+        }),
+
+        prismaClient.applicationInvites.findFirst({
+            where: { 
+                response: InvitedResponse.SCHEDULED, 
+                userInvitedId: userId 
+            },
+            orderBy: { createdAt: "desc" },
+        }),
+
+        prismaClient.applicationInvites.count({
+            where: {
+                userInvitedId: userId,
+                NOT: [
+                    {
+                        responseStepsCompleted: {
+                            hasSome: [
+                                InvitedResponse.COMPLETED,
+                                InvitedResponse.REJECTED,
+                                InvitedResponse.CANCELLED
+                            ]
+                        }
+                    }
+                ]
+            },
+        }),
+
+        prismaClient.applicationInvites.count({
+            where: {
+                userInvitedId: userId, 
+                response: InvitedResponse.COMPLETED 
+            }
+        }),
+    ]);
+
+    return {
+        recentInvites,
+        recentFeedback,
+        recentSavedProperties,
+        scheduledInvite,
+        applications: {
+            activeApplications,
+            completedApplications,
+        },
+    };
+}
+
 
     getPreviousLandlordInfo = async (applicationId: string) => {
         try {

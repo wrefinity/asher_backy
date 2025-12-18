@@ -485,8 +485,7 @@ class MaintenanceService {
     }
 
     // Detect whether it's a property, unit, or room
-    const detected = await this.searchPropertyUnitRoomForMaintenace(propertyId);
-
+    const detected = await propertyServices.searchPropertyUnitRoom(propertyId);
     // Build payload
     const maintenancePayload: any = {
       ...rest,
@@ -509,7 +508,7 @@ class MaintenanceService {
         break;
       case "room":
         maintenancePayload.roomId = detected.data.id;
-        maintenancePayload.unitId = detected.data.unitId;
+        // maintenancePayload.unitId = detected.data.unitId;
         // maintenancePayload.propertyId = detected.data.propertyId; // full chain
         break;
     }

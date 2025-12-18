@@ -131,7 +131,7 @@ const additionalInfoSchema = Joi.object({
         'NO'
     ).default('NO'),
     additionalOccupants: Joi.string().optional(),
-    additionalInformation: Joi.string().optional(),
+    additionalInformation: Joi.string().optional().allow(''),
 });
 
 

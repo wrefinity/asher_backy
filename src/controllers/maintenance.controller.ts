@@ -130,9 +130,8 @@ class MaintenanceController {
         return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
       }
       // check for property existance
-      const propertyExist = await propertyService.searchPropertyUnitRoom(value?.propertyId);
+      const propertyExist = await propertyService.searchPropertyUnitRoom(propertyId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${value?.propertyId} doesn't exist` });
-
       // checking if the maitenance category is whitelisted by the landlord
       const isWhitelisted = await maintenanceService.checkWhitelist(
         landlordId,
@@ -146,6 +145,7 @@ class MaintenanceController {
 
       const maintenance = await maintenanceService.createMaintenance({
         ...value,
+        propertyId,
         handleByLandlord: handleByLandlord || false,
         landlordDecision: handleByLandlord ? maintenanceDecisionStatus.PENDING : '',
         // attachments: cloudinaryUrls,
@@ -154,7 +154,7 @@ class MaintenanceController {
       });
 
       await logsServices.createLog({
-        events: `${req.user.email} initiated a maintenance request for the property named ${propertyExist?.name}`,
+        events: `${req.user.email} initiated a maintenance request for the property with ID: ${propertyId}`,
         type: LogType.MAINTENANCE,
         unitId: propertyExist?.type === 'unit' ? propertyExist?.data.id : null,
         roomId: propertyExist?.type === 'room' ? propertyExist?.data.id : null,

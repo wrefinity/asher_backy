@@ -38,6 +38,7 @@
     "tsx": "^4.19.0"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.86.0",
     "@types/bcrypt": "^5.0.2",
