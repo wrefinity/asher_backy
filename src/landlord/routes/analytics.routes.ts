@@ -13,24 +13,24 @@ class AnalyticsRouter {
     private initializeRoutes() {
         // Dashboard Analytics
         this.router.get('/generic', dashboardController.getDashboardStats);
-        this.router.get('/dashboard', AnalyticsController.getDashboardAnalytics);
-        this.router.get('/cash-flow', AnalyticsController.getCashFlowData);
-        this.router.get('/property-performance', AnalyticsController.getPropertyPerformance);
-        this.router.get('/maintenance', AnalyticsController.getMaintenanceAnalytics);
+        this.router.get('/dashboard', AnalyticsController.getDashboardAnalytics.bind(AnalyticsController));
+        this.router.get('/cash-flow', AnalyticsController.getCashFlowData.bind(AnalyticsController));
+        this.router.get('/property-performance', AnalyticsController.getPropertyPerformance.bind(AnalyticsController));
+        this.router.get('/maintenance', AnalyticsController.getMaintenanceAnalytics.bind(AnalyticsController));
         
         // Financial Analytics
-        this.router.get('/income', AnalyticsController.getIncomeStatistics);
-        this.router.get('/expenses', AnalyticsController.getExpenseBreakdown);
-        this.router.get('/financial-summary', AnalyticsController.getFinancialSummary);
+        this.router.get('/income', AnalyticsController.getIncomeStatistics.bind(AnalyticsController));
+        this.router.get('/expenses', AnalyticsController.getExpenseBreakdown.bind(AnalyticsController));
+        this.router.get('/financial-summary', AnalyticsController.getFinancialSummary.bind(AnalyticsController));
         
         // Performance Analytics
-        this.router.get('/tenant-performance', AnalyticsController.getTenantPerformanceAnalytics);
-        this.router.get('/rental-performance', AnalyticsController.getRentalPerformanceAnalytics);
-        this.router.get('/property/:propertyId', AnalyticsController.getPropertyAnalytics);
-        this.router.get('/property-listing/:propertyId', AnalyticsController.getPropertyListingAnalytics);
-        // this.router.get('/property-application-stats/:propertyId', AnalyticsController.getPropertyApplicationStats);
-        // this.router.get('/property-comparison/:propertyId', AnalyticsController.getPropertyComparisonData);
-        // this.router.get('/property-trends/:propertyId', AnalyticsController.getPropertyTrendsData);
+        this.router.get('/tenant-performance', AnalyticsController.getTenantPerformanceAnalytics.bind(AnalyticsController));
+        this.router.get('/rental-performance', AnalyticsController.getRentalPerformanceAnalytics.bind(AnalyticsController));
+        this.router.get('/property/:propertyId', AnalyticsController.getPropertyAnalytics.bind(AnalyticsController));
+        this.router.get('/property-listing/:propertyId', AnalyticsController.getPropertyListingAnalytics.bind(AnalyticsController));
+        this.router.get('/property-application-stats/:propertyId', AnalyticsController.getPropertyApplicationStats.bind(AnalyticsController));
+        this.router.get('/property-comparison/:propertyId', AnalyticsController.getPropertyComparisonData.bind(AnalyticsController));
+        this.router.get('/property-trends/:propertyId', AnalyticsController.getPropertyTrendsData.bind(AnalyticsController));
     }
 }
 

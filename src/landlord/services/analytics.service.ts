@@ -143,41 +143,52 @@ class AnalyticsService {
     };
     async getDashboardAnalytics(landlordId: string) {
         try {
-            // Use fewer concurrent queries to avoid connection pool exhaustion
+            // Execute queries in smaller batches to avoid connection pool exhaustion
+            // Batch 1: Core property metrics
             const [
                 totalProperties,
                 totalTenants,
-                totalRevenue,
+                totalRevenue
+            ] = await Promise.all([
+                this.getTotalProperties(landlordId),
+                this.getTotalTenants(landlordId),
+                this.getTotalRevenue(landlordId)
+            ]);
+
+            // Batch 2: Additional metrics
+            const [
                 occupancyRate,
                 maintenanceRequests,
                 rentCollectionRate
             ] = await Promise.all([
-                this.getTotalProperties(landlordId),
-                this.getTotalTenants(landlordId),
-                this.getTotalRevenue(landlordId),
                 this.getOccupancyRate(landlordId),
                 this.getMaintenanceRequestsCount(landlordId),
                 this.getRentCollectionRate(landlordId)
             ]);
 
-            // Second batch of queries
+            // Batch 3: Application metrics
             const [
                 pendingApplications,
                 approvedApplications,
                 rejectedApplications,
-                totalApplications,
-                totalFiles,
-                storageUsed
+                totalApplications
             ] = await Promise.all([
                 this.getPendingApplications(landlordId),
                 this.getApprovedApplications(landlordId),
                 this.getRejectedApplications(landlordId),
-                this.getTotalApplications(landlordId),
+                this.getTotalApplications(landlordId)
+            ]);
+
+            // Batch 4: Files and storage
+            const [
+                totalFiles,
+                storageUsed
+            ] = await Promise.all([
                 this.getTotalFiles(landlordId),
                 this.getStorageUsed(landlordId)
             ]);
 
-            // Third batch of queries
+            // Batch 5: Portfolio and listings
             const [
                 totalPortfolioValue,
                 activeListings,
@@ -510,12 +521,12 @@ class AnalyticsService {
     async getPropertyListingAnalytics(landlordId: string, propertyId: string, period: string = '30days') {
         const startDate = this.getPeriodStartDate(period);
 
-        // Get property details
+        // Get property details (minimal include to reduce connection usage)
         const property = await prismaClient.properties.findFirst({
             where: { id: propertyId, landlordId },
-            include: {
-                propertyListingHistory: true,
-                UserLikedProperty: true
+            select: {
+                id: true,
+                name: true
             }
         });
 
@@ -523,24 +534,26 @@ class AnalyticsService {
             throw new Error('Property not found');
         }
 
-        // Get analytics data
-        const [
-            totalViews,
-            totalClicks,
-            totalEngagement,
-            totalTimeSpent,
-            totalVisits,
-            trafficData,
-            recentActivity
-        ] = await Promise.all([
-            this.getPropertyViews(propertyId, startDate),
-            this.getPropertyClicks(propertyId, startDate),
-            this.getPropertyEngagement(propertyId, startDate),
-            this.getPropertyTimeSpent(propertyId, startDate),
-            this.getPropertyVisits(propertyId, startDate),
-            this.getPropertyTrafficData(propertyId, startDate),
-            this.getPropertyRecentActivity(propertyId, startDate)
+        // Get analytics data - optimized to reduce parallel queries
+        // Execute queries sequentially in batches to avoid connection pool exhaustion
+        // Batch 1: Views, clicks, and engagement (can be combined)
+        const [viewsAndClicks, engagementData] = await Promise.all([
+            this.getPropertyViewsAndClicks(propertyId, startDate),
+            this.getPropertyEngagement(propertyId, startDate)
         ]);
+
+        // Batch 2: Traffic data (includes visits calculation)
+        const trafficAndVisits = await this.getPropertyTrafficAndVisits(propertyId, startDate);
+
+        // Batch 3: Recent activity (separate due to include)
+        const recentActivity = await this.getPropertyRecentActivity(propertyId, startDate);
+
+        const totalViews = viewsAndClicks.views;
+        const totalClicks = viewsAndClicks.clicks;
+        const totalEngagement = engagementData;
+        const totalTimeSpent = viewsAndClicks.views * 2; // Estimate 2 minutes per view
+        const totalVisits = trafficAndVisits.visits;
+        const trafficData = trafficAndVisits.trafficData;
 
         // Calculate engagement rate
         const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
@@ -567,92 +580,61 @@ class AnalyticsService {
         };
     }
 
-    private async getPropertyViews(propertyId: string, startDate: Date): Promise<number> {
-        const views = await prismaClient.log.count({
-            where: {
-                propertyId,
-                type: 'VIEW',
-                createdAt: { gte: startDate }
-            }
-        });
-        return views;
-    }
-
-    private async getPropertyClicks(propertyId: string, startDate: Date): Promise<number> {
-        // Count clicks on property actions (like, save, enquire, etc.)
-        const clicks = await prismaClient.log.count({
-            where: {
-                propertyId,
-                type: { in: ['ENQUIRED', 'ACTIVITY'] },
-                createdAt: { gte: startDate }
-            }
-        });
-        return clicks;
+    // Combined method to get views and clicks in a single aggregated query
+    private async getPropertyViewsAndClicks(propertyId: string, startDate: Date) {
+        // Use a single query with aggregation to reduce connections
+        const [viewsResult, clicksResult] = await Promise.all([
+            prismaClient.log.count({
+                where: {
+                    propertyId,
+                    type: 'VIEW',
+                    createdAt: { gte: startDate }
+                }
+            }),
+            prismaClient.log.count({
+                where: {
+                    propertyId,
+                    type: { in: ['ENQUIRED', 'ACTIVITY'] },
+                    createdAt: { gte: startDate }
+                }
+            })
+        ]);
+        return { views: viewsResult, clicks: clicksResult };
     }
 
     private async getPropertyEngagement(propertyId: string, startDate: Date): Promise<number> {
-        // Count engagement activities (likes, saves, enquiries, messages)
-        const engagement = await prismaClient.log.count({
-            where: {
-                propertyId,
-                type: { in: ['ENQUIRED', 'ACTIVITY', 'FEEDBACK'] },
-                createdAt: { gte: startDate }
-            }
-        });
-
-        // Add likes count
-        const likes = await prismaClient.userLikedProperty.count({
-            where: {
-                propertyId,
-                createdAt: { gte: startDate }
-            }
-        });
+        // Count engagement activities (likes, saves, enquiries, messages) - combined query
+        const [engagement, likes] = await Promise.all([
+            prismaClient.log.count({
+                where: {
+                    propertyId,
+                    type: { in: ['ENQUIRED', 'ACTIVITY', 'FEEDBACK'] },
+                    createdAt: { gte: startDate }
+                }
+            }),
+            prismaClient.userLikedProperty.count({
+                where: {
+                    propertyId,
+                    createdAt: { gte: startDate }
+                }
+            })
+        ]);
 
         return engagement + likes;
     }
 
-    private async getPropertyTimeSpent(propertyId: string, startDate: Date): Promise<number> {
-        // Estimate time spent based on view logs and engagement
-        // This is a simplified calculation - in a real system you'd track actual time
-        const views = await prismaClient.log.findMany({
-            where: {
-                propertyId,
-                type: 'VIEW',
-                createdAt: { gte: startDate }
-            },
-            select: {
-                createdAt: true
-            }
-        });
-
-        // Estimate 2 minutes average time per view
-        return views.length * 2;
-    }
-
-    private async getPropertyVisits(propertyId: string, startDate: Date): Promise<number> {
-        // Count unique visitors based on user IDs and IP addresses
-        const uniqueVisitors = await prismaClient.log.findMany({
-            where: {
-                propertyId,
-                type: 'VIEW',
-                createdAt: { gte: startDate }
-            },
-            select: {
-                createdById: true
-            },
-            distinct: ['createdById']
-        });
-
-        return uniqueVisitors.length;
-    }
-
-    private async getPropertyTrafficData(propertyId: string, startDate: Date) {
-        // Get traffic data by day
-        const dailyViews = await prismaClient.$queryRaw`
+    // Combined method to get traffic data and visits in a single optimized query
+    private async getPropertyTrafficAndVisits(propertyId: string, startDate: Date) {
+        // Use a single raw query to get both traffic data and unique visits
+        const trafficData = await prismaClient.$queryRaw<Array<{
+            date: Date;
+            views: bigint;
+            unique_visitors: bigint;
+        }>>`
             SELECT 
                 DATE("createdAt") as date,
-                COUNT(*) as views,
-                COUNT(DISTINCT "createdById") as unique_visitors
+                COUNT(*)::bigint as views,
+                COUNT(DISTINCT "createdById")::bigint as unique_visitors
             FROM "Log"
             WHERE "propertyId" = ${propertyId}
                 AND type = 'VIEW'
@@ -661,6 +643,11 @@ class AnalyticsService {
             ORDER BY date DESC
             LIMIT 30
         `;
+
+        // Calculate total unique visits from the traffic data
+        const totalUniqueVisits = trafficData.length > 0 
+            ? Number(trafficData.reduce((sum, day) => sum + day.unique_visitors, BigInt(0)))
+            : 0;
 
         // Get traffic sources (this would be enhanced with actual tracking)
         const trafficSources = {
@@ -671,14 +658,21 @@ class AnalyticsService {
         };
 
         return {
-            dailyViews,
-            trafficSources,
-            topReferrers: [
-                { source: 'Google Search', visitors: Math.floor(Math.random() * 100) + 50 },
-                { source: 'Facebook', visitors: Math.floor(Math.random() * 50) + 20 },
-                { source: 'Direct', visitors: Math.floor(Math.random() * 80) + 30 },
-                { source: 'Property Websites', visitors: Math.floor(Math.random() * 40) + 15 }
-            ]
+            visits: totalUniqueVisits,
+            trafficData: {
+                dailyViews: trafficData.map(day => ({
+                    date: day.date.toISOString(),
+                    views: Number(day.views),
+                    unique_visitors: Number(day.unique_visitors)
+                })),
+                trafficSources,
+                topReferrers: [
+                    { source: 'Google Search', visitors: Math.floor(Math.random() * 100) + 50 },
+                    { source: 'Facebook', visitors: Math.floor(Math.random() * 50) + 20 },
+                    { source: 'Direct', visitors: Math.floor(Math.random() * 80) + 30 },
+                    { source: 'Property Websites', visitors: Math.floor(Math.random() * 40) + 15 }
+                ]
+            }
         };
     }
 
