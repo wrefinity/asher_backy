@@ -17,13 +17,6 @@ export const logSchema = Joi.object({
   applicationId: Joi.string().optional().allow(''),
   transactionId: Joi.string().optional().allow(''),
 }).custom((value, helpers) => {
-  // Check mutual exclusion
-  if (value.viewAgain && value.considerRenting) {
-    return helpers.error('any.invalid', {
-      message: '"viewAgain" and "considerRenting" cannot both be supplied'
-    });
-  }
-
   // Check required response if either field exists
   if ((value.viewAgain || value.considerRenting) && !value.response) {
     return helpers.error('any.required', {
@@ -33,7 +26,3 @@ export const logSchema = Joi.object({
 
   return value;
 });
-
-//cm8iz07wk000111s0iiku1vi6
-
-

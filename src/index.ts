@@ -46,7 +46,14 @@ import adminRouter from "./routes/admin.routes";
 import CreditScoreRouter from "./routes/creditScore.routes";
 
 // WebSocket tracking
-export const prismaClient = new PrismaClient({ log: ['query'] });
+export const prismaClient = new PrismaClient({ 
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    datasources: {
+        db: {
+            url: process.env.DATABASE_URL
+        }
+    }
+});
 export const userSockets = new Map<string, WebSocket>();
 class Server {
     private app: Express;

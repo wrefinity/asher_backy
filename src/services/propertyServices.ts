@@ -4,6 +4,7 @@ import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
+import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
 
 interface InactiveListingResult {
     property: any; // Replace 'any' with your Property type
@@ -397,7 +398,7 @@ class PropertyService {
     }
     // property listings
     getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true, availability: AvailabilityStatus = AvailabilityStatus.VACANT) => {
-        return await prismaClient.propertyListingHistory.findMany({
+        const listings = await prismaClient.propertyListingHistory.findMany({
             where: {
                 isActive,
                 onListing: isActive,
@@ -409,11 +410,40 @@ class PropertyService {
             include: {
                 property: {
                     include: {
-                        ...this.propsInclusion
+                        ...this.propsInclusion,
+                        state: true,
+                        images: true,
+                        videos: true,
+                        landlord: this.landlordInclusion,
+                        specification: {
+                            include: {
+                                residential: {
+                                    include: {
+                                        sharedFacilities: true
+                                    }
+                                },
+                                commercial: true,
+                                shortlet: true
+                            }
+                        }
                     }
                 },
+                unit: {
+                    include: {
+                        images: true,
+                        RoomDetail: true
+                    }
+                },
+                room: {
+                    include: {
+                        images: true
+                    }
+                }
             }
         });
+        
+        // Normalize all listings
+        return ListingNormalizer.normalizeMany(listings);
     }
 
     getInactiveListings = async (landlordId: string) => {
@@ -523,7 +553,8 @@ class PropertyService {
                                                 include: {
                                                     RoomDetail: true
                                                 }
-                                            }
+                                            },
+                                            sharedFacilities: true
                                         }
                                     },
                                     commercial: {
@@ -534,16 +565,27 @@ class PropertyService {
                                                 }
                                             }
                                         }
-                                    },
-                                    // shortlet: {
-                                    //     include: {
-                                    //         unitConfigurations: {
-                                    //             include: {
-                                    //                 RoomDetail: true
-                                    //             }
-                                    //         }
-                                    //     }
-                                    // }
+                                    }
+                                }
+                            },
+                            state: true,
+                            images: true,
+                            videos: true,
+                            landlord: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            email: true,
+                                            profile: {
+                                                select: {
+                                                    fullname: true,
+                                                    firstName: true,
+                                                    lastName: true,
+                                                    profileUrl: true
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -565,119 +607,24 @@ class PropertyService {
             });
 
             if (!listings || listings.length === 0) {
-                throw new Error('No listings found for this landlord');
+                return []; // Return empty array instead of throwing error
             }
 
-            // Process each listing
-            return await Promise.all(listings.map(async (listing) => {
-                switch (listing.type) {
-                    case ListingType.ENTIRE_PROPERTY:
-                        // Get the property specification
-                        const spec = listing.property.specification.find(
-                            spec => spec.specificationType === listing.listAs
-                        );
-
-                        if (!spec) {
-                            throw new Error(`Specification not found for property ${listing.property.id}`);
-                        }
-
-                        // Get units and rooms based on specification type
-                        let units = [];
-                        let rooms = [];
-
-                        if (listing.listAs === PropertySpecificationType.RESIDENTIAL && spec.residential) {
-                            units = spec.residential.unitConfigurations || [];
-                            rooms = units.flatMap(unit => unit.RoomDetail || []);
-                        }
-                        else if (listing.listAs === PropertySpecificationType.COMMERCIAL && spec.commercial) {
-                            units = spec.commercial.unitConfigurations || [];
-                            rooms = units.flatMap(unit => unit.RoomDetail || []);
-                        }
-                        // else if (listing.listAs === PropertySpecificationType.SHORTLET && specification.shortlet) {
-                        //     units = specification.shortlet.unitConfigurations || [];
-                        //     rooms = units.flatMap(unit => unit.RoomDetail || []);
-                        // }
-
-                        const { specification: propertySpec, ...restx } = listing.property;
-                        return {
-                            listingType: ListingType.ENTIRE_PROPERTY,
-                            priceFrequency: listing.priceFrequency,
-                            property: restx,
-                            specificationType: listing.listAs,
-                            specificationDetails: {
-                                residential: spec.residential,
-                                commercial: spec.commercial,
-                                // shortlet: specification.shortlet
-                            },
-                            units,
-                            rooms,
-                            price: listing.price,
-                            availability: {
-                                from: listing.availableFrom,
-                                to: listing.availableTo
-                            }
-                        };
-
-                    case ListingType.SINGLE_UNIT:
-                        if (!listing.unit) {
-                            throw new Error('Unit details not found for this listing');
-                        }
-                        const specification = listing.property.specification.find(
-                            spec => spec.specificationType === listing.listAs
-                        );
-
-                        const { specification: specx, ...rest } = listing.property
-
-
-                        return {
-                            listingType: ListingType.SINGLE_UNIT,
-                            property: rest,
-                            unit: listing.unit,
-                            specificationDetails: {
-                                residential: specification.residential,
-                                commercial: specification.commercial,
-                            },
-                            specificationType: listing.listAs,
-                            price: listing.price,
-                            priceFrequency: listing.priceFrequency,
-                            availability: {
-                                from: listing.availableFrom,
-                                to: listing.availableTo
-                            }
-                        };
-
-                    case ListingType.ROOM:
-                        if (!listing.room) {
-                            throw new Error('Room details not found for this listing');
-                        }
-                        const speck = listing.property.specification.find(
-                            spec => spec.specificationType === listing.listAs
-                        );
-
-                        const { specification: specxx, ...resty } = listing.property
-
-                        return {
-                            listingType: ListingType.ROOM,
-                            property: resty,
-                            specificationDetails: {
-                                residential: speck.residential,
-                                commercial: speck.commercial,
-                            },
-                            room: listing.room,
-                            unit: listing.unit,
-                            specificationType: listing.listAs,
-                            price: listing.price,
-                            priceFrequency: listing.priceFrequency,
-                            availability: {
-                                from: listing.availableFrom,
-                                to: listing.availableTo
-                            }
-                        };
-
-                    default:
-                        throw new Error(`Unknown listing type: ${listing.type}`);
-                }
+            // Normalize all listings
+            const normalizedListings = await Promise.all(listings.map(async (listing) => {
+                const normalized = ListingNormalizer.normalize(listing);
+                
+                // Get related listings
+                normalized.relatedListings = await ListingNormalizer.getRelatedListings(
+                    listing.propertyId!,
+                    listing.id,
+                    prismaClient
+                );
+                
+                return normalized;
             }));
+
+            return normalizedListings;
         } catch (error) {
             console.error('Error fetching property listings:', error);
             throw error;
@@ -935,84 +882,49 @@ class PropertyService {
                         reviews: true,
                         UserLikedProperty: true,
                         landlord: this.landlordInclusion,
-                        specification: this.specificationInclusion,
+                        specification: {
+                            include: {
+                                residential: {
+                                    include: {
+                                        sharedFacilities: true
+                                    }
+                                },
+                                commercial: true,
+                                shortlet: true
+                            }
+                        },
                     },
                 },
-                unit: true,
-                room: true,
+                unit: {
+                    include: {
+                        images: true,
+                        RoomDetail: true
+                    }
+                },
+                room: {
+                    include: {
+                        images: true
+                    }
+                },
             },
             skip,
             take,
         });
-        // Transform the properties to spread specifications based on listAs type
-        const transformedProperties = await Promise.all(properties.map(async (property) => {
-            // Type assertion for the specification array
-            const specification = property.property.specification as {
-                residential?: any;
-                commercial?: any;
-                shortlet?: any;
-            } | undefined;
-
-            const { specification: _, ...propertyWithoutSpec } = property.property;
-            const primarySpec = specification?.[0];
-
-            let specData = null;
-            let specificationType = primarySpec?.specificationType;
-            let propertySubType = primarySpec?.propertySubType;
-
-            // Type-safe specification extraction
-            if (primarySpec) {
-                switch (property.listAs) {
-                    case PropertySpecificationType.COMMERCIAL:
-                        if (primarySpec.commercial) {
-                            const { id, ...restCommercial } = primarySpec.commercial
-                            specData = { ...restCommercial, commercialPropertyId: id };
-                        }
-                        break;
-                    case PropertySpecificationType.RESIDENTIAL:
-                        if (primarySpec.residential) {
-                            specData = primarySpec.residential;
-
-                            const { id, ...restResidential } = primarySpec.residential
-                            specData = { ...restResidential, residentialPropertyId: id };
-                        }
-                        break;
-                    case PropertySpecificationType.SHORTLET:
-                        if (primarySpec.shortlet) {
-
-
-                            specData = primarySpec.shortlet;
-
-                            const { id, ...restShortlet } = primarySpec.shortlet
-                            specData = { ...restShortlet, shortletPropertyId: id };
-                        }
-                        break;
-                }
-            }
-
-            // Build hierarchy information
-            const hierarchy = this.buildHierarchy(property);
-
+        // Normalize all properties using the ListingNormalizer
+        const normalizedProperties = await Promise.all(properties.map(async (property) => {
+            const normalized = ListingNormalizer.normalize(property);
+            
             // Get related listings
-            const relatedListings = await this.getRelatedListings(property.property.id, property.id);
-
-            return {
-                ...property,
-                hierarchy,
-                relatedListings,
-                property: {
-                    ...propertyWithoutSpec,
-                    // Only include spec data if it exists
-                    ...(specData ? specData : {}),
-                    specificationType,
-                    propertySubType,
-                    // Include all specifications for reference if needed
-                    allSpecifications: specification
-                }
-            };
+            normalized.relatedListings = await ListingNormalizer.getRelatedListings(
+                property.propertyId!,
+                property.id,
+                prismaClient
+            );
+            
+            return normalized;
         }));
 
-        return transformedProperties;
+        return normalizedProperties;
     };
 
     // Build hierarchy information for a listing
@@ -1816,7 +1728,11 @@ class PropertyService {
                                     isActive: true
                                 },
                                 include: {
-                                    residential: true,
+                                    residential: {
+                                        include: {
+                                            sharedFacilities: true
+                                        }
+                                    },
                                     commercial: true,
                                     shortlet: true
                                 },
@@ -1824,14 +1740,20 @@ class PropertyService {
                             },
                             state: true,
                             images: true,
+                            videos: true,
                             landlord: {
                                 include: {
                                     user: {
                                         select: {
+                                            id: true,
                                             email: true,
                                             profile: {
                                                 select: {
+                                                    id: true,
                                                     fullname: true,
+                                                    firstName: true,
+                                                    lastName: true,
+                                                    middleName: true,
                                                     profileUrl: true
                                                 }
                                             }
@@ -1859,41 +1781,33 @@ class PropertyService {
                 throw new Error('Listing not found');
             }
 
-            // Get the first active specification or null
-            const activeSpecification = listing.property?.specification[0] || null;
+            // Check if property itself has an active listing (for breadcrumb navigation)
+            let propertyListingId: string | null = null;
+            if (listing.type !== 'ENTIRE_PROPERTY' && listing.propertyId) {
+                const propertyListing = await prismaClient.propertyListingHistory.findFirst({
+                    where: {
+                        propertyId: listing.propertyId,
+                        type: 'ENTIRE_PROPERTY',
+                        onListing: true,
+                        isActive: true
+                    },
+                    select: { id: true },
+                    orderBy: { createdAt: 'desc' }
+                });
+                propertyListingId = propertyListing?.id || null;
+            }
 
-            // Transform the specification to include IDs
-            const transformedSpecification = activeSpecification ? {
-                ...activeSpecification,
-                residentialId: activeSpecification.residential?.id ?? null,
-                commercialId: activeSpecification.commercial?.id ?? null,
-                shortletId: activeSpecification.shortlet?.id ?? null
-            } : null;
+            // Normalize the listing (pass propertyListingId if available)
+            const normalized = ListingNormalizer.normalize(listing, propertyListingId);
+            
+            // Get related listings
+            normalized.relatedListings = await ListingNormalizer.getRelatedListings(
+                listing.propertyId!,
+                listing.id,
+                prismaClient
+            );
 
-            return {
-                property: {
-                    ...listing.property,
-                    specification: transformedSpecification
-                },
-                id: listing.id,
-                applicationFeeAmount: listing.applicationFeeAmount,
-                payApplicationFee: listing.payApplicationFee,
-                isActive: listing.isActive,
-                onListing: listing.onListing,
-                listAs: listing.listAs,
-                propertySubType: listing.propertySubType,
-                price: listing.price,
-                priceFrequency: listing.priceFrequency,
-                securityDeposit: listing.securityDeposit,
-                minStayDays: listing.minStayDays,
-                maxStayDays: listing.maxStayDays,
-                availableFrom: listing.availableFrom,
-                availableTo: listing.availableTo,
-                type: listing.type,
-                specification: transformedSpecification,
-                room: listing.room,
-                unit: listing.unit
-            };
+            return normalized;
         } catch (error) {
             console.error('Error fetching property listing:', error);
             throw error;
