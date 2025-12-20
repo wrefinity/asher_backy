@@ -197,18 +197,35 @@ async calculateRentStatus(latestTransaction: Transaction | undefined): Promise<R
 
     async getDashboardData(userId: string): Promise<DashboardData> {
         try {
-            const cachedData = await this.redisService.get(`dashboard:${userId}`);
-            if (cachedData) {
-                console.log(`Cache hit for user ${userId}`);
-                return JSON.parse(cachedData);
+            // Try to get cached data, but don't fail if Redis is unavailable
+            let cachedData = null;
+            try {
+                if (this.redisService) {
+                    cachedData = await this.redisService.get(`dashboard:${userId}`);
+                    if (cachedData) {
+                        console.log(`Cache hit for user ${userId}`);
+                        return JSON.parse(cachedData);
+                    }
+                }
+            } catch (redisError) {
+                console.warn('Redis cache read failed, continuing without cache:', redisError);
             }
 
-            console.log(`Cache miss for user ${userId}`);
+            console.log(`Cache miss for user ${userId} - fetching fresh data`);
             const dashboardData = await this.dashboardDetails(userId);
-            await this.redisService.set(`dashboard:${userId}`, JSON.stringify(dashboardData), DashboardService.CACHE_TTL);
+
+            // Try to cache data, but don't fail if Redis is unavailable
+            try {
+                if (this.redisService) {
+                    await this.redisService.set(`dashboard:${userId}`, JSON.stringify(dashboardData), DashboardService.CACHE_TTL);
+                }
+            } catch (redisError) {
+                console.warn('Redis cache write failed, returning data anyway:', redisError);
+            }
+
             return dashboardData;
         } catch (error) {
-            console.error('Error with Redis operation:', error);
+            console.error('Error fetching dashboard data:', error);
             throw error;
         }
     }
