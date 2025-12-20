@@ -981,6 +981,7 @@ class ApplicantService {
         id: true,
         tenantId: true,
         tenantCode: true,
+        applicationId: true,
         personalInfo: true,
         nextOfKinInfo: true,
         employmentInfo: true,
@@ -989,6 +990,8 @@ class ApplicantService {
         residentialInfo: true,
         applicationQuestions: true,
         declarationInfo: true,
+        leaseStartDate: true,
+        leaseEndDate: true,
         user: {
           select: {
             id: true,
@@ -1000,7 +1003,12 @@ class ApplicantService {
           select: {
             id: true,
             name: true,
-            address: true
+            address: true,
+            price: true,
+            securityDeposit: true,
+            currency: true,
+            priceFrequency: true,
+            rentalPeriod: true,
           }
         },
         landlord: {
