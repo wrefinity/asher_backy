@@ -152,11 +152,21 @@ class ReviewService {
             }
         });
     }
-    getReviewsByTenantId = async (vendorId: string): Promise<reviews[]> => {
+    getReviewsByTenantId = async (tenantId: string): Promise<reviews[]> => {
         return await prismaClient.reviews.findMany({
             where: {
-                vendorId, 
+                tenantId, 
                 isDeleted: false
+            },
+            include: {
+                user: {
+                    include: {
+                        profile: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
             }
         });
     }

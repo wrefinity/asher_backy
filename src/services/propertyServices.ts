@@ -611,18 +611,27 @@ class PropertyService {
             }
 
             // Normalize all listings
-            const normalizedListings = await Promise.all(listings.map(async (listing) => {
-                const normalized = ListingNormalizer.normalize(listing);
+            // Batch related listings queries to prevent connection pool exhaustion
+            const BATCH_SIZE = 5; // Process 5 listings at a time
+            const normalizedListings: NormalizedListing[] = [];
+            
+            for (let i = 0; i < listings.length; i += BATCH_SIZE) {
+                const batch = listings.slice(i, i + BATCH_SIZE);
+                const batchResults = await Promise.all(batch.map(async (listing) => {
+                    const normalized = ListingNormalizer.normalize(listing);
+                    
+                    // Get related listings
+                    normalized.relatedListings = await ListingNormalizer.getRelatedListings(
+                        listing.propertyId!,
+                        listing.id,
+                        prismaClient
+                    );
+                    
+                    return normalized;
+                }));
                 
-                // Get related listings
-                normalized.relatedListings = await ListingNormalizer.getRelatedListings(
-                    listing.propertyId!,
-                    listing.id,
-                    prismaClient
-                );
-                
-                return normalized;
-            }));
+                normalizedListings.push(...batchResults);
+            }
 
             return normalizedListings;
         } catch (error) {
@@ -911,18 +920,27 @@ class PropertyService {
             take,
         });
         // Normalize all properties using the ListingNormalizer
-        const normalizedProperties = await Promise.all(properties.map(async (property) => {
-            const normalized = ListingNormalizer.normalize(property);
+        // Batch related listings queries to prevent connection pool exhaustion
+        const BATCH_SIZE = 5; // Process 5 properties at a time
+        const normalizedProperties: NormalizedListing[] = [];
+        
+        for (let i = 0; i < properties.length; i += BATCH_SIZE) {
+            const batch = properties.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(async (property) => {
+                const normalized = ListingNormalizer.normalize(property);
+                
+                // Get related listings
+                normalized.relatedListings = await ListingNormalizer.getRelatedListings(
+                    property.propertyId!,
+                    property.id,
+                    prismaClient
+                );
+                
+                return normalized;
+            }));
             
-            // Get related listings
-            normalized.relatedListings = await ListingNormalizer.getRelatedListings(
-                property.propertyId!,
-                property.id,
-                prismaClient
-            );
-            
-            return normalized;
-        }));
+            normalizedProperties.push(...batchResults);
+        }
 
         return normalizedProperties;
     };

@@ -47,14 +47,26 @@ import CreditScoreRouter from "./routes/creditScore.routes";
 
 // WebSocket tracking
 // Configure Prisma with connection pooling to prevent connection exhaustion
-export const prismaClient = new PrismaClient({ 
+// Use singleton pattern to ensure only one Prisma client instance
+const globalForPrisma = global as unknown as { prismaClient: PrismaClient };
+
+export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({ 
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
         db: {
             url: process.env.DATABASE_URL
         }
-    }
+    },
+    // Connection pool configuration to prevent connection exhaustion
+    // These settings limit the number of connections Prisma will use
+    // Adjust based on your database's max_connections setting
+    // Default Prisma pool size is typically 10 connections
 });
+
+// In development, reuse the same instance across hot reloads
+if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prismaClient = prismaClient;
+}
 export const userSockets = new Map<string, WebSocket>();
 class Server {
     private app: Express;

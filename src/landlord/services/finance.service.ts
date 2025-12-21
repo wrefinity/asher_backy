@@ -116,6 +116,10 @@ class FinanceService {
         paymentUrl = payment.url;
         referenceId = payment.id;
 
+        // Generate unique reference IDs for each transaction
+        const payeeReferenceId = `${referenceId}_payee`;
+        const creatorReferenceId = `${referenceId}_creator`;
+
         // Create a transaction for the payee (the person who will make the payment)
         const payeeTransaction = await transactionServices.createTransaction({
             userId: payeeId,
@@ -125,12 +129,13 @@ class FinanceService {
             status: TransactionStatus.PENDING,
             reference: TransactionReference.MAKE_PAYMENT,
             walletId: payeeWallet.id,
-            referenceId: referenceId,
+            referenceId: payeeReferenceId,
             paymentGateway: PaymentGateway.STRIPE,
             ...(PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
         });
 
         // Create a pending transaction for the creator (the person who will receive the payment)
+        // Note: Only the payee transaction has stripePaymentIntentId to avoid unique constraint violation
         await transactionServices.createTransaction({
             userId: creatorId,
             amount: amount,
@@ -139,9 +144,9 @@ class FinanceService {
             status: TransactionStatus.PENDING,
             reference: TransactionReference.RECEIVE_PAYMENT,
             walletId: creatorWallet.id,
-            referenceId: referenceId,
+            referenceId: creatorReferenceId,
             paymentGateway: PaymentGateway.STRIPE,
-            ...(PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
+            // Don't set stripePaymentIntentId here - it's unique and already set on payee transaction
         });
 
         return {
@@ -288,20 +293,24 @@ class FinanceService {
         this.checkAlerts(budget, newCurrentAmount);
     }
 
-    async getIncomeBreakdown(userId: string, year?: number) {
+    async getIncomeBreakdown(userId: string, year?: number, propertyId?: string) {
         const filterYear = year || new Date().getFullYear();
         const result = [];
         for (let month = 1; month <= 12; month++) {
             const startDate = new Date(filterYear, month - 1, 1);
             const endDate = new Date(filterYear, month, 1);
+            const where: any = {
+                userId,
+                createdAt: { gte: startDate, lt: endDate },
+                reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
+                status: TransactionStatus.COMPLETED,
+                type: TransactionType.CREDIT,
+            };
+            if (propertyId) {
+                where.propertyId = propertyId;
+            }
             const transactions = await prismaClient.transaction.findMany({
-                where: {
-                    userId,
-                    createdAt: { gte: startDate, lt: endDate },
-                    reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
-                    status: TransactionStatus.COMPLETED,
-                    type: TransactionType.CREDIT,
-                },
+                where,
             });
             let rent = 0, late_fees = 0, charges = 0;
             transactions.forEach(t => {
@@ -314,20 +323,24 @@ class FinanceService {
         return result;
     }
 
-    async getExpenseBreakdown(userId: string, year?: number) {
+    async getExpenseBreakdown(userId: string, year?: number, propertyId?: string) {
         const filterYear = year || new Date().getFullYear();
         const result = [];
         for (let month = 1; month <= 12; month++) {
             const startDate = new Date(filterYear, month - 1, 1);
             const endDate = new Date(filterYear, month, 1);
+            const where: any = {
+                userId,
+                createdAt: { gte: startDate, lt: endDate },
+                reference: { in: [TransactionReference.MAINTENANCE_FEE, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS] },
+                status: TransactionStatus.COMPLETED,
+                type: TransactionType.DEBIT,
+            };
+            if (propertyId) {
+                where.propertyId = propertyId;
+            }
             const transactions = await prismaClient.transaction.findMany({
-                where: {
-                    userId,
-                    createdAt: { gte: startDate, lt: endDate },
-                    reference: { in: [TransactionReference.MAINTENANCE_FEE, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS] },
-                    status: TransactionStatus.COMPLETED,
-                    type: TransactionType.DEBIT,
-                },
+                where,
             });
             let maintenance = 0, supplies = 0, equipment = 0;
             transactions.forEach(t => {
@@ -340,38 +353,46 @@ class FinanceService {
         return result;
     }
 
-    async getStats(userId: string, year?: number) {
+    async getStats(userId: string, year?: number, propertyId?: string) {
         const filterYear = year || new Date().getFullYear();
         const startDate = new Date(filterYear, 0, 1);
         const endDate = new Date(filterYear + 1, 0, 1);
+        const revenueWhere: any = {
+            userId,
+            reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
+            createdAt: { gte: startDate, lt: endDate },
+            status: TransactionStatus.COMPLETED,
+            type: TransactionType.CREDIT,
+        };
+        const expensesWhere: any = {
+            userId,
+            reference: { in: [TransactionReference.MAINTENANCE_FEE, TransactionReference.BILL_PAYMENT, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
+            createdAt: { gte: startDate, lt: endDate },
+            status: TransactionStatus.COMPLETED,
+            type: TransactionType.DEBIT,
+        };
+        const outstandingWhere: any = {
+            userId,
+            reference: TransactionReference.RENT_DUE,
+            status: TransactionStatus.PENDING,
+            createdAt: { gte: startDate, lt: endDate },
+        };
+        if (propertyId) {
+            revenueWhere.propertyId = propertyId;
+            expensesWhere.propertyId = propertyId;
+            outstandingWhere.propertyId = propertyId;
+        }
         const revenue = await prismaClient.transaction.aggregate({
             _sum: { amount: true },
-            where: {
-                userId,
-                reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
-                createdAt: { gte: startDate, lt: endDate },
-                status: TransactionStatus.COMPLETED,
-                type: TransactionType.CREDIT,
-            },
+            where: revenueWhere,
         });
         const expenses = await prismaClient.transaction.aggregate({
             _sum: { amount: true },
-            where: {
-                userId,
-                reference: { in: [TransactionReference.MAINTENANCE_FEE, TransactionReference.BILL_PAYMENT, TransactionReference.SUPPLIES, TransactionReference.EQUIPMENTS, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
-                createdAt: { gte: startDate, lt: endDate },
-                status: TransactionStatus.COMPLETED,
-                type: TransactionType.DEBIT,
-            },
+            where: expensesWhere,
         });
         const outstanding = await prismaClient.transaction.aggregate({
             _sum: { amount: true },
-            where: {
-                userId,
-                reference: TransactionReference.RENT_DUE,
-                status: TransactionStatus.PENDING,
-                createdAt: { gte: startDate, lt: endDate },
-            },
+            where: outstandingWhere,
         });
         return {
             totalRevenue: Number(revenue._sum.amount) || 0,
@@ -381,23 +402,31 @@ class FinanceService {
         };
     }
 
-    async getRecentTransactions(userId: string, limit = 5) {
+    async getRecentTransactions(userId: string, limit = 5, propertyId?: string) {
+        const where: any = { userId };
+        if (propertyId) {
+            where.propertyId = propertyId;
+        }
         return await prismaClient.transaction.findMany({
-            where: { userId },
+            where,
             orderBy: { createdAt: 'desc' },
             take: limit,
         });
     }
 
-    async getUpcomingPayments(userId: string, limit = 5) {
+    async getUpcomingPayments(userId: string, limit = 5, propertyId?: string) {
         const now = new Date();
+        const where: any = {
+            userId,
+            reference: { in: [TransactionReference.RENT_DUE, TransactionReference.BILL_PAYMENT] },
+            status: TransactionStatus.PENDING,
+            createdAt: { gte: now },
+        };
+        if (propertyId) {
+            where.propertyId = propertyId;
+        }
         return await prismaClient.transaction.findMany({
-            where: {
-                userId,
-                reference: { in: [TransactionReference.RENT_DUE, TransactionReference.BILL_PAYMENT] },
-                status: TransactionStatus.PENDING,
-                createdAt: { gte: now },
-            },
+            where,
             take: limit,
             orderBy: { createdAt: 'asc' },
         });

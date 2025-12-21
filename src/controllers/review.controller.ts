@@ -203,6 +203,30 @@ class ReviewController {
         }
     }
 
+    getReviewsByTenant = async (req: CustomRequest, res: Response) => {
+        try {
+            const tenantId = req.params.tenantId;
+            if (!tenantId) {
+                return res.status(400).json({ error: "Tenant ID is required" });
+            }
+
+            const reviews = await ReviewService.getReviewsByTenantId(tenantId);
+            
+            const averageRating = reviews.length > 0
+                ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+                : 0;
+
+            return res.status(200).json({
+                success: true,
+                data: reviews,
+                averageRating: averageRating,
+                totalReviews: reviews.length
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || "Failed to get reviews by tenant" });
+        }
+    }
+
 }
 
 export default new ReviewController();

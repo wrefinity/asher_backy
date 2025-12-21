@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { Authorize } from "../../middlewares/authorize";
 import TenantLandlordController from "../controllers/tenant.controller";
+import DocumentRequestController from "../controllers/documentRequest.controller";
 import { uploadcsv } from "../../configs/multer";
+import upload from "../../configs/multer";
 class TenantsLandlordRouter {
     public router: Router;
     authenticateService: Authorize
@@ -31,6 +33,13 @@ class TenantsLandlordRouter {
         this.router.get('/complaints/:tenantId', TenantLandlordController.getTenantComplaints)
         this.router.post('/violations', TenantLandlordController.createTenantViolation)
         this.router.get('/violations/:tenantId', TenantLandlordController.getTenantViolations)
+        // Document requests (more specific routes first)
+        this.router.post('/:tenantId/document-requests', DocumentRequestController.createDocumentRequest)
+        this.router.get('/:tenantId/document-requests', DocumentRequestController.getDocumentRequests)
+        this.router.post('/document-requests/:id/fulfill', upload.single('file'), DocumentRequestController.fulfillDocumentRequest)
+        // Rent adjustment route (before generic :tenantId routes)
+        this.router.patch('/:tenantId/rent', TenantLandlordController.adjustTenantRent)
+        // Other tenant routes
         this.router.get('/get/:tenantId', TenantLandlordController.getTenant)
         this.router.get('/documents/:tenantId', TenantLandlordController.getterTenantsDocument)
         this.router.patch('/create-tenant-application-info/:userId/:inviteId', TenantLandlordController.createApplicationFromLast)

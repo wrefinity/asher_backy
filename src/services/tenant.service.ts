@@ -1,4 +1,5 @@
 import { prismaClient } from "..";
+import { TenantNormalizer } from "../utils/TenantNormalizer";
 
 
 class TenantService {
@@ -46,6 +47,65 @@ class TenantService {
       include: { user: true },
     });
   }
+  
+  // Common include structure for tenant queries with all relations
+  // Note: applicationQuestions, declarationInfo, employmentInfo, etc. are JSON fields in the tenant model
+  // They are included automatically when fetching the tenant, but we also include the application relation
+  // which has structured data that may be more complete
+  // Performance: Only select essential fields from room/unit to minimize data transfer
+  private getTenantInclude() {
+    return {
+      user: {
+        include: {
+          profile: true,
+        },
+      },
+      property: {
+        include: {
+          state: true,
+        },
+      },
+      room: {
+        select: {
+          id: true,
+          roomName: true,
+          price: true,
+          priceFrequency: true,
+        },
+      },
+      unit: {
+        select: {
+          id: true,
+          unitType: true,
+          unitNumber: true,
+          price: true,
+          priceFrequency: true,
+        },
+      },
+      application: {
+        include: {
+          personalDetails: {
+            include: {
+              nextOfKin: true,
+            },
+          },
+          employmentInfo: true,
+          guarantorInformation: true,
+          residentialInfo: {
+            include: {
+              prevAddresses: true,
+            },
+          },
+          applicationQuestions: true,
+          declaration: true,
+          referee: true,
+        },
+      },
+      // These are JSON fields, not relations, so they're automatically included
+      // but we can access them as tenant.applicationQuestions, tenant.declarationInfo, etc.
+    };
+  }
+  
   // Fetch all tenants for a given property
   getTenantsForProperty = async (propertyId: string) => {
     // Query the tenants table to get all tenants linked to the propertyId
@@ -53,22 +113,19 @@ class TenantService {
       where: {
         propertyId: propertyId,
       },
-      include: {
-        user: true,
-      },
+      include: this.getTenantInclude(),
     });
     return tenants;
   }
   // Fetch all tenants for a given property
   getTenantsForLandlord = async (landlordId: string) => {
     // Query the tenants table to get all tenants linked to the landlordId
+    // Use getTenantInclude for consistency and to support normalization
     const tenants = await prismaClient.tenants.findMany({
       where: {
         landlordId: landlordId,
       },
-      include: {
-        user: true,
-      },
+      include: this.getTenantInclude(),
     });
     const currentDate = new Date();
     const categorizedTenants = {
@@ -105,7 +162,12 @@ class TenantService {
       }
     });
 
-    return categorizedTenants;
+    // Normalize all tenants for consistency
+    return {
+      current: TenantNormalizer.normalizeMany(categorizedTenants.current),
+      previous: TenantNormalizer.normalizeMany(categorizedTenants.previous),
+      future: TenantNormalizer.normalizeMany(categorizedTenants.future),
+    };
   }
 
 
@@ -148,7 +210,12 @@ class TenantService {
       }
     });
 
-    return categorizedTenants;
+    // Normalize all tenants using TenantNormalizer
+    return {
+      current: TenantNormalizer.normalizeMany(categorizedTenants.current),
+      previous: TenantNormalizer.normalizeMany(categorizedTenants.previous),
+      future: TenantNormalizer.normalizeMany(categorizedTenants.future),
+    };
   };
 
 }

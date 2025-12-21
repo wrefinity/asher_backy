@@ -585,34 +585,49 @@ export class ListingNormalizer {
      * This should be called separately and merged into the normalized listing
      */
     static async getRelatedListings(propertyId: string, excludeListingId: string, prismaClient: any): Promise<NormalizedListing['relatedListings']> {
-        const related = await prismaClient.propertyListingHistory.findMany({
-            where: {
-                propertyId,
-                id: { not: excludeListingId },
-                onListing: true,
-                isActive: true
-            },
-            include: {
-                unit: true,
-                room: true
+        try {
+            const related = await prismaClient.propertyListingHistory.findMany({
+                where: {
+                    propertyId,
+                    id: { not: excludeListingId },
+                    onListing: true,
+                    isActive: true
+                },
+                include: {
+                    unit: true,
+                    room: true
+                }
+            });
+            
+            const units = related.filter((r: any) => r.type === 'SINGLE_UNIT');
+            const rooms = related.filter((r: any) => r.type === 'ROOM');
+            
+            return {
+                units: units.map((u: any) => ({
+                    id: u.id,
+                    name: `${u.unit?.unitType || 'Unit'} ${u.unit?.unitNumber || ''}`.trim() || 'Unnamed Unit',
+                    price: this.convertDecimalToString(u.price) || this.convertDecimalToString(u.unit?.price) || '0'
+                })),
+                rooms: rooms.map((r: any) => ({
+                    id: r.id,
+                    name: r.room?.roomName || 'Unnamed Room',
+                    price: this.convertDecimalToString(r.price) || this.convertDecimalToString(r.room?.price) || '0'
+                })),
+                totalCount: units.length + rooms.length
+            };
+        } catch (error: any) {
+            // Handle connection pool exhaustion gracefully
+            if (error?.code === 'P2037' || error?.message?.includes('connection') || error?.message?.includes('too many clients')) {
+                console.warn(`Database connection pool exhausted while fetching related listings for property ${propertyId}. Returning empty related listings.`);
+                // Return empty related listings instead of failing
+                return {
+                    units: [],
+                    rooms: [],
+                    totalCount: 0
+                };
             }
-        });
-        
-        const units = related.filter((r: any) => r.type === 'SINGLE_UNIT');
-        const rooms = related.filter((r: any) => r.type === 'ROOM');
-        
-        return {
-            units: units.map((u: any) => ({
-                id: u.id,
-                name: `${u.unit?.unitType || 'Unit'} ${u.unit?.unitNumber || ''}`.trim() || 'Unnamed Unit',
-                price: this.convertDecimalToString(u.price) || this.convertDecimalToString(u.unit?.price) || '0'
-            })),
-            rooms: rooms.map((r: any) => ({
-                id: r.id,
-                name: r.room?.roomName || 'Unnamed Room',
-                price: this.convertDecimalToString(r.price) || this.convertDecimalToString(r.room?.price) || '0'
-            })),
-            totalCount: units.length + rooms.length
-        };
+            // Re-throw other errors
+            throw error;
+        }
     }
 }

@@ -4,7 +4,7 @@ import { CustomRequest } from "../../utils/types"
 import TenantService from "../../tenant/services/tenants.services"
 import TenantServiceMain from "../../services/tenant.service"
 import UserServices from '../../services/user.services';
-import { EnquireStatus, userRoles, YesNo } from '@prisma/client';
+import { EnquireStatus, userRoles, YesNo, LogType } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantArraySchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
@@ -459,6 +459,79 @@ class TenantControls {
             // Response structure
             return res.status(201).json({
                 documents: allDocuments
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Adjust tenant rent
+     * PATCH /api/landlord/tenants/:tenantId/rent
+     */
+    adjustTenantRent = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            
+            if (!landlordId) {
+                return res.status(401).json({ error: 'Please login as landlord' });
+            }
+
+            const { scheduledRent, startDate, dueDate, gracePeriod, lateFeeType, lateFeeAmount } = req.body;
+
+            // Validate required fields
+            if (!scheduledRent || scheduledRent <= 0) {
+                return res.status(400).json({ error: 'Scheduled rent must be a positive number' });
+            }
+
+            if (!startDate || !dueDate) {
+                return res.status(400).json({ error: 'Start date and due date are required' });
+            }
+
+            // Verify tenant belongs to landlord
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            
+            if (!tenant) {
+                return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+            }
+
+            // Import prismaClient and get old rent value before update
+            const { prismaClient } = await import('../..');
+            
+            const property = await prismaClient.properties.findUnique({
+                where: { id: tenant.propertyId },
+                select: { price: true }
+            });
+            const oldRent = property?.price ? Number(property.price) : 0;
+
+            // Update property price (this affects the tenant's rent)
+            const updatedProperty = await prismaClient.properties.update({
+                where: { id: tenant.propertyId },
+                data: {
+                    price: scheduledRent,
+                }
+            });
+
+            // Create log entry to track rent adjustment history
+            await LogsServices.createLog({
+                events: `Rent adjusted from ${oldRent} to ${scheduledRent} for tenant ${tenantId}`,
+                type: LogType.ACTIVITY,
+                propertyId: tenant.propertyId,
+                createdById: req.user?.id,
+                subjects: `Rent Adjustment: ${oldRent} → ${scheduledRent}`,
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Rent adjusted successfully',
+                data: {
+                    tenantId,
+                    propertyId: tenant.propertyId,
+                    oldRent,
+                    newRent: scheduledRent,
+                    property: updatedProperty
+                }
             });
         } catch (error) {
             errorService.handleError(error, res);
