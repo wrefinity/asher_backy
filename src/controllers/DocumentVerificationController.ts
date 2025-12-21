@@ -4,6 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import logger from "../utils/loggers";
+import GeminiAiServices from '../services/gemini'
+import { CustomRequest, DocumentType } from "../utils/types";
 
 class DocumentVerificationController {
   /**
@@ -138,6 +140,15 @@ class DocumentVerificationController {
           ? "⚠️ Document verified but review recommended"
           : "❌ Document verification failed"
     });
+  });
+  analyzerDocument = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const files = req.body.cloudinaryDocumentUrls || [];
+    const results = await Promise.all(
+      files.map(file =>
+        GeminiAiServices.analyzeDocument(file.base64, DocumentType.ID_CARD)
+      )
+    );
+    return res.json({ success: true, results });
   });
 }
 

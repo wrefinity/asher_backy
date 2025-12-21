@@ -19,7 +19,8 @@ class ProfileRoutes {
 
     private initializeRoutes(): void {
         this.router.post('/update', upload.array('files'), uploadToCloudinary, validateBody(profileSchema), ProfileControls.profileUpdate)
-        this.router.post('/search-preferences', validateBody(userSearchPreferenceSchema), ProfileControls.addUserSearchPreference);;
+        this.router.post('/search-preferences', validateBody(userSearchPreferenceSchema), ProfileControls.addUserSearchPreference);
+        this.router.get('/with-application-data', ProfileControls.getProfileWithApplicationData); // NEW ROUTE
         this.router.get('/', ProfileControls.getCurrentUserProfile);
     }
 }

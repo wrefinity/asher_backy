@@ -177,7 +177,6 @@ class AnalyticsController {
             res.status(500).json(new ApiResponse(500, null, error.message));
         }
     }
-
     async getPropertyComparisonData(req: CustomRequest, res: Response) {
         try {
             const userId = req.user?.id;

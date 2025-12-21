@@ -1,32 +1,29 @@
-# Use a lightweight Node.js image
 FROM node:20-alpine
 
-# Create app directory
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json (if available)
+RUN apk add --no-cache openssl libc6-compat
+
+# Copy dependency files
 COPY package*.json ./
 
+# Copy prisma schema early
+COPY prisma ./prisma
 
-RUN npm install --include=optional
-
-# Install sharp with platform-specific options
-RUN npm install --os=linux --libc=musl --cpu=arm64 sharp
-
-# Install dependencies
+# Install deps
 RUN npm install
 
-# Copy the rest of the app code
+# Copy source code
 COPY . .
-
-# Expose the port the app will run on
-# EXPOSE 5000
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Install nodemon globally
-RUN npm install -g nodemon
+# Compile TypeScript code to JavaScript
+RUN npx tsc
 
-# Command for starting with nodemon
-CMD ["npx", "nodemon"]
+# Set the environment variable to production mode
+ENV NODE_ENV=production
+
+# Start compiled app
+CMD ["npm", "start"]

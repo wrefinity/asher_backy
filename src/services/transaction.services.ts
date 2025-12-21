@@ -29,6 +29,7 @@ export interface TransactionIF {
     paymentGateway?: PaymentGateway | null; // Assuming `PaymentGateway` is an enum or union type
     stripePaymentIntentId?: string | null;
     propertyId?: string | null;
+    applicationId?: string | null;
     billId?: string | null;
     currency?: string | null;
     metadata?: object
@@ -61,6 +62,7 @@ class TransactionService {
             paymentGateway: data.paymentGateway,
             stripePaymentIntentId: data.stripePaymentIntentId,
             property: data.propertyId ? { connect: { id: data.propertyId } } : undefined,
+            application: data.applicationId ? { connect: { id: data.applicationId } } : undefined,
             billsSubCategory: data.billId ? { connect: { id: data.billId } } : undefined,
             currency: data.currency,
         };
@@ -110,6 +112,7 @@ class TransactionService {
         paymentGateway?: PaymentGateway;
         stripePaymentIntentId?: string;
         propertyId?: string;
+        applicationId?: string;
         billId?: string;
         metadata?: object;
     }) => {

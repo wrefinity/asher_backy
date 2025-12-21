@@ -86,12 +86,16 @@ async dashboardDetails(userId: string): Promise<DashboardData> {
         if (tenants && tenants.length > 0) {
             const currentLease = tenants.find(t => t.isCurrentLease);
             if (currentLease) {
-                // Pass a transaction instead of tenant.id
+                // Pass tenant and transaction to calculate rent status properly
                 const latestTransaction = await prismaClient.transaction.findFirst({
-                    where: { userId, propertyId: currentLease.propertyId },
+                    where: { 
+                        userId, 
+                        propertyId: currentLease.propertyId,
+                        reference: TransactionReference.RENT_PAYMENT,
+                    },
                     orderBy: { createdAt: "desc" },
                 });
-                rentStatus = await this.calculateRentStatus(latestTransaction ?? undefined);
+                rentStatus = await this.calculateRentStatus(currentLease, latestTransaction ?? undefined);
             }
         }
 
@@ -116,8 +120,12 @@ async dashboardDetails(userId: string): Promise<DashboardData> {
 
 
 
-async calculateRentStatus(latestTransaction: Transaction | undefined): Promise<RentStatus> {
-    if (!latestTransaction) {
+async calculateRentStatus(tenant: any, latestTransaction: Transaction | undefined): Promise<RentStatus> {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+
+    // If no tenant data, return default
+    if (!tenant || !tenant.dateOfFirstRent) {
         return {
             isOverdue: false,
             daysUntilDue: 0,
@@ -126,15 +134,113 @@ async calculateRentStatus(latestTransaction: Transaction | undefined): Promise<R
         };
     }
 
-    const now = new Date();
-    const dueDate = new Date(); // replace with latestTransaction.property?.nextDueDate
-    const diffDays = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+    // Calculate rent frequency based on lease duration
+    const leaseStart = new Date(tenant.leaseStartDate || tenant.dateOfFirstRent);
+    const leaseEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : null;
+    const leaseDuration = leaseEnd 
+        ? Math.floor((leaseEnd.getTime() - leaseStart.getTime()) / (1000 * 60 * 60 * 24))
+        : 365; // Default to annual if no end date
+    
+    let rentFrequency: 'WEEKLY' | 'MONTHLY' | 'ANNUAL';
+    if (leaseDuration <= 10) {
+        rentFrequency = 'WEEKLY';
+    } else if (leaseDuration <= 35) {
+        rentFrequency = 'MONTHLY';
+    } else {
+        rentFrequency = 'ANNUAL';
+    }
+
+    // Calculate next due date based on dateOfFirstRent and frequency
+    const firstRentDate = new Date(tenant.dateOfFirstRent);
+    firstRentDate.setHours(0, 0, 0, 0);
+
+    // Find the last rent payment date
+    let lastPaymentDate: Date | null = null;
+    if (latestTransaction && latestTransaction.createdAt) {
+        lastPaymentDate = new Date(latestTransaction.createdAt);
+        lastPaymentDate.setHours(0, 0, 0, 0);
+    }
+
+    // Calculate next due date
+    // Start from dateOfFirstRent, then add periods based on frequency
+    let nextDueDate = new Date(firstRentDate);
+    
+    if (lastPaymentDate && lastPaymentDate >= firstRentDate) {
+        // If there's a payment, calculate next due date from last payment
+        nextDueDate = new Date(lastPaymentDate);
+    }
+
+    // Add one period based on frequency
+    if (rentFrequency === 'WEEKLY') {
+        nextDueDate.setDate(nextDueDate.getDate() + 7);
+    } else if (rentFrequency === 'MONTHLY') {
+        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+    } else { // ANNUAL
+        nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+    }
+
+    // Ensure next due date is in the future
+    while (nextDueDate <= now) {
+        if (rentFrequency === 'WEEKLY') {
+            nextDueDate.setDate(nextDueDate.getDate() + 7);
+        } else if (rentFrequency === 'MONTHLY') {
+            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+        } else {
+            nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+        }
+    }
+
+    // Calculate days difference
+    const diffDays = Math.floor((nextDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Check if there are any overdue periods
+    // If the last payment was before the expected due date, rent might be overdue
+    let isOverdue = false;
+    let daysOverdue = 0;
+
+    if (lastPaymentDate) {
+        // Calculate expected due date before last payment
+        let expectedDueBeforePayment = new Date(firstRentDate);
+        while (expectedDueBeforePayment < lastPaymentDate) {
+            if (rentFrequency === 'WEEKLY') {
+                expectedDueBeforePayment.setDate(expectedDueBeforePayment.getDate() + 7);
+            } else if (rentFrequency === 'MONTHLY') {
+                expectedDueBeforePayment.setMonth(expectedDueBeforePayment.getMonth() + 1);
+            } else {
+                expectedDueBeforePayment.setFullYear(expectedDueBeforePayment.getFullYear() + 1);
+            }
+        }
+        
+        // If last payment was after expected due date, check if we're overdue now
+        if (lastPaymentDate > expectedDueBeforePayment) {
+            // Payment was late, but check current status
+            const nextExpectedAfterPayment = new Date(expectedDueBeforePayment);
+            if (rentFrequency === 'WEEKLY') {
+                nextExpectedAfterPayment.setDate(nextExpectedAfterPayment.getDate() + 7);
+            } else if (rentFrequency === 'MONTHLY') {
+                nextExpectedAfterPayment.setMonth(nextExpectedAfterPayment.getMonth() + 1);
+            } else {
+                nextExpectedAfterPayment.setFullYear(nextExpectedAfterPayment.getFullYear() + 1);
+            }
+            
+            if (now > nextExpectedAfterPayment) {
+                isOverdue = true;
+                daysOverdue = Math.floor((now.getTime() - nextExpectedAfterPayment.getTime()) / (1000 * 60 * 60 * 24));
+            }
+        }
+    } else {
+        // No payment yet - check if first rent date has passed
+        if (firstRentDate < now) {
+            isOverdue = true;
+            daysOverdue = Math.floor((now.getTime() - firstRentDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
+    }
 
     return {
-        isOverdue: diffDays < 0,
-        daysUntilDue: Math.max(0, diffDays),
-        daysOverdue: Math.max(0, -diffDays),
-        minDuePayments: latestTransaction.status, // adjust if this is enum/string
+        isOverdue: isOverdue,
+        daysUntilDue: isOverdue ? 0 : Math.max(0, diffDays),
+        daysOverdue: Math.max(0, daysOverdue),
+        minDuePayments: latestTransaction?.status || 0,
     };
 }
 
@@ -197,18 +303,35 @@ async calculateRentStatus(latestTransaction: Transaction | undefined): Promise<R
 
     async getDashboardData(userId: string): Promise<DashboardData> {
         try {
-            const cachedData = await this.redisService.get(`dashboard:${userId}`);
-            if (cachedData) {
-                console.log(`Cache hit for user ${userId}`);
-                return JSON.parse(cachedData);
+            // Try to get cached data, but don't fail if Redis is unavailable
+            let cachedData = null;
+            try {
+                if (this.redisService) {
+                    cachedData = await this.redisService.get(`dashboard:${userId}`);
+                    if (cachedData) {
+                        console.log(`Cache hit for user ${userId}`);
+                        return JSON.parse(cachedData);
+                    }
+                }
+            } catch (redisError) {
+                console.warn('Redis cache read failed, continuing without cache:', redisError);
             }
 
-            console.log(`Cache miss for user ${userId}`);
+            console.log(`Cache miss for user ${userId} - fetching fresh data`);
             const dashboardData = await this.dashboardDetails(userId);
-            await this.redisService.set(`dashboard:${userId}`, JSON.stringify(dashboardData), DashboardService.CACHE_TTL);
+
+            // Try to cache data, but don't fail if Redis is unavailable
+            try {
+                if (this.redisService) {
+                    await this.redisService.set(`dashboard:${userId}`, JSON.stringify(dashboardData), DashboardService.CACHE_TTL);
+                }
+            } catch (redisError) {
+                console.warn('Redis cache write failed, returning data anyway:', redisError);
+            }
+
             return dashboardData;
         } catch (error) {
-            console.error('Error with Redis operation:', error);
+            console.error('Error fetching dashboard data:', error);
             throw error;
         }
     }

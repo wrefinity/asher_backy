@@ -2,35 +2,65 @@ import nodemailer from 'nodemailer';
 import { MAIL_HOST, MAIL_PORT, MAIL_USERNAME, FROM_EMAIL, MAIL_PASSWORD } from "../secrets"
 import logger from "./loggers";
 
-const sendMail = async (to: string, subject: string, html: string) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    port: Number(MAIL_PORT),
-    host: MAIL_HOST,
-    secure: false,
-    auth: {
-      user: FROM_EMAIL,
-      pass: MAIL_PASSWORD
-    }
-  });
+// const sendMail = async (to: string, subject: string, html: string) => {
+//   const transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     port: Number(MAIL_PORT),
+//     host: MAIL_HOST,
+//     secure: false,
+//     auth: {
+//       user: FROM_EMAIL,
+//       pass: MAIL_PASSWORD
+//     }
+//   });
 
-  const mailOptions = {
-    from: FROM_EMAIL,
-    to: to,
-    subject: subject,
-    html: html
-  };
+//   const mailOptions = {
+//     from: FROM_EMAIL,
+//     to: to,
+//     subject: subject,
+//     html: html
+//   };
 
-  logger.info(`Sending mail to - ${to}`);
-  await transporter.sendMail(mailOptions, (error, info) => {
+//   logger.info(`Sending mail to - ${to}`);
+//   await transporter.sendMail(mailOptions, (error, info) => {
+//     if (error) {
+//       console.log(error);
+//       logger.error(error);
+//     } else {
+//       logger.info('Email sent: ' + info.response);
+//     }
+//   });
+// }
+import { resend } from '../configs/resend';
+
+
+export const sendMail = async (
+  to: string,
+  subject: string,
+  html: string
+) => {
+  try {
+    logger.info(`Sending mail to - ${to}`);
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+    });
+
     if (error) {
-      console.log(error);
-      logger.error(error);
-    } else {
-      logger.info('Email sent: ' + info.response);
+      logger.error('Resend email error:', error);
+      throw error;
     }
-  });
-}
+
+    logger.info(`Email sent successfully. ID: ${data?.id}`);
+    return data;
+  } catch (err) {
+    logger.error('Failed to send email:', err);
+    throw err;
+  }
+};
 
 // URLs
 const guarantorURL = "https://asher-website.vercel.app/guarantor";

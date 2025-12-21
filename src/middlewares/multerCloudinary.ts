@@ -97,8 +97,6 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
     req.body.cloudinaryVideoUrls = videoUrls;
     req.body.cloudinaryDocumentUrls = documentUrls;
     req.body.cloudinaryAudioUrls = audioUrls;
-    console.log("Req body after Cloudinary:", req.body);
-
 
     next();
   } catch (error) {

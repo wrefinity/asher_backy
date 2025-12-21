@@ -3,6 +3,7 @@ import DocusignController from '../controllers/docusign.controller';
 import { Authorize } from "../middlewares/authorize";
 import DocumentVerificationController from "../controllers/DocumentVerificationController";
 import upload from "../configs/multer";
+import { uploadToCloudinary } from "../middlewares/multerCloudinary";
 
 class DocuSignRoutes {
     public router: Router;
@@ -53,6 +54,12 @@ class DocuSignRoutes {
             upload.single("document"),
             DocumentVerificationController.extractAndVerify
         );
+        this.router.post(
+            '/verify-id',
+            upload.array('documents', 5),
+            uploadToCloudinary,
+            DocumentVerificationController.analyzerDocument
+        )
     }
 }
 

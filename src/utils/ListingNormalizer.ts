@@ -1,4 +1,3 @@
-import { ListingType, PropertySpecificationType, Prisma } from "@prisma/client";
 
 /**
  * Normalized Listing Interface
@@ -11,18 +10,18 @@ export interface NormalizedListing {
     isActive: boolean;
     onListing: boolean;
     createdAt: string | Date;
-    
+
     // Pricing (from listing, fallback to room/unit/property)
     price: string;
     priceFrequency: string | null;
     securityDeposit: string;
     applicationFeeAmount: string | null;
     payApplicationFee: boolean;
-    
+
     // Availability
     availableFrom: string | Date | null;
     availableTo: string | Date | null;
-    
+
     // What's Being Listed (only one will be populated)
     listingEntity: {
         type: 'property' | 'unit' | 'room';
@@ -44,7 +43,7 @@ export interface NormalizedListing {
         description?: string | null;
         availability?: string;
     };
-    
+
     // Property Context (always included)
     property: {
         id: string;
@@ -57,9 +56,9 @@ export interface NormalizedListing {
         zipcode: string;
         longitude: string | null;
         latitude: string | null;
-            // Property-level images (for ENTIRE_PROPERTY or fallback)
-            images: Array<{ id: string; url: string; caption: string; isPrimary?: boolean }>;
-            videos: Array<{ id: string; url: string; caption: string }>;
+        // Property-level images (for ENTIRE_PROPERTY or fallback)
+        images: Array<{ id: string; url: string; caption: string; isPrimary?: boolean }>;
+        videos: Array<{ id: string; url: string; caption: string }>;
         // Basic property info
         bedrooms?: number;
         bathrooms?: number;
@@ -82,7 +81,7 @@ export interface NormalizedListing {
             };
         };
     };
-    
+
     // Specification Details (only essential fields)
     specification: {
         type: 'RESIDENTIAL' | 'COMMERCIAL' | 'SHORTLET';
@@ -115,7 +114,7 @@ export interface NormalizedListing {
             // Add essential commercial fields if needed
         };
     };
-    
+
     // Hierarchy (for navigation)
     hierarchy: {
         level: 'property' | 'unit' | 'room';
@@ -130,7 +129,7 @@ export interface NormalizedListing {
         }>;
         context: string;
     };
-    
+
     // Related Listings (other units/rooms in same property)
     relatedListings: {
         units: Array<{ id: string; name: string; price: string }>;
@@ -151,29 +150,29 @@ export class ListingNormalizer {
      */
     static normalize(listing: any, propertyListingId?: string | null): NormalizedListing {
         const listingType = listing.type || listing.listingType;
-        
+
         // Determine what's being listed
         const listingEntity = this.extractListingEntity(listing, listingType);
-        
+
         // Extract property context
         const property = this.extractPropertyContext(listing);
-        
+
         // Extract specification (essential fields only)
         const specification = this.extractSpecification(listing);
-        
+
         // Build hierarchy (pass propertyListingId if available)
         const hierarchy = this.buildHierarchy(listing, listingType, propertyListingId);
-        
+
         // Get correct price (listing price or fallback)
         const price = this.getCorrectPrice(listing, listingEntity);
         const priceFrequency = this.getCorrectPriceFrequency(listing, listingEntity);
-        
+
         // Get images (entity images + property images as fallback)
         const entityImages = this.getEntityImages(listing, listingType, listingEntity);
-        
+
         // Merge entity with images
         listingEntity.images = entityImages;
-        
+
         return {
             listingId: listing.id,
             listingType: listingType as 'ENTIRE_PROPERTY' | 'SINGLE_UNIT' | 'ROOM',
@@ -198,20 +197,20 @@ export class ListingNormalizer {
             }
         };
     }
-    
+
     /**
      * Normalize multiple listings
      */
     static normalizeMany(listings: any[]): NormalizedListing[] {
         return listings.map(listing => this.normalize(listing));
     }
-    
+
     /**
      * Extract what's being listed (property/unit/room)
      */
     private static extractListingEntity(listing: any, listingType: string): NormalizedListing['listingEntity'] {
         const property = listing.property || listing;
-        
+
         if (listingType === 'ROOM' && listing.room) {
             const room = listing.room;
             return {
@@ -229,7 +228,7 @@ export class ListingNormalizer {
                 images: [] // Will be populated later
             };
         }
-        
+
         if (listingType === 'SINGLE_UNIT' && listing.unit) {
             const unit = listing.unit;
             return {
@@ -246,7 +245,7 @@ export class ListingNormalizer {
                 images: [] // Will be populated later
             };
         }
-        
+
         // ENTIRE_PROPERTY
         return {
             type: 'property',
@@ -256,14 +255,14 @@ export class ListingNormalizer {
             images: [] // Will be populated later
         };
     }
-    
+
     /**
      * Extract property context (always the same structure)
      */
     private static extractPropertyContext(listing: any): NormalizedListing['property'] {
         const property = listing.property || listing;
         const state = property.state || {};
-        
+
         return {
             id: property.id,
             name: property.name,
@@ -289,14 +288,14 @@ export class ListingNormalizer {
             landlord: this.extractLandlord(property.landlord)
         };
     }
-    
+
     /**
      * Extract specification (essential fields only)
      */
     private static extractSpecification(listing: any): NormalizedListing['specification'] {
         const property = listing.property || listing;
         const specType = listing.listAs || property.specificationType || 'RESIDENTIAL';
-        
+
         // Find the specification
         let spec = null;
         if (property.specification && Array.isArray(property.specification)) {
@@ -306,9 +305,9 @@ export class ListingNormalizer {
         } else if (listing.specificationDetails) {
             spec = listing.specificationDetails;
         }
-        
+
         const residential = spec?.residential || property.residential || null;
-        
+
         return {
             type: specType as 'RESIDENTIAL' | 'COMMERCIAL' | 'SHORTLET',
             residential: residential ? {
@@ -330,7 +329,7 @@ export class ListingNormalizer {
             commercial: spec?.commercial || property.commercial || undefined
         };
     }
-    
+
     /**
      * Build hierarchy breadcrumb
      * @param listing - The listing object
@@ -342,7 +341,7 @@ export class ListingNormalizer {
         const breadcrumb: NormalizedListing['hierarchy']['breadcrumb'] = [];
         let level: 'property' | 'unit' | 'room' = 'property';
         let context = property.name;
-        
+
         // Determine property URL:
         // - If this listing is for the ENTIRE_PROPERTY, use this listing's ID
         // - If propertyListingId is provided, use it
@@ -356,7 +355,7 @@ export class ListingNormalizer {
             propertyUrl = `/property/${propertyListingId}`;
         }
         // Note: If property is not listed, URL will be null and frontend should render as plain text
-        
+
         // Always start with property
         breadcrumb.push({
             id: property.id,
@@ -364,7 +363,7 @@ export class ListingNormalizer {
             type: 'property',
             url: propertyUrl // null if property not listed (frontend will handle)
         });
-        
+
         if (listingType === 'SINGLE_UNIT' && listing.unit) {
             level = 'unit';
             const unit = listing.unit;
@@ -377,11 +376,11 @@ export class ListingNormalizer {
             });
             context = `${unitName} in ${property.name}`;
         }
-        
+
         if (listingType === 'ROOM' && listing.room) {
             level = 'room';
             const room = listing.room;
-            
+
             // Add unit if it exists
             if (listing.unit) {
                 const unit = listing.unit;
@@ -398,7 +397,7 @@ export class ListingNormalizer {
                 // Room is directly in property (no unit)
                 context = `${room.roomName || 'Unnamed Room'} in ${property.name}`;
             }
-            
+
             breadcrumb.push({
                 id: room.id,
                 name: room.roomName || 'Unnamed Room',
@@ -406,7 +405,7 @@ export class ListingNormalizer {
                 url: `/property/${listing.id}` // Listing ID for room listing
             });
         }
-        
+
         return {
             level,
             propertyId: property.id,
@@ -416,7 +415,7 @@ export class ListingNormalizer {
             context
         };
     }
-    
+
     /**
      * Get correct price (listing price or fallback to entity/property price)
      */
@@ -426,22 +425,22 @@ export class ListingNormalizer {
         if (listingPrice && parseFloat(listingPrice) > 0) {
             return listingPrice;
         }
-        
+
         // Fallback to entity price
         if (listingEntity.entityPrice) {
             return listingEntity.entityPrice;
         }
-        
+
         // Fallback to property price
         const property = listing.property || listing;
         const propertyPrice = this.convertDecimalToString(property.price);
         if (propertyPrice && parseFloat(propertyPrice) > 0) {
             return propertyPrice;
         }
-        
+
         return '0';
     }
-    
+
     /**
      * Get correct price frequency
      */
@@ -449,22 +448,22 @@ export class ListingNormalizer {
         if (listing.priceFrequency) {
             return listing.priceFrequency;
         }
-        
+
         if (listingEntity.entityPriceFrequency) {
             return listingEntity.entityPriceFrequency;
         }
-        
+
         const property = listing.property || listing;
         return property.priceFrequency || null;
     }
-    
+
     /**
      * Get entity images (room/unit images + property images as fallback)
      */
     private static getEntityImages(listing: any, listingType: string, listingEntity: NormalizedListing['listingEntity']): Array<{ id: string; url: string; caption: string; isPrimary: boolean }> {
         const property = listing.property || listing;
         let images: any[] = [];
-        
+
         // For ROOM: room images first, then property images
         if (listingType === 'ROOM' && listing.room) {
             images = listing.room.images || [];
@@ -485,16 +484,16 @@ export class ListingNormalizer {
         else {
             images = property.images || [];
         }
-        
+
         return this.extractMediaFiles(images);
     }
-    
+
     /**
      * Extract media files (images/videos) in consistent format
      */
     private static extractMediaFiles(media: any[]): Array<{ id: string; url: string; caption: string; isPrimary: boolean }> {
         if (!Array.isArray(media)) return [];
-        
+
         return media.map((item: any) => ({
             id: item.id,
             url: item.url,
@@ -502,7 +501,7 @@ export class ListingNormalizer {
             isPrimary: item.isPrimary ?? false
         }));
     }
-    
+
     /**
      * Extract landlord info
      */
@@ -522,7 +521,7 @@ export class ListingNormalizer {
                 }
             };
         }
-        
+
         return {
             id: landlord.id,
             landlordCode: landlord.landlordCode || '',
@@ -537,37 +536,37 @@ export class ListingNormalizer {
             }
         };
     }
-    
+
     /**
      * Get bedrooms from specification
      */
     private static getBedroomsFromSpec(property: any): number | undefined {
         if (property.bedrooms) return property.bedrooms;
-        
+
         const spec = property.specification;
         if (Array.isArray(spec)) {
             const residential = spec.find((s: any) => s.residential)?.residential;
             return residential?.bedrooms;
         }
-        
+
         return property.residential?.bedrooms;
     }
-    
+
     /**
      * Get bathrooms from specification
      */
     private static getBathroomsFromSpec(property: any): number | undefined {
         if (property.bathrooms) return property.bathrooms;
-        
+
         const spec = property.specification;
         if (Array.isArray(spec)) {
             const residential = spec.find((s: any) => s.residential)?.residential;
             return residential?.bathrooms;
         }
-        
+
         return property.residential?.bathrooms;
     }
-    
+
     /**
      * Convert Prisma Decimal to string
      */
@@ -579,7 +578,7 @@ export class ListingNormalizer {
         if (value.toString) return value.toString();
         return null;
     }
-    
+
     /**
      * Get related listings for a property
      * This should be called separately and merged into the normalized listing
@@ -598,10 +597,10 @@ export class ListingNormalizer {
                     room: true
                 }
             });
-            
+
             const units = related.filter((r: any) => r.type === 'SINGLE_UNIT');
             const rooms = related.filter((r: any) => r.type === 'ROOM');
-            
+
             return {
                 units: units.map((u: any) => ({
                     id: u.id,

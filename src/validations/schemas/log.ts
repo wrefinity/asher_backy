@@ -26,7 +26,3 @@ export const logSchema = Joi.object({
 
   return value;
 });
-
-//cm8iz07wk000111s0iiku1vi6
-
-

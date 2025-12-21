@@ -133,3 +133,63 @@ export type PayBillType = {
     amount: number;
     billType: TransactionReference
 }
+
+export enum DocumentType {
+  ID_CARD = 'ID Card / Driver License',
+  PASSPORT = 'Passport',
+  BANK_STATEMENT = 'Bank Statement',
+  PAYSTUB = 'Paystub / Payslip',
+  UTILITY_BILL = 'Utility Bill / Proof of Address',
+  OTHER = 'Other Document'
+}
+
+export interface ApplicationForm {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string; // YYYY-MM-DD
+  addressLine1: string;
+  city: string;
+  zipCode: string;
+}
+
+export interface ExtractedData {
+  documentType: string;
+  confidence: number;
+  fields: Record<string, any>;
+  summary: string;
+  isSuspicious: boolean;
+}
+
+export interface BiometricResult {
+  matchScore: number; // 0 to 100
+  isMatch: boolean;
+  reasoning: string;
+}
+
+export interface ValidationResult {
+  passed: boolean;
+  details: string;
+}
+
+export interface VerificationState {
+  step: number;
+  formData: ApplicationForm | null;
+  idImage: string | null;
+  selfieImage: string | null;
+  payslips: Array<{ image: string; data: ExtractedData | null }>;
+  bankStatement: { image: string; data: ExtractedData | null } | null;
+  proofOfAddress: { image: string; data: ExtractedData | null } | null;
+  
+  // Analysis Data
+  idData: ExtractedData | null;
+  biometricResult: BiometricResult | null;
+  
+  // Validation Results
+  idValidation: ValidationResult | null;
+  incomeValidation: ValidationResult | null;
+  addressValidation: ValidationResult | null;
+
+  isProcessing: boolean;
+  processingStatus: string; // To show detailed loading messages
+  error: string | null;
+}
