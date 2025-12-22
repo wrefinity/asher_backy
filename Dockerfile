@@ -11,14 +11,10 @@ RUN npm install
 
 COPY . .
 
-# Apply migrations to Railway DB
-RUN npx prisma migrate deploy
-
-# Generate client after DB is up-to-date
 RUN npx prisma generate
-
 RUN npx tsc
 
 ENV NODE_ENV=production
 
-CMD ["npm", "start"]
+# ✅ Run migrations at runtime, then start app
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
