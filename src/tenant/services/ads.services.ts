@@ -46,11 +46,83 @@ class AdService {
 
     }
 
-    async getAllListedAds() {
-        return prismaClient.ads.findMany({
+    async getAllListedAds(filters?: {
+        latitude?: number;
+        longitude?: number;
+        radius?: number;
+        city?: string;
+        state?: string;
+        excludePremium?: boolean;
+    }) {
+        const currentDate = new Date();
+
+        // Build where clause
+        const where: any = {
+            isListed: true,
+            startedDate: { lte: currentDate },
+            endDate: { gte: currentDate },
+        };
+
+        // Filter by city or state if provided
+        if (filters?.city || filters?.state) {
+            const locationFilters: string[] = [];
+            if (filters.city) locationFilters.push(filters.city);
+            if (filters.state) locationFilters.push(filters.state);
+
+            where.locations = {
+                hasSome: locationFilters
+            };
+        }
+
+        // TODO: Implement geo-spatial filtering with latitude/longitude/radius
+        // This requires adding latitude, longitude, radius fields to Ads model
+        // For now, we filter by city/state using the locations array
+
+        const ads = await prismaClient.ads.findMany({
+            where,
+            include: {
+                user: this.userSelect,
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        // Filter out premium ads if excludePremium is true
+        // Note: This is a temporary solution. Add isPremiumBanner field to schema for better performance
+        if (filters?.excludePremium) {
+            return ads.filter(ad => {
+                const businessDetails = ad.bussinessDetails as any;
+                return !businessDetails?.isPremiumBanner;
+            });
+        }
+
+        return ads;
+    }
+
+    async getPremiumBannerAds() {
+        const currentDate = new Date();
+
+        const ads = await prismaClient.ads.findMany({
             where: {
                 isListed: true,
-            }
+                startedDate: { lte: currentDate },
+                endDate: { gte: currentDate },
+            },
+            include: {
+                user: this.userSelect,
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: 10 // Limit to 10 premium banner ads for carousel
+        });
+
+        // Filter only premium banner ads
+        // Note: This is a temporary solution. Add isPremiumBanner field to schema for better performance
+        return ads.filter(ad => {
+            const businessDetails = ad.bussinessDetails as any;
+            return businessDetails?.isPremiumBanner === true;
         });
     }
 
@@ -126,6 +198,42 @@ class AdService {
             where: { id: adId },
             data: adData,
         })
+    }
+
+    async getAdExpenses(userId: string) {
+        // Get all ad transactions for the user
+        // Note: This assumes transactions have reference = 'ADS_PAYMENT' or similar
+        // You may need to add ADS_PAYMENT to TransactionReference enum
+        const ads = await prismaClient.ads.findMany({
+            where: { userId },
+            include: {
+                transaction: {
+                    select: {
+                        id: true,
+                        amount: true,
+                        description: true,
+                        createdAt: true,
+                        status: true,
+                        type: true,
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        // Map to expense format
+        return ads.map(ad => ({
+            id: ad.id,
+            title: ad.title,
+            description: ad.description,
+            amount: ad.amountPaid,
+            date: ad.createdAt,
+            transaction: ad.transaction,
+            adId: ad.id,
+            status: ad.transaction?.status || 'PENDING',
+        }));
     }
 }
 

@@ -71,7 +71,18 @@ class AdController {
   });
 
   getAllListedAds = asyncHandler(async (req: Request, res: Response) => {
-    const ads = await adsServices.getAllListedAds();
+    const { latitude, longitude, radius, city, state, excludePremium } = req.query;
+
+    const filters = {
+      latitude: latitude ? parseFloat(latitude as string) : undefined,
+      longitude: longitude ? parseFloat(longitude as string) : undefined,
+      radius: radius ? parseFloat(radius as string) : undefined,
+      city: city as string,
+      state: state as string,
+      excludePremium: excludePremium === 'true',
+    };
+
+    const ads = await adsServices.getAllListedAds(filters);
     if (!ads || ads.length === 0) {
       return res
         .status(200)
@@ -81,6 +92,19 @@ class AdController {
     return res
       .status(200)
       .json(ApiResponse.success(ads, "Listed ads retrieved successfully"));
+  });
+
+  getPremiumBannerAds = asyncHandler(async (req: Request, res: Response) => {
+    const ads = await adsServices.getPremiumBannerAds();
+    if (!ads || ads.length === 0) {
+      return res
+        .status(200)
+        .json(ApiResponse.success([], "No premium banner ads found"));
+    }
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(ads, "Premium banner ads retrieved successfully"));
   });
 
   getAdsByLocation = asyncHandler(async (req: Request, res: Response) => {
@@ -136,6 +160,21 @@ class AdController {
     return res
       .status(200)
       .json(ApiResponse.success(ads, "Ads by user retrieved successfully"));
+  });
+
+  getAdExpenses = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { userId } = req.params;
+    const expenses = await adsServices.getAdExpenses(userId);
+
+    if (!expenses || expenses.length === 0) {
+      return res
+        .status(200)
+        .json(ApiResponse.success([], "No ad expenses found"));
+    }
+
+    return res
+      .status(200)
+      .json(ApiResponse.success(expenses, "Ad expenses retrieved successfully"));
   });
 }
 
