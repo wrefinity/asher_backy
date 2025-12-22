@@ -16,5 +16,5 @@ RUN npx tsc
 
 ENV NODE_ENV=production
 
-# ✅ Run migrations at runtime, then start app
+# Run migrations at runtime, then start app
 CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
