@@ -1,6 +1,7 @@
 import { PayableBy } from "@prisma/client";
 import { prismaClient } from "../..";
 import { generateIDs } from "../../utils/helpers";
+import { BillNormalizer } from "../../utils/BillNormalizer";
 
 interface BillFilterOptions {
     tenantId?: string;
@@ -104,7 +105,33 @@ class BillService {
                 data.bills = { connect: { id: billCategoryId } };
             }
 
-            return await prismaClient.billsSubCategory.create({ data });
+            const createdBill = await prismaClient.billsSubCategory.create({ 
+                data,
+                include: {
+                    tenants: {
+                        include: {
+                            user: {
+                                include: {
+                                    profile: true
+                                }
+                            }
+                        }
+                    },
+                    property: true,
+                    landlord: {
+                        include: {
+                            user: {
+                                include: {
+                                    profile: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Normalize the created bill to include scope information
+            return BillNormalizer.normalize(createdBill);
         } catch (error) {
             console.error("Failed to create sub bill:", error);
             throw error; // Or handle it as appropriate for your application
@@ -170,9 +197,66 @@ class BillService {
 
         console.log(where)
         const include: any = {};
-        if (includeTenant) include.tenants = true;
-        if (includeProperty) include.property = true;
-        if (includeLandlord) include.landlord = true;
+        
+        // Always include minimal tenant, property, and landlord data for scope computation
+        // Use select to minimize data transfer while still getting what we need
+        include.tenants = includeTenant ? {
+            include: {
+                user: {
+                    include: {
+                        profile: true
+                    }
+                }
+            }
+        } : {
+            select: {
+                id: true,
+                tenantCode: true,
+                user: {
+                    select: {
+                        id: true,
+                        profile: {
+                            select: {
+                                fullname: true
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        
+        include.property = includeProperty ? true : { 
+            select: { 
+                id: true, 
+                name: true 
+            } 
+        };
+        
+        include.landlord = includeLandlord ? {
+            include: {
+                user: {
+                    include: {
+                        profile: true
+                    }
+                }
+            }
+        } : {
+            select: {
+                id: true,
+                landlordCode: true,
+                user: {
+                    select: {
+                        id: true,
+                        profile: {
+                            select: {
+                                fullname: true
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        
         if (includeBillCategory) include.bills = true;
         if (includeTransactions) include.transactions = true;
 
@@ -187,8 +271,11 @@ class BillService {
             })
         ]);
 
+        // Normalize bills to add computed scope fields
+        const normalizedBills = BillNormalizer.normalizeMany(bills);
+
         return {
-            data: bills,
+            data: normalizedBills,
             pagination: {
                 total,
                 page,
@@ -199,9 +286,35 @@ class BillService {
     }
 
     getBillById = async (billId: string) => {
-        return await prismaClient.bills.findUnique({
+        const bill = await prismaClient.billsSubCategory.findUnique({
             where: { id: billId },
+            include: {
+                tenants: {
+                    include: {
+                        user: {
+                            include: {
+                                profile: true
+                            }
+                        }
+                    }
+                },
+                property: true,
+                landlord: {
+                    include: {
+                        user: {
+                            include: {
+                                profile: true
+                            }
+                        }
+                    }
+                }
+            }
         });
+        
+        if (!bill) return null;
+        
+        // Normalize the bill to include scope information
+        return BillNormalizer.normalize(bill);
     }
 
     updateBill = async (billId: string, billData: any) => {
@@ -217,10 +330,35 @@ class BillService {
                 status: 404
             };
         }
-        return await prismaClient.billsSubCategory.update({
+        
+        const updatedBill = await prismaClient.billsSubCategory.update({
             where: { id: billId },
             data: billData,
-        })
+            include: {
+                tenants: {
+                    include: {
+                        user: {
+                            include: {
+                                profile: true
+                            }
+                        }
+                    }
+                },
+                property: true,
+                landlord: {
+                    include: {
+                        user: {
+                            include: {
+                                profile: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Normalize the updated bill to include scope information
+        return BillNormalizer.normalize(updatedBill);
     }
 
     deleteBill = async (billId: string, landlordId: string) => {
@@ -233,16 +371,28 @@ class BillService {
     }
 
     getBillByPropertyId = async (propertyId: string, landlordId: string) => {
-        return await prismaClient.billsSubCategory.findMany({
+        const bills = await prismaClient.billsSubCategory.findMany({
             where: {
                 propertyId,
                 landlordId
             },
             include: {
                 property: true,
-                landlord: true
+                landlord: true,
+                tenants: {
+                    include: {
+                        user: {
+                            include: {
+                                profile: true
+                            }
+                        }
+                    }
+                }
             }
-        })
+        });
+        
+        // Normalize bills to include scope information
+        return BillNormalizer.normalizeMany(bills);
     }
 }
 

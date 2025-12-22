@@ -15,6 +15,7 @@ class ReviewRouter {
         this.router.post("/", this.authenticateService.authorize, ReviewController.createReview);
         this.router.get("/user", this.authenticateService.authorize, ReviewController.getCurrentUserReviews);
         this.router.get("/current-user", this.authenticateService.authorize, ReviewController.getUserReviews);
+        this.router.get("/tenant/:tenantId", this.authenticateService.authorize, ReviewController.getReviewsByTenant);
         this.router.get("/:id", this.authenticateService.authorize, ReviewController.getReviewById);
         this.router.get("/all", this.authenticateService.authorize, ReviewController.getAllReviews);
         this.router.patch("/:id", this.authenticateService.authorize, ReviewController.updateReview);

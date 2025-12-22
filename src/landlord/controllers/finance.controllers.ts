@@ -146,8 +146,9 @@ class FinanceController {
         const { landlords } = req.user;
         const landlordId = landlords.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const propertyId = req.query.propertyId as string | undefined;
         try {
-            const breakdown = await financeService.getIncomeBreakdown(landlordId, year);
+            const breakdown = await financeService.getIncomeBreakdown(landlordId, year, propertyId);
             return res.status(200).json(breakdown);
         } catch (error) {
             errorService.handleError(error, res);
@@ -158,8 +159,9 @@ class FinanceController {
         const { landlords } = req.user;
         const landlordId = landlords.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const propertyId = req.query.propertyId as string | undefined;
         try {
-            const breakdown = await financeService.getExpenseBreakdown(landlordId, year);
+            const breakdown = await financeService.getExpenseBreakdown(landlordId, year, propertyId);
             return res.status(200).json(breakdown);
         } catch (error) {
             errorService.handleError(error, res);
@@ -170,8 +172,9 @@ class FinanceController {
         const { landlords } = req.user;
         const landlordId = landlords.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const propertyId = req.query.propertyId as string | undefined;
         try {
-            const stats = await financeService.getStats(landlordId, year);
+            const stats = await financeService.getStats(landlordId, year, propertyId);
             console.log(stats, "Logging Stats")
             return res.status(200).json(stats);
         } catch (error) {
@@ -190,8 +193,9 @@ class FinanceController {
                 limit = parsedLimit;
             }
         }
+        const propertyId = req.query.propertyId as string | undefined;
         try {
-            const txs = await financeService.getRecentTransactions(landlordId, limit);
+            const txs = await financeService.getRecentTransactions(landlordId, limit, propertyId);
             return res.status(200).json({
                 message: "Recent transactions retrieved successfully",
                 txs
@@ -204,8 +208,9 @@ class FinanceController {
     async getUpcomingPayments(req: CustomRequest, res: Response) {
         const { landlords } = req.user;
         const landlordId = landlords.id;
+        const propertyId = req.query.propertyId as string | undefined;
         try {
-            const txs = await financeService.getUpcomingPayments(landlordId);
+            const txs = await financeService.getUpcomingPayments(landlordId, 5, propertyId);
             return res.status(200).json({
                 message: "No recent upcoming payments",
                 txs

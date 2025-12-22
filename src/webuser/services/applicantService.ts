@@ -1240,9 +1240,11 @@ class ApplicantService {
       : null;
 
     // Step 3: Create new application record
+    // For existing tenants, application should be created as COMPLETED since all info already exists
     const statuesCompleted: ApplicationStatus[] = [
+      ApplicationStatus.SUBMITTED,
       ApplicationStatus.APPROVED,
-      ApplicationStatus.COMPLETED,
+      ApplicationStatus.COMPLETED
     ];
     const completedSteps: ApplicationSaveState[] = [
       ApplicationSaveState.PERSONAL_KIN,
@@ -1308,13 +1310,14 @@ class ApplicantService {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
         data: {
-          response: InvitedResponse.SUBMITTED,
+          response: InvitedResponse.APPROVED,
           applicationFee,
           responseStepsCompleted: {
             push: [
               InvitedResponse.APPLY,
               InvitedResponse.APPLICATION_STARTED,
               InvitedResponse.SUBMITTED,
+              InvitedResponse.APPROVED,
             ],
           },
           application: {

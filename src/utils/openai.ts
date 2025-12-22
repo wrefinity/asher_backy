@@ -32,7 +32,7 @@ class GeminiOCRService {
   private model: any;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || "my_api_key";
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY environment variable not set");
     }

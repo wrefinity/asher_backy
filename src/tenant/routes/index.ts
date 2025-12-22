@@ -9,6 +9,7 @@ import TenantDashboardRouter from "./dashboard.routes";
 import PropertyRouter from "./properties.routes";
 import PerformanceController from "../controllers/performance.controller";
 import ViolationRoutes from "./violation.routes";
+import DocumentRequestRouter from "./documentRequest.routes";
 class TenantRouter {
     public router: Router;
     authenticateService: Authorize
@@ -27,6 +28,7 @@ class TenantRouter {
         this.router.use('/maintenances', MaintenanceRouter)
         this.router.use('/profile', ProfileRouter)
         this.router.use('/properties', PropertyRouter)
+        this.router.use('/document-requests', DocumentRequestRouter)
         this.router.get('/tenant-scores', PerformanceController.getTenantPerformance)
         this.router.get('/:tenantId', this.authenticateService.authorize, TenantController.getTenantById)
     }
