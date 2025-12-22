@@ -17,6 +17,7 @@ class AdsRouter {
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
         this.router.post('/', upload.array('files'), uploadToCloudinary, adsController.createAd);
+        this.router.post('/generate-description', adsController.generateAdDescription);
         this.router.get('/listed', adsController.getAllListedAds);
         this.router.get('/premium-banner', adsController.getPremiumBannerAds);
         this.router.get('/expenses/:userId', adsController.getAdExpenses);

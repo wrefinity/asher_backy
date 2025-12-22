@@ -5,6 +5,7 @@ import adsServices from "../services/ads.services";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
+import geminiAiServices from "../../services/gemini";
 
 class AdController {
   constructor() {}
@@ -175,6 +176,54 @@ class AdController {
     return res
       .status(200)
       .json(ApiResponse.success(expenses, "Ad expenses retrieved successfully"));
+  });
+
+  generateAdDescription = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { title, category, keywords, tone } = req.body;
+
+    if (!title) {
+      throw ApiError.validationError(["Ad title is required"]);
+    }
+
+    const prompt = `Generate a professional, engaging ad description for the following:
+
+Title: ${title}
+${category ? `Category: ${category}` : ''}
+${keywords ? `Keywords: ${keywords}` : ''}
+${tone ? `Tone: ${tone}` : 'Tone: Professional and engaging'}
+
+Requirements:
+- Length: 50-200 words (prefer shorter, concise descriptions)
+- Focus on benefits and value proposition
+- Include a clear call-to-action
+- Make it compelling and persuasive
+- Use clear, simple language
+- Avoid excessive marketing jargon
+
+Generate ONLY the description text, no extra formatting or explanations.`;
+
+    try {
+      const response = await geminiAiServices.geminiClient.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+          parts: [{ text: prompt }],
+        },
+      });
+
+      if (!response.text) {
+        throw new Error('No response from AI');
+      }
+
+      return res.status(200).json(
+        ApiResponse.success(
+          { description: response.text.trim() },
+          "Description generated successfully"
+        )
+      );
+    } catch (error: any) {
+      console.error('❌ Error generating description:', error);
+      throw ApiError.internalError('Failed to generate description. Please try again.');
+    }
   });
 }
 
