@@ -27,6 +27,8 @@ model Transaction {
   user                      users                @relation(fields: [userId], references: [id])
   wallet                    wallet?              @relation(fields: [walletId], references: [id])
   billsSubCategory          billsSubCategory[]   @relation("TransactionTobillsSubCategory")
+  applicationId             String?
+  application               application?         @relation(fields: [applicationId], references: [id])
 
   payoutTransactions PayoutTransaction[]
 }
@@ -39,17 +41,6 @@ model tenantPaymentHistory {
   amountPaid         Decimal?  @db.Decimal(18, 2)
   tenantId           String?
   tenant             tenants?  @relation(fields: [tenantId], references: [id])
-}
-
-model Subscription {
-  id                   String    @id @default(cuid())
-  stripeSubscriptionId String    @unique
-  status               String
-  userId               String
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  cancelledAt          DateTime?
-  user                 users     @relation(fields: [userId], references: [id])
 }
 
 model Budget {

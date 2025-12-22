@@ -1,7 +1,7 @@
 model inspectionSection {
   id           String   @id @default(cuid())
   inspectionId String
-  sectionType  String   // 'exterior' | 'interior' | 'kitchen' | 'bathroom'
+  sectionType  String // 'exterior' | 'interior' | 'kitchen' | 'bathroom'
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -18,11 +18,11 @@ model inspectionSection {
 model inspectionItem {
   id             String   @id @default(cuid())
   sectionId      String
-  itemName       String   // 'Roof', 'Walls', 'Flooring', 'Appliances', etc.
-  condition      String   // 'Good' | 'Fair' | 'Poor' | 'N/A'
+  itemName       String // 'Roof', 'Walls', 'Flooring', 'Appliances', etc.
+  condition      String // 'Good' | 'Fair' | 'Poor' | 'N/A'
   notes          String?  @db.Text
   actionRequired Boolean  @default(false)
-  severity       String?  // 'Low' | 'Medium' | 'High' | 'Critical'
+  severity       String? // 'Low' | 'Medium' | 'High' | 'Critical'
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -62,7 +62,7 @@ model inspectionPhoto {
 model inspectionCertificate {
   id           String   @id @default(cuid())
   inspectionId String
-  type         String   // 'landlord' | 'tenant'
+  type         String // 'landlord' | 'tenant'
   pdfUrl       String
   generatedAt  DateTime @default(now())
   generatedBy  String
@@ -75,7 +75,6 @@ model inspectionCertificate {
   @@index([inspectionId, type])
   @@map("inspection_certificate")
 }
-
 
 model inspectionAcknowledgment {
   id             String    @id @default(cuid())
@@ -120,14 +119,14 @@ model inspection {
   completedAt      DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
-  property         properties                 @relation(fields: [propertyId], references: [id])
-  tenant           tenants?                   @relation(fields: [tenantId], references: [id])
+  property         properties @relation(fields: [propertyId], references: [id])
+  tenant           tenants?   @relation(fields: [tenantId], references: [id])
 
   // NEW RELATIONS (Added for enhanced inspection system)
-  sections         inspectionSection[]
-  certificates     inspectionCertificate[]
-  acknowledgment   inspectionAcknowledgment?
-  chatRoom         ChatRoom?
+  sections       inspectionSection[]
+  certificates   inspectionCertificate[]
+  acknowledgment inspectionAcknowledgment?
+  chatRoom       ChatRoom?
 
   @@index([propertyId])
   @@index([status])

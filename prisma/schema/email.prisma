@@ -26,27 +26,27 @@ model Email {
   states           UserEmailState[]
 
   // Critical indexes for email system performance
-  @@index([senderId, createdAt])                    // Sent folder - most common query
-  @@index([receiverId, createdAt])                  // Inbox - most common query
-  @@index([senderId, isDeleted, createdAt])         // Sent items with soft delete
-  @@index([receiverId, isDeleted, createdAt])       // Inbox with soft delete
-  @@index([threadId, createdAt])                    // Email threading
-  @@index([parentEmailId])                          // Email replies
-  @@index([createdAt])                              // Global email ordering
-  @@index([senderEmail])                            // Search by sender email
-  @@index([receiverEmail])                          // Search by receiver email
-  @@index([isDraft, senderId])                      // Drafts folder
-  @@index([isSent, senderId])                       // Sent folder status
-  @@index([isArchived, senderId, createdAt])        // Archived emails
-  @@index([isArchived, receiverId, createdAt])      // Archived emails
-  @@index([isSpam, receiverId, createdAt])          // Spam folder
-  @@index([isStarred, senderId, createdAt])         // Starred emails (sent)
-  @@index([isStarred, receiverId, createdAt])       // Starred emails (received)
+  @@index([senderId, createdAt]) // Sent folder - most common query
+  @@index([receiverId, createdAt]) // Inbox - most common query
+  @@index([senderId, isDeleted, createdAt]) // Sent items with soft delete
+  @@index([receiverId, isDeleted, createdAt]) // Inbox with soft delete
+  @@index([threadId, createdAt]) // Email threading
+  @@index([parentEmailId]) // Email replies
+  @@index([createdAt]) // Global email ordering
+  @@index([senderEmail]) // Search by sender email
+  @@index([receiverEmail]) // Search by receiver email
+  @@index([isDraft, senderId]) // Drafts folder
+  @@index([isSent, senderId]) // Sent folder status
+  @@index([isArchived, senderId, createdAt]) // Archived emails
+  @@index([isArchived, receiverId, createdAt]) // Archived emails
+  @@index([isSpam, receiverId, createdAt]) // Spam folder
+  @@index([isStarred, senderId, createdAt]) // Starred emails (sent)
+  @@index([isStarred, receiverId, createdAt]) // Starred emails (received)
   @@index([isReadByReceiver, receiverId, createdAt]) // Unread emails
   // Composite indexes for common email client operations
   @@index([receiverId, isDeleted, isSpam, isArchived, createdAt])
   @@index([senderId, isDeleted, isDraft, isSent, createdAt])
-  @@index([threadId, createdAt, id])                // Thread ordering with tiebreaker
+  @@index([threadId, createdAt, id]) // Thread ordering with tiebreaker
 }
 
 model UserEmailState {
@@ -63,15 +63,14 @@ model UserEmailState {
   user       users   @relation(fields: [userId], references: [id])
 
   @@unique([emailId, userId])
-  
   // Comprehensive indexes for user email states
-  @@index([userId, isRead, isDeleted])              // Unread count and inbox
-  @@index([userId, isStarred, isDeleted])           // Starred emails
-  @@index([userId, isArchived, isDeleted])          // Archived emails
-  @@index([userId, isSpam, isDeleted])              // Spam folder
-  @@index([userId, isDraft])                        // Drafts
-  @@index([emailId])                                // Email lookup
-  @@index([userId, isDeleted])                      // General user email state
+  @@index([userId, isRead, isDeleted]) // Unread count and inbox
+  @@index([userId, isStarred, isDeleted]) // Starred emails
+  @@index([userId, isArchived, isDeleted]) // Archived emails
+  @@index([userId, isSpam, isDeleted]) // Spam folder
+  @@index([userId, isDraft]) // Drafts
+  @@index([emailId]) // Email lookup
+  @@index([userId, isDeleted]) // General user email state
   // Composite indexes for folder views
   @@index([userId, isRead, isArchived, isSpam, isDeleted])
   @@index([userId, isStarred, isRead, isDeleted])

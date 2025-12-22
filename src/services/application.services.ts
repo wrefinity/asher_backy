@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { Prisma, logTypeStatus, YesNo, InvitedResponse, ApplicationStatus, ApplicationSaveState, LogType } from "@prisma/client";
+import { Prisma, logTypeStatus, YesNo, InvitedResponse, ApplicationStatus, ApplicationSaveState, LogType, application } from "@prisma/client";
 import { ApplicationInvite } from "../landlord/validations/interfaces/applications";
 import logsServices from "./logs.services";
 import applicantService from "../webuser/services/applicantService";
@@ -103,6 +103,17 @@ class ApplicationInvitesService {
             include: this.inviteInclude,
         });
     }
+    async updateMoveInDate(
+        applicationId: string,
+        moveInDate: Date
+    ): Promise<application> {
+        return prismaClient.application.update({
+            where: { id: applicationId },
+            data: {
+                moveInDate,
+            },
+        });
+    }
     async getInviteWithoutStatus(landlordId: string, responseNegation: InvitedResponse[]) {
         return await prismaClient.applicationInvites.findMany({
             where: {
@@ -203,89 +214,89 @@ class ApplicationInvitesService {
             }
         });
     }
-async getDashboardData(userId: string) {
-    const [
-        recentInvites,
-        recentFeedback,
-        recentSavedProperties,
-        scheduledInvite,
-        activeApplications,
-        completedApplications
-    ] = await Promise.all([
-        
-        prismaClient.applicationInvites.findMany({
-            where: { userInvitedId: userId },
-            orderBy: { createdAt: "desc" },
-            take: 3,
-            include: this.inviteInclude,
-        }),
-
-        prismaClient.log.findMany({
-            where: {
-                createdById: userId
-            },
-            orderBy: { createdAt: "desc" },
-            take: 3,
-            include: {
-                property: true,
-                users: {
-                    select: { email: true, id: true, profile: true }
-                },
-                applicationInvites: true,
-            }
-        }),
-
-        prismaClient.userLikedProperty.findMany({
-            where: { userId },
-            include: { property: true },
-            orderBy: { likedAt: "desc" },
-            take: 3,
-        }),
-
-        prismaClient.applicationInvites.findFirst({
-            where: { 
-                response: InvitedResponse.SCHEDULED, 
-                userInvitedId: userId 
-            },
-            orderBy: { createdAt: "desc" },
-        }),
-
-        prismaClient.applicationInvites.count({
-            where: {
-                userInvitedId: userId,
-                NOT: [
-                    {
-                        responseStepsCompleted: {
-                            hasSome: [
-                                InvitedResponse.COMPLETED,
-                                InvitedResponse.REJECTED,
-                                InvitedResponse.CANCELLED
-                            ]
-                        }
-                    }
-                ]
-            },
-        }),
-
-        prismaClient.applicationInvites.count({
-            where: {
-                userInvitedId: userId, 
-                response: InvitedResponse.COMPLETED 
-            }
-        }),
-    ]);
-
-    return {
-        recentInvites,
-        recentFeedback,
-        recentSavedProperties,
-        scheduledInvite,
-        applications: {
+    async getDashboardData(userId: string) {
+        const [
+            recentInvites,
+            recentFeedback,
+            recentSavedProperties,
+            scheduledInvite,
             activeApplications,
-            completedApplications,
-        },
-    };
-}
+            completedApplications
+        ] = await Promise.all([
+
+            prismaClient.applicationInvites.findMany({
+                where: { userInvitedId: userId },
+                orderBy: { createdAt: "desc" },
+                take: 3,
+                include: this.inviteInclude,
+            }),
+
+            prismaClient.log.findMany({
+                where: {
+                    createdById: userId
+                },
+                orderBy: { createdAt: "desc" },
+                take: 3,
+                include: {
+                    property: true,
+                    users: {
+                        select: { email: true, id: true, profile: true }
+                    },
+                    applicationInvites: true,
+                }
+            }),
+
+            prismaClient.userLikedProperty.findMany({
+                where: { userId },
+                include: { property: true },
+                orderBy: { likedAt: "desc" },
+                take: 3,
+            }),
+
+            prismaClient.applicationInvites.findFirst({
+                where: {
+                    response: InvitedResponse.SCHEDULED,
+                    userInvitedId: userId
+                },
+                orderBy: { createdAt: "desc" },
+            }),
+
+            prismaClient.applicationInvites.count({
+                where: {
+                    userInvitedId: userId,
+                    NOT: [
+                        {
+                            responseStepsCompleted: {
+                                hasSome: [
+                                    InvitedResponse.COMPLETED,
+                                    InvitedResponse.REJECTED,
+                                    InvitedResponse.CANCELLED
+                                ]
+                            }
+                        }
+                    ]
+                },
+            }),
+
+            prismaClient.applicationInvites.count({
+                where: {
+                    userInvitedId: userId,
+                    response: InvitedResponse.COMPLETED
+                }
+            }),
+        ]);
+
+        return {
+            recentInvites,
+            recentFeedback,
+            recentSavedProperties,
+            scheduledInvite,
+            applications: {
+                activeApplications,
+                completedApplications,
+            },
+        };
+    }
 
 
     getPreviousLandlordInfo = async (applicationId: string) => {
@@ -348,83 +359,83 @@ async getDashboardData(userId: string) {
         applicationId: string,
         inviteData: any,
         applicationInviteId: string
-      ) {
+    ) {
         // 1. Fetch original application and related data
         const original = await prismaClient.application.findUnique({
-          where: { id: applicationId },
-          include: {
-            personalDetails: true,
-            residentialInfo: true,
-            emergencyInfo: true,
-            employmentInfo: true,
-            documents: true,
-          },
+            where: { id: applicationId },
+            include: {
+                personalDetails: true,
+                residentialInfo: true,
+                emergencyInfo: true,
+                employmentInfo: true,
+                documents: true,
+            },
         });
-      
+
         if (!original || !original.personalDetails) {
-          throw new Error("Original application or personal details not found.");
+            throw new Error("Original application or personal details not found.");
         }
-      
+
         // 2. Create a new application
         const newApp = await prismaClient.application.create({
-          data: {
-            leaseStartDate: inviteData.leaseStartDate,
-            leaseEndDate: inviteData.leaseEndDate,
-            propertyType: original.propertyType,
-            moveInDate: inviteData.moveInDate,
-            rentAmountPaid: inviteData.rentAmountPaid,
-            securityDeposit: inviteData.securityDeposit,
-            leaseTerm: inviteData.leaseTerm,
-            users: {
-                connect: {id: original.userId}
+            data: {
+                leaseStartDate: inviteData.leaseStartDate,
+                leaseEndDate: inviteData.leaseEndDate,
+                propertyType: original.propertyType,
+                moveInDate: inviteData.moveInDate,
+                rentAmountPaid: inviteData.rentAmountPaid,
+                securityDeposit: inviteData.securityDeposit,
+                leaseTerm: inviteData.leaseTerm,
+                users: {
+                    connect: { id: original.userId }
+                },
+                status: inviteData.status,
+                lastStep: original.lastStep,
+
+                personalDetails: {
+                    connect: { id: original.personalDetails.id },
+                },
+                residentialInfo: original.residentialInfo
+                    ? { connect: { id: original.residentialInfo.id } }
+                    : undefined,
+                emergencyInfo: original.emergencyInfo
+                    ? { connect: { id: original.emergencyInfo.id } }
+                    : undefined,
+                employmentInfo: original.employmentInfo
+                    ? { connect: { id: original.employmentInfo.id } }
+                    : undefined,
+                documents: {
+                    createMany: {
+                        data: original.documents.map((doc) => ({
+                            documentUrl: doc?.documentUrl,
+                            idType: doc?.idType,
+                            docType: doc?.docType,
+                            size: doc?.size,
+                            type: doc?.type,
+                            documentName: doc?.documentName,
+                        })),
+                    },
+                },
             },
-            status: inviteData.status,
-            lastStep: original.lastStep,
-      
-            personalDetails: {
-              connect: { id: original.personalDetails.id },
-            },
-            residentialInfo: original.residentialInfo
-              ? { connect: { id: original.residentialInfo.id } }
-              : undefined,
-            emergencyInfo: original.emergencyInfo
-              ? { connect: { id: original.emergencyInfo.id } }
-              : undefined,
-            employmentInfo: original.employmentInfo
-              ? { connect: { id: original.employmentInfo.id } }
-              : undefined,
-            documents: {
-              createMany: {
-                data: original.documents.map((doc) => ({
-                documentUrl: doc?.documentUrl,
-                  idType: doc?.idType,
-                  docType: doc?.docType,
-                  size: doc?.size,
-                  type: doc?.type,
-                  documentName: doc?.documentName,
-                })),
-              },
-            },
-          },
         });
-      
+
         // Update the applicationInvite to link the new application
         const updatedInvite = await prismaClient.applicationInvites.update({
-          where: { id: applicationInviteId },
-          data: {
-            application: { connect: { id: newApp.id } },
-            // propertiesId: inviteData.propertiesId,
-            // invitedByLandordId: inviteData.landlordId,
-            // tenantsId: inviteData.tenantId,
-            // userInvitedId: inviteData.userInvitedId,
-            // enquiryId: inviteData.enquiryId,
-          },
+            where: { id: applicationInviteId },
+            data: {
+                application: { connect: { id: newApp.id } },
+                // propertiesId: inviteData.propertiesId,
+                // invitedByLandordId: inviteData.landlordId,
+                // tenantsId: inviteData.tenantId,
+                // userInvitedId: inviteData.userInvitedId,
+                // enquiryId: inviteData.enquiryId,
+            },
         });
-      
+
         return updatedInvite;
-      }
-      
-      
+    }
+
+
 }
 
 export default new ApplicationInvitesService();

@@ -222,7 +222,7 @@ Generate ONLY the description text, no extra formatting or explanations.`;
       );
     } catch (error: any) {
       console.error('❌ Error generating description:', error);
-      throw ApiError.internalError('Failed to generate description. Please try again.');
+      throw ApiError.internal('Failed to generate description. Please try again.');
     }
   });
 }

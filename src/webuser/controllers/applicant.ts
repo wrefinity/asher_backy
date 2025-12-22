@@ -29,6 +29,25 @@ import userServices from '../../services/user.services';
 
 class ApplicantControls {
 
+  updateMoveInDate = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      const { moveInDate } = req.body;
+
+      if (!moveInDate) {
+        return res.status(400).json({ message: 'moveInDate is required' });
+      }
+      const date = new Date(moveInDate);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({ message: 'Invalid date format' });
+      }
+      const updated = await ApplicantionService.updateMoveInDate(id, date);
+      res.status(200).json({ updated });
+    } catch (error) {
+      ErrorService.handleError(error, res)
+    }
+  };
   getBasicStats = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user?.id;
@@ -404,7 +423,7 @@ class ApplicantControls {
     }
   }
 
- getLastApplicationDataForUser = async (req: CustomRequest, res: Response) => {
+  getLastApplicationDataForUser = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user.id;
       const application = await ApplicantService.getLastApplicationDataForUser(userId);

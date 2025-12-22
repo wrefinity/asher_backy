@@ -1,1 +1,94 @@
+enum AdType {
+  BANNER
+  FEATURED
+  NORMAL
+}
 
+enum AdStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+enum SubscriberType {
+  VENDOR
+  LANDLORD
+  AGENT
+  COMPANY
+  USER
+}
+
+model SubscriptionPlan {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  price          Decimal
+  durationInDays Int
+  maxBannerAds   Int      @default(0)
+  maxFeaturedAds Int      @default(0)
+  maxNormalAds   Int      @default(1)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  subscriptions SubscriptionAd[]
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  stripeSubscriptionId String    @unique
+  status               String
+  userId               String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  cancelledAt          DateTime?
+  user                 users     @relation(fields: [userId], references: [id])
+}
+
+model SubscriptionAd {
+  id             String             @id @default(cuid())
+  subscriberId   String
+  subscriberType SubscriberType
+  planId         String
+  status         SubscriptionStatus @default(ACTIVE)
+  startDate      DateTime           @default(now())
+  endDate        DateTime
+  createdAt      DateTime           @default(now())
+
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+  user users            @relation(fields: [subscriberId], references: [id])
+
+  @@index([subscriberId, status])
+}
+
+model Ad {
+  id             String         @id @default(cuid())
+  subscriberId   String
+  subscriberType SubscriberType
+
+  title       String
+  description String?
+  imageUrl    String
+  linkUrl     String?
+
+  type   AdType   @default(NORMAL)
+  status AdStatus @default(PENDING)
+
+  startsAt DateTime
+  endsAt   DateTime
+  priority Int      @default(0)
+
+  impressions Int @default(0)
+  clicks      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, type, startsAt, endsAt])
+  @@index([subscriberId, type])
+}

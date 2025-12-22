@@ -5,7 +5,6 @@ import { AvailabilityStatus } from "@prisma/client";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
-import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
 
 interface InactiveListingResult {
     property: any; // Replace 'any' with your Property type

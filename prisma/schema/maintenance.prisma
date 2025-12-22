@@ -29,9 +29,9 @@ model maintenance {
   endAttachments               String[]
   startAttachments             String[]
   isPaused                     Boolean                        @default(false)
-  timeSpent                    String?                          
+  timeSpent                    String?
   destinationReached           Boolean                        @default(false)
-  jobStarted           Boolean                        @default(false)
+  jobStarted                   Boolean                        @default(false)
   pauseResumeDate              DateTime?
   rescheduleReason             String?
   rescheduleRequestDate        DateTime?

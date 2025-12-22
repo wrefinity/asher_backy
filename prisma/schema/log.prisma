@@ -28,7 +28,7 @@ model Log {
   transaction        Transaction?            @relation("transactions", fields: [transactionId], references: [id])
   units              UnitConfiguration?      @relation(fields: [unitId], references: [id])
   applicationInvites applicationInvites[]
-    // One-to-one relation with PropertyEnquiry
+  // One-to-one relation with PropertyEnquiry
   propertyEnquiry    PropertyEnquiry?        @relation("LogToPropertyEnquiry")
 }
 

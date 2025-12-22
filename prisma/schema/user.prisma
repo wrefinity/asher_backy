@@ -50,6 +50,7 @@ model users {
   ratingsGiven             Rating[]                   @relation("ratedByUser")
   ratingsReceived          Rating[]                   @relation("userRated")
   Subscription             Subscription[]
+  SubscriptionAd           SubscriptionAd[]
   Suggestion               Suggestion[]
   SupportTicketAssigned    SupportTicket[]            @relation("TicketAssignedTo")
   TicketMessages           TicketMessage[]

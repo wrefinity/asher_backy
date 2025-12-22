@@ -26,7 +26,7 @@ export interface TransactionIF {
     reference: TransactionReference;
     status?: TransactionStatus;
     referenceId: string;
-    paymentGateway?: PaymentGateway | null; // Assuming `PaymentGateway` is an enum or union type
+    paymentGateway?: PaymentGateway | null;
     stripePaymentIntentId?: string | null;
     propertyId?: string | null;
     applicationId?: string | null;

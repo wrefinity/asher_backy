@@ -149,6 +149,7 @@ model application {
   documents                    propertyDocument[]
   tenant                       tenants?                 @relation("ApplicationTenant")
   users                        users[]                  @relation("applicationTousers")
+  Transaction                  Transaction[]
 
   // Critical indexes for application reuse and common queries
   @@index([userId, status, isDeleted])
