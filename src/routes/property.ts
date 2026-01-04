@@ -29,6 +29,8 @@ class PropertyRouter {
         this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, PropertyController.createLikeProperty)
         this.router.get('/property/user/likes', this.authenticateService.authorize, PropertyController.getLikePropertyHistories)
         this.router.get('/property/listing/:id', PropertyController.getPropertyListingById)
+        // Specific routes must come before parameterized routes to avoid route conflicts
+        this.router.get('/property/:propertyId/related-listings', PropertyController.getRelatedListings)
         this.router.get('/property/:id', PropertyController.getPropertyById)
         this.router.get('/property/state', PropertyController.getPropertyByState)
         this.router.get('/property/listing', PropertyController.getListedProperties)

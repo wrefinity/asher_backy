@@ -611,26 +611,32 @@ class PropertyService {
             }
 
             // Normalize all listings
-            // Batch related listings queries to prevent connection pool exhaustion
-            const BATCH_SIZE = 5; // Process 5 listings at a time
+            // Process related listings sequentially to prevent connection pool exhaustion
+            // Sequential processing ensures we don't open too many concurrent connections
             const normalizedListings: NormalizedListing[] = [];
             
-            for (let i = 0; i < listings.length; i += BATCH_SIZE) {
-                const batch = listings.slice(i, i + BATCH_SIZE);
-                const batchResults = await Promise.all(batch.map(async (listing) => {
-                    const normalized = ListingNormalizer.normalize(listing);
-                    
-                    // Get related listings
+            for (const listing of listings) {
+                const normalized = ListingNormalizer.normalize(listing);
+                
+                // Get related listings sequentially (one at a time) to prevent connection exhaustion
+                try {
                     normalized.relatedListings = await ListingNormalizer.getRelatedListings(
                         listing.propertyId!,
                         listing.id,
                         prismaClient
                     );
-                    
-                    return normalized;
-                }));
+                } catch (error: any) {
+                    // If connection pool is exhausted, skip related listings for this item
+                    // The error is already handled in getRelatedListings, but add extra safety
+                    console.warn(`Skipping related listings for listing ${listing.id} due to connection issue`);
+                    normalized.relatedListings = {
+                        units: [],
+                        rooms: [],
+                        totalCount: 0
+                    };
+                }
                 
-                normalizedListings.push(...batchResults);
+                normalizedListings.push(normalized);
             }
 
             return normalizedListings;
@@ -690,14 +696,19 @@ class PropertyService {
                         state: {
                             is: {
                                 name: {
-                                    equals: state.toLowerCase().trim(),
+                                    equals: String(state).trim(),
                                     mode: 'insensitive'
                                 }
                             }
                         }
                     }),
                     ...(availability && { availability: AvailabilityStatus.VACANT }),
-                    ...(country && { country }),
+                    ...(country && {
+                        country: {
+                            equals: String(country).trim(),
+                            mode: 'insensitive'
+                        }
+                    }),
                     ...(marketValue && { marketValue: Number(marketValue) }),
                     ...(rentalFee && { price: Number(rentalFee) }),
                     ...(minRentalFee || maxRentalFee
@@ -813,11 +824,19 @@ class PropertyService {
                     ...(state && {
                         state: {
                             is: {
-                                name: state
+                                name: {
+                                    equals: String(state).trim(),
+                                    mode: 'insensitive'
+                                }
                             }
                         }
                     }),
-                    ...(country && { country }),
+                    ...(country && {
+                        country: {
+                            equals: String(country).trim(),
+                            mode: 'insensitive'
+                        }
+                    }),
                     ...(marketValue && { marketValue: Number(marketValue) }),
                     ...(rentalFee && { price: Number(rentalFee) }),
                     ...(minRentalFee || maxRentalFee
@@ -920,26 +939,32 @@ class PropertyService {
             take,
         });
         // Normalize all properties using the ListingNormalizer
-        // Batch related listings queries to prevent connection pool exhaustion
-        const BATCH_SIZE = 5; // Process 5 properties at a time
+        // Process related listings sequentially to prevent connection pool exhaustion
+        // Sequential processing ensures we don't open too many concurrent connections
         const normalizedProperties: NormalizedListing[] = [];
         
-        for (let i = 0; i < properties.length; i += BATCH_SIZE) {
-            const batch = properties.slice(i, i + BATCH_SIZE);
-            const batchResults = await Promise.all(batch.map(async (property) => {
-                const normalized = ListingNormalizer.normalize(property);
-                
-                // Get related listings
+        for (const property of properties) {
+            const normalized = ListingNormalizer.normalize(property);
+            
+            // Get related listings sequentially (one at a time) to prevent connection exhaustion
+            try {
                 normalized.relatedListings = await ListingNormalizer.getRelatedListings(
                     property.propertyId!,
                     property.id,
                     prismaClient
                 );
-                
-                return normalized;
-            }));
+            } catch (error: any) {
+                // If connection pool is exhausted, skip related listings for this item
+                // The error is already handled in getRelatedListings, but add extra safety
+                console.warn(`Skipping related listings for property ${property.id} due to connection issue`);
+                normalized.relatedListings = {
+                    units: [],
+                    rooms: [],
+                    totalCount: 0
+                };
+            }
             
-            normalizedProperties.push(...batchResults);
+            normalizedProperties.push(normalized);
         }
 
         return normalizedProperties;
@@ -1760,7 +1785,10 @@ class PropertyService {
                             images: true,
                             videos: true,
                             landlord: {
-                                include: {
+                                select: {
+                                    id: true,
+                                    userId: true, // Include userId field
+                                    landlordCode: true,
                                     user: {
                                         select: {
                                             id: true,

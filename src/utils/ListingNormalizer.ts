@@ -1,3 +1,4 @@
+import { extractLandlord as extractLandlordUtil } from './landlordExtractor';
 
 /**
  * Normalized Listing Interface
@@ -70,7 +71,9 @@ export interface NormalizedListing {
         landlord: {
             id: string;
             landlordCode: string;
+            userId?: string;
             user: {
+                id: string;
                 email: string;
                 profile: {
                     fullname: string;
@@ -504,37 +507,10 @@ export class ListingNormalizer {
 
     /**
      * Extract landlord info
+     * Uses shared extractor utility for consistency
      */
     private static extractLandlord(landlord: any): NormalizedListing['property']['landlord'] {
-        if (!landlord) {
-            return {
-                id: '',
-                landlordCode: '',
-                user: {
-                    email: '',
-                    profile: {
-                        fullname: '',
-                        firstName: '',
-                        lastName: '',
-                        profileUrl: null
-                    }
-                }
-            };
-        }
-
-        return {
-            id: landlord.id,
-            landlordCode: landlord.landlordCode || '',
-            user: {
-                email: landlord.user?.email || '',
-                profile: {
-                    fullname: landlord.user?.profile?.fullname || '',
-                    firstName: landlord.user?.profile?.firstName || '',
-                    lastName: landlord.user?.profile?.lastName || '',
-                    profileUrl: landlord.user?.profile?.profileUrl || null
-                }
-            }
-        };
+        return extractLandlordUtil(landlord);
     }
 
     /**
