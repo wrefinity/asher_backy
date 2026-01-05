@@ -24,6 +24,7 @@ import {
 import { ApplicationInvite } from "../../landlord/validations/interfaces/applications";
 import applicationServices from "../../services/application.services";
 import logsServices from "../../services/logs.services";
+import { ViewingInviteNormalizer } from "../../utils/ViewingInviteNormalizer";
 
 class ApplicantService {
 
@@ -40,6 +41,13 @@ class ApplicantService {
     videos: true,
     virtualTours: true,
     propertyDocument: true,
+    specification: {
+      include: {
+        residential: true,
+        commercial: true,
+        shortlet: true
+      }
+    },
     landlord: {
       include: {
         user: {
@@ -92,7 +100,24 @@ class ApplicantService {
     employeeReference: true,
     referee: true,
     Log: true,
-    applicationInvites: true
+    applicationInvites: {
+      include: {
+        enquires: true,
+        units: {
+          include: {
+            images: true
+          }
+        },
+        rooms: {
+          include: {
+            images: true
+          }
+        },
+        properties: {
+          include: this.propsIncusion
+        }
+      }
+    }
     // agreementDocumentUrl: true,
   }
 
@@ -578,10 +603,15 @@ class ApplicantService {
   };
 
   getApplicationById = async (applicationId: string) => {
-    return await prismaClient.application.findUnique({
+    const application = await prismaClient.application.findUnique({
       where: { id: applicationId },
       include: this.applicationInclusion,
     });
+    
+    if (!application) return null;
+    
+    const normalized = await this.normalizeApplications([application]);
+    return normalized[0];
   }
 
   checkApplicationExistance = async (applicationId: string) => {
@@ -611,8 +641,7 @@ class ApplicantService {
   }
 
   getApplicationBasedOnStatus = async (userId: string, status: ApplicationStatus | ApplicationStatus[]) => {
-
-    return await prismaClient.application.findMany({
+    const applications = await prismaClient.application.findMany({
       where: {
         userId: userId,
         status: Array.isArray(status) ? { in: status } : status,
@@ -620,6 +649,32 @@ class ApplicantService {
       },
       include: this.applicationInclusion,
     });
+
+    // Normalize applications to include listing
+    return this.normalizeApplications(applications);
+  }
+
+  /**
+   * Normalize applications to include listing hierarchy
+   */
+  private async normalizeApplications(applications: any[]): Promise<any[]> {
+    return Promise.all(
+      applications.map(async (application) => {
+        const invite = application.applicationInvites;
+        if (!invite) return application;
+
+        try {
+          const normalizedInvite = await ViewingInviteNormalizer.normalize(invite);
+          return {
+            ...application,
+            listing: normalizedInvite.listing
+          };
+        } catch (error) {
+          console.warn('Failed to normalize listing for application:', error);
+          return application;
+        }
+      })
+    );
   }
 
   // statistics

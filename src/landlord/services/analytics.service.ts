@@ -12,14 +12,9 @@ class AnalyticsService {
         const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-        const [
-            currentIncome,
-            previousIncome,
-            currentExpenses,
-            previousExpenses,
-            currentOverdue,
-            previousOverdue
-        ] = await Promise.all([
+        // Batch queries in smaller groups to prevent connection pool exhaustion
+        // Batch 1: Income queries (2 parallel queries)
+        const [currentIncome, previousIncome] = await Promise.all([
             // Current month income
             prismaClient.transaction.aggregate({
                 where: {
@@ -41,8 +36,11 @@ class AnalyticsService {
                     createdAt: { gte: startOfPreviousMonth, lte: endOfPreviousMonth }
                 },
                 _sum: { amount: true }
-            }),
+            })
+        ]);
 
+        // Batch 2: Expense queries (2 parallel queries)
+        const [currentExpenses, previousExpenses] = await Promise.all([
             // Current month expenses
             prismaClient.transaction.aggregate({
                 where: {
@@ -63,8 +61,11 @@ class AnalyticsService {
                     createdAt: { gte: startOfPreviousMonth, lte: endOfPreviousMonth }
                 },
                 _sum: { amount: true }
-            }),
+            })
+        ]);
 
+        // Batch 3: Overdue queries (2 parallel queries)
+        const [currentOverdue, previousOverdue] = await Promise.all([
             // Current overdue (this month)
             prismaClient.transaction.aggregate({
                 where: {
@@ -406,10 +407,9 @@ class AnalyticsService {
     async getFinancialSummary(landlordId: string, period: string) {
         const startDate = this.getPeriodStartDate(period);
 
-        const [income, expenses] = await Promise.all([
-            this.getIncomeStatistics(landlordId, period),
-            this.getExpenseBreakdown(landlordId, period)
-        ]);
+        // Execute sequentially to prevent connection pool exhaustion
+        const income = await this.getIncomeStatistics(landlordId, period);
+        const expenses = await this.getExpenseBreakdown(landlordId, period);
 
         const netIncome = income.totalIncome - expenses.totalExpenses;
         const profitMargin = income.totalIncome > 0 ? (netIncome / income.totalIncome) * 100 : 0;

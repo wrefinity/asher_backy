@@ -404,6 +404,26 @@ class AuthControls {
             );
         }
     }
+
+    logout = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const userId = req.user?.id;
+
+        if (userId) {
+            // Update user's online status to offline
+            await UserServices.updateOnlineStatus(userId, onlineStatus.offline);
+
+            // Log the logout activity
+            await logsServices.createLog({
+                events: `User logged out`,
+                type: LogType.ACTIVITY,
+                createdById: userId,
+            });
+        }
+
+        return res.status(200).json(
+            ApiResponse.success({}, "User logged out successfully")
+        );
+    });
 }
 
 export default new AuthControls();

@@ -110,7 +110,11 @@ class AdminController {
         </html>
       `;
 
-      await sendMail(email.toLowerCase(), "Welcome to Asher - Set Your Password", emailHtml);
+      // Send email in background - user is already created, email is just notification
+      sendMail(email.toLowerCase(), "Welcome to Asher - Set Your Password", emailHtml).catch((emailError) => {
+        console.error('Failed to send landlord invitation email:', emailError);
+        // Log the error but don't throw - user creation should still succeed
+      });
 
       return res.status(201).json({
         success: true,

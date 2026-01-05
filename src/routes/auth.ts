@@ -20,6 +20,7 @@ class AuthRoutes {
     private initializeRoutes(): void {
         this.router.use("/roles", RoleRouter);
         this.router.post("/login", validateBody(LoginSchema), AuthController.login.bind(AuthController));
+        this.router.post("/logout", this.authenticateService.authorize, AuthController.logout.bind(AuthController));
         this.router.post("/send-token", AuthController.sendToken.bind(AuthController));
         this.router.post("/verify-otp/token", AuthController.genericConfirmation.bind(AuthController));
         this.router.post("/verify", validateBody(ConfirmationSchema), AuthController.confirmation.bind(AuthController));

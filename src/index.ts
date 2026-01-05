@@ -56,11 +56,12 @@ export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({
         db: {
             url: process.env.DATABASE_URL
         }
-    },
-    // Connection pool configuration to prevent connection exhaustion
-    // These settings limit the number of connections Prisma will use
-    // Adjust based on your database's max_connections setting
+    }
+    // Note: Connection pool configuration is done via DATABASE_URL query parameters:
+    // ?connection_limit=10&pool_timeout=20
     // Default Prisma pool size is typically 10 connections
+    // To configure pooling, add these parameters to your DATABASE_URL:
+    // postgresql://user:password@host:port/database?connection_limit=10&pool_timeout=20
 });
 
 // In development, reuse the same instance across hot reloads

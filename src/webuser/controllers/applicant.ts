@@ -26,6 +26,8 @@ import logsServices from '../../services/logs.services';
 import emailService from '../../services/emailService';
 import { LandlordService } from '../../landlord/services/landlord.service';
 import userServices from '../../services/user.services';
+import logger from '../../utils/loggers';
+import { ViewingInviteNormalizer } from '../../utils/ViewingInviteNormalizer';
 
 class ApplicantControls {
 
@@ -80,7 +82,33 @@ class ApplicantControls {
       const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
       const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
       const submittedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.SUBMITTED);
-      const invites = await ApplicantService.getInvite({ userInvitedId: userId }, false);
+
+      const allInvites = await ApplicantService.getInvite({ userInvitedId: userId }, false);
+      
+      // Filter invites to only include those ready for application:
+      // Invites that have completed the full flow (PENDING -> ACCEPTED -> AWAITING_FEEDBACK -> FEEDBACK -> APPLY)
+      const filteredInvites = allInvites.filter((invite: any) => {
+        const response = invite.response;
+        const stepsCompleted = invite.responseStepsCompleted || [];
+        
+        // Include if in APPLY or APPLICATION_STARTED state
+        if (response === InvitedResponse.APPLY || response === InvitedResponse.APPLICATION_STARTED) {
+          return true;
+        }
+        
+        // Include if has completed the full flow: PENDING -> ACCEPTED -> AWAITING_FEEDBACK -> FEEDBACK -> APPLY
+        const hasFullFlow = 
+          stepsCompleted.includes(InvitedResponse.PENDING) &&
+          stepsCompleted.includes(InvitedResponse.ACCEPTED) &&
+          stepsCompleted.includes(InvitedResponse.AWAITING_FEEDBACK) &&
+          stepsCompleted.includes(InvitedResponse.FEEDBACK) &&
+          stepsCompleted.includes(InvitedResponse.APPLY);
+        
+        return hasFullFlow;
+      });
+      
+      // Normalize invites to include listing with hierarchy
+      const invites = await ViewingInviteNormalizer.normalizeMany(filteredInvites);
       // Define status groups
       const activeStatuses = [
         ApplicationStatus.PENDING,
@@ -97,7 +125,7 @@ class ApplicantControls {
         ApplicationStatus.AGREEMENTS_SIGNED,
       ];
 
-      // Get grouped applications
+      // Get grouped applications (already normalized in service)
       const [activeApps, completedApps] = await Promise.all([
         ApplicantService.getApplicationBasedOnStatus(userId, activeStatuses),
         ApplicantService.getApplicationBasedOnStatus(userId, completedStatuses)
@@ -677,9 +705,20 @@ class ApplicantControls {
   }
 
   getInvite = async (req: CustomRequest, res: Response) => {
-    const { id } = req.params;
-    const invite = await ApplicantService.getInvitedById(id);
-    return res.status(200).json({ invite });
+    try {
+      const { id } = req.params;
+      const rawInvite = await ApplicantService.getInvitedById(id);
+      if (!rawInvite) {
+        return res.status(404).json({ message: 'Invite not found' });
+      }
+      
+      // Normalize the invite to include listing with hierarchy
+      const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
+      
+      return res.status(200).json({ invite: normalizedInvite });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
   }
 
   // invites sections 
@@ -687,10 +726,10 @@ class ApplicantControls {
     try {
       const userInvitedId = req.user?.id;
       const [
-        pendingInvites,
-        acceptInvites,
-        otherInvites,
-        awaitingFeedbackInvites
+        rawPendingInvites,
+        rawAcceptInvites,
+        rawOtherInvites,
+        rawAwaitingFeedbackInvites
       ] = await Promise.all([
         ApplicantService.getInvite({
           userInvitedId,
@@ -698,7 +737,7 @@ class ApplicantControls {
         }),
         ApplicantService.getInvite({
           userInvitedId,
-          response: [InvitedResponse.ACCEPTED, InvitedResponse.RESCHEDULED, InvitedResponse.RE_INVITED, InvitedResponse.RESCHEDULED_ACCEPTED] // FIXED HERE
+          response: [InvitedResponse.ACCEPTED, InvitedResponse.RESCHEDULED, InvitedResponse.RE_INVITED, InvitedResponse.RESCHEDULED_ACCEPTED]
         }),
         ApplicantService.getInvite({
           userInvitedId,
@@ -708,6 +747,14 @@ class ApplicantControls {
           userInvitedId,
           response: [InvitedResponse.AWAITING_FEEDBACK]
         })
+      ]);
+
+      // Normalize all invites to include listing with hierarchy
+      const [pendingInvites, acceptInvites, otherInvites, awaitingFeedbackInvites] = await Promise.all([
+        ViewingInviteNormalizer.normalizeMany(rawPendingInvites || []),
+        ViewingInviteNormalizer.normalizeMany(rawAcceptInvites || []),
+        ViewingInviteNormalizer.normalizeMany(rawOtherInvites || []),
+        ViewingInviteNormalizer.normalizeMany(rawAwaitingFeedbackInvites || [])
       ]);
 
       return res.status(200).json({
@@ -841,12 +888,14 @@ class ApplicantControls {
         return res.status(400).json({ message: "Mail not sent" });
       }
 
-      // Send email notification
-      await sendMail(
+      // Send email notification in background - don't fail the request if email fails
+      sendMail(
         landlord.user.email,
         `Asher - ${agreement.application?.properties?.name} Agreement Form`,
         htmlContent
-      );
+      ).catch((emailError) => {
+        logger.error('Failed to send agreement signed email:', emailError);
+      });
 
       // Create audit log
       await logsServices.createLog({

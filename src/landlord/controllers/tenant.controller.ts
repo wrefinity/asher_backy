@@ -15,6 +15,8 @@ import ViolationService from '../../services/violations';
 import PerformanceCalculator from '../../services/PerformanceCalculator';
 import applicantService from "../../webuser/services/applicantService";
 import { sendApplicationCompletionEmails } from "../../utils/emailer";
+import { ListingNormalizer } from "../../utils/ListingNormalizer";
+import propertyServices from '../../services/propertyServices';
 
 
 const normalizePhoneNumber = (phone: any): string => {
@@ -78,8 +80,57 @@ class TenantControls {
         if (!landlordId) {
             return res.status(404).json({ error: 'kindly login as landlord' });
         }
-        const currentTenants = await TenantService.getTenantsWithEnquiries(landlordId, EnquireStatus.EXISTING_TENANT);
-        return res.status(200).json({ currentTenants });
+        const rawTenants = await TenantService.getTenantsWithEnquiries(landlordId, EnquireStatus.EXISTING_TENANT);
+        
+        // Normalize PropertyEnquiry listings for each tenant
+        const normalizedTenants = await Promise.all(
+            rawTenants.map(async (tenant: any) => {
+                if (tenant.PropertyEnquiry && tenant.PropertyEnquiry.length > 0) {
+                    const normalizedEnquiries = await Promise.all(
+                        tenant.PropertyEnquiry.map(async (enquiry: any) => {
+                            const log = enquiry.logs;
+                            if (!log) return enquiry;
+                            
+                            // Get propertyListingId, roomId, unitId from logs
+                            const propertyListingId = log.propertyListingId;
+                            const roomId = log.roomId;
+                            const unitId = log.unitId;
+                            
+                            // If no propertyListingId, return enquiry as-is
+                            if (!propertyListingId) {
+                                return enquiry;
+                            }
+                            
+                            try {
+                                // Fetch the listing using propertyListingId (same method as ViewingInviteNormalizer)
+                                const normalizedListing = await propertyServices.getPropertyListingByListingIdNew(propertyListingId);
+                                
+                                if (normalizedListing) {
+                                    // Add normalized listing to enquiry
+                                    return {
+                                        ...enquiry,
+                                        listing: normalizedListing
+                                    };
+                                }
+                            } catch (error) {
+                                console.error(`Failed to normalize listing for enquiry ${enquiry.id}:`, error);
+                            }
+                            
+                            return enquiry;
+                        })
+                    );
+                    
+                    return {
+                        ...tenant,
+                        PropertyEnquiry: normalizedEnquiries
+                    };
+                }
+                
+                return tenant;
+            })
+        );
+        
+        return res.status(200).json({ currentTenants: normalizedTenants });
     }
     getCurrentTenantOnProperty = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;

@@ -19,6 +19,8 @@ import emailService from "../../services/emailService"
 import { ApiError } from "../../utils/ApiError"
 import { asyncHandler } from "../../utils/asyncHandler"
 import { ApiResponse } from "../../utils/ApiResponse"
+import logger from "../../utils/loggers"
+import { ViewingInviteNormalizer } from "../../utils/ViewingInviteNormalizer"
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -217,7 +219,12 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-            await Emailer(userExist.email, "Asher Rentals Invites", htmlContent)
+            
+            // Send email in background - don't fail the request if email fails
+            Emailer(userExist.email, "Asher Rentals Invites", htmlContent).catch((emailError) => {
+                logger.error('Failed to send invitation email:', emailError);
+            });
+            
             await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED })
             return res.status(201).json({ invite });
         } catch (error) {
@@ -276,7 +283,12 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-            await Emailer(userExist?.email, "Asher Rentals Invites", htmlContent)
+            
+            // Send email in background - don't fail the request if email fails
+            Emailer(userExist?.email, "Asher Rentals Invites", htmlContent).catch((emailError) => {
+                logger.error('Failed to send invitation email:', emailError);
+                // Log the error but don't throw - invite creation should still succeed
+            });
 
             return res.status(201).json({ invite });
         } catch (error) {
@@ -287,9 +299,13 @@ class ApplicationControls {
     getInvite = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;
-            const invite = await ApplicationInvitesService.getInviteById(id);
-            if (!invite) return res.status(404).json({ message: 'Invite not found' });
-            return res.status(200).json({ invite });
+            const rawInvite = await ApplicationInvitesService.getInviteById(id);
+            if (!rawInvite) return res.status(404).json({ message: 'Invite not found' });
+            
+            // Normalize the invite to include listing with hierarchy
+            const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
+            
+            return res.status(200).json({ invite: normalizedInvite });
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -299,15 +315,21 @@ class ApplicationControls {
         try {
             const invitedByLandordId = req.user?.landlords?.id;
             // get all invites which has not reach application state
-            const invite = await ApplicationInvitesService.getInviteWithoutStatus(invitedByLandordId, [
+            const rawInvites = await ApplicationInvitesService.getInviteWithoutStatus(invitedByLandordId, [
                 InvitedResponse.APPLY,
                 InvitedResponse.FEEDBACK,
                 // InvitedResponse.SCHEDULED,
                 InvitedResponse.APPLICATION_STARTED,
                 InvitedResponse.APPLICATION_NOT_STARTED
             ]);
-            if (!invite) return res.status(404).json({ message: 'Invite not found' });
-            return res.status(200).json({ invite });
+            if (!rawInvites || rawInvites.length === 0) {
+                return res.status(200).json({ invite: [] });
+            }
+            
+            // Normalize all invites to include listing with hierarchy
+            const normalizedInvites = await ViewingInviteNormalizer.normalizeMany(rawInvites);
+            
+            return res.status(200).json({ invite: normalizedInvites });
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -425,8 +447,36 @@ class ApplicationControls {
     getFeedbacks = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.landlords.id;
-            const feedbacks = await logsServices.getLandlordLogs(landlordId, LogType.FEEDBACK, null);
-            return res.status(200).json({ feedbacks });
+            const rawFeedbacks = await logsServices.getLandlordLogs(landlordId, LogType.FEEDBACK, null);
+            
+            // Normalize each feedback by normalizing its associated invite
+            const normalizedFeedbacks = await Promise.all(
+                rawFeedbacks.map(async (feedback: any) => {
+                    // Get the first applicationInvite if available
+                    const firstInvite = feedback.applicationInvites?.[0];
+                    
+                    if (firstInvite) {
+                        // Fetch the full invite with all relations
+                        const fullInvite = await ApplicationInvitesService.getInviteById(firstInvite.id);
+                        
+                        if (fullInvite) {
+                            // Normalize the invite to get listing with hierarchy
+                            const normalizedInvite = await ViewingInviteNormalizer.normalize(fullInvite);
+                            
+                            // Add the normalized listing to the feedback
+                            return {
+                                ...feedback,
+                                listing: normalizedInvite.listing
+                            };
+                        }
+                    }
+                    
+                    // If no invite or normalization failed, return feedback as-is
+                    return feedback;
+                })
+            );
+            
+            return res.status(200).json({ feedbacks: normalizedFeedbacks });
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -593,8 +643,10 @@ class ApplicationControls {
                     break;
             }
 
-            // Send email
-            await sendMail(recipientEmail, subject, htmlContent);
+            // Send email in background - log is already created, so reminder is tracked even if email fails
+            sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
+                logger.error('Failed to send reminder email:', emailError);
+            });
 
             return res.status(200).json({
                 message: "Reminder sent successfully",
@@ -758,19 +810,23 @@ class ApplicationControls {
 
             // Extract needed values
             const { documentUrl = documentUrls[0], cloudinaryVideoUrls, cloudinaryUrls, cloudinaryAudioUrls, cloudinaryDocumentUrls, ...data } = value;
-            Promise.all([
-                // Send email
-                await sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent),
-                await logsServices.createLog({
+            
+            // Send email in background - don't fail the request if email fails
+            sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent).catch((emailError) => {
+                logger.error('Failed to send agreement form email:', emailError);
+            });
+            
+            await Promise.all([
+                logsServices.createLog({
                     applicationId,
                     subjects: "Asher Agreement Letter",
                     events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
                     createdById: application.user.id,
                     type: LogType.EMAIL,
                 }),
-                await applicantService.upsertAgreementDocument({ ...data, documentUrl, applicationId }, req.user.id),
+                applicantService.upsertAgreementDocument({ ...data, documentUrl, applicationId }, req.user.id),
                 // Update the application with the agreement document URL
-                await applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS)
+                applicantService.updateApplicationStatusStep(applicationId, ApplicationStatus.AGREEMENTS)
             ])
             return res.status(200).json({
                 message: "Agreement form email sent successfully",
@@ -882,12 +938,14 @@ class ApplicationControls {
                 return res.status(400).json({ message: "Mail not sent" });
             }
 
-            // Send email notification
-            await sendMail(
+            // Send email notification in background - don't fail the request if email fails
+            sendMail(
                 landlord.user.email,
                 `Asher - ${agreement.application?.properties?.name} Agreement Form`,
                 htmlContent
-            );
+            ).catch((emailError) => {
+                logger.error('Failed to send agreement signed email:', emailError);
+            });
 
             // Create audit log
             await logsServices.createLog({

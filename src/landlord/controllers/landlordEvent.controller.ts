@@ -51,8 +51,9 @@ class LandlordEventController {
 
     const events = await landlordEventService.getEventsByLandlord(landlordId, start, end);
     
+    // Always return 200 with an array, even if empty
     return res.status(200).json(
-      ApiResponse.success(events, 'Events retrieved successfully')
+      ApiResponse.success(events || [], 'Events retrieved successfully')
     );
   });
 
