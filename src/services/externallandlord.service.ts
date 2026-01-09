@@ -7,6 +7,7 @@ import {
   TenantConductCreateDTO
 } from '../validations/interfaces/references.interfaces';
 import applicantService from "../webuser/services/applicantService";
+import { ConflictError } from "./error.service";
 
 class LandlordReferenceService {
   async createLandlordReferenceForm(
@@ -33,7 +34,7 @@ class LandlordReferenceService {
         }
       });
       if (existingForm) {
-        throw Error("Landlord reference completed")
+        throw new ConflictError("Landlord reference already completed for this application");
       }
       // Run these operations in parallel to save time
       const [tenancyHistory, externalLandlord, tenantConduct] = await Promise.all([

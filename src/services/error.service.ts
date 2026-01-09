@@ -30,6 +30,18 @@ class NotFoundError extends Error {
     }
 }
 
+class ConflictError extends Error {
+    statusCode: number;
+    constructor(message: string) {
+        super(message);
+        this.statusCode = 409;
+        this.name = "ConflictError";
+    }
+}
+
+// Export ConflictError so it can be used in other services
+export { ConflictError };
+
 class PrismaError extends Error {
     statusCode: number;
     errorDetails: string;
@@ -55,6 +67,9 @@ class ErrorService {
             return res.status(error.statusCode).json({ message: error.message });
         } else if (error instanceof NotFoundError) {
             loggers.error("Not Found Error", error);
+            return res.status(error.statusCode).json({ message: error.message });
+        } else if (error instanceof ConflictError) {
+            loggers.error("Conflict Error", error);
             return res.status(error.statusCode).json({ message: error.message });
         }
 
