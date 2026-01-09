@@ -16,7 +16,7 @@ import {
   refreeSchema,
   declarationSchema
 } from '../schemas';
-import { createAgreementDocSchemaFuture, updateAgreementSchema } from "../../landlord/validations/schema/applicationInvitesSchema"
+import {updateAgreementSchema } from "../../landlord/validations/schema/applicationInvitesSchema"
 import ErrorService from "../../services/error.service";
 import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
@@ -45,7 +45,7 @@ class ApplicantControls {
         return res.status(400).json({ message: 'Invalid date format' });
       }
       const updated = await ApplicantionService.updateMoveInDate(id, date);
-      res.status(200).json({ updated });
+      return res.status(200).json({ updated });
     } catch (error) {
       ErrorService.handleError(error, res)
     }

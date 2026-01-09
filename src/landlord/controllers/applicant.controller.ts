@@ -8,7 +8,7 @@ import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType } from "@prisma/client"
 import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, agreementDocumentSchema, updateApplicationStatusSchema, updateAgreementSchema } from '../validations/schema/applicationInvitesSchema';
-import Emailer from "../../utils/emailer";
+import Emailer, { sendApplicationCompletionEmails } from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
@@ -16,9 +16,6 @@ import sendMail from "../../utils/emailer"
 import applicantService from "../../webuser/services/applicantService"
 import { PropertyDocumentService } from "../../services/propertyDocument.service"
 import emailService from "../../services/emailService"
-import { ApiError } from "../../utils/ApiError"
-import { asyncHandler } from "../../utils/asyncHandler"
-import { ApiResponse } from "../../utils/ApiResponse"
 import logger from "../../utils/loggers"
 import { ViewingInviteNormalizer } from "../../utils/ViewingInviteNormalizer"
 
@@ -219,12 +216,12 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-            
+
             // Send email in background - don't fail the request if email fails
             Emailer(userExist.email, "Asher Rentals Invites", htmlContent).catch((emailError) => {
                 logger.error('Failed to send invitation email:', emailError);
             });
-            
+
             await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED })
             return res.status(201).json({ invite });
         } catch (error) {
@@ -283,7 +280,7 @@ class ApplicationControls {
                 </ul>
                 <p>Please respond to this invitation as soon as possible.</p>
             `;
-            
+
             // Send email in background - don't fail the request if email fails
             Emailer(userExist?.email, "Asher Rentals Invites", htmlContent).catch((emailError) => {
                 logger.error('Failed to send invitation email:', emailError);
@@ -301,10 +298,10 @@ class ApplicationControls {
             const { id } = req.params;
             const rawInvite = await ApplicationInvitesService.getInviteById(id);
             if (!rawInvite) return res.status(404).json({ message: 'Invite not found' });
-            
+
             // Normalize the invite to include listing with hierarchy
             const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
-            
+
             return res.status(200).json({ invite: normalizedInvite });
         } catch (error) {
             errorService.handleError(error, res)
@@ -325,10 +322,10 @@ class ApplicationControls {
             if (!rawInvites || rawInvites.length === 0) {
                 return res.status(200).json({ invite: [] });
             }
-            
+
             // Normalize all invites to include listing with hierarchy
             const normalizedInvites = await ViewingInviteNormalizer.normalizeMany(rawInvites);
-            
+
             return res.status(200).json({ invite: normalizedInvites });
         } catch (error) {
             errorService.handleError(error, res)
@@ -448,21 +445,21 @@ class ApplicationControls {
         try {
             const landlordId = req.user.landlords.id;
             const rawFeedbacks = await logsServices.getLandlordLogs(landlordId, LogType.FEEDBACK, null);
-            
+
             // Normalize each feedback by normalizing its associated invite
             const normalizedFeedbacks = await Promise.all(
                 rawFeedbacks.map(async (feedback: any) => {
                     // Get the first applicationInvite if available
                     const firstInvite = feedback.applicationInvites?.[0];
-                    
+
                     if (firstInvite) {
                         // Fetch the full invite with all relations
                         const fullInvite = await ApplicationInvitesService.getInviteById(firstInvite.id);
-                        
+
                         if (fullInvite) {
                             // Normalize the invite to get listing with hierarchy
                             const normalizedInvite = await ViewingInviteNormalizer.normalize(fullInvite);
-                            
+
                             // Add the normalized listing to the feedback
                             return {
                                 ...feedback,
@@ -470,12 +467,12 @@ class ApplicationControls {
                             };
                         }
                     }
-                    
+
                     // If no invite or normalization failed, return feedback as-is
                     return feedback;
                 })
             );
-            
+
             return res.status(200).json({ feedbacks: normalizedFeedbacks });
         } catch (error) {
             errorService.handleError(error, res)
@@ -581,7 +578,14 @@ class ApplicationControls {
             }
             // Get recipient email
             let recipientEmail = null;
+
+            // TODO: why email reminder for employer and guarantor sents to the applicant email
             if (
+                value.status === ReminderType.REFERENCE_REMINDER ||
+                value.status === ReminderType.APPLICATION_REMINDER
+            ) {
+                recipientEmail = application.user.email;
+            } else if (
                 value.status === ReminderType.REFERENCE_REMINDER ||
                 value.status === ReminderType.APPLICATION_REMINDER
             ) {
@@ -644,10 +648,10 @@ class ApplicationControls {
             }
 
             // Send email in background - log is already created, so reminder is tracked even if email fails
-            sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
-                logger.error('Failed to send reminder email:', emailError);
-            });
-
+            // sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
+            //     logger.error('Failed to send reminder email:', emailError);
+            // });
+            await sendApplicationCompletionEmails(application);
             return res.status(200).json({
                 message: "Reminder sent successfully",
                 details: { recipient: recipientEmail, type: value.status }
@@ -736,7 +740,7 @@ class ApplicationControls {
             if (!landlordId) {
                 return res.status(403).json({ error: 'kindly login' });
             }
-            const {applicationCreator, ...value} = req.body;
+            const { applicationCreator, ...value } = req.body;
             const applicationId = req.params.id;
             // Validate application ID
             if (!applicationId) {
@@ -761,7 +765,7 @@ class ApplicationControls {
                 });
             }
 
-            if(applicationCreator){
+            if (applicationCreator) {
 
             }
             // Get recipient email
@@ -810,12 +814,12 @@ class ApplicationControls {
 
             // Extract needed values
             const { documentUrl = documentUrls[0], cloudinaryVideoUrls, cloudinaryUrls, cloudinaryAudioUrls, cloudinaryDocumentUrls, ...data } = value;
-            
+
             // Send email in background - don't fail the request if email fails
             sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent).catch((emailError) => {
                 logger.error('Failed to send agreement form email:', emailError);
             });
-            
+
             await Promise.all([
                 logsServices.createLog({
                     applicationId,

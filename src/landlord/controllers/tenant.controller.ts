@@ -15,21 +15,10 @@ import ViolationService from '../../services/violations';
 import PerformanceCalculator from '../../services/PerformanceCalculator';
 import applicantService from "../../webuser/services/applicantService";
 import { sendApplicationCompletionEmails } from "../../utils/emailer";
-import { ListingNormalizer } from "../../utils/ListingNormalizer";
 import propertyServices from '../../services/propertyServices';
 
 
-const normalizePhoneNumber = (phone: any): string => {
-    if (!phone) return '';
 
-    // Convert from exponential notation if necessary
-    let phoneStr = typeof phone === "number" ? phone.toFixed(0) : phone.toString();
-
-    // Remove non-digit characters
-    phoneStr = phoneStr.replace(/\D/g, '');
-
-    return phoneStr;
-};
 
 
 class TenantControls {

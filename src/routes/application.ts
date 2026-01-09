@@ -49,8 +49,7 @@ class ApplicantRoutes {
         this.router.post('/guarantor-reference/:id', GuarantorReferenceFormControls.createGuarantorAgreement);
         this.router.post('/employee-reference/:id', EmployeeReferenceFormControls.createEmployeeReference);
         this.router.get('/references/:id', LandlordReferenceFormControls.getReferenceForm);
-        this.router.post('/sign/:id', this.authenticateService.authorize,  upload.array('files'), uploadToCloudinary, ApplicantControls.signAgreementForm);
-    
+        this.router.post('/sign/:id', this.authenticateService.authorize,  upload.array('files'), uploadToCloudinary, ApplicantControls.signAgreementForm); 
         this.router.get('/last-application/user', this.authenticateService.authorize, ApplicantControls.getLastApplicationDataForUser);}
 }
 

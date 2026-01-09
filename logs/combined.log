@@ -386,3 +386,4 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2025-12-19 21:52:02"}
 {"level":"info","message":"Sending mail to - lxbrw23+4@gmail.com","service":"api-service","timestamp":"2025-12-19 21:52:31"}
 {"level":"info","message":"Email sent successfully. ID: 7f36f0e0-a876-40b5-a8fc-22d5c3316633","service":"api-service","timestamp":"2025-12-19 21:52:38"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-09 20:49:45"}
