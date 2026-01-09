@@ -668,6 +668,15 @@ export const residentialPropertySchema = Joi.object({
   additionalNotes: Joi.string().optional(),
   bills: Joi.array().items(Joi.string().uuid()).optional(),
 
+  // UK Leasehold fields
+  leaseYearsRemaining: Joi.string().optional(),
+  groundRent: Joi.number().optional(),
+  serviceCharge: Joi.number().optional(),
+  // US-specific fields
+  propertyTax: Joi.number().optional(),
+  hoaFees: Joi.number().optional(),
+  hoaName: Joi.string().optional(),
+
   PropertySpecification: Joi.array().items(Joi.object())
 });
 

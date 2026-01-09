@@ -376,6 +376,14 @@ model ResidentialProperty {
   unitConfigurations        UnitConfiguration[]
   billsSubCategory          billsSubCategory[]      @relation("ResidentialPropertyTobillsSubCategory")
 
+  // UK Leasehold fields
+  leaseYearsRemaining String?
+  groundRent          Decimal? @db.Decimal(18, 2)
+  serviceCharge       Decimal? @db.Decimal(18, 2)
+  // US-specific fields
+  propertyTax         Decimal? @db.Decimal(18, 2)
+  hoaFees             Decimal? @db.Decimal(18, 2)
+
   // Residential property search indexes
   @@index([status])
   @@index([bedrooms, bathrooms])
@@ -677,6 +685,10 @@ enum TensureType {
   LEASE_HOLD
   SHARE_OR_FREEHOLD
   COMMONHOLD
+  FEE_SIMPLE
+  CONDO
+  CO_OP
+  OTHER
 }
 
 enum GarageType {

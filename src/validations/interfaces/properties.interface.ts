@@ -285,7 +285,16 @@ export interface IResidentialDTO {
     glazingTypes?: GlazingType;
 
     bills?: string[];
-    additionalNotes?: string
+    additionalNotes?: string;
+
+    // UK Leasehold fields
+    leaseYearsRemaining?: string;
+    groundRent?: number;
+    serviceCharge?: number;
+    // US-specific fields
+    propertyTax?: number;
+    hoaFees?: number;
+    hoaName?: string;
 }
 
 export interface ICommercialDTO {
