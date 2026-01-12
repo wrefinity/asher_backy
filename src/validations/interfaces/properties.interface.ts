@@ -2,6 +2,7 @@ import {
     PropertyType, PropertyStatus, TensureType, AvailabilityStatus, Currency, VatStatus, RoomDetail, GarageType, GlazingType, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType,
     MediaType, BookingStatus, ShortletProperty, ResidentialProperty, CommercialProperty, bills
 } from "@prisma/client"
+import { Decimal } from "@prisma/client/runtime/library";
 
 export interface IPropertyDocument {
     id?: string;
@@ -289,7 +290,7 @@ export interface IResidentialDTO {
 
     // UK Leasehold fields
     leaseYearsRemaining?: string;
-    groundRent?: number;
+    groundRent: number | Decimal;
     serviceCharge?: number;
     // US-specific fields
     propertyTax?: number;

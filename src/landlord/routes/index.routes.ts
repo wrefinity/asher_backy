@@ -86,12 +86,15 @@ class LandlordRouter {
             '/locations/list',
             LandlordControl.getCurrentLocations
         );
+
         this.router.get(
             '/properties/list',
             LandlordControl.getLandlordProperties
         );
+
         // complaints modules under landlord
         this.router.use("/complaints", ComplaintRouterRouter)
+        
         // document modules under landlord
         this.router.use("/documents", DocumentRouter)
         // maintenances modules under landlord

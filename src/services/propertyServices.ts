@@ -6,6 +6,9 @@ import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPrici
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
 
+const decimalToNumber = (value?: Prisma.Decimal | null): number | undefined =>
+    value ? value.toNumber() : undefined;
+
 interface InactiveListingResult {
     property: any; // Replace 'any' with your Property type
     unit: any; // Replace 'any' with your UnitConfiguration type
@@ -236,7 +239,7 @@ class PropertyService {
             ...specificDetails,
         };
     }
-    
+
     // Function to aggregate properties by state for the current landlord
     aggregatePropertiesByState = async (landlordId: string) => {
         const groupedProperties = await prismaClient.properties.groupBy({
@@ -441,7 +444,7 @@ class PropertyService {
                 }
             }
         });
-        
+
         // Normalize all listings
         return ListingNormalizer.normalizeMany(listings);
     }
@@ -614,10 +617,10 @@ class PropertyService {
             // Process related listings sequentially to prevent connection pool exhaustion
             // Sequential processing ensures we don't open too many concurrent connections
             const normalizedListings: NormalizedListing[] = [];
-            
+
             for (const listing of listings) {
                 const normalized = ListingNormalizer.normalize(listing);
-                
+
                 // Get related listings sequentially (one at a time) to prevent connection exhaustion
                 try {
                     normalized.relatedListings = await ListingNormalizer.getRelatedListings(
@@ -635,7 +638,7 @@ class PropertyService {
                         totalCount: 0
                     };
                 }
-                
+
                 normalizedListings.push(normalized);
             }
 
@@ -942,10 +945,10 @@ class PropertyService {
         // Process related listings sequentially to prevent connection pool exhaustion
         // Sequential processing ensures we don't open too many concurrent connections
         const normalizedProperties: NormalizedListing[] = [];
-        
+
         for (const property of properties) {
             const normalized = ListingNormalizer.normalize(property);
-            
+
             // Get related listings sequentially (one at a time) to prevent connection exhaustion
             try {
                 normalized.relatedListings = await ListingNormalizer.getRelatedListings(
@@ -963,7 +966,7 @@ class PropertyService {
                     totalCount: 0
                 };
             }
-            
+
             normalizedProperties.push(normalized);
         }
 
@@ -1845,7 +1848,7 @@ class PropertyService {
 
             // Normalize the listing (pass propertyListingId if available)
             const normalized = ListingNormalizer.normalize(listing, propertyListingId);
-            
+
             // Get related listings
             normalized.relatedListings = await ListingNormalizer.getRelatedListings(
                 listing.propertyId!,
@@ -2425,12 +2428,33 @@ class PropertyService {
                 });
             }
 
+            // Create a helper function to convert Decimal to number
+            const decimalToNumber = (decimal: any): number => {
+                if (decimal === null || decimal === undefined) return 0;
+                return typeof decimal === 'number' ? decimal : Number(decimal.toString());
+            };
+
+
             // Create or reuse specification based on target type
             switch (data.specificationType) {
                 case PropertySpecificationType.COMMERCIAL:
                     return this.handleCommercialSwitch(tx, specification.commercial, propertyId, property.specification?.[0],);
                 case PropertySpecificationType.RESIDENTIAL:
-                    return this.handleResidentialSwitch(tx, specification.residential, propertyId, property.specification?.[0]);
+                    // return this.handleResidentialSwitch(tx, specification.residential, propertyId, property.specification?.[0]);
+                    // Convert Decimal fields to numbers before passing
+                    const residentialDTO = {
+                        ...specification.residential,
+                        groundRent: decimalToNumber(specification.residential?.groundRent),
+                        serviceCharge: decimalToNumber(specification.residential?.serviceCharge),
+                        propertyTax: decimalToNumber(specification.residential?.propertyTax),
+                        hoaFees: decimalToNumber(specification.residential?.hoaFees),
+                    };
+                    return this.handleResidentialSwitch(
+                        tx,
+                        residentialDTO,
+                        propertyId,
+                        property.specification?.[0]
+                    );
                 case PropertySpecificationType.SHORTLET:
                     return this.handleShortletSwitch(tx, specification.shortlet, propertyId, property.specification?.[0]);
                 default:
@@ -2464,7 +2488,6 @@ class PropertyService {
 
     private async handleResidentialSwitch(tx: any, request: IResidentialDTO, propertyId: string, currentSpec?: any) {
         const { ...residentialData } = request;
-
         const residential = currentSpec?.residential
             ? await tx.residentialProperty.create({
                 data: {
@@ -2625,47 +2648,47 @@ class PropertyService {
         });
     }
 
-searchPropertyUnitRoom = async (id: string) => {
-    // First search the property without strict filters
-    const property = await prismaClient.properties.findFirst({
-        where: { id, isDeleted: false },
-        include: {
-            propertyListingHistory: true
+    searchPropertyUnitRoom = async (id: string) => {
+        // First search the property without strict filters
+        const property = await prismaClient.properties.findFirst({
+            where: { id, isDeleted: false },
+            include: {
+                propertyListingHistory: true
+            }
+        });
+
+        const unit = await prismaClient.unitConfiguration.findFirst({
+            where: { id, isDeleted: false }
+        });
+
+        const room = await prismaClient.roomDetail.findFirst({
+            where: { id, isDeleted: false }
+        });
+
+        if (property) {
+            // Determine if property is actually active on listing
+            const isListed = property.propertyListingHistory?.some(h => h.isActive && h.onListing);
+
+            return {
+                type: 'property',
+                data: property,
+                isListed
+            };
         }
-    });
 
-    const unit = await prismaClient.unitConfiguration.findFirst({
-        where: { id, isDeleted: false }
-    });
+        if (unit) {
+            return { type: 'unit', data: unit };
+        }
 
-    const room = await prismaClient.roomDetail.findFirst({
-        where: { id, isDeleted: false }
-    });
+        if (room) {
+            return { type: 'room', data: room };
+        }
 
-    if (property) {
-        // Determine if property is actually active on listing
-        const isListed = property.propertyListingHistory?.some(h => h.isActive && h.onListing);
+        console.log("=========== No match found for id:", id);
+        console.log(property)
 
-        return {
-            type: 'property',
-            data: property,
-            isListed
-        };
-    }
-
-    if (unit) {
-        return { type: 'unit', data: unit };
-    }
-
-    if (room) {
-        return { type: 'room', data: room };
-    }
-
-    console.log("=========== No match found for id:", id);
-    console.log(property)
-
-    throw new Error("No matching property, unit, or room found");
-};
+        throw new Error("No matching property, unit, or room found");
+    };
 
 
     async updateShortletSettings(propertyId: string, data: Partial<IShortletDTO>) {
@@ -2838,8 +2861,8 @@ searchPropertyUnitRoom = async (id: string) => {
         propertyId?: string;
         unitId?: string;
         roomId?: string;
-    }) =>{
-        return  await prismaClient.propertyEnquiry.create({ data });
+    }) => {
+        return await prismaClient.propertyEnquiry.create({ data });
     }
 
 
@@ -2848,12 +2871,12 @@ searchPropertyUnitRoom = async (id: string) => {
             where: { landlordId },
             include: {
                 tenant: {
-                    select: { 
-                        id: true, 
-                        tenantWebUserEmail: true, 
-                        user: { 
-                            select: { id: true, email: true } 
-                        } 
+                    select: {
+                        id: true,
+                        tenantWebUserEmail: true,
+                        user: {
+                            select: { id: true, email: true }
+                        }
                     },
                 },
                 property: true,
