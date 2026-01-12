@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { userRoles } from "@prisma/client";
 import { LandlordService } from '../services/landlord.service';
-import { updateLandlordSchema } from '../../validations/schemas/auth';
 import { UpdateLandlordDTO } from '../../validations/interfaces/auth.interface';
 import { CustomRequest } from '../../utils/types';
 import UserServices from '../../services/user.services';
@@ -16,13 +15,8 @@ class LandlordController {
     // Update an existing landlord
     updateLandlord = async (req: CustomRequest, res: Response) => {
         try {
-            const { error, value } = updateLandlordSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
-            }
             const landlordId = req.user?.landlords?.id;
-
-            const data: UpdateLandlordDTO = value;
+            const data: UpdateLandlordDTO = req.body;
             const landlord = await this.landlordService.updateLandlord(landlordId, data);
             return res.status(200).json(landlord);
         } catch (err) {
@@ -31,13 +25,8 @@ class LandlordController {
     }
     updateLandlordProfile = async (req: CustomRequest, res: Response) => {
         try {
-            const { error, value } = updateLandlordSchema.validate(req.body);
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
-            }
             const landlordId = req.user?.landlords?.id;
-
-            const landlord = await UserServices.updateLandlordOrTenantOrVendorInfo(value, landlordId, userRoles.LANDLORD);
+            const landlord = await UserServices.updateLandlordOrTenantOrVendorInfo(req.body, landlordId, userRoles.LANDLORD);
             return res.status(200).json(landlord);
         } catch (err) {
             return res.status(500).json({ error: err.message });
@@ -53,8 +42,6 @@ class LandlordController {
             return res.status(500).json({ error: err.message });
         }
     }
-
-
 
     // Delete a landlord
     deleteLandlord = async (req: CustomRequest, res: Response) => {

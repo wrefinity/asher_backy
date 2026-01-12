@@ -383,6 +383,8 @@ model ResidentialProperty {
   // US-specific fields
   propertyTax         Decimal? @db.Decimal(18, 2)
   hoaFees             Decimal? @db.Decimal(18, 2)
+  hoaName                    String?
+
 
   // Residential property search indexes
   @@index([status])

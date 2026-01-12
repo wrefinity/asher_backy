@@ -373,7 +373,7 @@ class AuthControls {
             let user: any = await userServices.findUserByEmail(email);
             if (!user) {
                 user = await userServices.createUserWithProfile(
-                    { email, googleId, isVerified: true},
+                    { email, googleId, isVerified: true },
                     { profileUrl: picture, fullname: name, lastName: family_name, firstName: given_name }
                 );
 

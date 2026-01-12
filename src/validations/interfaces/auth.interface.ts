@@ -51,6 +51,7 @@ export interface RegisterVendorInput {
 
 export interface UpdateLandlordDTO {
     userId?: string;
+    businessName?: string;
     properties?: {
         connect?: { id: string }[];
         disconnect?: { id: string }[];

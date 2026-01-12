@@ -26,6 +26,9 @@ import LandlordEventRouter from './landlordEvent.routes';
 import PropertyValueRouter from './propertyValue.routes';
 import StorageAnalyticsRouter from './storageAnalytics.routes';
 import violationRoutes from "./violation.routes";
+import { validateBody } from "../../middlewares/validation";
+import { updateLandlordSchema } from "../../validations/schemas/auth";
+import { valid } from "joi/lib";
 class LandlordRouter {
     public router: Router;
     authenticateService: Authorize
@@ -46,6 +49,7 @@ class LandlordRouter {
         );
         this.router.post(
             '/info',
+            validateBody(updateLandlordSchema),
             LandlordControl.updateLandlordProfile
         );
         this.router.get(
@@ -60,6 +64,7 @@ class LandlordRouter {
 
         this.router.patch(
             '/:id',
+            validateBody(updateLandlordSchema),
             LandlordControl.updateLandlord
         );
 

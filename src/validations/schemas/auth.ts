@@ -29,6 +29,7 @@ export const LoginSchema = Joi.object({
 // Joi schema for validating landlord creation data
 export const createLandlordSchema = Joi.object({
   userId: Joi.string().required(),
+  businessName: Joi.string().optional(),
   properties: Joi.array().items(Joi.string().required()).optional(),
   tenants: Joi.array().items(Joi.string()), // Optional
   lnadlordSupportTicket: Joi.array().items(Joi.string()), // Optional
