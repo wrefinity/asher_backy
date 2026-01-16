@@ -39,8 +39,8 @@ class ProfileService {
                 isDeleted: true,
                 stripeCustomerId: true,
                 userId: true,
-                createdAt: true,
-                updatedAt: true,
+                // createdAt: true,
+                // updatedAt: true,
               }
             }
           }
