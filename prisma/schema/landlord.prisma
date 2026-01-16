@@ -2,6 +2,7 @@ model landlords {
   id                   String                 @id @default(cuid())
   userId               String                 @unique
   landlordCode         String?                @unique
+  businessName         String?
   isDeleted            Boolean                @default(false)
   stripeCustomerId     String?                @unique
   emailDomains         String?                @unique

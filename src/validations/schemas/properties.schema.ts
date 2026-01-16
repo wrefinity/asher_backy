@@ -653,7 +653,7 @@ export const residentialPropertySchema = Joi.object({
   unitPerFloors: Joi.number().optional(),
   totalUnits: Joi.number().optional(),
 
-  customSafetyFeatures: Joi.array().items(Joi.string()),
+  customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
   epcRating: Joi.string().allow('', null).optional(),
 
   energyEfficiencyRating: Joi.number().optional(),
@@ -727,7 +727,7 @@ export const commercialPropertySchema = Joi.object({
   hasYard: Joi.boolean().default(false),
   yardDepth: Joi.string().optional(),
 
-  safetyFeatures: Joi.array().items(Joi.string()),
+  safetyFeatures: Joi.array().items(Joi.string()).optional(),
   customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
 
   epcRating: Joi.string().allow('', null).optional(),

@@ -49,7 +49,7 @@ class GuarantorController {
           idType: doc.idType,
           docType: doc.docType
         })),
-        employmentInfo: value.employmentInfo
+        guarantorEmployment: value.guarantorEmployment
       }, applicationId);
 
       res.status(201).json(result);

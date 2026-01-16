@@ -643,7 +643,8 @@ class UserService {
                 updated = await prismaClient.landlords.update({
                     where: { id },
                     data: {
-                        emailDomains: data?.emailDomains
+                        ...(data?.emailDomains !== undefined && { emailDomains: data.emailDomains }),
+                        ...(data?.businessName !== undefined && { businessName: data.businessName }),
                     },
                 });
                 break;

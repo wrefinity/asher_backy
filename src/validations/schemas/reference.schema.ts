@@ -241,7 +241,7 @@ export const GuarantorAgreementCreateSchema = Joi.object({
     signedByGuarantor: Joi.boolean().required(),
     guarantorSignature: Joi.string().required(),
     guarantorSignedAt: Joi.date().required(),
-    guarantorEmployment: GuarantorEmploymentInfoCreateSchema,
+    guarantorEmployment: GuarantorEmploymentInfoCreateSchema.optional(),
     // applicationId: Joi.string().required(),
 });
 

@@ -40,6 +40,7 @@ export const createLandlordSchema = Joi.object({
 // Joi schema for validating landlord update data
 export const updateLandlordSchema = Joi.object({
   emailDomains: Joi.string().optional(),
+  businessName: Joi.string().optional(),
 });
 
 // Joi schema for validating landlord retrieval data (if needed)

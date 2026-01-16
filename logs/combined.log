@@ -387,3 +387,13 @@
 {"level":"info","message":"Sending mail to - lxbrw23+4@gmail.com","service":"api-service","timestamp":"2025-12-19 21:52:31"}
 {"level":"info","message":"Email sent successfully. ID: 7f36f0e0-a876-40b5-a8fc-22d5c3316633","service":"api-service","timestamp":"2025-12-19 21:52:38"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-09 20:49:45"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-09 23:01:36"}
+{"0":"c","1":"m","10":"0","11":"0","12":"0","13":"j","14":"l","15":"u","16":"3","17":"g","18":"a","19":"4","2":"g","20":"t","21":"b","22":"r","23":"z","24":"z","3":"m","4":"e","5":"4","6":"c","7":"8","8":"r","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-01-09 23:02:19"}
+{"0":"c","1":"m","10":"0","11":"0","12":"0","13":"j","14":"l","15":"u","16":"3","17":"g","18":"a","19":"4","2":"g","20":"t","21":"b","22":"r","23":"z","24":"z","3":"m","4":"e","5":"4","6":"c","7":"8","8":"r","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-01-10 00:01:29"}
+{"0":"c","1":"m","10":"0","11":"0","12":"0","13":"j","14":"l","15":"u","16":"3","17":"g","18":"a","19":"4","2":"g","20":"t","21":"b","22":"r","23":"z","24":"z","3":"m","4":"e","5":"4","6":"c","7":"8","8":"r","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-01-10 05:34:01"}
+{"details":"\nInvalid `prismaClient.properties.findMany()` invocation in\n/Users/timmy/Desktop/merge_items/asher_backy/src/services/propertyServices.ts:259:65\n\n  256 const state = await prismaClient.state.findUnique({ where: { id: stateId } });\n  257 if (!state) continue;\n  258 \n→ 259 const rawProperties = await prismaClient.properties.findMany(\nServer has closed the connection.","level":"error","message":"An unexpected database error occurred","prismaCode":"P1017","service":"api-service","timestamp":"2026-01-10 13:32:23"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-11 00:42:44"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-11 00:43:49"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-11 00:44:15"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-11 00:44:59"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-13 06:48:49"}

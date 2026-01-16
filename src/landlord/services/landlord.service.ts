@@ -12,6 +12,12 @@ export class LandlordService {
         // Update userId
         ...(data?.userId && { user: { connect: { id: data.userId } } }),
 
+        // Update businessName
+        ...(data?.businessName !== undefined && { businessName: data.businessName }),
+
+        // Update emailDomains
+        ...(data?.emailDomains !== undefined && { emailDomains: data.emailDomains }),
+
         // Handle properties connections/disconnections
         ...(data?.properties && {
           property: {

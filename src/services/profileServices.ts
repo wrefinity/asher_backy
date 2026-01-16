@@ -21,13 +21,33 @@ class ProfileService {
     return await prismaClient.profile.findFirst({ where: { id: userId }, include: this.inclusion })
   }
   findUserProfileByUserId = async (userId: string) => {
-    return await prismaClient.profile.findFirst({
+    const profile = await prismaClient.profile.findFirst({
       where: {
         users: {
           id: userId
         }
+      },
+      include: {
+        users: {
+          include: {
+            landlords: {
+              select: {
+                id: true,
+                landlordCode: true,
+                businessName: true,
+                emailDomains: true,
+                isDeleted: true,
+                stripeCustomerId: true,
+                userId: true,
+                createdAt: true,
+                updatedAt: true,
+              }
+            }
+          }
+        }
       }
     });
+    return profile;
   }
 
   updateUserProfile = async (id: string, profileData: Partial<ProfileIF>) => {
