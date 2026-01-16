@@ -6,6 +6,8 @@ import EmployeeReferenceFormControls from '../controllers/employee.reference.con
 import { Authorize } from "../middlewares/authorize";
 import { uploadToCloudinary } from '../middlewares/multerCloudinary';
 import upload, {uploadControl} from "../configs/multer";
+import { validateBody } from "../middlewares/validation";
+import { employmentInformationSchema } from "../webuser/schemas";
 
 class ApplicantRoutes {
     public router: Router;
@@ -33,7 +35,7 @@ class ApplicantRoutes {
         this.router.post('/complete/:applicationId', this.authenticateService.authorize, ApplicantControls.completeApplication);
         this.router.post('/guarantor/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateGuarantor);
         this.router.post('/emergency-contact/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateEmergencyContact);
-        this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateEmploymentInformation);
+        this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, validateBody(employmentInformationSchema), ApplicantControls.createOrUpdateEmploymentInformation);
         this.router.post('/residential-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateResidentialInformation);
         this.router.post('/additional-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateAdditionInfo);
         this.router.post('/referees/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateRefree);
