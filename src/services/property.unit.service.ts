@@ -41,6 +41,14 @@ class PropertyUnit {
                 ResidentialProperty: true,
                 CommercialProperty: true,
                 images: true,
+                RoomDetail: {
+                    where: {
+                        isDeleted: false,
+                    },
+                    include: {
+                        images: true,
+                    },
+                },
             }
         });
 
@@ -49,6 +57,7 @@ class PropertyUnit {
         const {
             ResidentialProperty,
             CommercialProperty,
+            RoomDetail,
             ...rest
         } = props;
 
@@ -57,6 +66,7 @@ class PropertyUnit {
             ...rest,
             residential: ResidentialProperty,
             commercial: CommercialProperty,
+            RoomDetail: RoomDetail || [],
         };
     }
 
