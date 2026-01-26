@@ -327,6 +327,7 @@ model EmploymentInformation {
   pension              String?
   moreDetails          String?
   employerCompany      String?
+  businessName      String?
   employerEmail        String?
   employerPhone        String?
   positionTitle        String?

@@ -5,7 +5,7 @@ import SettingController from "../controllers/setting.controller";
 import upload from "../../configs/multer";
 import {handlePropertyUploads } from "../../middlewares/multerCloudinary";
 import { validateBody } from "../../middlewares/validation";
-import { createPropertyListingSchema } from "../../validations/schemas/properties.schema";
+import { BulkPropertyUploadSchema, createPropertyListingSchema, IBasePropertyDTOSchema } from "../../validations/schemas/properties.schema";
 
 class ApartmentLandlordRouter {
     public router: Router;
@@ -29,11 +29,11 @@ class ApartmentLandlordRouter {
         this.router.patch('/property/property-listing/:listedId', PropertyController.updatePropsListing);
         this.router.get('/property', PropertyController.getCurrentLandlordProperties)
         // this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
-        this.router.post('/create', upload.array("files"), handlePropertyUploads, PropertyController.createProperties)
+        this.router.post('/create', upload.array("files"), handlePropertyUploads, validateBody(IBasePropertyDTOSchema), PropertyController.createProperties)
         this.router.post('/create-room', upload.array("files"), handlePropertyUploads, PropertyController.createRoom)
         this.router.post('/create-unit', upload.array("files"), handlePropertyUploads, PropertyController.createUnit)
         // this.router.post('/upload', uploadcsv.single("files"), PropertyController.bulkPropsUpload)
-        this.router.post('/upload', PropertyController.createPropertiesBulk)
+        this.router.post('/upload', validateBody(BulkPropertyUploadSchema),PropertyController.createPropertiesBulk)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
         this.router.patch('/property/shortlet/:propertyId', PropertyController.updateShortletSettings)

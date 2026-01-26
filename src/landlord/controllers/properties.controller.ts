@@ -33,11 +33,7 @@ class PropertyController {
                 return res.status(403).json({ error: 'Kindly login' });
             }
 
-            const { error, value } = IBasePropertyDTOSchema.validate(req.body, { abortEarly: false });
-            if (error) {
-                return res.status(400).json({ error: error.details });
-            }
-
+            const value = req.body;
             const state = await stateServices.getStateByName(value?.state);
             if (!state) {
                 return res.status(400).json({ error: 'State not found' });
@@ -118,9 +114,7 @@ class PropertyController {
         const landlordId = req.user?.landlords?.id;
         if (!landlordId) return res.status(403).json({ error: 'Kindly login' });
 
-        const { error, value: properties } = BulkPropertyUploadSchema.validate(req.body, { abortEarly: false });
-        if (error) return res.status(400).json({ error: error.details });
-
+        const properties = req.body.properties;
         const results = { created: [], failed: [] };
 
         for (const prop of properties) {
@@ -417,7 +411,7 @@ class PropertyController {
                 }
             }
 
-            const listing = await PropertyServices.createPropertyListing({...data, listAs: checkOwnership.specificationType });
+            const listing = await PropertyServices.createPropertyListing({ ...data, listAs: checkOwnership.specificationType });
             return res.status(201).json(listing);
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -443,7 +437,7 @@ class PropertyController {
         try {
             // Extract landlordId from the authenticated user
             const landlordId = req.user?.landlords?.id;
-            
+
             if (!landlordId) {
                 return res.status(400).json({ message: "Landlord not found" });
             }
@@ -741,7 +735,7 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     };
-        updateProperty = async (req: CustomRequest, res: Response) => {
+    updateProperty = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
             const landlordId = req.user?.landlords?.id;
@@ -784,9 +778,9 @@ class PropertyController {
 
             const result = await PropertyServices.syncPropertyListingStatus(propertyId);
 
-            return res.status(200).json({ 
+            return res.status(200).json({
                 message: "Property listing status synced successfully",
-                result 
+                result
             });
 
         } catch (err) {
@@ -795,7 +789,7 @@ class PropertyController {
         }
     }
 
-      updateShortletSettings = async (req: CustomRequest, res: Response) => {
+    updateShortletSettings = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
             const landlordId = req.user?.landlords?.id;
@@ -842,7 +836,7 @@ class PropertyController {
 
             // Get vendors for this property
             const vendors = await maintenanceService.getVendorsForPropertyMaintenance(propertyId);
-            
+
             // Transform the response to match frontend expectations
             // The service returns { current, previous, future } but frontend expects { current, past }
             const transformedVendors = {
@@ -856,6 +850,6 @@ class PropertyController {
         }
     }
 }
-export default new PropertyController() 
+export default new PropertyController()
 
 

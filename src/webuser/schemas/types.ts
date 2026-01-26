@@ -152,6 +152,7 @@ export interface EmploymentInformationIF extends BaseIF {
   pension?: string | null;
   moreDetails?: string | null;
   employerCompany?: string | null;
+  bussinessName?: string | null;
   employerEmail?: string | null;
   employerPhone?: string | null;
   positionTitle?: string | null;

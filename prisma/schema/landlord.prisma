@@ -20,7 +20,6 @@ model landlords {
   propertySettings     propertySettings[]
   reviews              reviews[]
   tenants              tenants[]
-  businessName         String?
   Event                Event[]
 
   PropertyEnquiry PropertyEnquiry[]

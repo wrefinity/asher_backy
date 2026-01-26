@@ -180,10 +180,11 @@ const employmentInformationSchema = Joi.object({
     pension: Joi.string().optional().allow(null),
     moreDetails: Joi.string().optional().allow(null),
     applicantId: Joi.string().optional(),
-    employerCompany: Joi.string().optional(),
-    employerEmail: Joi.string().optional(),
-    employerPhone: Joi.string().optional(),
-    positionTitle: Joi.string().optional()
+    employerCompany: Joi.string().optional().allow(""),
+    businessName: Joi.string().optional().allow(""),
+    employerEmail: Joi.string().optional().allow(""),
+    employerPhone: Joi.string().optional().allow(""),
+    positionTitle: Joi.string().optional().allow(""),
 });
 // Schema for creating tenant with required personalInfo
 export const tenantCreateSchema = Joi.object({
