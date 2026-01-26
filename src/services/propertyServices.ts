@@ -1435,7 +1435,7 @@ class PropertyService {
                         lastListedHistory = propertyUpdate.propertyListingHistory[0];
                     }
 
-                    // Unlist all units and rooms for this property
+                    // Check if specification exists before accessing it
                     const specification = propertyUpdate.specification;
                     if (specification) {
                         // Handle residential property units and rooms
@@ -1517,6 +1517,9 @@ class PropertyService {
                                 });
                             }
                         }
+                    } else {
+                        console.warn(`Property ${resourceId} has no specification associated`);
+                        // Continue with unlisting the property even without specification
                     }
                 }
 
