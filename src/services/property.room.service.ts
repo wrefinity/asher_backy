@@ -134,6 +134,75 @@ class PropertyRoom {
             },
         });
     }
+
+    // Get rooms by unit ID
+    async getRoomsByUnitId(unitId: string, propertyType?: PropertySpecificationType) {
+        if (propertyType && !Object.values(PropertySpecificationType).includes(propertyType)) {
+            throw new Error(`Invalid property type: ${propertyType}`);
+        }
+
+        // First, get the unit to find its property ID
+        const unit = await prismaClient.unitConfiguration.findUnique({
+            where: { id: unitId },
+            select: {
+                residentialPropertyId: true,
+                commercialPropertyId: true,
+            },
+        });
+
+        if (!unit) {
+            throw new Error('Unit not found');
+        }
+
+        // Build where clause: rooms that belong to this unit OR belong to the same property
+        const whereClause: any = {
+            OR: [
+                { unitId: unitId }, // Rooms directly assigned to this unit
+            ],
+            isDeleted: false,
+        };
+
+        // Add property-level rooms if unit has a property
+        if (unit.residentialPropertyId) {
+            whereClause.OR.push({
+                residentialPropertyId: unit.residentialPropertyId,
+                unitId: null, // Rooms at property level that could belong to this unit
+            });
+        } else if (unit.commercialPropertyId) {
+            whereClause.OR.push({
+                commercialPropertyId: unit.commercialPropertyId,
+                unitId: null,
+            });
+        }
+
+        // Add specification type filtering if provided
+        if (propertyType) {
+            switch (propertyType) {
+                case PropertySpecificationType.RESIDENTIAL:
+                    whereClause.residentialPropertyId = { not: null };
+                    break;
+                case PropertySpecificationType.COMMERCIAL:
+                    whereClause.commercialPropertyId = { not: null };
+                    break;
+                case PropertySpecificationType.SHORTLET:
+                    whereClause.shortletPropertyId = { not: null };
+                    break;
+                default:
+                    throw new Error('Invalid property type');
+            }
+        }
+
+        return await prismaClient.roomDetail.findMany({
+            where: whereClause,
+            include: {
+                images: true,
+                ResidentialProperty: true,
+                CommercialProperty: true,
+                ShortletProperty: true,
+                unit: true,
+            },
+        });
+    }
 }
 
 export default new PropertyRoom();

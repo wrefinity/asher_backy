@@ -432,6 +432,36 @@ class PropertyController {
             ErrorService.handleError(error, res);
         }
     }
+
+    getPropsRoomsByUnitId = async (req: CustomRequest, res: Response) => {
+        try {
+            const unitId = req.params.unitId;
+            const specification = req.query.specification as PropertySpecificationType;
+
+            // Validate specification type if provided
+            if (specification && !Object.values(PropertySpecificationType).includes(specification)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid property specification type. Must be one of: ${Object.values(PropertySpecificationType).join(', ')}`
+                });
+            }
+
+            const rooms = await propertyRoomService.getRoomsByUnitId(unitId, specification);
+            if (!rooms || rooms.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No rooms found for this unit'
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                property: rooms
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    }
+
         getRelatedListings = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;

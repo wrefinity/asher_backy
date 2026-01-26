@@ -34,7 +34,6 @@ class ProfileService {
               select: {
                 id: true,
                 landlordCode: true,
-                businessName: true,
                 emailDomains: true,
                 isDeleted: true,
                 stripeCustomerId: true,

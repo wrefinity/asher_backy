@@ -22,6 +22,7 @@ class PropertyRouter {
         this.router.use("/bookings", BookingRouter);
         this.router.get('/property', PropertyController.getProperty)
         this.router.get('/property/unit/:id', PropertyController.getPropsUnit)
+        this.router.get('/property/unit/:unitId/rooms', PropertyController.getPropsRoomsByUnitId)
         this.router.get('/property/units/:propertyId', PropertyController.getPropsUnitsByPropertyId)
         this.router.get('/property/room/:id', PropertyController.getPropsRoom)
         this.router.get('/property/rooms/:propertyId', PropertyController.getPropsRoomByPropertyId)
