@@ -5,7 +5,7 @@ import SettingController from "../controllers/setting.controller";
 import upload from "../../configs/multer";
 import {handlePropertyUploads } from "../../middlewares/multerCloudinary";
 import { validateBody } from "../../middlewares/validation";
-import { BulkPropertyUploadSchema, createPropertyListingSchema, IBasePropertyDTOSchema } from "../../validations/schemas/properties.schema";
+import { BulkPropertyUploadSchema, createPropertyListingSchema, IBasePropertyDTOSchema, IUpdatePropertyDTOSchema } from "../../validations/schemas/properties.schema";
 
 class ApartmentLandlordRouter {
     public router: Router;
@@ -30,6 +30,7 @@ class ApartmentLandlordRouter {
         this.router.get('/property', PropertyController.getCurrentLandlordProperties)
         // this.router.post('/property', upload.array('files'), uploadToCloudinary, PropertyController.createProperty)
         this.router.post('/create', upload.array("files"), handlePropertyUploads, validateBody(IBasePropertyDTOSchema), PropertyController.createProperties)
+        this.router.post('/update-props/:propertyId', upload.array("files"), handlePropertyUploads, validateBody(IUpdatePropertyDTOSchema), PropertyController.updateProperties)
         this.router.post('/create-room', upload.array("files"), handlePropertyUploads, PropertyController.createRoom)
         this.router.post('/create-unit', upload.array("files"), handlePropertyUploads, PropertyController.createUnit)
         // this.router.post('/upload', uploadcsv.single("files"), PropertyController.bulkPropsUpload)

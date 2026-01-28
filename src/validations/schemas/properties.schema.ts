@@ -967,3 +967,114 @@ export const closeEnquirySchema = Joi.object({
       "string.max": "Closure reason must not exceed 500 characters"
     })
 });
+
+
+// Add update validation schema
+export const IUpdatePropertyDTOSchema = Joi.object({
+  name: Joi.string().optional(),
+  description: Joi.string().optional().allow('', null),
+  propertySize: Joi.number().optional(),
+  areaUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
+    'any.only': `AreaUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,
+    'string.base': 'AreaUnit type must be a string'
+  }).optional(),
+  yearBuilt: Joi.number().optional(),
+  city: Joi.string().optional(),
+  state: Joi.string().optional(),
+  stateId: Joi.string().optional(),
+  country: Joi.string().optional(),
+  zipcode: Joi.string().optional(),
+  address: Joi.string().optional(),
+  address2: Joi.string().optional().allow('', null),
+  latitude: Joi.number().optional(),
+  longitude: Joi.number().optional(),
+
+  currency: Joi.string().valid(...Object.values(Currency)).optional(),
+  marketValue: Joi.number().optional(),
+  price: Joi.string().optional(),
+  propertyValue: Joi.number().optional(),
+  purchaseType: Joi.string().optional(),
+  securityDeposit: Joi.number().optional(),
+  priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
+    'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
+    'string.base': 'priceFrequency type must be a string'
+  }).optional(),
+  rentalPeriod: Joi.string().optional(),
+  specificationType: Joi.string().valid(...Object.values(PropertySpecificationType)).messages({
+    'any.only': `specificationType type must be one of: ${Object.values(PropertySpecificationType).join(',')}`,
+    'string.base': 'specification type must be a string'
+  }).optional(),
+
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
+    'any.only': `availability type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
+    'string.base': 'availability type must be a string'
+  }).optional(),
+  businessRateVerified: Joi.boolean().optional(),
+  postalCodeVerified: Joi.boolean().optional(),
+  landRegistryNumber: Joi.string().optional().allow('', null),
+  vatStatus: Joi.string().valid(...Object.values(VatStatus)).optional(),
+
+  keyFeatures: Joi.array().items(Joi.string()).optional(),
+  customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+
+  propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),
+  images: Joi.array().items(propertyMediaFilesSchema).optional(),
+  videos: Joi.array().items(propertyMediaFilesSchema).optional(),
+  virtualTours: Joi.array().items(propertyMediaFilesSchema).optional(),
+
+  propertySubType: Joi.string().valid(...Object.values(propertyType)).messages({
+    'any.only': `Property type must be one of: ${propertyType.join(',')}`,
+    'string.base': 'Property type must be a string'
+  }).optional(),
+  otherTypeSpecific: Joi.alternatives().try(
+    Joi.object().unknown(),
+    Joi.string().custom((value, helpers) => {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed !== 'object' || parsed === null) {
+          return helpers.error('any.invalid');
+        }
+        return parsed;
+      } catch (e) {
+        return helpers.error('any.invalid');
+      }
+    })
+  ).optional(),
+
+  // For file uploads during update
+  uploadedFiles: Joi.array().items(Joi.object()).optional(),
+
+  // Residential Conditional
+  residential: Joi.alternatives().conditional('specificationType', {
+    is: PropertySpecificationType.RESIDENTIAL,
+    then: residentialPropertySchema.optional(),
+    otherwise: Joi.forbidden()
+  }),
+
+  // Commercial Conditional
+  commercial: Joi.alternatives().conditional('specificationType', {
+    is: PropertySpecificationType.COMMERCIAL,
+    then: commercialPropertySchema.optional(),
+    otherwise: Joi.forbidden()
+  }),
+
+  // Shortlet Conditional
+  shortlet: Joi.alternatives().conditional('specificationType', {
+    is: PropertySpecificationType.SHORTLET,
+    then: shortletPropertySchema.optional(),
+    otherwise: Joi.forbidden()
+  }),
+});
+
+// Add bulk update schema for multiple properties
+export const IBulkUpdatePropertyDTOSchema = Joi.object({
+  propertyIds: Joi.array().items(Joi.string()).min(1).required(),
+  updates: IUpdatePropertyDTOSchema.required()
+});
+
+// Add update status schema
+export const IUpdatePropertyStatusSchema = Joi.object({
+  propertyIds: Joi.array().items(Joi.string()).min(1).required(),
+  status: Joi.string().valid(...Object.values(PropertyStatus)).required(),
+  reason: Joi.string().optional()
+});

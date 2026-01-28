@@ -195,12 +195,677 @@ class PropertyService {
         });
     }
 
-    updateProperty = async (id: string, data: any) => {
+    updatePropertyOld = async (id: string, data: any) => {
         return await prismaClient.properties.update({
             where: { id },
             data
         });
     }
+
+ /**
+   * Update property
+   */
+  async updateProperty(
+    propertyId: string,
+    data: any,
+    uploadedFiles: any[] = [],
+    userId?: string
+  ) {
+    return prismaClient.$transaction(async (tx) => {
+      // Get existing property
+      const existingProperty = await tx.properties.findUnique({
+        where: { id: propertyId },
+        include: {
+          specification: true
+        }
+      });
+
+      if (!existingProperty) {
+        throw new Error('Property not found');
+      }
+
+      // Separate media by type
+      const images = uploadedFiles?.filter(file => 
+        file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE
+      );
+      const videos = uploadedFiles?.filter(file => 
+        file?.identifier === 'MediaTable' && file?.type === MediaType.VIDEO
+      );
+      const virtualTours = uploadedFiles?.filter(file => 
+        file?.identifier === 'MediaTable' && file?.type === MediaType.VIRTUAL_TOUR
+      );
+      const documents = uploadedFiles?.filter(file => 
+        file?.identifier === 'DocTable'
+      );
+
+      // Prepare base property update data
+      const { 
+        specificationType,
+        propertySubType,
+        otherTypeSpecific,
+        commercial,
+        shortlet,
+        residential,
+        updateUnitConfigurations,
+        updateRoomDetails,
+        deleteImages = [],
+        deleteVideos = [],
+        deleteVirtualTours = [],
+        deleteDocuments = [],
+        uploadedFiles: _,
+        ...propertyData 
+      } = data;
+
+      // Handle decimal fields
+      if (propertyData.price) propertyData.price = new Prisma.Decimal(propertyData.price);
+      if (propertyData.marketValue) propertyData.marketValue = new Prisma.Decimal(propertyData.marketValue);
+      if (propertyData.propertyValue) propertyData.propertyValue = new Prisma.Decimal(propertyData.propertyValue);
+
+      // Handle arrays
+      if (propertyData.keyFeatures) propertyData.keyFeatures = { set: propertyData.keyFeatures };
+      if (propertyData.customKeyFeatures) propertyData.customKeyFeatures = { set: propertyData.customKeyFeatures };
+
+      // Update main property
+      const updatedProperty = await tx.properties.update({
+        where: { id: propertyId },
+        data: {
+          ...propertyData,
+          // Media handling
+          images: {
+            deleteMany: deleteImages.length > 0 ? { id: { in: deleteImages } } : undefined,
+            create: images?.map(img => ({
+              type: img.type,
+              size: img.size,
+              fileType: img.fileType,
+              url: img.url,
+              isPrimary: img.isPrimary,
+              caption: img.caption,
+            }))
+          },
+          videos: {
+            deleteMany: deleteVideos.length > 0 ? { id: { in: deleteVideos } } : undefined,
+            create: videos?.map(vid => ({
+              type: vid.type,
+              size: vid.size,
+              fileType: vid.fileType,
+              url: vid.url,
+              isPrimary: vid.isPrimary,
+              caption: vid.caption,
+            }))
+          },
+          virtualTours: {
+            deleteMany: deleteVirtualTours.length > 0 ? { id: { in: deleteVirtualTours } } : undefined,
+            create: virtualTours?.map(vt => ({
+              type: vt.type,
+              size: vt.size,
+              fileType: vt.fileType,
+              url: vt.url,
+              isPrimary: vt.isPrimary,
+              caption: vt.caption,
+            }))
+          },
+          propertyDocument: {
+            deleteMany: deleteDocuments.length > 0 ? { id: { in: deleteDocuments } } : undefined,
+            create: documents?.map(doc => ({
+              documentName: doc?.documentName,
+              documentUrl: doc?.url || doc?.documentUrl,
+              size: doc?.size,
+              type: doc?.type,
+              ...(doc?.docType && { docType: doc?.docType }),
+              ...(doc?.idType && { idType: doc?.idType }),
+              uploadedBy: userId
+            }))
+          }
+        }
+      });
+
+      // Handle specification update if provided
+      if (specificationType || propertySubType || otherTypeSpecific || commercial || shortlet || residential) {
+        await this.updatePropertySpecs(
+          existingProperty,
+          {
+            specificationType,
+            propertySubType,
+            otherTypeSpecific,
+            commercial,
+            shortlet,
+            residential
+          },
+          tx
+        );
+      }
+
+      // Handle unit configurations updates
+      if (updateUnitConfigurations) {
+        await this.handleUnitConfigurationUpdates(propertyId, updateUnitConfigurations, tx);
+      }
+
+      // Handle room details updates
+      if (updateRoomDetails) {
+        await this.handleRoomDetailUpdates(propertyId, updateRoomDetails, tx);
+      }
+
+      // Return full updated property
+      return tx.properties.findUnique({
+        where: { id: propertyId },
+        include: {
+          specification: this.specificationInclusion,
+          images: true,
+          videos: true,
+          virtualTours: true,
+          propertyDocument: true,
+          state: true,
+          landlord: true
+        }
+      });
+    }, {
+      maxWait: 30000,
+      timeout: 30000
+    });
+  }
+
+  /**
+   * Update property specification
+   */
+  private async updatePropertySpecs(
+    existingProperty: any,
+    specificationData: any,
+    tx: Prisma.TransactionClient
+  ) {
+    const { 
+      specificationType = existingProperty.specificationType,
+      propertySubType,
+      otherTypeSpecific,
+      commercial,
+      shortlet,
+      residential 
+    } = specificationData;
+
+    // Get existing specification
+    const existingSpec = await tx.propertySpecification.findFirst({
+      where: { 
+        propertyId: existingProperty.id,
+        isActive: true 
+      }
+    });
+
+    // Deactivate old specification if exists
+    if (existingSpec) {
+      await tx.propertySpecification.update({
+        where: { id: existingSpec.id },
+        data: { 
+          isActive: false,
+          toDate: new Date()
+        }
+      });
+    }
+
+    // Create new specification
+    let specificationId: string | undefined;
+    
+    switch (specificationType) {
+      case PropertySpecificationType.RESIDENTIAL:
+        const residentialSpec = await this.updateResidentialProps(
+          existingProperty.id,
+          residential,
+          tx
+        );
+        specificationId = residentialSpec.id;
+        break;
+        
+      case PropertySpecificationType.COMMERCIAL:
+        const commercialSpec = await this.updateCommercialProps(
+          existingProperty.id,
+          commercial,
+          tx
+        );
+        specificationId = commercialSpec.id;
+        break;
+        
+      case PropertySpecificationType.SHORTLET:
+        const shortletSpec = await this.updateShortletProps(
+          existingProperty.id,
+          shortlet,
+          tx
+        );
+        specificationId = shortletSpec.id;
+        break;
+    }
+
+    // Create new property specification record
+    return tx.propertySpecification.create({
+      data: {
+        propertyId: existingProperty.id,
+        specificationType,
+        propertySubType,
+        otherTypeSpecific,
+        ...(specificationType === PropertySpecificationType.RESIDENTIAL && { residentialId: specificationId }),
+        ...(specificationType === PropertySpecificationType.COMMERCIAL && { commercialId: specificationId }),
+        ...(specificationType === PropertySpecificationType.SHORTLET && { shortletId: specificationId }),
+        isActive: true,
+        fromDate: new Date()
+      }
+    });
+  }
+
+  /**
+   * Update residential property
+   */
+  private async updateResidentialProps(
+    propertyId: string,
+    residentialData: any,
+    tx: Prisma.TransactionClient
+  ) {
+    // Get existing residential property
+    const existingSpec = await tx.propertySpecification.findFirst({
+      where: { 
+        propertyId,
+        isActive: true,
+        specificationType: PropertySpecificationType.RESIDENTIAL
+      },
+      include: { residential: true }
+    });
+
+    if (!existingSpec?.residential) {
+      // Create new residential property
+      return tx.residentialProperty.create({
+        data: {
+          ...residentialData,
+          PropertySpecification: {
+            create: {
+              propertyId,
+              specificationType: PropertySpecificationType.RESIDENTIAL,
+              isActive: true,
+              fromDate: new Date()
+            }
+          }
+        }
+      });
+    }
+
+    // Update existing residential property
+    return tx.residentialProperty.update({
+      where: { id: existingSpec.residential.id },
+      data: residentialData
+    });
+  }
+
+  /**
+   * Update commercial property
+   */
+  private async updateCommercialProps(
+    propertyId: string,
+    commercialData: any,
+    tx: Prisma.TransactionClient
+  ) {
+    // Get existing commercial property
+    const existingSpec = await tx.propertySpecification.findFirst({
+      where: { 
+        propertyId,
+        isActive: true,
+        specificationType: PropertySpecificationType.COMMERCIAL
+      },
+      include: { commercial: true }
+    });
+
+    if (!existingSpec?.commercial) {
+      // Create new commercial property
+      return tx.commercialProperty.create({
+        data: {
+          ...commercialData,
+          PropertySpecification: {
+            create: {
+              propertyId,
+              specificationType: PropertySpecificationType.COMMERCIAL,
+              isActive: true,
+              fromDate: new Date()
+            }
+          }
+        }
+      });
+    }
+
+    // Update existing commercial property
+    return tx.commercialProperty.update({
+      where: { id: existingSpec.commercial.id },
+      data: commercialData
+    });
+  }
+
+  /**
+   * Update shortlet property
+   */
+  private async updateShortletProps(
+    propertyId: string,
+    shortletData: any,
+    tx: Prisma.TransactionClient
+  ) {
+    // Get existing shortlet property
+    const existingSpec = await tx.propertySpecification.findFirst({
+      where: { 
+        propertyId,
+        isActive: true,
+        specificationType: PropertySpecificationType.SHORTLET
+      },
+      include: { shortlet: true }
+    });
+
+    if (!existingSpec?.shortlet) {
+      // Create new shortlet property
+      return tx.shortletProperty.create({
+        data: {
+          ...shortletData,
+          PropertySpecification: {
+            create: {
+              propertyId,
+              specificationType: PropertySpecificationType.SHORTLET,
+              isActive: true,
+              fromDate: new Date()
+            }
+          }
+        }
+      });
+    }
+
+    // Update existing shortlet property
+    return tx.shortletProperty.update({
+      where: { id: existingSpec.shortlet.id },
+      data: shortletData
+    });
+  }
+
+  /**
+   * Handle unit configuration updates
+   */
+  private async handleUnitConfigurationUpdates(
+    propertyId: string,
+    updates: Array<{ id?: string; action: string; data: any }>,
+    tx: Prisma.TransactionClient
+  ) {
+    for (const update of updates) {
+      switch (update.action) {
+        case 'create':
+          await tx.unitConfiguration.create({
+            data: {
+              ...update.data,
+              residentialPropertyId: update.data.residentialPropertyId || propertyId,
+              commercialPropertyId: update.data.commercialPropertyId
+            }
+          });
+          break;
+          
+        case 'update':
+          if (!update.id) {
+            throw new Error('Unit configuration ID is required for update');
+          }
+          await tx.unitConfiguration.update({
+            where: { id: update.id },
+            data: update.data
+          });
+          break;
+          
+        case 'delete':
+          if (!update.id) {
+            throw new Error('Unit configuration ID is required for delete');
+          }
+          await tx.unitConfiguration.update({
+            where: { id: update.id },
+            data: { isDeleted: true }
+          });
+          break;
+      }
+    }
+  }
+
+  /**
+   * Handle room detail updates
+   */
+  private async handleRoomDetailUpdates(
+    propertyId: string,
+    updates: Array<{ id?: string; action: string; data: any }>,
+    tx: Prisma.TransactionClient
+  ) {
+    for (const update of updates) {
+      switch (update.action) {
+        case 'create':
+          await tx.roomDetail.create({
+            data: {
+              ...update.data,
+              residentialPropertyId: update.data.residentialPropertyId || propertyId,
+              commercialPropertyId: update.data.commercialPropertyId,
+              shortletPropertyId: update.data.shortletPropertyId
+            }
+          });
+          break;
+          
+        case 'update':
+          if (!update.id) {
+            throw new Error('Room detail ID is required for update');
+          }
+          await tx.roomDetail.update({
+            where: { id: update.id },
+            data: update.data
+          });
+          break;
+          
+        case 'delete':
+          if (!update.id) {
+            throw new Error('Room detail ID is required for delete');
+          }
+          await tx.roomDetail.update({
+            where: { id: update.id },
+            data: { isDeleted: true }
+          });
+          break;
+      }
+    }
+  }
+
+  /**
+   * Partial update property
+   */
+  async partialUpdateProperty(
+    propertyId: string,
+    data: any,
+    uploadedFiles: any[] = [],
+    userId?: string
+  ) {
+    return prismaClient.$transaction(async (tx) => {
+      // Get existing property
+      const existingProperty = await tx.properties.findUnique({
+        where: { id: propertyId }
+      });
+
+      if (!existingProperty) {
+        throw new Error('Property not found');
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+
+      // Handle basic fields
+      const basicFields = [
+        'name', 'description', 'propertySize', 'city', 'stateId', 'country',
+        'zipcode', 'address', 'address2', 'latitude', 'longitude', 'currency',
+        'price', 'marketValue', 'propertyValue', 'purchaseType', 'securityDeposit',
+        'priceFrequency', 'rentalPeriod', 'availability', 'businessRateVerified',
+        'postalCodeVerified', 'landRegistryNumber', 'vatStatus', 'isListed'
+      ];
+
+      for (const field of basicFields) {
+        if (data[field] !== undefined) {
+          if (field === 'price' || field === 'marketValue' || field === 'propertyValue') {
+            updateData[field] = new Prisma.Decimal(data[field]);
+          } else {
+            updateData[field] = data[field];
+          }
+        }
+      }
+
+      // Handle array fields
+      if (data.keyFeatures) updateData.keyFeatures = { set: data.keyFeatures };
+      if (data.customKeyFeatures) updateData.customKeyFeatures = { set: data.customKeyFeatures };
+
+      // Handle media deletions
+      if (data.deleteImages) {
+        updateData.images = { deleteMany: { id: { in: data.deleteImages } } };
+      }
+      if (data.deleteVideos) {
+        updateData.videos = { deleteMany: { id: { in: data.deleteVideos } } };
+      }
+      if (data.deleteVirtualTours) {
+        updateData.virtualTours = { deleteMany: { id: { in: data.deleteVirtualTours } } };
+      }
+      if (data.deleteDocuments) {
+        updateData.propertyDocument = { deleteMany: { id: { in: data.deleteDocuments } } };
+      }
+
+      // Update property
+      await tx.properties.update({
+        where: { id: propertyId },
+        data: updateData
+      });
+
+      // Handle new media uploads
+      if (uploadedFiles.length > 0) {
+        await this.addMediaToProperty(propertyId, uploadedFiles, userId, tx);
+      }
+
+      // Return updated property
+      return tx.properties.findUnique({
+        where: { id: propertyId },
+        include: {
+          specification: this.specificationInclusion,
+          images: true,
+          videos: true,
+          virtualTours: true,
+          propertyDocument: true
+        }
+      });
+    });
+  }
+
+  /**
+   * Add media to property
+   */
+  async addMediaToProperty(
+    propertyId: string,
+    uploadedFiles: any[],
+    userId?: string,
+    tx?: Prisma.TransactionClient
+  ) {
+    const client = tx || prismaClient;
+
+    // Separate media by type
+    const images = uploadedFiles.filter(file => 
+      file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE
+    );
+    const videos = uploadedFiles.filter(file => 
+      file?.identifier === 'MediaTable' && file?.type === MediaType.VIDEO
+    );
+    const virtualTours = uploadedFiles.filter(file => 
+      file?.identifier === 'MediaTable' && file?.type === MediaType.VIRTUAL_TOUR
+    );
+    const documents = uploadedFiles.filter(file => 
+      file?.identifier === 'DocTable'
+    );
+
+    // Add media
+    if (images.length > 0) {
+      await client.propertyMediaFiles.createMany({
+        data: images.map(img => ({
+          type: img.type,
+          size: img.size,
+          fileType: img.fileType,
+          url: img.url,
+          isPrimary: img.isPrimary,
+          caption: img.caption,
+          imagePropertyId: propertyId
+        }))
+      });
+    }
+
+    if (videos.length > 0) {
+      await client.propertyMediaFiles.createMany({
+        data: videos.map(vid => ({
+          type: vid.type,
+          size: vid.size,
+          fileType: vid.fileType,
+          url: vid.url,
+          isPrimary: vid.isPrimary,
+          caption: vid.caption,
+          videoPropertyId: propertyId
+        }))
+      });
+    }
+
+    if (virtualTours.length > 0) {
+      await client.propertyMediaFiles.createMany({
+        data: virtualTours.map(vt => ({
+          type: vt.type,
+          size: vt.size,
+          fileType: vt.fileType,
+          url: vt.url,
+          isPrimary: vt.isPrimary,
+          caption: vt.caption,
+          virtualTourPropertyId: propertyId
+        }))
+      });
+    }
+
+    if (documents.length > 0) {
+      await client.propertyDocument.createMany({
+        data: documents.map(doc => ({
+          documentName: doc?.documentName,
+          documentUrl: doc?.url || doc?.documentUrl,
+          size: doc?.size,
+          type: doc?.type,
+          ...(doc?.docType && { docType: doc?.docType }),
+          ...(doc?.idType && { idType: doc?.idType }),
+          propertyId,
+          uploadedBy: userId
+        }))
+      });
+    }
+
+    // Return updated property
+    return client.properties.findUnique({
+      where: { id: propertyId },
+      include: {
+        images: true,
+        videos: true,
+        virtualTours: true,
+        propertyDocument: true
+      }
+    });
+  }
+
+  /**
+   * Remove media from property
+   */
+  async removeMediaFromProperty(propertyId: string, mediaId: string) {
+    // Try to delete from all media tables
+    await prismaClient.propertyMediaFiles.deleteMany({
+      where: {
+        OR: [
+          { id: mediaId, imagePropertyId: propertyId },
+          { id: mediaId, videoPropertyId: propertyId },
+          { id: mediaId, virtualTourPropertyId: propertyId }
+        ]
+      }
+    });
+
+    // Also try to delete from documents
+    await prismaClient.propertyDocument.deleteMany({
+      where: {
+        id: mediaId,
+        propertyId
+      }
+    });
+
+    return this.getPropertyById(propertyId);
+  }
+
 
     deleteProperty = async (landlordId: string, id: string) => {
         return await prismaClient.properties.update({
