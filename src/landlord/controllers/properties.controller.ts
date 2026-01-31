@@ -20,6 +20,8 @@ import propertyUnitService from '../../services/property.unit.service';
 import commercialServices from '../../services/commercial.services';
 import residentialServices from '../../services/residential.services';
 import maintenanceService from '../../services/maintenance.service';
+import { ApiError } from '../../utils/ApiError';
+import { ApiResponse } from '../../utils/ApiResponse';
 
 
 class PropertyController {
@@ -251,6 +253,73 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
+    /**
+       * Update single property
+    */
+    updateProperties = async (req: CustomRequest, res: Response) => {
+        try {
+      const propertyId = req.params.propertyId;
+      const landlordId = req.user?.landlords?.id;
+      const userId = req.user?.id;
+
+      if (!landlordId) {
+        return res.status(403).json(
+          ApiError.forbidden('Landlord authentication required')
+        );
+      }
+
+      // Check if property belongs to landlord
+      const existingProperty = await PropertyServices.getPropertyById(propertyId);
+      
+      if (!existingProperty) {
+        return res.status(404).json(
+          ApiError.notFound('Property not found')
+        );
+      }
+
+      if (existingProperty.landlordId !== landlordId) {
+        return res.status(403).json(
+          ApiError.forbidden('You do not have permission to update this property')
+        );
+      }
+
+      const updateData = req.body;
+      
+      // Handle state update if provided
+      let stateId = existingProperty.stateId;
+      if (updateData.state) {
+        const state = await stateServices.getStateByName(updateData.state);
+        if (!state) {
+          return res.status(400).json(
+            ApiError.badRequest('State not found')
+          );
+        }
+        stateId = state.id;
+      }
+
+      // Update property
+      const updatedProperty = await PropertyServices.updateProperty(
+        propertyId,
+        {
+          ...updateData,
+          stateId,
+          landlordId
+        },
+        req.body.uploadedFiles || [],
+        userId
+      );
+
+      return res.status(200).json(
+        ApiResponse.success(updatedProperty, 'Property updated successfully')
+      );
+    } catch (error: any) {
+      console.error('Update property error:', error);
+      return res.status(500).json(
+        ApiError.internal(error.message)
+      );
+    }
+    };
 
     getCurrentLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {
