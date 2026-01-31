@@ -129,6 +129,12 @@ class MaintenanceController {
       if (!tenantId && !landlordId) {
         return res.status(400).json({ message: "Please log in as either a tenant or a landlord." });
       }
+      
+      // Validate propertyId is provided
+      if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+      
       // check for property existance
       const propertyExist = await propertyService.searchPropertyUnitRoom(propertyId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${value?.propertyId} doesn't exist` });

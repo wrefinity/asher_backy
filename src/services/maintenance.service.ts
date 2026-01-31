@@ -485,6 +485,10 @@ class MaintenanceService {
     }
 
     // Detect whether it's a property, unit, or room
+    // Validate propertyId before searching
+    if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
+      throw new Error("Property ID is required");
+    }
     const detected = await propertyServices.searchPropertyUnitRoom(propertyId);
     // Build payload
     const maintenancePayload: any = {
@@ -690,6 +694,11 @@ class MaintenanceService {
   }
 
   checkWhitelist = async (landlordId: string, categoryId: string, subcategoryId?: string, propertyId?: string, isActive: boolean = true) => {
+    // Validate propertyId is provided
+    if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
+      throw new Error("Property ID is required for whitelist check");
+    }
+    
     // check for property existance
     const propertyExist = await propertyServices.searchPropertyUnitRoom(propertyId);
     if (!propertyExist) throw new Error(`property with the id : ${propertyId} doesn't exist`);

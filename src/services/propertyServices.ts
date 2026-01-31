@@ -2652,6 +2652,11 @@ class PropertyService {
     }
 
     searchPropertyUnitRoom = async (id: string) => {
+        // Validate id is provided
+        if (!id || id === 'undefined' || id === 'null') {
+            throw new Error("Property/Unit/Room ID is required");
+        }
+        
         // First search the property without strict filters
         const property = await prismaClient.properties.findFirst({
             where: { id, isDeleted: false },

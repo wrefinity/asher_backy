@@ -44,7 +44,11 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
     const documentUrls: string[] = [];
     const audioUrls: string[] = [];
 
-    const uploadPromises = allFiles.map(async (file) => {
+    const documentNames = req.body.documentName
+      ? (Array.isArray(req.body.documentName) ? req.body.documentName : [req.body.documentName])
+      : [];
+
+    const uploadPromises = allFiles.map(async (file, index) => {
       let fileBuffer: Buffer = file.buffer;
       const isImage = file.mimetype.startsWith("image/");
       const isVideo = file.mimetype.startsWith("video/");
@@ -58,13 +62,29 @@ export const uploadToCloudinary = async (req: CustomRequest, res: Response, next
           .toBuffer();
       }
 
+      // Build public_id with extension for raw/document/audio so the Cloudinary URL has the correct extension (for viewing)
+      const ext = (file.originalname?.match(/\.[^.]+$/)?.[0]) || "";
+      const baseName =
+        documentNames[index] ?? file.originalname?.replace(/\.[^.]+$/, "") ?? "document";
+      const safeBase = baseName
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9._-]/g, "-")
+        .replace(/-+/g, "-")
+        .slice(0, 180);
+      const publicIdWithExt = `${safeBase}-${Date.now()}${ext}`;
+
+      const uploadOptions: Record<string, unknown> = {
+        resource_type: isImage ? "image" : isVideo ? "video" : isDocument ? "raw" : isAudio ? "video" : "auto",
+        folder: CLOUDINARY_FOLDER,
+        format: isImage ? "webp" : undefined,
+      };
+      if (isDocument || isAudio) {
+        uploadOptions.public_id = publicIdWithExt;
+      }
+
       return new Promise<string>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            resource_type: isImage ? "image" : isVideo ? "video" : isDocument ? "raw" : isAudio ? "video" : "auto",
-            folder: CLOUDINARY_FOLDER,
-            format: isImage ? "webp" : undefined,
-          } as any,
+          uploadOptions as any,
           (err, result) => {
             if (err) {
               console.error("Cloudinary upload error:", err);
