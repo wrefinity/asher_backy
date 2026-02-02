@@ -383,8 +383,7 @@ model ResidentialProperty {
   // US-specific fields
   propertyTax         Decimal? @db.Decimal(18, 2)
   hoaFees             Decimal? @db.Decimal(18, 2)
-  hoaName                    String?
-
+  hoaName             String?
 
   // Residential property search indexes
   @@index([status])
@@ -748,6 +747,10 @@ enum PropertyType {
   DETACHED
   SEMI_DETACHED
   FLAT
+  TERRACED
+  MANSION
+  MAISONETTE
+  CONDO
 }
 
 enum PropertyStatus {

@@ -400,3 +400,6 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-28 16:49:56"}
 {"level":"info","message":"Sending mail to - najaatsalami+1@gmail.com","service":"api-service","timestamp":"2026-01-28 16:51:59"}
 {"level":"info","message":"Email sent successfully. ID: 9c4bf5a1-50c0-4eb9-9b78-6d9a68117c80","service":"api-service","timestamp":"2026-01-28 16:52:00"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-01-30 18:59:05"}
+{"level":"info","message":"Sending mail to - najaatsalami+1@gmail.com","service":"api-service","timestamp":"2026-01-30 19:14:27"}
+{"level":"info","message":"Email sent successfully. ID: 022348f4-23e3-44e3-9808-d0f31f80d95a","service":"api-service","timestamp":"2026-01-30 19:14:27"}
