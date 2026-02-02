@@ -60,6 +60,27 @@ export const updatePropertySchemaNew = Joi.object({
   // Specification
   specificationType: Joi.string().valid('COMMERCIAL', 'RESIDENTIAL', 'SHORTLET').optional(),
 
+  // Residential specification (persisted on ResidentialProperty; PATCH supports partial update)
+  residential: Joi.object({
+    bedrooms: Joi.number().integer().optional(),
+    bathrooms: Joi.number().integer().optional(),
+    receiptionRooms: Joi.number().integer().optional(),
+    toilets: Joi.number().integer().optional(),
+    tenure: Joi.string().optional(),
+    furnished: Joi.boolean().optional(),
+    councilTaxBand: Joi.string().allow('').optional(),
+    rentalTerms: Joi.string().allow('').optional(),
+    additionalNotes: Joi.string().allow('').optional(),
+    yearBuilt: Joi.number().integer().optional(),
+    totalArea: Joi.string().allow('').optional(),
+    areaUnit: Joi.string().valid('SQFT', 'SQM').optional(),
+    groundRent: Joi.number().optional(),
+    serviceCharge: Joi.number().optional(),
+    propertyTax: Joi.number().optional(),
+    hoaFees: Joi.number().optional(),
+    hoaName: Joi.string().allow('').optional(),
+  }).optional(),
+
   // Media (for future use)
   images: Joi.array().items(Joi.string().uri()).optional(),
   videos: Joi.array().items(Joi.string().uri()).optional(),

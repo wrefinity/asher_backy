@@ -5,7 +5,7 @@ import SettingController from "../controllers/setting.controller";
 import upload from "../../configs/multer";
 import {handlePropertyUploads } from "../../middlewares/multerCloudinary";
 import { validateBody } from "../../middlewares/validation";
-import { BulkPropertyUploadSchema, createPropertyListingSchema, IBasePropertyDTOSchema, IUpdatePropertyDTOSchema } from "../../validations/schemas/properties.schema";
+import { BulkPropertyUploadSchema, createPropertyListingSchema, IBasePropertyDTOSchema, IUpdatePropertyDTOSchema, updatePropertySchemaNew } from "../../validations/schemas/properties.schema";
 
 class ApartmentLandlordRouter {
     public router: Router;
@@ -37,6 +37,7 @@ class ApartmentLandlordRouter {
         this.router.post('/upload', validateBody(BulkPropertyUploadSchema),PropertyController.createPropertiesBulk)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
+        this.router.patch('/property/:propertyId', validateBody(updatePropertySchemaNew), PropertyController.updateProperty)
         this.router.patch('/property/shortlet/:propertyId', PropertyController.updateShortletSettings)
         this.router.get('/property/tenants/:propertyId', PropertyController.getTenantsForProperty)
         this.router.get('/property/without-tenants', PropertyController.getPropertiesWithoutTenants)

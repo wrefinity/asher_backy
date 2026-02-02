@@ -93,7 +93,6 @@ export interface IBasePropertyDTO {
     marketValue?: number;
     price?: number;
     securityDeposit?: number;
-    /** Allowed in payload but not persisted on Property (tenant-level field). Stripped in createProperties. */
     initialDeposit?: number;
     priceFrequency?: PriceFrequency;
     rentalPeriod?: string;
