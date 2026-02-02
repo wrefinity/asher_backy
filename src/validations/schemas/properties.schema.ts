@@ -84,6 +84,8 @@ export const updatePropertySchemaNew = Joi.object({
   // Media (for future use)
   images: Joi.array().items(Joi.string().uri()).optional(),
   videos: Joi.array().items(Joi.string().uri()).optional(),
+  /** Single virtual tour URL; replaces existing virtual tours with one record from this link. */
+  virtualTourUrl: Joi.string().uri().optional().allow(''),
 
   // Read-only fields (should not be updated via this endpoint)
   landlordId: Joi.string().forbidden(),
@@ -843,6 +845,8 @@ export const IBasePropertyDTOSchema = Joi.object({
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
   videos: Joi.array().items(propertyMediaFilesSchema).optional(),
   virtualTours: Joi.array().items(propertyMediaFilesSchema).optional(),
+  /** Single virtual tour URL (Matterport, Kuula, etc.); creates one virtual tour record. No file upload. */
+  virtualTourUrl: Joi.string().uri().optional().allow(''),
 
   propertySubType: Joi.string().valid(...Object.values(propertyType)).messages({
     'any.required': 'Property type is required',

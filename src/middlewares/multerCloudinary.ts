@@ -5,7 +5,7 @@ import { MediaType } from "@prisma/client"
 import { CustomRequest, CloudinaryFile } from "../utils/types";
 import { CLOUDINARY_FOLDER } from "../secrets";
 import { MediaDocumentSchema } from "../validations/schemas/media.schema";
-// Function to upload a file to Cloudinary
+// Function to upload a file to Cloudinary (documents: PDF, DOC, etc. – raw pipeline)
 export const uploadDocsCloudinary = async (file: Express.Multer.File) => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader
@@ -14,6 +14,38 @@ export const uploadDocsCloudinary = async (file: Express.Multer.File) => {
         (error, result) => {
           if (error) return reject(error);
           resolve(result);
+        }
+      )
+      .end(file.buffer);
+  });
+};
+
+// Upload images (including SVG) to Cloudinary image pipeline so they display in <img> (image/upload URL)
+export const uploadImageToCloudinary = async (file: Express.Multer.File): Promise<{ secure_url: string }> => {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        { resource_type: "image", folder: "images" },
+        (error, result) => {
+          if (error) return reject(error);
+          if (!result?.secure_url) return reject(new Error("Cloudinary image upload returned no URL"));
+          resolve({ secure_url: result.secure_url });
+        }
+      )
+      .end(file.buffer);
+  });
+};
+
+// Upload videos to Cloudinary video pipeline (video/upload URL)
+export const uploadVideoToCloudinary = async (file: Express.Multer.File): Promise<{ secure_url: string }> => {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        { resource_type: "video", folder: "videos" },
+        (error, result) => {
+          if (error) return reject(error);
+          if (!result?.secure_url) return reject(new Error("Cloudinary video upload returned no URL"));
+          resolve({ secure_url: result.secure_url });
         }
       )
       .end(file.buffer);
@@ -184,18 +216,27 @@ export const handlePropertyUploads = async (
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const uploadResult: any = await uploadDocsCloudinary(file);
+      const isImage = file.mimetype.startsWith("image/");
+      const isVideo = file.mimetype.startsWith("video/");
 
-      if (!uploadResult.secure_url) {
+      let uploadResult: any;
+      if (isImage) {
+        uploadResult = await uploadImageToCloudinary(file);
+      } else if (isVideo) {
+        uploadResult = await uploadVideoToCloudinary(file);
+      } else {
+        uploadResult = await uploadDocsCloudinary(file);
+      }
+
+      if (!uploadResult?.secure_url) {
         return res.status(500).json({ error: `Upload failed for file ${file.originalname}` });
       }
 
-
       // Check type and validate
-      if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
-        // MEDIA file
+      if (isImage || isVideo) {
+        // MEDIA file – images (including SVG) and videos use image/video pipeline so they display in <img>/<video>
         uploadedFiles.push({
-          type: file.mimetype.startsWith("image/") ? MediaType.IMAGE : MediaType.VIDEO,
+          type: isImage ? MediaType.IMAGE : MediaType.VIDEO,
           url: uploadResult.secure_url,
           fileType: file.mimetype,
           identifier: "MediaTable",

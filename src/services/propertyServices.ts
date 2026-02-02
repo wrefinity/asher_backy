@@ -238,7 +238,7 @@ class PropertyService {
         file?.identifier === 'DocTable'
       );
 
-      // Prepare base property update data
+      // Prepare base property update data (virtualTourUrl is not a DB column; we handle it via virtualTours relation)
       const { 
         specificationType,
         propertySubType,
@@ -253,6 +253,7 @@ class PropertyService {
         deleteVirtualTours = [],
         deleteDocuments = [],
         uploadedFiles: _,
+        virtualTourUrl: virtualTourUrlRaw,
         ...propertyData 
       } = data;
 
@@ -293,17 +294,32 @@ class PropertyService {
               caption: vid.caption,
             }))
           },
-          virtualTours: {
-            deleteMany: deleteVirtualTours.length > 0 ? { id: { in: deleteVirtualTours } } : undefined,
-            create: virtualTours?.map(vt => ({
-              type: vt.type,
-              size: vt.size,
-              fileType: vt.fileType,
-              url: vt.url,
-              isPrimary: vt.isPrimary,
-              caption: vt.caption,
-            }))
-          },
+          virtualTours: (() => {
+            // Virtual tour URL: replace all virtual tours with one record from this link (or remove if empty)
+            const vtUrl = typeof virtualTourUrlRaw === 'string' ? virtualTourUrlRaw.trim() : '';
+            if (vtUrl && (vtUrl.startsWith('http://') || vtUrl.startsWith('https://'))) {
+              return {
+                deleteMany: {},
+                create: [{
+                  type: MediaType.VIRTUAL_TOUR,
+                  url: vtUrl,
+                  fileType: 'virtual-tour/link',
+                  isPrimary: false,
+                  caption: null,
+                }],
+              };
+            }
+            return {
+              deleteMany: deleteVirtualTours.length > 0 ? { id: { in: deleteVirtualTours } } : undefined,
+              create: virtualTours?.map((vt: any) => ({
+                type: vt.type,
+                fileType: vt.fileType,
+                url: vt.url,
+                isPrimary: vt.isPrimary,
+                caption: vt.caption,
+              }))
+            };
+          })(),
           propertyDocument: {
             deleteMany: deleteDocuments.length > 0 ? { id: { in: deleteDocuments } } : undefined,
             create: documents?.map(doc => ({
@@ -715,6 +731,24 @@ class PropertyService {
       }
       if (data.deleteVirtualTours) {
         updateData.virtualTours = { deleteMany: { id: { in: data.deleteVirtualTours } } };
+      }
+      // Virtual tour URL: replace all virtual tours with one record from this link (or remove if empty)
+      if (data.virtualTourUrl !== undefined) {
+        const vtUrl = typeof data.virtualTourUrl === 'string' ? data.virtualTourUrl.trim() : '';
+        if (vtUrl && (vtUrl.startsWith('http://') || vtUrl.startsWith('https://'))) {
+          updateData.virtualTours = {
+            deleteMany: {},
+            create: [{
+              type: MediaType.VIRTUAL_TOUR,
+              url: vtUrl,
+              fileType: 'virtual-tour/link',
+              isPrimary: false,
+              caption: null,
+            }],
+          };
+        } else {
+          updateData.virtualTours = { deleteMany: {} };
+        }
       }
       if (data.deleteDocuments) {
         updateData.propertyDocument = { deleteMany: { id: { in: data.deleteDocuments } } };
@@ -2667,7 +2701,7 @@ class PropertyService {
         const { shortlet, specificationType, residential, commercial } = specification;
 
         return prismaClient.$transaction(async (tx) => {
-            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, securityDeposit, initialDeposit, ...rest } = data;
+            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, securityDeposit, initialDeposit, virtualTourUrl: virtualTourUrlRaw, ...rest } = data;
 
             if (!landlordId || !stateId) {
                 throw new Error("Missing required fields: landlordId or stateId.");
@@ -2680,6 +2714,28 @@ class PropertyService {
             const images = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.IMAGE);
             const videos = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.VIDEO);
             const virtualTours = uploadedFiles?.filter(file => file?.identifier === 'MediaTable' && file?.type === MediaType.VIRTUAL_TOUR);
+
+            // Virtual tour URL (single link; no file upload) – create one virtual tour record
+            const virtualTourUrlTrimmed = typeof virtualTourUrlRaw === 'string' ? virtualTourUrlRaw.trim() : '';
+            const virtualTourFromUrl = virtualTourUrlTrimmed && (virtualTourUrlTrimmed.startsWith('http://') || virtualTourUrlTrimmed.startsWith('https://'))
+                ? [{
+                    type: MediaType.VIRTUAL_TOUR,
+                    url: virtualTourUrlTrimmed,
+                    fileType: 'virtual-tour/link',
+                    isPrimary: false,
+                    caption: null,
+                }]
+                : [];
+            const virtualToursCreate = [
+                ...(virtualTours?.map(vt => ({
+                    type: vt.type,
+                    fileType: vt.fileType,
+                    url: vt.url,
+                    isPrimary: vt.isPrimary,
+                    caption: vt.caption,
+                })) || []),
+                ...virtualTourFromUrl,
+            ];
             const documents = uploadedFiles?.filter(file => file?.identifier === 'DocTable');
 
             // Create the main property - REMOVE documentName from here
@@ -2716,14 +2772,7 @@ class PropertyService {
                         }))
                     },
                     virtualTours: {
-                        create: virtualTours?.map(vt => ({
-                            type: vt.type,
-                            size: vt.size,
-                            fileType: vt.fileType,
-                            url: vt.url,
-                            isPrimary: vt.isPrimary,
-                            caption: vt.caption,
-                        }))
+                        create: virtualToursCreate.length > 0 ? virtualToursCreate : undefined,
                     },
                     propertyDocument: {
                         create: documents?.map(doc => ({

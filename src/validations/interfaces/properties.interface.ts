@@ -115,6 +115,8 @@ export interface IBasePropertyDTO {
     image?: PropertyMediaFiles[]
     videos?: PropertyMediaFiles[]
     virtualTours?: PropertyMediaFiles[]
+    /** Single virtual tour URL (Matterport, Kuula, etc.); creates one virtual tour record. No file upload. */
+    virtualTourUrl?: string
 }
 
 export interface ISharedFacilities {
