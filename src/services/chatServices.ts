@@ -132,25 +132,75 @@ class ChatServices {
     };
 
     getChatRoomsForUser = async (userId: string) => {
-
-        // Find chat rooms where user is either user1 or user2
         return await prismaClient.chatRoom.findMany({
             where: {
                 OR: [
                     { user1Id: userId },
                     { user2Id: userId },
-                ]
+                ],
+            },
+            orderBy: {
+                updatedAt: 'desc', // chat list sorted by recent activity
             },
             include: {
-                user1: true,
-                user2: true,
+                user1: {
+                    select: {
+                        id: true,
+                        email: true,
+                        onlineStatus: true,
+                        profile: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                firstName: true,
+                                lastName: true,
+                                profileUrl: true,
+                                phoneNumber: true,
+                                city: true,
+                                country: true,
+                            },
+                        },
+                    },
+                },
+                user2: {
+                    select: {
+                        id: true,
+                        email: true,
+                        onlineStatus: true,
+                        profile: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                firstName: true,
+                                lastName: true,
+                                profileUrl: true,
+                                phoneNumber: true,
+                                city: true,
+                                country: true,
+                            },
+                        },
+                    },
+                },
                 messages: {
-                    // take: 1,  
-                    orderBy: { createdAt: 'desc' },
+                    take: 1, // latest message only (chat list UX)
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                    select: {
+                        id: true,
+                        content: true,
+                        createdAt: true,
+                        senderId: true,
+                        receiverId: true,
+                        chatType: true,
+                        images: true,
+                        videos: true,
+                    },
                 },
             },
         });
-    }
+    };
+
 
 }
 

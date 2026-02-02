@@ -2745,7 +2745,7 @@ class PropertyService {
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
                     marketValue: marketValue ? new Prisma.Decimal(marketValue) : null, // Convert if exist
                     propertyValue: propertyValue ? new Prisma.Decimal(propertyValue) : null, // Convert if exist
-                    securityDeposit: securityDeposit != null && securityDeposit !== '' ? new Prisma.Decimal(securityDeposit) : null,
+                    securityDeposit: securityDeposit ? new Prisma.Decimal(securityDeposit) : null,
                     keyFeatures: { set: keyFeatures },
                     specificationType,
                     landlord: { connect: { id: landlordId } },

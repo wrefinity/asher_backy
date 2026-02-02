@@ -174,7 +174,10 @@ export const RegisterSchema = Joi.object({
       'string.max': 'Password cannot exceed 30 characters',
       'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character (!@#$%^&*)',
       'any.required': 'Password is required'
-    })
+    }),
+  role: Joi.string()
+    .valid(...Object.values(userRoles))
+    .default(userRoles.WEBUSER)
 });
 
 // Register vendor schema
