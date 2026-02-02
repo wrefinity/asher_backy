@@ -2667,7 +2667,7 @@ class PropertyService {
         const { shortlet, specificationType, residential, commercial } = specification;
 
         return prismaClient.$transaction(async (tx) => {
-            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, ...rest } = data;
+            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, securityDeposit, initialDeposit, ...rest } = data;
 
             if (!landlordId || !stateId) {
                 throw new Error("Missing required fields: landlordId or stateId.");
@@ -2689,6 +2689,7 @@ class PropertyService {
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
                     marketValue: marketValue ? new Prisma.Decimal(marketValue) : null, // Convert if exist
                     propertyValue: propertyValue ? new Prisma.Decimal(propertyValue) : null, // Convert if exist
+                    securityDeposit: securityDeposit != null && securityDeposit !== '' ? new Prisma.Decimal(securityDeposit) : null,
                     keyFeatures: { set: keyFeatures },
                     specificationType,
                     landlord: { connect: { id: landlordId } },
