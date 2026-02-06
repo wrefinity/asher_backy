@@ -507,6 +507,108 @@ class PropertyService {
   }
 
   /**
+   * Build Prisma-friendly commercial update/create data (scalars + nested relations).
+   * Nested relations are only included when provided, so partial updates don't wipe existing data.
+   */
+  private buildCommercialPrismaData(data: any) {
+    const {
+      safetyFeatures,
+      coolingTypes,
+      heatingTypes,
+      customSafetyFeatures,
+      securityFeatures,
+      otherSharedFacilities,
+      floorAvailability,
+      roomDetails,
+      unitConfigurations,
+      suitableFor,
+      PropertySpecification,
+      sharedFacilities,
+      ...rest
+    } = data;
+
+    const out: any = {
+      ...rest,
+      securityFeatures: Array.isArray(securityFeatures) ? { set: securityFeatures } : undefined,
+      safetyFeatures: Array.isArray(safetyFeatures) ? { set: safetyFeatures } : undefined,
+      customSafetyFeatures: Array.isArray(customSafetyFeatures) ? { set: customSafetyFeatures } : undefined,
+      coolingTypes: Array.isArray(coolingTypes) ? { set: coolingTypes } : undefined,
+      heatingTypes: Array.isArray(heatingTypes) ? { set: heatingTypes } : undefined,
+      otherSharedFacilities: Array.isArray(otherSharedFacilities) ? { set: otherSharedFacilities } : undefined,
+      leaseTermUnit: rest.leaseTermUnit || "YEARS",
+      minimumLeaseTerm: rest.minimumLeaseTerm ?? 12,
+    };
+
+    if (Array.isArray(floorAvailability)) {
+      out.floorAvailability = {
+        deleteMany: {},
+        create: floorAvailability.map((floor: any) => ({
+          floorNumber: floor.floorNumber,
+          area: floor.area,
+          price: floor.price,
+          available: floor.available,
+          partialFloor: floor.partialFloor,
+          description: floor.description,
+          amenities: floor?.amenities?.length ? { set: floor.amenities } : undefined,
+        })),
+      };
+    }
+    if (Array.isArray(roomDetails)) {
+      out.roomDetails = {
+        deleteMany: {},
+        create: roomDetails.map((room: any) => ({
+          roomName: room.roomName,
+          roomSize: room.roomSize,
+          ensuite: room.ensuite,
+          price: room.price,
+          description: room?.description,
+          furnished: room.furnished,
+        })),
+      };
+    }
+    if (sharedFacilities != null && typeof sharedFacilities === "object") {
+      out.sharedFacilities = {
+        deleteMany: {},
+        create: [{
+          kitchen: sharedFacilities.kitchen ?? false,
+          bathroom: sharedFacilities.bathroom ?? false,
+          livingRoom: sharedFacilities.livingRoom ?? false,
+          garden: sharedFacilities.garden ?? false,
+          garage: sharedFacilities.garage ?? false,
+          laundry: sharedFacilities.laundry ?? false,
+          parking: sharedFacilities.parking ?? false,
+          other: sharedFacilities.other || "",
+        }],
+      };
+    }
+    if (Array.isArray(suitableFor)) {
+      out.suitableFor = { deleteMany: {}, create: suitableFor.map((name: string) => ({ name })) };
+    }
+    if (Array.isArray(unitConfigurations)) {
+      out.unitConfigurations = {
+        deleteMany: {},
+        create: unitConfigurations.map((unit: any) => ({
+          unitType: unit.unitType,
+          unitNumber: unit.unitNumber,
+          floorNumber: unit.floorNumber,
+          count: unit.count,
+          bedrooms: unit.bedrooms,
+          bathrooms: unit.bathrooms,
+          kitchens: unit.kitchens,
+          furnished: unit.furnished,
+          ensuite: unit.ensuite,
+          price: unit.price,
+          area: unit.area,
+          description: unit.description,
+          availability: unit.availability,
+        })),
+      };
+    }
+
+    return out;
+  }
+
+  /**
    * Update commercial property
    */
   private async updateCommercialProps(
@@ -514,37 +616,40 @@ class PropertyService {
     commercialData: any,
     tx: Prisma.TransactionClient
   ) {
-    // Get existing commercial property
+    if (!commercialData || typeof commercialData !== "object") {
+      throw new Error("Commercial update data is required");
+    }
+
     const existingSpec = await tx.propertySpecification.findFirst({
-      where: { 
+      where: {
         propertyId,
         isActive: true,
-        specificationType: PropertySpecificationType.COMMERCIAL
+        specificationType: PropertySpecificationType.COMMERCIAL,
       },
-      include: { commercial: true }
+      include: { commercial: true },
     });
 
+    const prismaData = this.buildCommercialPrismaData(commercialData);
+
     if (!existingSpec?.commercial) {
-      // Create new commercial property
       return tx.commercialProperty.create({
         data: {
-          ...commercialData,
+          ...prismaData,
           PropertySpecification: {
             create: {
               propertyId,
               specificationType: PropertySpecificationType.COMMERCIAL,
               isActive: true,
-              fromDate: new Date()
-            }
-          }
-        }
+              fromDate: new Date(),
+            },
+          },
+        },
       });
     }
 
-    // Update existing commercial property
     return tx.commercialProperty.update({
       where: { id: existingSpec.commercial.id },
-      data: commercialData
+      data: prismaData,
     });
   }
 
@@ -2967,7 +3072,7 @@ class PropertyService {
                         available: floor.available,
                         partialFloor: floor.partialFloor,
                         description: floor.description,
-                        amenities: floor?.amenities ? { set: securityFeatures } : undefined,
+                        amenities: floor?.amenities ? { set: floor.amenities } : undefined,
                     })) || []
                 },
 
