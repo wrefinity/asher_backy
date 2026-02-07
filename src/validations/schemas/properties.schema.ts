@@ -817,7 +817,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   propertyValue: Joi.number().optional(),
   purchaseType: Joi.string().optional(),
   securityDeposit: Joi.number().optional(),
-  // initialDeposit: Joi.number().optional(),
+  initialDeposit: Joi.number().optional(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
     'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
     'string.base': 'priceFrequency type must be a string'

@@ -116,7 +116,8 @@ class PropertyController {
         const landlordId = req.user?.landlords?.id;
         if (!landlordId) return res.status(403).json({ error: 'Kindly login' });
 
-        const properties = req.body.properties;
+        // BulkPropertyUploadSchema validates an array; body may be array or { properties: array }
+        const properties = Array.isArray(req.body) ? req.body : (req.body?.properties ?? []);
         const results = { created: [], failed: [] };
 
         for (const prop of properties) {

@@ -2808,6 +2808,9 @@ class PropertyService {
         return prismaClient.$transaction(async (tx) => {
             const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, securityDeposit, initialDeposit, virtualTourUrl: virtualTourUrlRaw, ...rest } = data;
 
+            // Store deposit: use securityDeposit; for Nigeria frontend may send initialDeposit only, so fall back to it
+            const depositAmount = securityDeposit ?? initialDeposit;
+
             if (!landlordId || !stateId) {
                 throw new Error("Missing required fields: landlordId or stateId.");
             }
@@ -2850,7 +2853,7 @@ class PropertyService {
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
                     marketValue: marketValue ? new Prisma.Decimal(marketValue) : null, // Convert if exist
                     propertyValue: propertyValue ? new Prisma.Decimal(propertyValue) : null, // Convert if exist
-                    securityDeposit: securityDeposit ? new Prisma.Decimal(securityDeposit) : null,
+                    securityDeposit: depositAmount != null && Number(depositAmount) > 0 ? new Prisma.Decimal(Number(depositAmount)) : null,
                     keyFeatures: { set: keyFeatures },
                     specificationType,
                     landlord: { connect: { id: landlordId } },
