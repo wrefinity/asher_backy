@@ -33,7 +33,6 @@ import logger from "./loggers";
 // }
 import { resend } from '../configs/resend';
 
-
 export const sendMail = async (
   to: string,
   subject: string,
@@ -41,6 +40,9 @@ export const sendMail = async (
 ) => {
   try {
     logger.info(`Sending mail to - ${to}`);
+    
+    // Add 4-second delay
+    await new Promise(resolve => setTimeout(resolve, 4000));
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
@@ -61,7 +63,6 @@ export const sendMail = async (
     throw err;
   }
 };
-
 // URLs
 const guarantorURL = "https://asher-website.vercel.app/guarantor";
 const employerURL = "https://asher-website.vercel.app/employer";
