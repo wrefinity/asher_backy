@@ -429,7 +429,7 @@ export const roomDetailSchema = Joi.object({
   }).default(AvailabilityStatus.VACANT),
 });
 
-// SharedFacilities Joi
+// SharedFacilities Joi (other is optional; allow empty string so frontend can send "" when field is present but blank)
 export const sharedFacilitiesSchema = Joi.object({
   kitchen: Joi.boolean().default(false).optional(),
   bathroom: Joi.boolean().default(false).optional(),
@@ -438,7 +438,7 @@ export const sharedFacilitiesSchema = Joi.object({
   garage: Joi.boolean().default(false).optional(),
   laundry: Joi.boolean().default(false).optional(),
   parking: Joi.boolean().default(false).optional(),
-  other: Joi.string().optional(),
+  other: Joi.string().allow('').optional(),
 });
 
 export const bookingSchema = Joi.object({
@@ -817,7 +817,7 @@ export const IBasePropertyDTOSchema = Joi.object({
   propertyValue: Joi.number().optional(),
   purchaseType: Joi.string().optional(),
   securityDeposit: Joi.number().optional(),
-  // initialDeposit: Joi.number().optional(),
+  initialDeposit: Joi.number().optional(),
   priceFrequency: Joi.string().valid(...Object.values(PriceFrequency)).messages({
     'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
     'string.base': 'priceFrequency type must be a string'

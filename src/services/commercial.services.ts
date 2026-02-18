@@ -179,7 +179,7 @@ class CommercialPropertyService {
                         available: floor.available,
                         partialFloor: floor.partialFloor,
                         description: floor.description,
-                        amenities: floor?.amenities ? { set: securityFeatures } : undefined,
+                        amenities: floor?.amenities ? { set: floor.amenities } : undefined,
                     })) || []
                 },
 

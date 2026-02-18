@@ -58,13 +58,14 @@ interface INearbyAmenity {
 
 
 export interface CommercialPropertyFloor {
-    id: string;
+    id?: string;
     floorNumber: number;
     area: string;
     price: string;
     available?: boolean;
     partialFloor?: boolean;
     description?: string;
+    amenities?: string[];
 }
 
 
