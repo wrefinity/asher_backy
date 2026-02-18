@@ -1,7 +1,9 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
+import { prismaClient } from '../../index';
 
-const prisma = new PrismaClient();
+// Use the shared Prisma client singleton to prevent connection pool exhaustion
+const prisma = prismaClient;
 
 export class LandlordAnalyticsService {
 

@@ -18,6 +18,9 @@ class TransactionController {
 
         try {
             const amount = Number(value.amount);
+            if (!value.propertyId) {
+                return res.status(400).json({ message: "Property ID is required for payment" });
+            }
             // get the props to ensure that props exist and also get the landlord from it
             const props = await PropertyServices.getPropertiesById(value.propertyId);
             if (!props) return res.status(400).json({ message: "property does not exist" })

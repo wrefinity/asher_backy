@@ -176,12 +176,14 @@ class TenantControls {
             return res.status(404).json({ error: `User with ID ${userId} not found.` });
         }
 
-        const application = await applicantService.createApplicationFromLast(userId, inviteId, applicationFee);
-        if (!application) {
+        const result = await applicantService.createApplicationFromLast(userId, inviteId, applicationFee);
+        if (!result || !result.application) {
             return res.status(400).json({ error: 'Failed to create application.' });
         }
-        await sendApplicationCompletionEmails(application);
-        return res.status(200).json({ application });
+        // send emails to guarantor, employer and landlord (reference)
+        await sendApplicationCompletionEmails(result.application);
+        // inviteId is required Applications page loads by invite id (GET /invites/:id)
+        return res.status(200).json({ application: result.application, inviteId });
     }
 
     bulkTenantUpload = async (req: CustomRequest, res: Response) => {

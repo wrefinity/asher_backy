@@ -43,6 +43,9 @@ export interface NormalizedViewingInvite {
   rooms: any | null;
   units: any | null;
   propertyListing: any | null;
+
+  // Application linked to this invite (for single-invite / application detail view)
+  application: any | null;
 }
 
 export class ViewingInviteNormalizer {
@@ -77,8 +80,19 @@ export class ViewingInviteNormalizer {
             property = normalizedListing.property;
           }
         }
-      } catch (error) {
-        console.warn('Failed to fetch listing for viewing invite:', error);
+      } catch (error: any) {
+        // Handle connection pool exhaustion gracefully
+        const isConnectionError = error?.code === 'P2037' || 
+                                  error?.message?.includes('connection') || 
+                                  error?.message?.includes('too many clients') ||
+                                  error?.message?.includes('remaining connection slots');
+        
+        if (isConnectionError) {
+          console.warn(`Database connection pool exhausted while fetching listing ${propertyListingId} for viewing invite ${invite.id}. Using fallback data.`);
+        } else {
+          console.warn('Failed to fetch listing for viewing invite:', error);
+        }
+        
         // Fallback: try to construct listing from rooms/units if available
         if (roomId && rooms) {
           // Construct a mock listing from room data
@@ -136,14 +150,65 @@ export class ViewingInviteNormalizer {
       
       // The normalized listing (this is what frontend should use)
       listing: listing,
+
+      // Pass through application so single-invite detail page has it
+      application: invite.application ?? null,
     };
   }
 
   /**
    * Normalize multiple viewing invites
+   * Batches the operations to prevent connection pool exhaustion
    */
   static async normalizeMany(invites: any[]): Promise<NormalizedViewingInvite[]> {
-    return Promise.all(invites.map(invite => this.normalize(invite)));
+    if (!invites || invites.length === 0) {
+      return [];
+    }
+
+    // Process in batches to prevent connection pool exhaustion
+    // Each normalize() call can open a DB connection, so we limit concurrent operations
+    const BATCH_SIZE = 5; // Process 5 invites at a time
+    const results: NormalizedViewingInvite[] = [];
+
+    for (let i = 0; i < invites.length; i += BATCH_SIZE) {
+      const batch = invites.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(invite => this.normalize(invite).catch(error => {
+          console.error('Failed to normalize viewing invite:', error);
+          // Return a partial normalized invite with error info
+          return {
+            id: invite.id,
+            isDeleted: invite.isDeleted || false,
+            applicationFee: invite.applicationFee,
+            createdAt: invite.createdAt,
+            updatedAt: invite.updatedAt,
+            scheduleDate: invite.scheduleDate,
+            reScheduleDate: invite.reScheduleDate,
+            response: invite.response,
+            responseStepsCompleted: invite.responseStepsCompleted || [],
+            propertiesId: invite.propertiesId,
+            invitedByLandordId: invite.invitedByLandordId,
+            tenantsId: invite.tenantsId,
+            userInvitedId: invite.userInvitedId,
+            enquiryId: invite.enquiryId,
+            roomId: invite.roomId,
+            unitId: invite.unitId,
+            propertyListingId: invite.propertyListingId,
+            userInvited: invite.userInvited,
+            enquires: invite.enquires,
+            properties: invite.properties,
+            rooms: invite.rooms,
+            units: invite.units,
+            propertyListing: invite.propertyListing,
+            listing: null, // Failed to fetch listing
+            application: invite.application ?? null,
+          } as NormalizedViewingInvite;
+        }))
+      );
+      results.push(...batchResults);
+    }
+
+    return results;
   }
 
   /**

@@ -50,18 +50,24 @@ import CreditScoreRouter from "./routes/creditScore.routes";
 // Use singleton pattern to ensure only one Prisma client instance
 const globalForPrisma = global as unknown as { prismaClient: PrismaClient };
 
-export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({ 
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({
+    // log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: ['error'], // Only log errors to reduce noise and help identify 500 errors
     datasources: {
         db: {
             url: process.env.DATABASE_URL
         }
     }
-    // Note: Connection pool configuration is done via DATABASE_URL query parameters:
-    // ?connection_limit=10&pool_timeout=20
-    // Default Prisma pool size is typically 10 connections
-    // To configure pooling, add these parameters to your DATABASE_URL:
-    // postgresql://user:password@host:port/database?connection_limit=10&pool_timeout=20
+    // IMPORTANT: Connection pool configuration is done via DATABASE_URL query parameters
+    // To prevent "too many connections" errors, ensure your DATABASE_URL includes:
+    // ?connection_limit=20&pool_timeout=20&connect_timeout=10
+    // 
+    // Example:
+    // postgresql://user:password@host:port/database?connection_limit=20&pool_timeout=20&connect_timeout=10
+    //
+    // Default Prisma pool size is 10 connections, but for production with concurrent requests,
+    // you may need 20-50 connections depending on your traffic.
+    // Monitor your database connection usage and adjust accordingly.
 });
 
 // In development, reuse the same instance across hot reloads

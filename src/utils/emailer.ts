@@ -118,7 +118,9 @@ const applicationCompletionTemplates = {
   }
 };
 
-// Email sending function
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Email sending function - sends sequentially with delay to respect 2 req/s rate limit
 export const sendApplicationCompletionEmails = async (application: any) => {
   try {
     const recipients = {
@@ -127,31 +129,41 @@ export const sendApplicationCompletionEmails = async (application: any) => {
       landlord: application.residentialInfo?.landlordOrAgencyEmail
     };
 
-    // Prepare all email templates first
+    console.log('[Completion emails] Recipients:', {
+      guarantor: recipients.guarantor || '(none)',
+      employer: recipients.employer || '(none)',
+      landlord: recipients.landlord || '(none)',
+    });
+    const appId = application?.id;
+    console.log('[Completion emails] Links (applicationId:', appId, '):', {
+      guarantor: appId ? `${guarantorURL}/${appId}` : '(no id)',
+      employer: appId ? `${employerURL}/${appId}` : '(no id)',
+      landlord: appId ? `${landlordURL}/${appId}` : '(no id)',
+    });
+    logger.info('Completion email recipients', { recipients });
+
     const [guarantorTemplate, employerTemplate, landlordTemplate] = await Promise.all([
       applicationCompletionTemplates.guarantor(application),
       applicationCompletionTemplates.employer(application),
       applicationCompletionTemplates.landlord(application)
     ]);
 
-    // Send emails in parallel
-    await Promise.all([
-      recipients.guarantor && sendMail(
-        recipients.guarantor,
-        guarantorTemplate.subject,
-        guarantorTemplate.html
-      ),
-      recipients.employer && sendMail(
-        recipients.employer,
-        employerTemplate.subject,
-        employerTemplate.html
-      ),
-      recipients.landlord && sendMail(
-        recipients.landlord,
-        landlordTemplate.subject,
-        landlordTemplate.html
-      )
-    ]);
+    const RATE_LIMIT_DELAY_MS = 600; // stay under 2 requests per second
+
+    if (recipients.landlord) {
+      console.log('[Completion emails] Sending LANDLORD email to', recipients.landlord, '| subject:', landlordTemplate.subject);
+      await sendMail(recipients.landlord, landlordTemplate.subject, landlordTemplate.html);
+      await delay(RATE_LIMIT_DELAY_MS);
+    }
+    if (recipients.guarantor) {
+      console.log('[Completion emails] Sending GUARANTOR email to', recipients.guarantor, '| subject:', guarantorTemplate.subject);
+      await sendMail(recipients.guarantor, guarantorTemplate.subject, guarantorTemplate.html);
+      await delay(RATE_LIMIT_DELAY_MS);
+    }
+    if (recipients.employer) {
+      console.log('[Completion emails] Sending EMPLOYER email to', recipients.employer, '| subject:', employerTemplate.subject);
+      await sendMail(recipients.employer, employerTemplate.subject, employerTemplate.html);
+    }
   } catch (emailError) {
     logger.error('Failed to send completion emails:', emailError);
     throw emailError;

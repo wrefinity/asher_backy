@@ -1160,6 +1160,36 @@ class ApplicantService {
     };
   }
   async createApplicationFromLast(userId: string, inviteId: string, applicationFee: YesNo = YesNo.NO) {
+    // Step 0: Check if an application already exists for this invite
+    if (inviteId) {
+      const existingApplication = await prismaClient.application.findFirst({
+        where: {
+          applicationInviteId: inviteId,
+          isDeleted: false,
+        },
+        include: {
+          personalDetails: { include: { nextOfKin: true } },
+          residentialInfo: { include: { prevAddresses: true } },
+          emergencyInfo: true,
+          employmentInfo: true,
+          guarantorInformation: true,
+          referee: true,
+          applicationQuestions: true,
+          declaration: true,
+        },
+      });
+
+      if (existingApplication) {
+        // Return existing application instead of creating a new one (do not send completion emails again)
+        return {
+          message: 'Application already exists for this invite.',
+          applicationId: existingApplication.id,
+          application: existingApplication,
+          isNewApplication: false,
+        };
+      }
+    }
+
     // Step 1: Get the last completed application
     const lastApplication = await prismaClient.application.findFirst({
       where: {
@@ -1389,10 +1419,19 @@ class ApplicantService {
       });
     }
 
+    // Re-fetch with full includes so completion emails (guarantor, employer, landlord) have all recipient data
+    const applicationWithRelations = await prismaClient.application.findUnique({
+      where: { id: newApplication.id },
+      include: this.applicationInclusion,
+    });
+    const normalized = applicationWithRelations ? await this.normalizeApplications([applicationWithRelations]) : [];
+    const applicationToReturn = normalized[0] ?? newApplication;
+
     return {
       message: 'New application created successfully from last application data.',
       applicationId: newApplication.id,
-      application: newApplication,
+      application: applicationToReturn,
+      isNewApplication: true,
     };
   }
 
