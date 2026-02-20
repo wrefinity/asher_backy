@@ -784,6 +784,14 @@ class ApplicantControls {
     const userId = req.user?.id;
     const agreementId = req.params.id;
     try {
+      // Multipart form sends metadata as JSON string; normalize to object for Joi
+      if (req.body && typeof req.body.metadata === 'string') {
+        try {
+          req.body.metadata = JSON.parse(req.body.metadata);
+        } catch {
+          req.body.metadata = {};
+        }
+      }
       const { error, value } = updateAgreementSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
@@ -807,8 +815,18 @@ class ApplicantControls {
 
       // const { cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, cloudinaryAudioUrls, ...data} = value;
 
-      // Get landlord info
-      const landlordId = agreement.application?.properties?.landlordId;
+      // Get landlord info (application.properties may be null; fallback to invite's property or invite's landlord)
+      const app = agreement.application;
+      const landlordId =
+        app?.properties?.landlordId ??
+        app?.applicationInvites?.properties?.landlordId ??
+        app?.applicationInvites?.invitedByLandordId ?? null;
+      if (!landlordId) {
+        return res.status(400).json({
+          error: "Landlord not found",
+          message: "Could not determine the landlord for this agreement. The application may not be linked to a property."
+        });
+      }
       const landlord = await new LandlordService().getLandlordById(landlordId);
       if (!landlord) {
         return res.status(400).json({

@@ -129,6 +129,16 @@ class ApplicationControls {
                 return res.status(403).json({ message: "Login as a landlord" });
             }
 
+            // Resolve property (required for tenant): application.propertiesId or invite's propertiesId
+            const propertyId =
+                application.propertiesId ??
+                application.applicationInvites?.propertiesId ?? null;
+            if (!propertyId) {
+                return res.status(400).json({
+                    message: "Cannot create tenant: application is not linked to a property. Link the application to a property first.",
+                });
+            }
+
             // Pass property, unit, room separately
             const tenant = await userServices.createUser(
                 {
@@ -136,9 +146,9 @@ class ApplicationControls {
                     email: tenantWebUserEmail,
                     userId: application?.user?.id,
                     tenantWebUserEmail,
-                    propertyId: application.propertiesId,
-                    unitId: application.applicationInvites.unitId,
-                    roomId: application.applicationInvites.roomId,
+                    propertyId,
+                    unitId: application.applicationInvites?.unitId,
+                    roomId: application.applicationInvites?.roomId,
                     applicationId,
                     role: userRoles.TENANT,
                     password: application?.personalDetails?.firstName,
@@ -757,13 +767,20 @@ class ApplicationControls {
                     details: [`Application with ID ${applicationId} does not exist`]
                 });
             }
-            const actualLandlordId = application.properties?.landlordId;
+            // Application may have propertiesId null when created from "View Application" (invite flow); resolve via invite
+            let actualLandlordId = application.properties?.landlordId;
+            let inviteForProperty: Awaited<ReturnType<typeof ApplicationInvitesService.getInviteById>> = null;
+            if (actualLandlordId == null && application.applicationInviteId) {
+                inviteForProperty = await ApplicationInvitesService.getInviteById(application.applicationInviteId);
+                actualLandlordId = inviteForProperty?.properties?.landlordId ?? inviteForProperty?.invitedByLandordId ?? undefined;
+            }
             if (req.user.landlords.id !== actualLandlordId) {
                 return res.status(403).json({
                     error: "Unauthorized",
                     message: "You can only send agreement forms for applications on your own properties."
                 });
             }
+            const propertyName = application?.properties?.name ?? inviteForProperty?.properties?.name ?? 'Property';
 
             if (applicationCreator) {
 
@@ -794,7 +811,7 @@ class ApplicationControls {
                 receiverEmail: recipientEmail,
                 body: `Hello, please find and complete the agreement form below: ${documentUrlModified}`,
                 attachment: [documentUrlModified],
-                subject: `${application?.properties?.name} Agreement Form`,
+                subject: `${propertyName} Agreement Form`,
                 senderId: req.user.id,
                 receiverId: application.user.id,
 
@@ -816,7 +833,7 @@ class ApplicationControls {
             const { documentUrl = documentUrls[0], cloudinaryVideoUrls, cloudinaryUrls, cloudinaryAudioUrls, cloudinaryDocumentUrls, ...data } = value;
 
             // Send email in background - don't fail the request if email fails
-            sendMail(recipientEmail, `${application?.properties?.name} Agreement Form`, htmlContent).catch((emailError) => {
+            sendMail(recipientEmail, `${propertyName} Agreement Form`, htmlContent).catch((emailError) => {
                 logger.error('Failed to send agreement form email:', emailError);
             });
 
@@ -824,7 +841,7 @@ class ApplicationControls {
                 logsServices.createLog({
                     applicationId,
                     subjects: "Asher Agreement Letter",
-                    events: `Please check your email for the agreement letter regarding your application for the property: ${application?.properties?.name}`,
+                    events: `Please check your email for the agreement letter regarding your application for the property: ${propertyName}`,
                     createdById: application.user.id,
                     type: LogType.EMAIL,
                 }),
@@ -867,8 +884,18 @@ class ApplicationControls {
                 });
             }
 
-            // Get landlord info
-            const landlordId = agreement.application?.properties?.landlordId;
+            // Get landlord info (fallback to invite's property or invite's landlord)
+            const app = agreement.application;
+            const landlordId =
+                app?.properties?.landlordId ??
+                app?.applicationInvites?.properties?.landlordId ??
+                app?.applicationInvites?.invitedByLandordId ?? null;
+            if (!landlordId) {
+                return res.status(400).json({
+                    error: "Landlord not found",
+                    message: "Could not determine the landlord for this agreement. The application may not be linked to a property."
+                });
+            }
             const landlord = await new LandlordService().getLandlordById(landlordId);
             if (!landlord) {
                 return res.status(400).json({

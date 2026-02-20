@@ -35,6 +35,7 @@ import AdsRouter from "./tenant/routes/ads.routes";
 import communityRoutes from "./routes/community.routes";
 import VendorRouter from "./vendor/routes/index.routes";
 import TenantRouter from "./tenant/routes/index";
+import TenantInspectionRouter from "./tenant/routes/inspection.routes";
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
@@ -151,6 +152,7 @@ class Server {
         this.app.use("/api/landlord", LandlordRouter);
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenants", TenantRouter);
+        this.app.use("/api/inspections", TenantInspectionRouter);
         this.app.use("/api/payouts", PayoutRouter);
         this.app.use("/api/docusign", DocuSignRouter);
         // this.app.use("/api/generator", GeneratorRouter);

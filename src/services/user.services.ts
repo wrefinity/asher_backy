@@ -579,9 +579,11 @@ class UserService {
                         : undefined,
                 };
 
-                if (userData.propertyId) {
-                    connectData.property = { connect: { id: userData.propertyId } };
+                // Tenant requires a property (required relation in schema)
+                if (!userData.propertyId) {
+                    throw new Error("Property is required to create a tenant. Application must be linked to a property.");
                 }
+                connectData.property = { connect: { id: userData.propertyId } };
                 if (userData.unitId) {
                     connectData.unit = { connect: { id: userData.unitId } };
                 }

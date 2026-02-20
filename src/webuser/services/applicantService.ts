@@ -947,6 +947,7 @@ class ApplicantService {
         application: {
           include: {
             properties: true,
+            applicationInvites: { include: { properties: true } },
             user: this.userInclusion
           }
         }
@@ -979,6 +980,7 @@ class ApplicantService {
         units: true,
         rooms: true,
         tenant: true,
+        documents: true,
       }
     });
 
@@ -1213,6 +1215,7 @@ class ApplicantService {
         referee: true,
         applicationQuestions: true,
         declaration: true,
+        documents: true,
       },
     });
 
@@ -1325,7 +1328,16 @@ class ApplicantService {
       : null;
 
     // Step 3: Create new application record
-    // For existing tenants, application should be created as COMPLETED since all info already exists
+    // Property must be the one they are applying for (from this invite), not from previous tenant data
+    let propertiesId: string | null = null;
+    if (inviteId) {
+      const invite = await prismaClient.applicationInvites.findUnique({
+        where: { id: inviteId },
+        select: { propertiesId: true },
+      });
+      propertiesId = invite?.propertiesId ?? null;
+    }
+
     const statuesCompleted: ApplicationStatus[] = [
       ApplicationStatus.SUBMITTED,
       ApplicationStatus.APPROVED,
@@ -1359,6 +1371,7 @@ class ApplicantService {
         stepCompleted: 8,
         createdById: userId,
         applicationInviteId: inviteId ?? null,
+        propertiesId,
       },
       include: { personalDetails: true },
     });
@@ -1388,6 +1401,27 @@ class ApplicantService {
           applicantId: newApplication.id,
         })),
       });
+    }
+
+    // Step 4.5: Copy tenant documents (exclude guarantor/agreement documents)
+    if (lastApplication.documents && lastApplication.documents.length > 0) {
+      // Only copy tenant's own documents (where agreementId is null)
+      const tenantDocuments = lastApplication.documents.filter((doc: any) => !doc.agreementId);
+      if (tenantDocuments.length > 0) {
+        await prismaClient.propertyDocument.createMany({
+          data: tenantDocuments.map((doc: any) => ({
+            documentName: doc.documentName,
+            documentUrl: doc.documentUrl,
+            type: doc.type,
+            size: doc.size,
+            idType: doc.idType,
+            docType: doc.docType,
+            applicationId: newApplication.id,
+            propertyId: doc.propertyId,
+            uploadedBy: doc.uploadedBy,
+          })),
+        });
+      }
     }
 
     // Step 5: Link the application invite if provided

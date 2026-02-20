@@ -27,7 +27,9 @@ class TenantLeaseRenewalController {
     });
 
     if (!tenant) {
-      throw ApiError.badRequest("No active lease found for this tenant");
+      return res.status(200).json(
+        ApiResponse.success([], "No active lease found for this tenant")
+      );
     }
 
     // Build where clause
@@ -147,11 +149,15 @@ class TenantLeaseRenewalController {
     });
 
     if (!tenant) {
-      throw ApiError.badRequest("No active lease found for this tenant");
+      return res.status(200).json(
+        ApiResponse.success(null, "No active lease found for this tenant")
+      );
     }
 
     if (!tenant.leaseStartDate || !tenant.leaseEndDate) {
-      throw ApiError.badRequest("Lease dates not available");
+      return res.status(200).json(
+        ApiResponse.success(null, "Lease dates not yet set for this tenancy")
+      );
     }
 
     // Calculate lease information
@@ -261,14 +267,15 @@ class TenantLeaseRenewalController {
     // Get current rent from property
     const currentRent = tenant.property.price || 0;
 
-    // Create lease renewal proposal
+    // Create lease renewal proposal (tenant is the proposer)
     const renewalProposal = await LeaseRenewalService.initiateLeaseRenewal({
       tenantId: tenant.id,
       propertyId: tenant.propertyId,
       currentRent: currentRent as any,
       proposedRent,
       renewalTerms,
-      message
+      message,
+      proposedByUserId: userId
     });
 
     return res.status(201).json(

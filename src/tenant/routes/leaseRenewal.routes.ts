@@ -40,9 +40,7 @@ class TenantLeaseRenewalRouter {
       message: Joi.string().optional()
     });
 
-    // Routes
-    this.router.get("/", tenantLeaseRenewalController.getLeaseRenewals);
-    this.router.get("/current-lease", tenantLeaseRenewalController.getCurrentLeaseInfo);
+    // GET / and /current-lease are registered on the parent tenant router to avoid /:tenantId catching "lease-renewal"
     this.router.post("/request", validateBody(requestSchema), tenantLeaseRenewalController.requestLeaseRenewal);
     this.router.post("/:proposalId/respond", validateBody(responseSchema), tenantLeaseRenewalController.respondToRenewalProposal);
   }

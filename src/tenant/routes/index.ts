@@ -10,6 +10,8 @@ import PropertyRouter from "./properties.routes";
 import PerformanceController from "../controllers/performance.controller";
 import ViolationRoutes from "./violation.routes";
 import DocumentRequestRouter from "./documentRequest.routes";
+import TenantLeaseRenewalRouter from "./leaseRenewal.routes";
+import tenantLeaseRenewalController from "../controllers/leaseRenewal.controller";
 class TenantRouter {
     public router: Router;
     authenticateService: Authorize
@@ -29,6 +31,9 @@ class TenantRouter {
         this.router.use('/profile', ProfileRouter)
         this.router.use('/properties', PropertyRouter)
         this.router.use('/document-requests', DocumentRequestRouter)
+        this.router.get('/lease-renewal/current-lease', tenantLeaseRenewalController.getCurrentLeaseInfo)
+        this.router.get('/lease-renewal', tenantLeaseRenewalController.getLeaseRenewals)
+        this.router.use('/lease-renewal', TenantLeaseRenewalRouter)
         this.router.get('/tenant-scores', PerformanceController.getTenantPerformance)
         this.router.get('/:tenantId', this.authenticateService.authorize, TenantController.getTenantById)
     }

@@ -88,6 +88,9 @@ export class LandlordService {
 
   // Get a single landlord by ID
   getLandlordById = async (id: string) => {
+    if (id == null || id === '') {
+      return null;
+    }
     return await prismaClient.landlords.findUnique({
       where: { id },
       include: {

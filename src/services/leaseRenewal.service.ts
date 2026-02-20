@@ -13,6 +13,8 @@ export interface LeaseRenewalData {
     endDate: Date;
   };
   message?: string;
+  /** User ID of who is proposing (landlord or tenant) */
+  proposedByUserId: string;
 }
 
 export interface RenewalReminderConfig {
@@ -275,7 +277,7 @@ class LeaseRenewalService {
       throw new Error("Tenant or lease not found");
     }
 
-    // Create renewal proposal
+    // Create renewal proposal (proposedBy = user who initiated: landlord or tenant)
     const renewalProposal = await prismaClient.leaseRenewal.create({
       data: {
         tenantId: data.tenantId,
@@ -285,7 +287,7 @@ class LeaseRenewalService {
         renewalTerms: data.renewalTerms,
         status: 'PENDING',
         message: data.message,
-        proposedBy: tenant.user.id,
+        proposedBy: data.proposedByUserId,
         proposedAt: new Date()
       }
     });
