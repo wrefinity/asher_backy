@@ -50,7 +50,6 @@ class TenantInspectionController {
             id: true,
             name: true,
             address: true,
-            propertyType: true,
           },
         },
         acknowledgment: {
@@ -135,7 +134,7 @@ class TenantInspectionController {
         (i) => i.acknowledgment && !i.acknowledgment.acknowledged
       ).length,
       withDisputes: inspections.filter(
-        (i) => i.acknowledgment && i.acknowledgment.hasDisputes === true
+        (i) => i.acknowledgment && i.acknowledgment.disputed === true
       ).length,
     };
 
@@ -239,7 +238,7 @@ class TenantInspectionController {
         acknowledgedAt: new Date(),
         signature: signature || null,
         comments: comments || null,
-        hasDisputes: hasDisputes || false,
+        disputed: hasDisputes || false,
       },
       include: {
         tenant: {
