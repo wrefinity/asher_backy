@@ -1,5 +1,6 @@
 import { prismaClient } from "..";
 import { serverInstance } from "../index";
+import { ApiError } from "../utils/ApiError";
 import emailService from "./emailService";
 
 export interface LeaseRenewalData {
@@ -313,6 +314,32 @@ class LeaseRenewalService {
     });
 
     return renewalProposal;
+  }
+  /**
+   * Initiate lease renewal process
+   */
+  async leaseRenewal(data: { tenantId: string, leaseEndDate: Date }) {
+    const tenant = await prismaClient.tenants.findFirst({
+      where: {
+        id: data.tenantId
+      }
+    });
+    if (!tenant) {
+      throw ApiError.badRequest("Tenant or lease not found");
+    }
+
+    // Update the lease end date
+    const updatedTenant = await prismaClient.tenants.update({
+      where: {
+        id: data?.tenantId,
+      },
+      data: {
+        leaseEndDate: new Date(data?.leaseEndDate),
+        updatedAt: new Date(),
+      },
+    });
+
+    return updatedTenant;
   }
 
   /**
