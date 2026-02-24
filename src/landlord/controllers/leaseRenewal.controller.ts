@@ -4,7 +4,6 @@ import LeaseRenewalService from '../../services/leaseRenewal.service';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { ApiError } from '../../utils/ApiError';
 import { asyncHandler } from '../../utils/asyncHandler';
-import Joi from 'joi';
 import { prismaClient } from '../..';
 
 class LandlordLeaseRenewalController {
@@ -16,25 +15,6 @@ class LandlordLeaseRenewalController {
   initiateLeaseRenewal = asyncHandler(async (req: CustomRequest, res: Response) => {
     const userId = req.user.id;
     const { tenantId, propertyId, currentRent, proposedRent, renewalTerms, message } = req.body;
-
-    // Validation schema
-    const renewalSchema = Joi.object({
-      tenantId: Joi.string().required(),
-      propertyId: Joi.string().required(),
-      currentRent: Joi.number().positive().required(),
-      proposedRent: Joi.number().positive().required(),
-      renewalTerms: Joi.object({
-        duration: Joi.string().valid('WEEKLY', 'MONTHLY', 'ANNUAL').required(),
-        startDate: Joi.date().required(),
-        endDate: Joi.date().required()
-      }).required(),
-      message: Joi.string().optional()
-    });
-
-    const { error } = renewalSchema.validate(req.body);
-    if (error) {
-      throw ApiError.badRequest(error.details[0].message);
-    }
 
     // Verify landlord owns this property
     const property = await prismaClient.properties.findFirst({
@@ -147,24 +127,6 @@ class LandlordLeaseRenewalController {
     const { proposalId } = req.params;
     const { response, counterOffer } = req.body;
 
-    // Validation schema
-    const responseSchema = Joi.object({
-      response: Joi.string().valid('ACCEPTED', 'REJECTED', 'COUNTER_OFFER').required(),
-      counterOffer: Joi.object({
-        proposedRent: Joi.number().positive().optional(),
-        renewalTerms: Joi.object().optional(),
-        message: Joi.string().optional()
-      }).when('response', {
-        is: 'COUNTER_OFFER',
-        then: Joi.required(),
-        otherwise: Joi.optional()
-      })
-    });
-
-    const { error } = responseSchema.validate(req.body);
-    if (error) {
-      throw ApiError.badRequest(error.details[0].message);
-    }
 
     // Verify landlord has permission to respond to this proposal
     const proposal = await prismaClient.leaseRenewal.findUnique({
