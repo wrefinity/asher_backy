@@ -566,23 +566,47 @@ class UserService {
 
                 const tenantCode = await this.generateUniqueTenantCode(landlord.landlordCode);
 
+                // Tenant requires a property (required relation in schema)
+                if (!userData.propertyId) {
+                    throw new Error("Property is required to create a tenant. Application must be linked to a property.");
+                }
+
+                const leaseStartDate = userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date();
+                let leaseEndDate: Date | undefined = userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined;
+
+                // Calculate leaseEndDate from property.rentalPeriod if not provided
+                if (!leaseEndDate) {
+                    const property = await prismaClient.properties.findUnique({
+                        where: { id: userData.propertyId },
+                        select: { rentalPeriod: true },
+                    });
+                    const period = (property?.rentalPeriod ?? "").toUpperCase();
+                    const start = new Date(leaseStartDate);
+                    if (period === "WEEKLY") {
+                        start.setDate(start.getDate() + 7);
+                        leaseEndDate = start;
+                    } else if (period === "MONTHLY") {
+                        start.setMonth(start.getMonth() + 1);
+                        leaseEndDate = start;
+                    } else if (period === "ANNUAL" || period === "ANNUALLY") {
+                        start.setFullYear(start.getFullYear() + 1);
+                        leaseEndDate = start;
+                    }
+                }
+
                 const connectData: any = {
                     tenantCode,
                     user: { connect: { id: user.id } }, // MUST point to existing user
                     landlord: { connect: { id: landlord.id } },
                     initialDeposit: userData.initialDeposit || 0,
                     tenantWebUserEmail: userData.tenantWebUserEmail,
-                    leaseStartDate: userData?.leaseStartDate ? new Date(userData.leaseStartDate) : new Date(),
-                    leaseEndDate: userData?.leaseEndDate ? new Date(userData.leaseEndDate) : undefined,
+                    leaseStartDate,
+                    leaseEndDate: leaseEndDate ?? undefined,
                     application: userData.applicationId
                         ? { connect: { id: userData.applicationId } }
                         : undefined,
                 };
 
-                // Tenant requires a property (required relation in schema)
-                if (!userData.propertyId) {
-                    throw new Error("Property is required to create a tenant. Application must be linked to a property.");
-                }
                 connectData.property = { connect: { id: userData.propertyId } };
                 if (userData.unitId) {
                     connectData.unit = { connect: { id: userData.unitId } };

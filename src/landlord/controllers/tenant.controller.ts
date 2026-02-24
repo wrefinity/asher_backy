@@ -579,6 +579,213 @@ class TenantControls {
             errorService.handleError(error, res);
         }
     };
+
+    /**
+     * Update tenant lease dates
+     * PATCH /api/landlord/tenants/:tenantId/lease-dates
+     */
+    updateLeaseDates = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+
+            const { leaseStartDate, leaseEndDate } = req.body;
+            const data: { leaseStartDate?: Date; leaseEndDate?: Date } = {};
+            if (leaseStartDate) data.leaseStartDate = new Date(leaseStartDate);
+            if (leaseEndDate) data.leaseEndDate = new Date(leaseEndDate);
+            if (Object.keys(data).length === 0) return res.status(400).json({ error: 'Provide at least leaseStartDate or leaseEndDate' });
+
+            const { prismaClient } = await import('../..');
+            const updated = await prismaClient.tenants.update({
+                where: { id: tenantId },
+                data,
+            });
+
+            await LogsServices.createLog({
+                events: `Lease dates updated for tenant ${tenantId}`,
+                type: LogType.ACTIVITY,
+                propertyId: tenant.propertyId,
+                createdById: req.user?.id,
+                subjects: 'Lease dates updated',
+            });
+
+            return res.status(200).json({ success: true, message: 'Lease dates updated', data: updated });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Extend lease by a period (same rent)
+     * POST /api/landlord/tenants/:tenantId/lease/extend
+     */
+    extendLease = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+
+            const { period, unit } = req.body as { period: number; unit: 'WEEKS' | 'MONTHS' | 'YEARS' };
+            if (!period || period <= 0 || !unit) return res.status(400).json({ error: 'Provide period (number) and unit (WEEKS|MONTHS|YEARS)' });
+
+            const currentEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : new Date();
+            const add = (d: Date, n: number, u: string) => {
+                const next = new Date(d);
+                if (u === 'WEEKS') next.setDate(next.getDate() + n * 7);
+                else if (u === 'MONTHS') next.setMonth(next.getMonth() + n);
+                else if (u === 'YEARS') next.setFullYear(next.getFullYear() + n);
+                return next;
+            };
+            const newEnd = add(currentEnd, period, unit);
+
+            const { prismaClient } = await import('../..');
+            const updated = await prismaClient.tenants.update({
+                where: { id: tenantId },
+                data: { leaseEndDate: newEnd },
+            });
+
+            await LogsServices.createLog({
+                events: `Lease extended by ${period} ${unit} for tenant ${tenantId}`,
+                type: LogType.ACTIVITY,
+                propertyId: tenant.propertyId,
+                createdById: req.user?.id,
+                subjects: 'Lease extended',
+            });
+
+            return res.status(200).json({ success: true, message: 'Lease extended', data: updated });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Terminate lease (set end date and isCurrentLease false)
+     * POST /api/landlord/tenants/:tenantId/lease/terminate
+     */
+    terminateLease = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+
+            const endDate = req.body.endDate ? new Date(req.body.endDate) : new Date();
+
+            const { prismaClient } = await import('../..');
+            const updated = await prismaClient.tenants.update({
+                where: { id: tenantId },
+                data: { leaseEndDate: endDate, isCurrentLease: false },
+            });
+
+            await LogsServices.createLog({
+                events: `Lease terminated for tenant ${tenantId} effective ${endDate.toISOString().split('T')[0]}`,
+                type: LogType.ACTIVITY,
+                propertyId: tenant.propertyId,
+                createdById: req.user?.id,
+                subjects: 'Lease terminated',
+            });
+
+            return res.status(200).json({ success: true, message: 'Lease terminated', data: updated });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * List lease extension requests for a tenant (landlord view)
+     * GET /api/landlord/tenants/:tenantId/lease-extension/requests
+     */
+    getLeaseExtensionRequests = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+
+            const { prismaClient } = await import('../..');
+            const requests = await prismaClient.leaseExtensionRequest.findMany({
+                where: { tenantId },
+                orderBy: { createdAt: 'desc' },
+            });
+
+            return res.status(200).json({ data: requests });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Landlord respond to tenant's lease extension request
+     * POST /api/landlord/tenants/:tenantId/lease-extension/:requestId/respond
+     */
+    respondToLeaseExtensionRequest = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId, requestId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+
+            const { response } = req.body as { response: 'APPROVED' | 'REJECTED' };
+            if (!response || !['APPROVED', 'REJECTED'].includes(response))
+                return res.status(400).json({ error: 'Provide response: APPROVED or REJECTED' });
+
+            const { prismaClient } = await import('../..');
+            const extRequest = await prismaClient.leaseExtensionRequest.findFirst({
+                where: { id: requestId, tenantId },
+            });
+            if (!extRequest) return res.status(404).json({ error: 'Extension request not found' });
+            if (extRequest.status !== 'PENDING') return res.status(400).json({ error: 'Request already responded' });
+
+            const updated = await prismaClient.leaseExtensionRequest.update({
+                where: { id: requestId },
+                data: {
+                    status: response,
+                    respondedBy: req.user?.id,
+                    respondedAt: new Date(),
+                },
+            });
+
+            if (response === 'APPROVED') {
+                const currentEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : new Date();
+                const add = (d: Date, n: number, u: string) => {
+                    const next = new Date(d);
+                    if (u === 'WEEKS') next.setDate(next.getDate() + n * 7);
+                    else if (u === 'MONTHS') next.setMonth(next.getMonth() + n);
+                    else if (u === 'YEARS') next.setFullYear(next.getFullYear() + n);
+                    return next;
+                };
+                const newEnd = add(currentEnd, extRequest.period, extRequest.unit);
+                await prismaClient.tenants.update({
+                    where: { id: tenantId },
+                    data: { leaseEndDate: newEnd },
+                });
+                await LogsServices.createLog({
+                    events: `Lease extension request ${requestId} approved; tenant ${tenantId} lease extended`,
+                    type: LogType.ACTIVITY,
+                    propertyId: tenant.propertyId,
+                    createdById: req.user?.id,
+                    subjects: 'Lease extension approved',
+                });
+            }
+
+            return res.status(200).json({ success: true, message: `Request ${response.toLowerCase()}`, data: updated });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
 }
 
 

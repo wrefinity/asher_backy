@@ -89,6 +89,30 @@ model LeaseRenewal {
   @@index([createdAt])
 }
 
+enum ExtensionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaseExtensionRequest {
+  id           String                 @id @default(cuid())
+  tenantId     String
+  period       Int                    // e.g. 3
+  unit         String                 // WEEKS | MONTHS | YEARS
+  message      String?                @db.Text
+  status       ExtensionRequestStatus @default(PENDING)
+  respondedBy  String?
+  respondedAt  DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  tenant       tenants                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("lease_extension_request")
+}
+
 model application {
   id                           String                   @id @default(cuid())
   completedSteps               ApplicationSaveState[]

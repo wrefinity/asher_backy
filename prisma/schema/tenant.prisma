@@ -32,8 +32,9 @@ model tenants {
   refereeInfo           Json?
   applicationMetadata   Json?
   agreementInfo         Json?
-  leaseRenewals         LeaseRenewal[]
-  SupportTicket         SupportTicket[]        @relation("TicketTenantRaisedBy")
+  leaseRenewals           LeaseRenewal[]
+  leaseExtensionRequests  LeaseExtensionRequest[]
+  SupportTicket           SupportTicket[]        @relation("TicketTenantRaisedBy")
   TenantLeaseBreach     TenantLeaseBreach[]
   applicationInvites    applicationInvites[]
   billsSubCategory      billsSubCategory[]

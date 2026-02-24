@@ -364,6 +364,25 @@ class LeaseRenewalService {
       data: updateData
     });
 
+    // When renewal is ACCEPTED, update tenant record with new lease dates (Option B: update existing)
+    if (response === 'ACCEPTED') {
+      const terms = (updatedProposal.renewalTerms || proposal.renewalTerms) as
+        | { startDate?: string; endDate?: string; duration?: string }
+        | null;
+      if (terms && (terms.startDate || terms.endDate)) {
+        const startDate = terms.startDate ? new Date(terms.startDate) : undefined;
+        const endDate = terms.endDate ? new Date(terms.endDate) : undefined;
+        await prismaClient.tenants.update({
+          where: { id: proposal.tenantId },
+          data: {
+            ...(startDate && { leaseStartDate: startDate }),
+            ...(endDate && { leaseEndDate: endDate }),
+            isCurrentLease: true,
+          },
+        });
+      }
+    }
+
     // Send notification to the other party
     const otherParty = proposal.tenant.user.id === userId
       ? proposal.property.landlord.user

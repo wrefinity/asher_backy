@@ -39,6 +39,12 @@ class TenantsLandlordRouter {
         this.router.post('/document-requests/:id/fulfill', upload.single('file'), DocumentRequestController.fulfillDocumentRequest)
         // Rent adjustment route (before generic :tenantId routes)
         this.router.patch('/:tenantId/rent', TenantLandlordController.adjustTenantRent)
+        // Lease lifecycle
+        this.router.patch('/:tenantId/lease-dates', TenantLandlordController.updateLeaseDates)
+        this.router.post('/:tenantId/lease/extend', TenantLandlordController.extendLease)
+        this.router.post('/:tenantId/lease/terminate', TenantLandlordController.terminateLease)
+        this.router.get('/:tenantId/lease-extension/requests', TenantLandlordController.getLeaseExtensionRequests)
+        this.router.post('/:tenantId/lease-extension/:requestId/respond', TenantLandlordController.respondToLeaseExtensionRequest)
         // Other tenant routes
         this.router.get('/get/:tenantId', TenantLandlordController.getTenant)
         this.router.get('/documents/:tenantId', TenantLandlordController.getterTenantsDocument)
