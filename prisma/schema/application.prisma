@@ -63,31 +63,7 @@ model AgreementDocument {
   @@index([completedAt])
 }
 
-model LeaseRenewal {
-  id           String        @id @default(cuid())
-  tenantId     String
-  propertyId   String
-  currentRent  Decimal       @db.Decimal(10, 2)
-  proposedRent Decimal       @db.Decimal(10, 2)
-  renewalTerms Json
-  status       RenewalStatus @default(PENDING)
-  message      String?
-  proposedBy   String
-  proposedAt   DateTime      @default(now())
-  respondedBy  String?
-  respondedAt  DateTime?
-  counterOffer Json?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  property     properties    @relation(fields: [propertyId], references: [id])
-  tenant       tenants       @relation(fields: [tenantId], references: [id])
 
-  @@index([tenantId, status])
-  @@index([propertyId, status])
-  @@index([status, proposedAt])
-  @@index([proposedAt])
-  @@index([createdAt])
-}
 
 enum ExtensionRequestStatus {
   PENDING
