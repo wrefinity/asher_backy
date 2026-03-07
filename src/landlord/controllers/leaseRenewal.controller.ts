@@ -69,6 +69,15 @@ class LandlordLeaseRenewalController {
     const userId = req.user.id;
     const { status, propertyId } = req.query;
 
+    // Debug: log landlord context for this request
+    console.log('📘 [LeaseRenewal:getLeaseRenewals] context', {
+      userId: req.user.id,
+      landlords: req.user.landlords,
+      roles: req.user.role,
+      status,
+      propertyId,
+    });
+
     // Get landlord's properties
     const landlordProperties = await prismaClient.properties.findMany({
       where: {
@@ -80,6 +89,11 @@ class LandlordLeaseRenewalController {
     });
 
     const propertyIds = landlordProperties.map(p => p.id);
+
+    console.log('📘 [LeaseRenewal:getLeaseRenewals] landlord properties', {
+      count: landlordProperties.length,
+      propertyIds,
+    });
 
     // Build where clause
     const whereClause: any = {

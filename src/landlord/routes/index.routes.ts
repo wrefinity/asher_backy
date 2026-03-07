@@ -58,22 +58,6 @@ class LandlordRouter {
         );
 
         this.router.get(
-            '/:id',
-            LandlordControl.getLandlordUsingId
-        );
-
-        this.router.patch(
-            '/:id',
-            validateBody(updateLandlordSchema),
-            LandlordControl.updateLandlord
-        );
-
-        this.router.delete(
-            '/:id',
-            LandlordControl.deleteLandlord
-        );
-
-        this.router.get(
             '/jobs/current',
             LandlordControl.getCurrentJobsForLandordProperties
         );
@@ -138,6 +122,21 @@ class LandlordRouter {
         // storage analytics routes
         this.router.use('/violation', violationRoutes)
         this.router.use('/storage', StorageAnalyticsRouter)
+
+        // Parameterized routes last so they don't catch paths like "lease-renewals", "complaints", etc.
+        this.router.get(
+            '/:id',
+            LandlordControl.getLandlordUsingId
+        );
+        this.router.patch(
+            '/:id',
+            validateBody(updateLandlordSchema),
+            LandlordControl.updateLandlord
+        );
+        this.router.delete(
+            '/:id',
+            LandlordControl.deleteLandlord
+        );
     }
 }
 
