@@ -7,7 +7,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { Server as IOServer } from "socket.io";
 import { PrismaClient } from "@prisma/client";
 import { APP_SECRET, PORT } from "./secrets";
-
+import swaggerUi from 'swagger-ui-express';
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/application";
 import ComplaintRoutes from "./routes/complaint";
@@ -45,6 +45,7 @@ import loggers from "./utils/loggers";
 import supportContentRoutes from "./routes/supportContent.routes";
 import adminRouter from "./routes/admin.routes";
 import CreditScoreRouter from "./routes/creditScore.routes";
+import swaggerSpec from "./configs/swagger";
 
 // WebSocket tracking
 // Configure Prisma with connection pooling to prevent connection exhaustion
@@ -59,16 +60,6 @@ export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({
             url: process.env.DATABASE_URL
         }
     }
-    // IMPORTANT: Connection pool configuration is done via DATABASE_URL query parameters
-    // To prevent "too many connections" errors, ensure your DATABASE_URL includes:
-    // ?connection_limit=20&pool_timeout=20&connect_timeout=10
-    // 
-    // Example:
-    // postgresql://user:password@host:port/database?connection_limit=20&pool_timeout=20&connect_timeout=10
-    //
-    // Default Prisma pool size is 10 connections, but for production with concurrent requests,
-    // you may need 20-50 connections depending on your traffic.
-    // Monitor your database connection usage and adjust accordingly.
 });
 
 // In development, reuse the same instance across hot reloads
@@ -115,10 +106,14 @@ class Server {
             resave: false,
             saveUninitialized: false
         }));
+
+    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
     }
 
     private configureRoutes() {
            // Health check routes
+           
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
         this.app.get("/health", (req, res) => this.healthCheck(req, res));
         this.app.get("/health/websocket", (req, res) => this.websocketHealthCheck(req, res));

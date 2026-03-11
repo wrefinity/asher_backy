@@ -607,9 +607,9 @@ class ApplicantService {
       where: { id: applicationId },
       include: this.applicationInclusion,
     });
-    
+
     if (!application) return null;
-    
+
     const normalized = await this.normalizeApplications([application]);
     return normalized[0];
   }
@@ -1199,8 +1199,6 @@ class ApplicantService {
         status: {
           in: [
             ApplicationStatus.COMPLETED,
-            ApplicationStatus.TENANT_CREATED,
-            ApplicationStatus.APPROVED
           ],
         },
         isDeleted: false,
@@ -1339,9 +1337,7 @@ class ApplicantService {
     }
 
     const statuesCompleted: ApplicationStatus[] = [
-      ApplicationStatus.SUBMITTED,
-      ApplicationStatus.APPROVED,
-      ApplicationStatus.COMPLETED
+      ApplicationStatus.SUBMITTED
     ];
     const completedSteps: ApplicationSaveState[] = [
       ApplicationSaveState.PERSONAL_KIN,
@@ -1363,7 +1359,7 @@ class ApplicantService {
         employmentInformationId: newEmployment?.id || null,
         guarantorInformationId: newGuarantor?.id || null,
         refereeId: newReferee?.id || null,
-        status: ApplicationStatus.COMPLETED,
+        status: ApplicationStatus.SUBMITTED,
         lastStep: ApplicationSaveState.DECLARATION,
         statuesCompleted: statuesCompleted,
         completedSteps: completedSteps,
@@ -1429,14 +1425,13 @@ class ApplicantService {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
         data: {
-          response: InvitedResponse.APPROVED,
+          response: InvitedResponse.SUBMITTED,
           applicationFee,
           responseStepsCompleted: {
             push: [
               InvitedResponse.APPLY,
               InvitedResponse.APPLICATION_STARTED,
               InvitedResponse.SUBMITTED,
-              InvitedResponse.APPROVED,
             ],
           },
           application: {
@@ -1449,7 +1444,7 @@ class ApplicantService {
     if (inviteId) {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
-        data: { application: { connect: { id: newApplication.id } },   response: InvitedResponse.APPROVED},
+        data: { application: { connect: { id: newApplication.id } }, response: InvitedResponse.SUBMITTED },
       });
     }
 
