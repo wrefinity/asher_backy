@@ -46,7 +46,6 @@ import loggers from "./utils/loggers";
 import supportContentRoutes from "./routes/supportContent.routes";
 import adminRouter from "./routes/admin.routes";
 import CreditScoreRouter from "./routes/creditScore.routes";
-import swaggerSpec from "./configs/swagger";
 
 // WebSocket tracking
 // Configure Prisma with connection pooling to prevent connection exhaustion
