@@ -10,6 +10,7 @@ import { APP_SECRET, PORT } from "./secrets";
 import swaggerUi from 'swagger-ui-express';
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/application";
+import swaggerSpec, { attachExpressRoutesToSwagger } from "./configs/swagger";
 import ComplaintRoutes from "./routes/complaint";
 import SuggestionRoutes from "./routes/suggestion";
 import FileUploads from './routes/fileuploads';
@@ -106,9 +107,6 @@ class Server {
             resave: false,
             saveUninitialized: false
         }));
-
-    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
     }
 
     private configureRoutes() {
@@ -155,6 +153,10 @@ class Server {
         this.app.use("/api/complaints", ComplaintRoutes);
         this.app.use("/api/suggestions", SuggestionRoutes);
         this.app.use("/api/support-content", supportContentRoutes);
+
+        // Attach swagger docs after routes are fully registered so every route can be introspected
+        attachExpressRoutesToSwagger(this.app);
+        this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
         // Global error handler must come last
         this.app.use(

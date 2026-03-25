@@ -63,26 +63,29 @@ model AgreementDocument {
   @@index([completedAt])
 }
 
-
-
 enum ExtensionRequestStatus {
   PENDING
   APPROVED
   REJECTED
 }
 
+enum Platform {
+  TENANT
+  WEB
+}
+
 model LeaseExtensionRequest {
-  id           String                 @id @default(cuid())
-  tenantId     String
-  period       Int                    // e.g. 3
-  unit         String                 // WEEKS | MONTHS | YEARS
-  message      String?                @db.Text
-  status       ExtensionRequestStatus @default(PENDING)
-  respondedBy  String?
-  respondedAt  DateTime?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
-  tenant       tenants                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id          String                 @id @default(cuid())
+  tenantId    String
+  period      Int // e.g. 3
+  unit        String // WEEKS | MONTHS | YEARS
+  message     String?                @db.Text
+  status      ExtensionRequestStatus @default(PENDING)
+  respondedBy String?
+  respondedAt DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  tenant      tenants                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([status])
@@ -101,6 +104,7 @@ model application {
   securityDeposit              Decimal?
   leaseTerm                    String?
   status                       ApplicationStatus        @default(PENDING)
+  platform                     Platform                 @default(WEB)
   statuesCompleted             ApplicationStatus[]
   invited                      InvitedStatus?           @default(NO)
   stepCompleted                Int?                     @default(1)
@@ -327,7 +331,7 @@ model EmploymentInformation {
   pension              String?
   moreDetails          String?
   employerCompany      String?
-  businessName      String?
+  businessName         String?
   employerEmail        String?
   employerPhone        String?
   positionTitle        String?

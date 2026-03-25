@@ -7,7 +7,7 @@ const swaggerSpec = {
   },
   servers: [
     {
-      url: 'http://localhost:2025',
+      url: 'http://localhost9000',
       description: 'Development server',
     },
   ],
@@ -1993,6 +1993,50 @@ const swaggerSpec = {
       }
     },
   },
+};
+
+const expressPathFromRegexp = (regexp: RegExp): string => {
+  let p = regexp.source;
+  p = p.replace('^', '').replace('\\/?$', '').replace('(?=\\/|$)', '');
+  p = p.replace(/\\\//g, '/').replace(/\(\?:\^\|\$\)/g, '');
+  p = p.replace(/\$$/, '');
+  return p;
+};
+
+const addPathToSwagger = (path: string, method: string) => {
+  const normalized = path.startsWith('/') ? path : '/' + path;
+  if (!swaggerSpec.paths[normalized]) swaggerSpec.paths[normalized] = {} as any;
+  if (!swaggerSpec.paths[normalized][method.toLowerCase()]) {
+    swaggerSpec.paths[normalized][method.toLowerCase()] = {
+      summary: `Auto-generated stub for ${method} ${normalized}`,
+      tags: ['Auto-generated'],
+      responses: {
+        '200': {
+          description: 'Success',
+        },
+      },
+    };
+  }
+};
+
+const traverseStack = (stack: any[], prefix = '') => {
+  stack.forEach((layer) => {
+    if (layer.route && layer.route.path) {
+      const routePath = `${prefix}${layer.route.path}`.replace(/\/\\+/g, '/');
+      const methods = Object.keys(layer.route.methods);
+      methods.forEach((method) => {
+        addPathToSwagger(routePath, method.toUpperCase());
+      });
+    } else if (layer.name === 'router' && layer.handle?.stack) {
+      const subPath = layer.path || (layer.regexp ? expressPathFromRegexp(layer.regexp) : '');
+      traverseStack(layer.handle.stack, `${prefix}${subPath}`);
+    }
+  });
+};
+
+export const attachExpressRoutesToSwagger = (app: any) => {
+  if (!app || !app._router?.stack) return;
+  traverseStack(app._router.stack);
 };
 
 export default swaggerSpec;
