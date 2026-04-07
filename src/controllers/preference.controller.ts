@@ -105,6 +105,24 @@ class PreferencesController {
             ErrorService.handleError(error, res);
         }
     }
+
+    getOnboardingStatus = async (req: CustomRequest, res: Response) => {
+        try {
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const userId = req.user.id;
+            const onboarding = await PreferencesService.getOnboardingStatus(userId);
+
+            return res.json({
+                success: true,
+                data: onboarding,
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    }
 }
 
 export default new PreferencesController()

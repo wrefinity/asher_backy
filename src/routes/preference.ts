@@ -20,6 +20,7 @@ class PreferenceRoutes {
         this.router.patch('/privacy', this.authenticateService.authorize, PreferencesController.updatePrivacySettings);
         this.router.get('/dashboard-layout', this.authenticateService.authorize, PreferencesController.getDashboardLayout);
         this.router.post('/dashboard-layout', this.authenticateService.authorize, PreferencesController.updateDashboardLayout);
+        this.router.get('/onboarding-status', this.authenticateService.authorize, PreferencesController.getOnboardingStatus);
     }
 }
 

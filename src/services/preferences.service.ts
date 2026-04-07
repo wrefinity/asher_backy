@@ -1,6 +1,5 @@
 import { prismaClient } from "..";
-import { CategoryIF } from "../validations/interfaces/categories.interface";
-import { CategoryType, Currency, DateFormat, Language, Prisma, TimeFormat } from "@prisma/client";
+import { Currency, DateFormat, Language, TimeFormat } from "@prisma/client";
 
 interface PreferencesInput {
   currency?: Currency;
@@ -81,6 +80,97 @@ createOrUpdatePreferences = async (userId: string, data: any) => {
                 dashboardLayout: layout
             }
         });
+    }
+
+    getOnboardingStatus = async (userId: string) => {
+        const user = await prismaClient.users.findUnique({
+            where: { id: userId },
+            include: {
+                profile: true,
+                landlords: {
+                    select: {
+                        id: true,
+                        landlordCode: true,
+                        businessName: true,
+                    }
+                }
+            }
+        });
+
+        const preferences = await prismaClient.userPreferences.findUnique({
+            where: { userId },
+            select: {
+                currency: true,
+                timeZone: true,
+                dateFormat: true,
+            }
+        });
+
+        const landlordId = user?.landlords?.id;
+        const [propertiesCount, tenantsCount] = landlordId
+            ? await Promise.all([
+                prismaClient.properties.count({
+                    where: {
+                        landlordId,
+                        isDeleted: false,
+                    }
+                }),
+                prismaClient.tenants.count({
+                    where: {
+                        landlordId,
+                    }
+                })
+            ])
+            : [0, 0];
+
+        const profile = user?.profile;
+        const profileCompleted = !!(
+            profile?.fullname &&
+            profile?.phoneNumber &&
+            profile?.address &&
+            profile?.city &&
+            profile?.country &&
+            profile?.dateOfBirth &&
+            profile?.taxPayerId
+        );
+
+        const businessCompleted = !!(
+            profile?.profileUrl &&
+            user?.landlords?.landlordCode &&
+            user?.landlords?.businessName
+        );
+
+        const propertiesCompleted = propertiesCount > 0;
+        const tenantsCompleted = tenantsCount > 0;
+        const configurationCompleted = !!(
+            preferences?.currency &&
+            preferences?.timeZone &&
+            preferences?.dateFormat
+        );
+
+        const steps = {
+            profile: profileCompleted,
+            business: businessCompleted,
+            properties: propertiesCompleted,
+            tenants: tenantsCompleted,
+            configuration: configurationCompleted,
+        };
+
+        // Mirrors FE: required steps are profile, business, configuration.
+        const isCompleted = !!(
+            steps.profile &&
+            steps.business &&
+            steps.configuration
+        );
+
+        return {
+            isCompleted,
+            steps,
+            counts: {
+                properties: propertiesCount,
+                tenants: tenantsCount,
+            }
+        };
     }
 
 
