@@ -34,7 +34,16 @@ class LogService {
       users: {
         select: { email: true, id: true, profile: true, tenants: true }
       },
-      applicationInvites: true,
+      application: {
+        select: { id: true, platform: true },
+      },
+      applicationInvites: {
+        include: {
+          application: {
+            select: { id: true, platform: true },
+          },
+        },
+      },
     }
   }
 
