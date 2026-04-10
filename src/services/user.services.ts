@@ -142,7 +142,7 @@ class UserService {
     }
 
     createNewUser = async (userData: any, landlordBulkUploads: boolean = false) => {
-        return await prismaClient.users.create({
+        const createdUser = prismaClient.users.create({
             data: {
                 email: userData?.email,
                 role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
@@ -169,6 +169,11 @@ class UserService {
                 }
             },
         });
+
+        // if (createdUser && userData?.role === userRoles.LANDLORD) {
+        //     this.updateUserBasedOnRole(userData, createdUser, userRoles?.LANDLORD);
+        // }   
+        return createdUser;
     }
 
     async registerVendor(input: RegisterVendorInput) {

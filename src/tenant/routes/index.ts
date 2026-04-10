@@ -13,6 +13,7 @@ import DocumentRequestRouter from "./documentRequest.routes";
 import TenantLeaseRenewalRouter from "./leaseRenewal.routes";
 import TenantLeaseExtensionRouter from "./leaseExtension.routes";
 import tenantLeaseRenewalController from "../controllers/leaseRenewal.controller";
+
 class TenantRouter {
     public router: Router;
     authenticateService: Authorize

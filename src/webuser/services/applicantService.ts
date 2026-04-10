@@ -1,5 +1,6 @@
+import assert from 'assert';
 import { prismaClient } from "../..";
-import { AgreementDocument, AgreementStatus, InvitedStatus, Prisma, YesNo } from "@prisma/client";
+import { AgreementDocument, AgreementStatus, InvitedStatus, Prisma, YesNo, Platform } from "@prisma/client";
 import { ApplicationStatus, InvitedResponse, ApplicationSaveState, LogType } from '@prisma/client';
 import EmergencyinfoServices from "../../services/emergencyinfo.services";
 import GuarantorServices from "../../services/guarantor.services";
@@ -308,7 +309,7 @@ class ApplicantService {
     //   throw new Error("You have already applied for this property in the last 3 months. Please wait before reapplying.");
     // }
 
-    // Create application record
+    // Web direct application path: initiated by user through web portal, mark platform WEB.
     const app = await prismaClient.application.create({
       data: {
         createdById: userId,
@@ -321,6 +322,7 @@ class ApplicantService {
         lastStep: ApplicationSaveState.PERSONAL_KIN,
         completedSteps: [ApplicationSaveState.PERSONAL_KIN],
         applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
+        platform: Platform.WEB,
       },
     });
 
@@ -607,9 +609,9 @@ class ApplicantService {
       where: { id: applicationId },
       include: this.applicationInclusion,
     });
-    
+
     if (!application) return null;
-    
+
     const normalized = await this.normalizeApplications([application]);
     return normalized[0];
   }
@@ -1199,8 +1201,6 @@ class ApplicantService {
         status: {
           in: [
             ApplicationStatus.COMPLETED,
-            ApplicationStatus.TENANT_CREATED,
-            ApplicationStatus.APPROVED
           ],
         },
         isDeleted: false,
@@ -1339,9 +1339,7 @@ class ApplicantService {
     }
 
     const statuesCompleted: ApplicationStatus[] = [
-      ApplicationStatus.SUBMITTED,
-      ApplicationStatus.APPROVED,
-      ApplicationStatus.COMPLETED
+      ApplicationStatus.SUBMITTED
     ];
     const completedSteps: ApplicationSaveState[] = [
       ApplicationSaveState.PERSONAL_KIN,
@@ -1363,7 +1361,7 @@ class ApplicantService {
         employmentInformationId: newEmployment?.id || null,
         guarantorInformationId: newGuarantor?.id || null,
         refereeId: newReferee?.id || null,
-        status: ApplicationStatus.COMPLETED,
+        status: ApplicationStatus.SUBMITTED,
         lastStep: ApplicationSaveState.DECLARATION,
         statuesCompleted: statuesCompleted,
         completedSteps: completedSteps,
@@ -1372,9 +1370,13 @@ class ApplicantService {
         createdById: userId,
         applicationInviteId: inviteId ?? null,
         propertiesId,
+        platform: Platform.TENANT,
       },
       include: { personalDetails: true },
     });
+
+    // Sanity assertion for coverage: this must be TENANT for reused-app workflows.
+    assert.strictEqual(newApplication.platform, Platform.TENANT, 'createApplicationFromLast should set platform to TENANT');
 
     // Step 4: Copy applicationQuestions and declaration (if any)
     if (lastApplication.applicationQuestions.length > 0) {
@@ -1429,14 +1431,13 @@ class ApplicantService {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
         data: {
-          response: InvitedResponse.APPROVED,
+          response: InvitedResponse.SUBMITTED,
           applicationFee,
           responseStepsCompleted: {
             push: [
               InvitedResponse.APPLY,
               InvitedResponse.APPLICATION_STARTED,
               InvitedResponse.SUBMITTED,
-              InvitedResponse.APPROVED,
             ],
           },
           application: {
@@ -1449,7 +1450,7 @@ class ApplicantService {
     if (inviteId) {
       await prismaClient.applicationInvites.update({
         where: { id: inviteId },
-        data: { application: { connect: { id: newApplication.id } },   response: InvitedResponse.APPROVED},
+        data: { application: { connect: { id: newApplication.id } }, response: InvitedResponse.SUBMITTED },
       });
     }
 

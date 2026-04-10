@@ -7,9 +7,10 @@ import { WebSocket, WebSocketServer } from "ws";
 import { Server as IOServer } from "socket.io";
 import { PrismaClient } from "@prisma/client";
 import { APP_SECRET, PORT } from "./secrets";
-
+import swaggerUi from 'swagger-ui-express';
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/application";
+import swaggerSpec, { attachExpressRoutesToSwagger } from "./configs/swagger";
 import ComplaintRoutes from "./routes/complaint";
 import SuggestionRoutes from "./routes/suggestion";
 import FileUploads from './routes/fileuploads';
@@ -59,16 +60,6 @@ export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({
             url: process.env.DATABASE_URL
         }
     }
-    // IMPORTANT: Connection pool configuration is done via DATABASE_URL query parameters
-    // To prevent "too many connections" errors, ensure your DATABASE_URL includes:
-    // ?connection_limit=20&pool_timeout=20&connect_timeout=10
-    // 
-    // Example:
-    // postgresql://user:password@host:port/database?connection_limit=20&pool_timeout=20&connect_timeout=10
-    //
-    // Default Prisma pool size is 10 connections, but for production with concurrent requests,
-    // you may need 20-50 connections depending on your traffic.
-    // Monitor your database connection usage and adjust accordingly.
 });
 
 // In development, reuse the same instance across hot reloads
@@ -119,6 +110,7 @@ class Server {
 
     private configureRoutes() {
            // Health check routes
+           
         this.app.get("/", (req, res) => res.json({ message: "it is working" }));
         this.app.get("/health", (req, res) => this.healthCheck(req, res));
         this.app.get("/health/websocket", (req, res) => this.websocketHealthCheck(req, res));
@@ -160,6 +152,10 @@ class Server {
         this.app.use("/api/complaints", ComplaintRoutes);
         this.app.use("/api/suggestions", SuggestionRoutes);
         this.app.use("/api/support-content", supportContentRoutes);
+
+        // Attach swagger docs after routes are fully registered so every route can be introspected
+        attachExpressRoutesToSwagger(this.app);
+        this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
         // Global error handler must come last
         this.app.use(
