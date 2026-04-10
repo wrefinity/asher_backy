@@ -16,8 +16,9 @@ class WalletController {
 
         // Validate and set the currency
         let currency: Currency;
-        if (currencyParam === 'GBP') {
-            currency = Currency.GBP;
+        // Handle all supported currencies
+        if (Object.values(Currency).includes(currencyParam as Currency)) {
+            currency = currencyParam as Currency;
         } else {
             // Default to NGN if not specified or invalid
             currency = Currency.NGN;
@@ -58,8 +59,11 @@ class WalletController {
         const { amount, paymentGateway, currency, payment_method } = req.body
 
 
-        if (![Currency.NGN, Currency.GBP].includes(currency)) {
-            return res.status(400).json({ error: `Unsupported currency: ${Currency.NGN} or ${Currency.GBP} are the only options` });
+        const supportedCurrencies = [Currency.NGN, Currency.GBP, Currency.USD, Currency.EUR];
+        if (!supportedCurrencies.includes(currency)) {
+            return res.status(400).json({ 
+                error: `Unsupported currency: ${currency}. Supported: ${supportedCurrencies.join(', ')}` 
+            });
         }
 
         if (!Object.values(PaymentGateway).includes(paymentGateway)) {

@@ -15,6 +15,7 @@ class NotificationRoutes {
         this.router.post('/', this.authenticateService.authorize, NotificationController.createNotification);
         this.router.get('/me', this.authenticateService.authorize, NotificationController.getAllNotifications);
         this.router.get('/:id', this.authenticateService.authorize, NotificationController.getNotificationById);
+        this.router.patch('/mark-all-read', this.authenticateService.authorize, NotificationController.markAllAsRead);
         this.router.patch('/:id', this.authenticateService.authorize, NotificationController.updateNotification);
         this.router.delete('/:id', this.authenticateService.authorize, NotificationController.deleteNotification);
         this.router.get(

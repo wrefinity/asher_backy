@@ -14,6 +14,7 @@ interface NotificationData {
     title: string;
     message: string;
     category?: NotificationCategory;
+    isRead?: boolean;
 }
 
 class NotificationService {
@@ -166,6 +167,7 @@ class NotificationService {
                     ...(data.title && { title: data.title }),
                     ...(data.message && { message: data.message }),
                     ...(data.category && { category: data.category }),
+                    ...(data.isRead !== undefined && { isRead: data.isRead }),
                 },
                 include: {
                     source: {

@@ -57,6 +57,16 @@ class NotificationController {
         }
     };
 
+    public markAllAsRead = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.user.id;
+            const result = await NotificationService.markAllAsRead(userId);
+            res.status(200).json(result);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    };
+
     public deleteNotification = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;

@@ -170,7 +170,7 @@ class TransferService {
                 userId: user.id,
                 amount: amount,
                 description: 'Making payment for Ads',
-                reference: TransactionReference.MAKE_PAYMENT,
+                reference: TransactionReference.ADS_PAYMENT,
                 type: TransactionType.DEBIT,
                 status: TransactionStatus.COMPLETED,
                 walletId: userWallet.id,

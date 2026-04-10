@@ -667,6 +667,18 @@ class ApplicantService {
 
         try {
           const normalizedInvite = await ViewingInviteNormalizer.normalize(invite);
+          const frontendUrl = process.env.FRONTEND_URL || 'https://asher-tenant-web.vercel.app';
+          
+          if (application.referenceForm) {
+            application.referenceForm.formUrl = `${frontendUrl}/forms/reference/${application.referenceForm.id}`;
+          }
+          if (application.guarantorAgreement) {
+            application.guarantorAgreement.formUrl = `${frontendUrl}/forms/guarantor/${application.guarantorAgreement.id}`;
+          }
+          if (application.employeeReference) {
+            application.employeeReference.formUrl = `${frontendUrl}/forms/employment/${application.employeeReference.id}`;
+          }
+
           return {
             ...application,
             listing: normalizedInvite.listing

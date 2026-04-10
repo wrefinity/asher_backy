@@ -52,16 +52,7 @@ class TenantInspectionController {
             address: true,
           },
         },
-        acknowledgment: {
-          include: {
-            tenant: {
-              select: {
-                id: true,
-                userId: true,
-              },
-            },
-          },
-        },
+        acknowledgment: true,
         sections: {
           include: {
             items: {
@@ -79,9 +70,26 @@ class TenantInspectionController {
       },
     });
 
+    // Map to frontend expected format
+    const mappedInspections = inspections.map((inspection) => ({
+      ...inspection,
+      inspectionType: inspection.type,
+      completedDate: inspection.completedAt,
+      inspectionSections: inspection.sections,
+      inspectionCertificates: inspection.certificates.map(cert => ({
+        ...cert,
+        certificateType: cert.type,
+        certificateUrl: cert.pdfUrl
+      })),
+      inspectionAcknowledgment: inspection.acknowledgment ? {
+        ...inspection.acknowledgment,
+        hasDisputes: inspection.acknowledgment.disputed
+      } : null,
+    }));
+
     return res.status(200).json(
       ApiResponse.success(
-        { inspections },
+        { inspections: mappedInspections },
         'Tenant inspections retrieved successfully'
       )
     );
@@ -177,9 +185,26 @@ class TenantInspectionController {
       throw ApiError.forbidden('You do not have access to this inspection');
     }
 
+    // Map to frontend expected format
+    const mappedInspection = {
+      ...inspection,
+      inspectionType: inspection.type,
+      completedDate: (inspection as any).completedAt,
+      inspectionSections: (inspection as any).sections,
+      inspectionCertificates: (inspection as any).certificates?.map((cert: any) => ({
+        ...cert,
+        certificateType: cert.type,
+        certificateUrl: cert.pdfUrl
+      })),
+      inspectionAcknowledgment: inspection.acknowledgment ? {
+        ...inspection.acknowledgment,
+        hasDisputes: (inspection.acknowledgment as any).disputed
+      } : null,
+    };
+
     return res.status(200).json(
       ApiResponse.success(
-        { inspection },
+        { inspection: mappedInspection },
         'Inspection retrieved successfully'
       )
     );
