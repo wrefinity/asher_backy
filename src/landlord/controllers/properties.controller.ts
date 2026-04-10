@@ -326,9 +326,9 @@ class PropertyController {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-            const propertiesGrouped = await PropertyServices.aggregatePropertiesByState(landlordId);
+            const { propertiesGrouped, stateCountryByKey } = await PropertyServices.aggregatePropertiesByState(landlordId);
             const propertiesUnGrouped = await PropertyServices.getPropertiesByLandlord(landlordId);
-            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped })
+            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped, stateCountryByKey })
         } catch (error) {
             ErrorService.handleError(error, res)
         }

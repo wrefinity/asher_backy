@@ -30,11 +30,11 @@ class StateController {
 
   public createState = async (req: CustomRequest, res: Response) => {
     try {
-      const { name } = req.body;
+      const { name, country } = req.body;
       if (!name) {
         return res.status(400).json({ message: "status name required" });
       }
-      const states = await StateService.createState(name);
+      const states = await StateService.createState(name, country);
       res.status(201).json(states);
     } catch (error) {
       ErrorService.handleError(error, res)

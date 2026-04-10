@@ -32,9 +32,12 @@ class StateService {
     return state;
   }
 
-  public async createState(name: string){
+  public async createState(name: string, country?: string | null) {
     return await prismaClient.state.create({
-      data: {name},
+      data: {
+        name,
+        ...(country != null && country !== '' ? { country } : {}),
+      },
     });
   }
 

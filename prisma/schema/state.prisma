@@ -1,6 +1,8 @@
 model state {
   id         String       @id @default(cuid())
   name       String?
+  /// Display name of the country for this state/region (e.g. United Kingdom, Nigeria)
+  country    String?
   isDeleted  Boolean      @default(false)
   properties properties[]
 

@@ -1055,6 +1055,7 @@ class PropertyService {
         });
 
         const propertiesByState: { [key: string]: any[] } = {};
+        const stateCountryByKey: { [key: string]: string | null } = {};
 
         for (const group of groupedProperties) {
             const stateId = group.stateId;
@@ -1072,10 +1073,13 @@ class PropertyService {
                 this.flatten(p)
             );
 
-            propertiesByState[state.name.toLowerCase()] = flattened;
+            const key = state.name?.toLowerCase() ?? '';
+            if (!key) continue;
+            propertiesByState[key] = flattened;
+            stateCountryByKey[key] = state.country ?? null;
         }
 
-        return propertiesByState;
+        return { propertiesGrouped: propertiesByState, stateCountryByKey };
     };
 
 
