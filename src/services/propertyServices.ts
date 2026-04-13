@@ -1494,14 +1494,13 @@ class PropertyService {
             where: {
                 ...(isActive !== undefined && { isActive }),
                 ...(isActive !== undefined && { onListing: isActive }),
+                ...(type && {
+                    propertySubType: {
+                        in: Array.isArray(type) ? type : [type]
+                    }
+                }),
                 property: {
                     ...(landlordId && { landlordId }),
-                    // Modified type filter
-                    ...(type && {
-                        type: {
-                            in: Array.isArray(type) ? type : [type]
-                        }
-                    }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
                         state: {
@@ -1622,14 +1621,13 @@ class PropertyService {
             where: {
                 ...(isActive !== undefined && { isActive }),
                 ...(isActive !== undefined && { onListing: isActive }),
+                ...(type && {
+                    propertySubType: {
+                        in: Array.isArray(type) ? type : [type]
+                    }
+                }),
                 property: {
                     ...(landlordId && { landlordId }),
-                    // Modified type filter
-                    // ...(type && {
-                    //     type: {
-                    //         in: Array.isArray(type) ? type : [type]
-                    //     }
-                    // }),
                     ...(availability && { availability: AvailabilityStatus.VACANT }),
                     ...(specificationType && { specificationType }),
                     ...(state && {
@@ -1658,34 +1656,7 @@ class PropertyService {
                             },
                         }
                         : {}),
-                    // ...(maxBedRoom || minBedRoom
-                    //     ? {
-                    //         noBedRoom: {
-                    //             gte: minBedRoom ?? undefined,
-                    //             lte: maxBedRoom ?? undefined,
-                    //         },
-                    //     }
-                    //     : {}),
-                    // ...(maxBathRoom || minBathRoom
-                    //     ? {
-                    //         noBathRoom: {
-                    //             gte: minBathRoom ?? undefined,
-                    //             lte: maxBathRoom ?? undefined,
-                    //         },
-                    //     }
-                    //     : {}),
-                    // ...(minGarage || maxGarage
-                    //     ? {
-                    //         noGarage: {
-                    //             gte: minGarage ?? undefined,
-                    //             lte: maxGarage ?? undefined,
-                    //         },
-                    //     }
-                    //     : {}),
-                    // ...(noKitchen && { noKitchen: Number(noKitchen) }),
                     ...(zipcode && { zipcode }),
-                    // ...(isShortlet !== undefined && { isShortlet }),
-                    // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
                     ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
                     ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
                     ...(minSize || maxSize
