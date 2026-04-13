@@ -1507,7 +1507,7 @@ class PropertyService {
                         state: {
                             is: {
                                 name: {
-                                    equals: String(state).trim(),
+                                    contains: String(state).trim(),
                                     mode: 'insensitive'
                                 }
                             }
@@ -1636,7 +1636,7 @@ class PropertyService {
                         state: {
                             is: {
                                 name: {
-                                    equals: String(state).trim(),
+                                    contains: String(state).trim(),
                                     mode: 'insensitive'
                                 }
                             }
