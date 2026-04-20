@@ -10,7 +10,7 @@ class StateService {
     return await prismaClient.state.findUnique({ where: { id } });
   }
 
-  public async getStateByName(name: string) {
+  public async getStateByName(name: string, landlordId?: string) {
     // Try to find the state by name (case-insensitive)
     let state = await prismaClient.state.findFirst({
       where: {
@@ -18,25 +18,41 @@ class StateService {
           equals: name,
           mode: 'insensitive',
         },
+        isDeleted: false,
       },
     });
 
-    // If the state doesn't exist, create it
+    // If the state doesn't exist, create it (optionally tied to the requesting landlord)
     if (!state) {
       state = await prismaClient.state.create({
         data: {
           name: name,
+          ...(landlordId ? { createdByLandlordId: landlordId } : {}),
         },
       });
     }
     return state;
   }
 
-  public async createState(name: string, country?: string | null) {
+  /**
+   * Fetch every non-deleted state created by a specific landlord.
+   * This includes states that currently have zero properties (empty locations).
+   */
+  public async getStatesByLandlord(landlordId: string) {
+    return await prismaClient.state.findMany({
+      where: {
+        createdByLandlordId: landlordId,
+        isDeleted: false,
+      },
+    });
+  }
+
+  public async createState(name: string, country?: string | null, landlordId?: string | null) {
     return await prismaClient.state.create({
       data: {
         name,
         ...(country != null && country !== '' ? { country } : {}),
+        ...(landlordId ? { createdByLandlordId: landlordId } : {}),
       },
     });
   }

@@ -34,7 +34,10 @@ class StateController {
       if (!name) {
         return res.status(400).json({ message: "status name required" });
       }
-      const states = await StateService.createState(name, country);
+      // Attach the creating landlord's ID so the location persists in their
+      // dashboard even before any properties are added to it.
+      const landlordId = req.user?.landlords?.id ?? null;
+      const states = await StateService.createState(name, country, landlordId);
       res.status(201).json(states);
     } catch (error) {
       ErrorService.handleError(error, res)

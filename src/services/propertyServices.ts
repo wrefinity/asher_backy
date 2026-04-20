@@ -1079,6 +1079,26 @@ class PropertyService {
             stateCountryByKey[key] = state.country ?? null;
         }
 
+        // Also include states the landlord explicitly created but that have no
+        // properties yet – these should remain visible so they can add/import
+        // properties into them later.
+        const emptyLandlordStates = await prismaClient.state.findMany({
+            where: {
+                createdByLandlordId: landlordId,
+                isDeleted: false,
+            },
+        });
+
+        for (const state of emptyLandlordStates) {
+            const key = state.name?.toLowerCase() ?? '';
+            if (!key) continue;
+            // Only add if not already present from the groupBy pass above
+            if (!(key in propertiesByState)) {
+                propertiesByState[key] = [];
+                stateCountryByKey[key] = state.country ?? null;
+            }
+        }
+
         return { propertiesGrouped: propertiesByState, stateCountryByKey };
     };
 
