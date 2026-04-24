@@ -134,8 +134,8 @@ createOrUpdatePreferences = async (userId: string, data: any) => {
             profile?.taxPayerId
         );
 
+        // Business step: name + landlord record are enough; profile photo is optional.
         const businessCompleted = !!(
-            profile?.profileUrl &&
             user?.landlords?.landlordCode &&
             user?.landlords?.businessName
         );
