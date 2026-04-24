@@ -68,6 +68,8 @@ export interface NormalizedListing {
         // Property-level amenities/features (for inheritance)
         keyFeatures: string[];
         customKeyFeatures: string[];
+        /** Listing rent is priced in this currency (Prisma `properties.currency`). */
+        currency?: string | null;
         landlord: {
             id: string;
             landlordCode: string;
@@ -288,6 +290,7 @@ export class ListingNormalizer {
             specificationType: property.specificationType || 'RESIDENTIAL',
             keyFeatures: property.keyFeatures || [],
             customKeyFeatures: property.customKeyFeatures || [],
+            currency: property.currency == null ? null : String(property.currency),
             landlord: this.extractLandlord(property.landlord)
         };
     }
