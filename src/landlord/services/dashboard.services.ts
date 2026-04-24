@@ -5,7 +5,7 @@ import todosService from "../../services/todos.service";
 import LandlordSettingsService from '../services/propertySetting.service';
 class LandlordDashboardService {
 
-  async getDashboardData(landlordId: string, filters: any, landlordUserId?: string) {
+  async getDashboardData(landlordId: string, filters: any, accountUserId: string) {
     const properties = await prismaClient.properties.findMany({
       where: { landlordId, isDeleted: false },
       select: { id: true, availability: true },
@@ -17,11 +17,8 @@ class LandlordDashboardService {
 
     const transactions = await prismaClient.transaction.findMany({
       where: {
-        OR: [{
-          userId: landlordId,
-          property: { landlordId },
-        }
-        ],
+        userId: accountUserId,
+        property: { landlordId },
         createdAt: filters?.from && filters?.to ? {
           gte: new Date(filters.from),
           lte: new Date(filters.to),
@@ -78,7 +75,7 @@ class LandlordDashboardService {
 
         latePayment: await LandlordSettingsService.getAllGlobalSettings(landlordId),
       },
-      toDoList: todosService.getLandlordTodo(landlordUserId),
+      toDoList: todosService.getLandlordTodo(landlordId),
     };
   }
 }

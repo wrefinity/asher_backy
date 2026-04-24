@@ -9,10 +9,9 @@ import { Currency } from "@prisma/client";
 class FinanceController {
 
     async getAllFinanceTransaction(req: CustomRequest, res: Response) {
-        const { landlords } = req.user
-        const landlordId = landlords.id
+        const userId = req.user.id;
         try {
-            const transactions = await financeService.getAllFinanceTransaction(landlordId)
+            const transactions = await financeService.getAllFinanceTransaction(userId)
             if (transactions.length < 1) {
                 return res.status(200).json({ message: "No transactions found" })
             }
@@ -24,11 +23,10 @@ class FinanceController {
     }
 
     async getFInanceIncome(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         try {
-            const income = await financeService.getFinanceIncome(landlordId, year);
+            const income = await financeService.getFinanceIncome(userId, year);
             if (income.length < 1) {
                 return res.status(200).json({ message: "No income found" });
             }
@@ -39,11 +37,10 @@ class FinanceController {
     }
 
     async getFinancialExpenses(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         try {
-            const expenses = await financeService.getFInanceExpense(landlordId, year);
+            const expenses = await financeService.getFInanceExpense(userId, year);
             if (expenses.length < 1) {
                 return res.status(200).json({ message: "No expenses found" });
             }
@@ -86,14 +83,13 @@ class FinanceController {
     }
 
     async getMonthlyAnalysis(req: CustomRequest, res: Response) {
-        const { landlords } = req.user
-        const landlordId = landlords.id
+        const userId = req.user.id;
         const { propertyId, month, year } = req.params
         if (!month || !propertyId || !year) {
             return res.status(400).json({ message: "Please provide month, propertyId and year" })
         }
         try {
-            const monthlyAnalysis = await financeService.getMonthlyAnalysis(parseFloat(month), parseFloat(year), propertyId, landlordId)
+            const monthlyAnalysis = await financeService.getMonthlyAnalysis(parseFloat(month), parseFloat(year), propertyId, userId)
             return res.status(200).json(monthlyAnalysis)
         } catch (error) {
             errorService.handleError(error, res)
@@ -101,8 +97,7 @@ class FinanceController {
     }
 
     async getIncomeStatistics(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const { propertyId } = req.params;
 
         if (!propertyId) {
@@ -110,7 +105,7 @@ class FinanceController {
         }
 
         try {
-            const annualPayments = await financeService.getIncomeStatistics(propertyId, landlordId);
+            const annualPayments = await financeService.getIncomeStatistics(propertyId, userId);
             return res.status(200).json(annualPayments);
         } catch (error) {
             errorService.handleError(error, res);
@@ -143,12 +138,11 @@ class FinanceController {
     }
 
     async getIncomeBreakdown(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         const propertyId = req.query.propertyId as string | undefined;
         try {
-            const breakdown = await financeService.getIncomeBreakdown(landlordId, year, propertyId);
+            const breakdown = await financeService.getIncomeBreakdown(userId, year, propertyId);
             return res.status(200).json(breakdown);
         } catch (error) {
             errorService.handleError(error, res);
@@ -156,12 +150,11 @@ class FinanceController {
     }
 
     async getExpenseBreakdown(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         const propertyId = req.query.propertyId as string | undefined;
         try {
-            const breakdown = await financeService.getExpenseBreakdown(landlordId, year, propertyId);
+            const breakdown = await financeService.getExpenseBreakdown(userId, year, propertyId);
             return res.status(200).json(breakdown);
         } catch (error) {
             errorService.handleError(error, res);
@@ -169,12 +162,11 @@ class FinanceController {
     }
 
     async getStats(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const year = req.query.year ? parseInt(req.query.year as string) : undefined;
         const propertyId = req.query.propertyId as string | undefined;
         try {
-            const stats = await financeService.getStats(landlordId, year, propertyId);
+            const stats = await financeService.getStats(userId, year, propertyId);
             console.log(stats, "Logging Stats")
             return res.status(200).json(stats);
         } catch (error) {
@@ -183,8 +175,7 @@ class FinanceController {
     }
 
     async getRecentTransactions(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         // Parse limit with validation - default to 5 if invalid or undefined
         let limit = 5;
         if (req.query.limit) {
@@ -195,7 +186,7 @@ class FinanceController {
         }
         const propertyId = req.query.propertyId as string | undefined;
         try {
-            const txs = await financeService.getRecentTransactions(landlordId, limit, propertyId);
+            const txs = await financeService.getRecentTransactions(userId, limit, propertyId);
             return res.status(200).json({
                 message: "Recent transactions retrieved successfully",
                 txs
@@ -206,11 +197,10 @@ class FinanceController {
     }
 
     async getUpcomingPayments(req: CustomRequest, res: Response) {
-        const { landlords } = req.user;
-        const landlordId = landlords.id;
+        const userId = req.user.id;
         const propertyId = req.query.propertyId as string | undefined;
         try {
-            const txs = await financeService.getUpcomingPayments(landlordId, 5, propertyId);
+            const txs = await financeService.getUpcomingPayments(userId, 5, propertyId);
             return res.status(200).json({
                 message: "No recent upcoming payments",
                 txs

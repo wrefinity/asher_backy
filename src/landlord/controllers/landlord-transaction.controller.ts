@@ -129,9 +129,9 @@ class LandlordTransactionController {
                 return res.status(400).json({ message: "Invalid filter parameter" });
             }
 
-            // Get userId from authenticated user or query
-            const userId = req.user?.id || req.query.userId as string | undefined;
-            const landlordId = req.user?.landlords?.id || req.query.landlordId as string | undefined;
+            const userId =
+                (req.query.userId as string | undefined) || req.user?.id;
+            const landlordId = req.query.landlordId as string | undefined;
 
             const stats = await transactionServices.getTransactionStats(
                 filter,

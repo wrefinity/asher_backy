@@ -10,7 +10,7 @@ class DashboardControls {
         const filters = req.query;
 
         try {
-            const stats = await LandlordDashboardService.getDashboardData(landlordId, filters);
+            const stats = await LandlordDashboardService.getDashboardData(landlordId, filters, req.user.id);
             res.json({ success: true, data: stats });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });

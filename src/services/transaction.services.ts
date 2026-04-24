@@ -135,9 +135,8 @@ class TransactionService {
             throw new Error("Either userId or landlordId must be provided");
         }
 
-        // Validate propertyId is only provided with landlordId
-        if (propertyId && !landlordId) {
-            throw new Error("propertyId can only be provided with landlordId");
+        if (propertyId && !landlordId && !userId) {
+            throw new Error("propertyId requires userId or landlordId for scope");
         }
 
         // Base where clause
@@ -149,10 +148,7 @@ class TransactionService {
         if (userId) {
             where.userId = userId;
         } else if (landlordId) {
-            where.OR = [
-                { property: { landlordId } },
-                { userId: landlordId }
-            ];
+            where.OR = [{ property: { landlordId } }];
         }
 
         // Apply property filter if provided

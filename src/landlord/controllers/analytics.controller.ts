@@ -5,12 +5,25 @@ import { CustomRequest } from '../../utils/types';
 import { prismaClient } from '../..';
 
 class AnalyticsController {
+    private async resolveLandlordProfileId(req: CustomRequest): Promise<string | null> {
+        if (req.user?.landlords?.id) {
+            return req.user.landlords.id;
+        }
+        if (!req.user?.id) {
+            return null;
+        }
+        const landlord = await prismaClient.landlords.findFirst({
+            where: { userId: req.user.id },
+        });
+        return landlord?.id ?? null;
+    }
+
     // Dashboard Analytics
     async getDashboardAnalytics(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
-            const data = await AnalyticsService.getFinancialAnalyticLandlord(landlordId);
-            const data2 = await AnalyticsService.getLandlordFinancialCashFlow(landlordId);
+            const userId = req.user?.id;
+            const data = await AnalyticsService.getFinancialAnalyticLandlord(userId);
+            const data2 = await AnalyticsService.getLandlordFinancialCashFlow(userId);
             res.status(200).json( ApiResponse.success({ ...data, ...data2 }, 'Financial analytics retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -18,8 +31,11 @@ class AnalyticsController {
     }
     async getDashboardAnalyticsx(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
-            const data = await AnalyticsService.getDashboardAnalytics(landlordId);
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
+            const data = await AnalyticsService.getDashboardAnalytics(landlordProfileId);
             res.status(200).json(new ApiResponse(200, data, 'Dashboard analytics retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -28,9 +44,12 @@ class AnalyticsController {
 
     async getCashFlowData(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
             const period = req.query.period as string || '12months';
-            const data = await AnalyticsService.getCashFlowData(landlordId, period);
+            const data = await AnalyticsService.getCashFlowData(landlordProfileId, period);
             res.status(200).json(new ApiResponse(200, data, 'Cash flow data retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -39,8 +58,11 @@ class AnalyticsController {
 
     async getPropertyPerformance(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
-            const data = await AnalyticsService.getPropertyPerformance(landlordId);
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
+            const data = await AnalyticsService.getPropertyPerformance(landlordProfileId);
             res.status(200).json(new ApiResponse(200, data, 'Property performance retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -49,8 +71,11 @@ class AnalyticsController {
 
     async getMaintenanceAnalytics(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
-            const data = await AnalyticsService.getMaintenanceAnalytics(landlordId);
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
+            const data = await AnalyticsService.getMaintenanceAnalytics(landlordProfileId);
             res.status(200).json(new ApiResponse(200, data, 'Maintenance analytics retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -60,9 +85,12 @@ class AnalyticsController {
     // Financial Analytics
     async getIncomeStatistics(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
             const period = req.query.period as string || '12months';
-            const data = await AnalyticsService.getIncomeStatistics(landlordId, period);
+            const data = await AnalyticsService.getIncomeStatistics(landlordProfileId, period);
             res.status(200).json(new ApiResponse(200, data, 'Income statistics retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -71,9 +99,12 @@ class AnalyticsController {
 
     async getExpenseBreakdown(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
             const period = req.query.period as string || '12months';
-            const data = await AnalyticsService.getExpenseBreakdown(landlordId, period);
+            const data = await AnalyticsService.getExpenseBreakdown(landlordProfileId, period);
             res.status(200).json(new ApiResponse(200, data, 'Expense breakdown retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -82,9 +113,12 @@ class AnalyticsController {
 
     async getFinancialSummary(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
             const period = req.query.period as string || '12months';
-            const data = await AnalyticsService.getFinancialSummary(landlordId, period);
+            const data = await AnalyticsService.getFinancialSummary(landlordProfileId, period);
             res.status(200).json(new ApiResponse(200, data, 'Financial summary retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -94,9 +128,12 @@ class AnalyticsController {
     // Performance Analytics
     async getTenantPerformanceAnalytics(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
             const tenantId = req.query.tenantId as string;
-            const data = await AnalyticsService.getTenantPerformanceAnalytics(landlordId, tenantId);
+            const data = await AnalyticsService.getTenantPerformanceAnalytics(landlordProfileId, tenantId);
             res.status(200).json(new ApiResponse(200, data, 'Tenant performance analytics retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
@@ -105,8 +142,11 @@ class AnalyticsController {
 
     async getRentalPerformanceAnalytics(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
-            const data = await AnalyticsService.getRentalPerformanceAnalytics(landlordId);
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
+            const data = await AnalyticsService.getRentalPerformanceAnalytics(landlordProfileId);
             res.status(200).json(new ApiResponse(200, data, 'Rental performance analytics retrieved successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));

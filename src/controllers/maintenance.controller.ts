@@ -263,8 +263,7 @@ class MaintenanceController {
     try {
       const maintenanceId = req.params.id;
       const { amount, vendorId, currency } = req.body;
-      const { landlords } = req.user
-      const userId = landlords.id;
+      const userId = req.user.id;
 
       const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
       if (!maintenance) {
