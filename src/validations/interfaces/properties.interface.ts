@@ -373,7 +373,7 @@ export interface ICommercialDTO {
     roomDetails?: IRoomDetail[];
     sharedFacilities?: ISharedFacilities;
     otherSharedFacilities: string[];
-    houseRule: string;
+    houseRule?: string;
     maxOccupant?: number;
     isHMO?: boolean;
     isShareHouse?: boolean;
@@ -455,7 +455,7 @@ export interface IShortletDTO {
     roomDetails?: IRoomDetail[];
     sharedFacilities?: ISharedFacilities;
     otherSharedFacilities: string[];
-    houseRule: string;
+    houseRule?: string;
     maxOccupant?: number;
     isHMO?: boolean;
     isShareHouse?: boolean;

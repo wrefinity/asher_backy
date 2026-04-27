@@ -2,7 +2,7 @@ import fs from 'fs';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, IBasePropertyDTOSchema, unitConfigurationSchema, roomDetailSchema, BulkPropertyUploadSchema } from "../../validations/schemas/properties.schema"
+import { createPropertyListingSchema, updatePropertyListingSchema, createPropertySchema, updatePropertySchema, IBasePropertyDTOSchema, unitConfigurationSchema, roomDetailSchema, BulkPropertyUploadSchema } from "../../validations/schemas/properties.schema"
 import { IPropertySpecificationDTO } from "../../validations/interfaces/properties.interface"
 import { propAvailabiltySchema } from "../validations/schema/settings"
 import { CustomRequest } from "../../utils/types";

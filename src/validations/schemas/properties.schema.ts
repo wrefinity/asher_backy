@@ -35,8 +35,8 @@ export const updatePropertySchemaNew = Joi.object({
   zipcode: Joi.string().optional(),
   address: Joi.string().optional(),
   address2: Joi.string().optional(),
-  latitude: Joi.number().optional(),
-  longitude: Joi.number().optional(),
+  latitude: Joi.number().optional().allow(null, ''),
+  longitude: Joi.number().optional().allow(null, ''),
 
   // Property Details
   areaUnit: Joi.string().valid('SQFT', 'SQM').optional(),
@@ -108,8 +108,8 @@ export const createPropertySchema = Joi.object({
   marketValue: Joi.number().optional(),
   rentalFee: Joi.number().optional(),
   initialDeposit: Joi.number().optional(),
-  longitude: Joi.number().optional(),
-  latitude: Joi.number().optional(),
+  longitude: Joi.number().optional().allow(null, ''),
+  latitude: Joi.number().optional().allow(null, ''),
   // latePaymentFeeType: Joi.string().valid('ONE_TIME', 'DAILY').optional(),
   dueDate: Joi.date().optional(),
   type: Joi.string().valid(...propertyType).default(PropertyType.SINGLE_UNIT).required(),
@@ -808,8 +808,8 @@ export const IBasePropertyDTOSchema = Joi.object({
   zipcode: Joi.string().required(),
   address: Joi.string().required(),
   address2: Joi.string().optional(),
-  latitude: Joi.number().optional(),
-  longitude: Joi.number().optional(),
+  latitude: Joi.number().optional().allow(null, ''),
+  longitude: Joi.number().optional().allow(null, ''),
 
   currency: Joi.string().valid(...Object.values(Currency)).optional(),
   marketValue: Joi.number().optional(),
@@ -1011,8 +1011,8 @@ export const IUpdatePropertyDTOSchema = Joi.object({
   zipcode: Joi.string().optional(),
   address: Joi.string().optional(),
   address2: Joi.string().optional().allow('', null),
-  latitude: Joi.number().optional(),
-  longitude: Joi.number().optional(),
+  latitude: Joi.number().optional().allow(null, ''),
+  longitude: Joi.number().optional().allow(null, ''),
 
   currency: Joi.string().valid(...Object.values(Currency)).optional(),
   marketValue: Joi.number().optional(),
