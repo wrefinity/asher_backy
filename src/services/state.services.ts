@@ -47,6 +47,38 @@ class StateService {
     });
   }
 
+  /**
+   * A state this landlord already uses (properties) or created as an empty location,
+   * with the same name and country (case-insensitive). Blocks duplicate rows/modals.
+   */
+  public async findConflictingStateForLandlord(
+    name: string,
+    landlordId: string | null,
+    country?: string | null
+  ) {
+    if (!landlordId) return null;
+    const trimmedName = name?.trim();
+    if (!trimmedName) return null;
+    const hasCountry = country != null && String(country).trim() !== '';
+    return prismaClient.state.findFirst({
+      where: {
+        name: { equals: trimmedName, mode: 'insensitive' },
+        isDeleted: false,
+        ...(hasCountry
+          ? { country: { equals: String(country).trim(), mode: 'insensitive' } }
+          : { OR: [{ country: null }, { country: '' }] }),
+        OR: [
+          { createdByLandlordId: landlordId },
+          {
+            properties: {
+              some: { landlordId, isDeleted: false },
+            },
+          },
+        ],
+      },
+    });
+  }
+
   public async createState(name: string, country?: string | null, landlordId?: string | null) {
     return await prismaClient.state.create({
       data: {

@@ -37,6 +37,18 @@ class StateController {
       // Attach the creating landlord's ID so the location persists in their
       // dashboard even before any properties are added to it.
       const landlordId = req.user?.landlords?.id ?? null;
+      const existing = await StateService.findConflictingStateForLandlord(
+        name,
+        landlordId,
+        country ?? null
+      );
+      if (existing) {
+        return res.status(409).json({
+          message:
+            'You already have a location with this name and country. Open it from the list instead of creating it again.',
+          code: 'DUPLICATE_LOCATION',
+        });
+      }
       const states = await StateService.createState(name, country, landlordId);
       res.status(201).json(states);
     } catch (error) {
