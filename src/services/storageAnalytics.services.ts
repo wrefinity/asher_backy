@@ -34,6 +34,8 @@ class StorageAnalyticsService {
     // Get all property documents for the landlord
     const propertyDocuments = await prismaClient.propertyDocument.findMany({
       where: {
+        deletedAt: null,
+        purgedAt: null,
         properties: {
           landlordId: landlordId,
           isDeleted: false

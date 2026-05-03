@@ -47,7 +47,11 @@ class LandlordDashboardService {
     });
 
     const files = await prismaClient.propertyDocument.findMany({
-      where: { properties: { landlordId } }
+      where: {
+        deletedAt: null,
+        purgedAt: null,
+        properties: { landlordId },
+      }
     });
 
     return {

@@ -74,6 +74,7 @@ model users {
   landlords                landlords?
   nextOfKin                nextOfKin[]
   document                 propertyDocument[]
+  propertyDocumentFavorites propertyDocumentFavorite[]
   referees                 referees[]
   residentialInformation   residentialInformation[]
   reviews                  reviews[]

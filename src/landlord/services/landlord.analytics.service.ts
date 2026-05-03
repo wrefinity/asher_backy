@@ -387,6 +387,8 @@ export class LandlordAnalyticsService {
     // Calculate storage from property documents
     const documents = await prisma.propertyDocument.findMany({
       where: {
+        deletedAt: null,
+        purgedAt: null,
         properties: {
           landlordId: landlordId
         }

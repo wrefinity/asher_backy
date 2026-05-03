@@ -15,14 +15,33 @@ model propertyDocument {
   applicationId String?
   propertyId    String?
   uploadedBy    String?
+  deletedAt     DateTime? // soft-delete (file manager trash)
+  // landlord permanent-delete - hidden from landlord UI; row kept for audit/logs
+  purgedAt      DateTime?
   agreement     GuarantorAgreement? @relation(fields: [agreementId], references: [id])
   application   application?        @relation(fields: [applicationId], references: [id])
   properties    properties?         @relation(fields: [propertyId], references: [id])
   users         users?              @relation(fields: [uploadedBy], references: [id])
+  favorites     propertyDocumentFavorite[]
 
   @@index([systemId])
   @@index([isPublished])
   @@index([views])
+  @@index([deletedAt])
+  @@index([purgedAt])
+}
+
+model propertyDocumentFavorite {
+  id               String           @id @default(cuid())
+  createdAt        DateTime         @default(now())
+  userId           String
+  documentId       String
+  users            users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyDocument propertyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, documentId])
+  @@index([userId])
+  @@index([documentId])
 }
 
 model PropertyMediaFiles {

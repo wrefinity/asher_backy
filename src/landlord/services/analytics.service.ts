@@ -796,6 +796,8 @@ class AnalyticsService {
     private async getTotalFiles(landlordId: string): Promise<number> {
         return prismaClient.propertyDocument.count({
             where: {
+                deletedAt: null,
+                purgedAt: null,
                 properties: { landlordId }
             }
         });
@@ -805,6 +807,8 @@ class AnalyticsService {
         // Calculate total file size for landlord's properties
         const files = await prismaClient.propertyDocument.findMany({
             where: {
+                deletedAt: null,
+                purgedAt: null,
                 properties: { landlordId }
             },
             select: {

@@ -85,11 +85,23 @@ class DocumentController {
     };
     getter = async (req: CustomRequest, res: Response) => {
         try {
-            const landlordId = req.user.landlords.id;
-            const documents = await this.propertyDocumentService.getDocumentLandlordAndStatuses(landlordId);
-            return res.status(201).json({
-                documents
-            }); 
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const bucket =
+                req.query.bucket === 'trash' ? 'trash' : 'active';
+            const documents =
+                await this.propertyDocumentService.getDocumentLandlordAndStatuses(
+                    landlordId,
+                    {
+                        bucket,
+                        userId: req.user.id,
+                    }
+                );
+            return res.status(200).json({
+                documents,
+            });
         } catch (error) {
             ErrorService.handleError(error, res);
         }

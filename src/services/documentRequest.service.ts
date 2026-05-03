@@ -95,6 +95,8 @@ class DocumentRequestService {
     return prismaClient.propertyDocument.findMany({
       where: {
         applicationId: tenant.applicationId,
+        deletedAt: null,
+        purgedAt: null,
         documentUrl: { isEmpty: true }, // Empty array = request
         isPublished: false,
       },
@@ -122,6 +124,8 @@ class DocumentRequestService {
         properties: {
           landlordId: landlordId,
         },
+        deletedAt: null,
+        purgedAt: null,
         documentUrl: { isEmpty: true }, // Empty array = request
         isPublished: false,
       },
