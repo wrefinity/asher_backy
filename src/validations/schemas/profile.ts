@@ -27,7 +27,9 @@ export const profileSchema = Joi.object({
   maritalStatus: Joi.string().optional(),
   timeZone: Joi.string().optional(),
   taxPayerId: Joi.string().optional(),
-  taxType: Joi.string().optional()
+  taxType: Joi.string().optional(),
+  /** Stored on `landlords`, not `profile` — passed through for landlord profile update */
+  businessName: Joi.string().max(255).optional().allow('', null),
 }).concat(uploadSchema);
 
 export const preferencesPrivacySchema = Joi.object({

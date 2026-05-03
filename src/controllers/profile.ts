@@ -21,6 +21,12 @@ class ProfileControls {
     console.log(data);
     const profileUrl = req.body.cloudinaryUrls?.[0];
 
+    // Stored on landlords table, not profile — handled below
+    const businessName =
+      typeof data.businessName === "string"
+        ? data.businessName.trim()
+        : undefined;
+
     // Remove unwanted keys
     delete data.cloudinaryUrls;
     delete data.cloudinaryVideoUrls;
@@ -28,12 +34,20 @@ class ProfileControls {
     delete data.cloudinaryAudioUrls;
     delete data.uploadedDocuments;
     delete data.id;
+    delete data.businessName;
 
-    
     const updatedUser = await ProfileServices.updateUserProfile(profileInfo.id, {
       ...data,
       profileUrl,
     });
+
+    const landlordId = profileInfo.users?.landlords?.id;
+    if (landlordId && businessName !== undefined) {
+      await prismaClient.landlords.update({
+        where: { id: landlordId },
+        data: { businessName: businessName || null },
+      });
+    }
 
     const { id, ...profile } = updatedUser;
 
