@@ -533,6 +533,139 @@ export class SupportContentService {
     });
   }
 
+  // ============ Support Agent Methods ============
+  static async createSupportAgent(data: {
+    userId: string;
+    role?: string;
+    isActive?: boolean;
+  }) {
+    return await prismaClient.supportAgent.create({
+      data: {
+        userId: data.userId,
+        role: data.role,
+        isActive: data.isActive ?? true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullname: true,
+                firstName: true,
+                lastName: true,
+                profileUrl: true,
+              },
+            },
+            onlineStatus: true,
+          },
+        },
+      },
+    });
+  }
+
+  static async getSupportAgents(filters?: {
+    isActive?: boolean;
+    status?: string;
+  }) {
+    try {
+      const where: Prisma.SupportAgentWhereInput = {};
+
+      if (filters?.isActive !== undefined) {
+        where.isActive = filters.isActive;
+      }
+
+      return await prismaClient.supportAgent.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              profile: {
+                select: {
+                  fullname: true,
+                  firstName: true,
+                  lastName: true,
+                  profileUrl: true,
+                },
+              },
+              onlineStatus: true,
+            },
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error("Error in getSupportAgents service:", error);
+      if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
+        console.warn("SupportAgent table does not exist yet. Please run Prisma migrations.");
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  static async getSupportAgentById(id: string) {
+    return await prismaClient.supportAgent.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullname: true,
+                firstName: true,
+                lastName: true,
+                profileUrl: true,
+              },
+            },
+            onlineStatus: true,
+          },
+        },
+      },
+    });
+  }
+
+  static async updateSupportAgent(
+    id: string,
+    data: {
+      role?: string;
+      isActive?: boolean;
+    }
+  ) {
+    return await prismaClient.supportAgent.update({
+      where: { id },
+      data,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullname: true,
+                firstName: true,
+                lastName: true,
+                profileUrl: true,
+              },
+            },
+            onlineStatus: true,
+          },
+        },
+      },
+    });
+  }
+
+  static async deleteSupportAgent(id: string) {
+    return await prismaClient.supportAgent.delete({
+      where: { id },
+    });
+  }
+
   // ==================== AI-POWERED FEATURES ====================
 
   /**

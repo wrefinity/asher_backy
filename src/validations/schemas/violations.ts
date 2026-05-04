@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { SeverityLevel, ResponseType, DeliveryMethod, NoticeType } from "@prisma/client";
+import { dateJoiOptional, stringJoiOptional, stringJoiRequired } from './base.schema';
 
 const severityLevels = Object.values(SeverityLevel);
 const noticeType = Object.values(NoticeType);
@@ -30,7 +31,7 @@ export const ViolationSchema = Joi.object({
             'any.only': `Delivery method must be one of: ${deliveryMethod.join(', ')}`,
             'string.base': 'Deliery method must be a string',
         }),
-    dueDate: Joi.date().optional(),
+    dueDate: dateJoiOptional,
     noticeType: Joi.string()
         .valid(...noticeType)
         .messages({

@@ -2,6 +2,7 @@ import { Response } from "express";
 import { CustomRequest } from "../utils/types";
 import { SupportContentService } from "../services/supportContent.service";
 import ErrorService from "../services/error.service";
+import { userRoles } from "@prisma/client";
 
 class SupportContentController {
   // ============ FAQ Controllers ============
@@ -444,6 +445,113 @@ class SupportContentController {
       return res.status(200).json({
         success: true,
         message: "Video tutorial view tracked",
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  // ============ Support Agent Controllers ============
+  getSupportAgents = async (req: CustomRequest, res: Response) => {
+    try {
+      const { isActive, status } = req.query;
+
+      const agents = await SupportContentService.getSupportAgents({
+        isActive:
+          isActive === undefined
+            ? undefined
+            : isActive === "true" || Boolean(isActive) === true,
+        status: status as string,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: agents,
+      });
+    } catch (error: any) {
+      console.error("Error in getSupportAgents controller:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  getSupportAgentById = async (req: CustomRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const agent = await SupportContentService.getSupportAgentById(id);
+
+      if (!agent) {
+        return res.status(404).json({
+          success: false,
+          message: "Support agent not found",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: agent,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  createSupportAgent = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId, name, role, status, isActive } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "userId is required",
+        });
+      }
+
+      const agent = await SupportContentService.createSupportAgent({
+        userId,
+        role: role || userRoles.AGENT,
+        isActive: isActive ?? true,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Support agent created successfully",
+        data: agent,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  updateSupportAgent = async (req: CustomRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, role, status, isActive } = req.body;
+
+      const agent = await SupportContentService.updateSupportAgent(id, {
+        role: role || name,
+        isActive,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Support agent updated successfully",
+        data: agent,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  deleteSupportAgent = async (req: CustomRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      await SupportContentService.deleteSupportAgent(id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Support agent deleted successfully",
       });
     } catch (error: any) {
       ErrorService.handleError(error, res);

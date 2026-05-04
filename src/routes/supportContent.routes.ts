@@ -31,6 +31,16 @@ class SupportContentRouter {
       SupportContentController.getVideoTutorialById
     );
 
+    // Support Agents - public GET routes (for frontend to list available agents)
+    this.router.get(
+      "/support-agents",
+      SupportContentController.getSupportAgents
+    );
+    this.router.get(
+      "/support-agents/:id",
+      SupportContentController.getSupportAgentById
+    );
+
     // View tracking routes (public - no auth required)
     this.router.post("/faqs/:id/view", SupportContentController.trackFAQView);
     this.router.post("/help-articles/:id/view", SupportContentController.trackHelpArticleView);
@@ -73,6 +83,20 @@ class SupportContentRouter {
     this.router.delete(
       "/video-tutorials/:id",
       SupportContentController.deleteVideoTutorial
+    );
+
+    // Support Agent Admin Routes
+    this.router.post(
+      "/support-agents",
+      SupportContentController.createSupportAgent
+    );
+    this.router.patch(
+      "/support-agents/:id",
+      SupportContentController.updateSupportAgent
+    );
+    this.router.delete(
+      "/support-agents/:id",
+      SupportContentController.deleteSupportAgent
     );
   }
 }
