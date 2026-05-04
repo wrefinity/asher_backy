@@ -1,6 +1,7 @@
 import Joi from 'joi';
 import { CategoryType } from "@prisma/client"
 import { uploadSchema } from './upload.schema';
+import { stringJoiOptional, stringJoiRequired } from './base.schema';
 const catType = Object.values(CategoryType);
 
 
@@ -21,14 +22,14 @@ export const CategoryQuerySchema = Joi.object({
 
 export const categorySchema = Joi.object({
   name: Joi.string().required(),
-  description: Joi.string().optional(),
+  description: stringJoiOptional,
   categoryType: Joi.string().valid(...catType).default(CategoryType.MAINTENANCE).required(),
   labels: Joi.array().items(Joi.string()).required()
 }).concat(uploadSchema);
 
 export const subCategorySchema = Joi.object({
-  name: Joi.string().required(),
-  description: Joi.string().optional(),
+  name: stringJoiRequired,
+  description: stringJoiOptional,
   type: Joi.string().valid(...catType).default(CategoryType.MAINTENANCE).required(),
   // categoryId: Joi.string().required(),
   labels: Joi.array().items(Joi.string()).required()

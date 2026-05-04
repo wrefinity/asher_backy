@@ -1,21 +1,22 @@
 import Joi from 'joi';
 import { LogType, YesNo, InvitedResponse } from "@prisma/client"
+import { stringJoiOptional, stringJoiRequired } from './base.schema';
 const logsType = Object.values(LogType);
 const yesNoType = Object.values(YesNo);
 const InvitedResponseType = Object.values(InvitedResponse);
 
 export const logSchema = Joi.object({
-  id: Joi.string().optional(),
+  id: stringJoiOptional,
   response: Joi.string().valid(...InvitedResponseType).optional(),
-  applicationInvitedId: Joi.string().required(),
-  subjects: Joi.string().optional().allow(''),
+  applicationInvitedId: stringJoiRequired,
+  subjects: stringJoiOptional,
   viewAgain: Joi.string().optional().allow('').valid(...yesNoType),
   considerRenting: Joi.string().optional().allow('').valid(...yesNoType),
-  events: Joi.string().required(),
+  events: stringJoiRequired,
   type: Joi.string().valid(...logsType).default(LogType.APPLICATION).optional(),
-  propertyId: Joi.string().optional().allow(''),
-  applicationId: Joi.string().optional().allow(''),
-  transactionId: Joi.string().optional().allow(''),
+  propertyId: stringJoiOptional,
+  applicationId: stringJoiOptional,
+  transactionId: stringJoiOptional,
 }).custom((value, helpers) => {
   // Check required response if either field exists
   if ((value.viewAgain || value.considerRenting) && !value.response) {

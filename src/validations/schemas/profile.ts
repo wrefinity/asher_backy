@@ -1,6 +1,7 @@
 import Joi from 'joi';
 import { Currency,PropertyType, TimeFormat, DateFormat, Language, NotificationCategory, NotificationChannel } from '@prisma/client';
 import { uploadSchema } from './upload.schema';
+import { booleanJoiOptional, stringJoiOptional } from './base.schema';
 
 export const userSearchPreferenceSchema = Joi.object({
   types: Joi.array().items(Joi.string().valid(...Object.values(PropertyType))).min(1).required(),
@@ -9,24 +10,24 @@ export const userSearchPreferenceSchema = Joi.object({
 
 export const profileSchema = Joi.object({
   gender: Joi.string().valid('Male', 'Female', 'Other'),
-  id: Joi.string().optional(),
+  id: stringJoiOptional,
   phoneNumber: Joi.string().pattern(/^[0-9]{10,15}$/).optional(),
-  address: Joi.string().optional(),
+  address: stringJoiOptional,
   dateOfBirth: Joi.date().iso().optional(),
-  profileId: Joi.string().optional(),
+  profileId: stringJoiOptional,
   fullname: Joi.string().max(255),
-  zip: Joi.string().optional(),
-  unit: Joi.string().optional(),
-  title: Joi.string().optional(),
-  country: Joi.string().optional(),
-  firstName: Joi.string().optional(),
-  lastName: Joi.string().optional(),
-  middleName: Joi.string().optional(),
-  city: Joi.string().optional(),
-  state: Joi.string().optional(),
-  maritalStatus: Joi.string().optional(),
-  timeZone: Joi.string().optional(),
-  taxPayerId: Joi.string().optional(),
+  zip: stringJoiOptional,
+  unit: stringJoiOptional,
+  title: stringJoiOptional,
+  country: stringJoiOptional,
+  firstName: stringJoiOptional,
+  lastName: stringJoiOptional,
+  middleName: stringJoiOptional,
+  city: stringJoiOptional,
+  state: stringJoiOptional,
+  maritalStatus: stringJoiOptional,
+  timeZone: stringJoiOptional,
+  taxPayerId: stringJoiOptional,
   taxType: Joi.string().optional(),
   /** Stored on `landlords`, not `profile` — passed through for landlord profile update */
   businessName: Joi.string().max(255).optional().allow('', null),
@@ -40,7 +41,7 @@ export const preferencesPrivacySchema = Joi.object({
 
 export const preferencesSchema = Joi.object({
   // Payment Account
-  defaultPaymentAccountId: Joi.string().optional(),
+  defaultPaymentAccountId: stringJoiOptional,
 
   // Display Preferences
   currency: Joi.string()
@@ -87,21 +88,21 @@ export const notificationPreferenceSchema = Joi.object({
         .items(Joi.string().valid(...Object.values(NotificationChannel)))
         .min(1)
         .required(),
-      notifyOnLoginActivity: Joi.boolean().optional(),
-      notifyOnNewMessages: Joi.boolean().optional(),
-      notifyPaymentInitiated: Joi.boolean().optional(),
-      notifyPaymentSuccess: Joi.boolean().optional(),
-      notifyPaymentFailed: Joi.boolean().optional(),
-      notifyNewMaintenanceRequest: Joi.boolean().optional(),
-      notifyRequestStatusChange: Joi.boolean().optional(),
-      notifyRequestMessage: Joi.boolean().optional(),
-      notifyRequestResolved: Joi.boolean().optional(),
-      notifyNewInvoice: Joi.boolean().optional(),
-      notifyTenantMoveOut: Joi.boolean().optional(),
-      notifyPropertyMatch: Joi.boolean().optional(),
-      notifyNewInquiry: Joi.boolean().optional(),
-      notifyNewSupportTicket: Joi.boolean().optional(),
-      receiveMarketingEmails: Joi.boolean().optional()
+      notifyOnLoginActivity: booleanJoiOptional,
+      notifyOnNewMessages: booleanJoiOptional,
+      notifyPaymentInitiated: booleanJoiOptional,
+      notifyPaymentSuccess: booleanJoiOptional,
+      notifyPaymentFailed: booleanJoiOptional,
+      notifyNewMaintenanceRequest: booleanJoiOptional,
+      notifyRequestStatusChange: booleanJoiOptional,
+      notifyRequestMessage: booleanJoiOptional,
+      notifyRequestResolved: booleanJoiOptional,
+      notifyNewInvoice: booleanJoiOptional,
+      notifyTenantMoveOut: booleanJoiOptional,
+      notifyPropertyMatch: booleanJoiOptional,
+      notifyNewInquiry: booleanJoiOptional,
+      notifyNewSupportTicket: booleanJoiOptional,
+      receiveMarketingEmails: booleanJoiOptional
     })
   ).min(1).required()
 });

@@ -1,18 +1,19 @@
 import Joi from 'joi';
+import { booleanJoiOptional, stringJoiOptional, stringJoiRequired } from './base.schema';
 import { uploadSchema } from './upload.schema';
 
 export const chatSchema = Joi.object({
-    content: Joi.string().optional(),
-    receiverId: Joi.string().required(),
+    content: stringJoiOptional,
+    receiverId: stringJoiRequired,
 }).concat(uploadSchema);
 
 export const EmailSchema = Joi.object({
   receiverEmail: Joi.string().email().optional(),
-  subject: Joi.string().required(),
-  body: Joi.string().required(),
-  isRead: Joi.boolean().optional(),
-  isSent: Joi.boolean().optional(),
-  isDraft: Joi.boolean().optional(),
+  subject: stringJoiRequired,
+  body: stringJoiRequired,
+  isRead: booleanJoiOptional,
+  isSent: booleanJoiOptional,
+  isDraft: booleanJoiOptional,
 })
 .concat(uploadSchema)
 .custom((value, helpers) => {

@@ -1,0 +1,13 @@
+import Joi from 'joi';
+export const stringJoiOptional = Joi.string().optional().allow(null, '');
+export const numberJoiOptional = Joi.number().optional().allow(null, '');
+export const booleanJoiOptional = Joi.boolean().optional().allow(null, '');
+export const dateJoiOptional = Joi.date().optional().allow(null, '');
+export const objectJoiOptional = Joi.object().optional().allow(null, '');
+export const arrayJoiOptional = Joi.array().optional().allow(null, '');
+export const stringJoiRequired = Joi.string().required();
+export const numberJoiRequired = Joi.number().required();
+export const booleanJoiRequired = Joi.boolean().required();
+export const dateJoiRequired = Joi.date().required();
+export const objectJoiRequired = Joi.object().required();
+export const arrayJoiRequired = Joi.array().required();

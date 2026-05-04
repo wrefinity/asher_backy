@@ -1,16 +1,17 @@
 import Joi from "joi";
+import { dateJoiRequired, stringJoiRequired } from "./base.schema";
 
 export const renewalSchema = Joi.object({
-      tenantId: Joi.string().required(),
-      propertyId: Joi.string().required(),
+      tenantId: stringJoiRequired,
+      propertyId: stringJoiRequired,
       currentRent: Joi.number().positive().required(),
       proposedRent: Joi.number().positive().required(),
       renewalTerms: Joi.object({
         duration: Joi.string().valid('WEEKLY', 'MONTHLY', 'ANNUAL').required(),
-        startDate: Joi.date().required(),
-        endDate: Joi.date().required()
+        startDate: dateJoiRequired,
+        endDate: dateJoiRequired
       }).required(),
-      message: Joi.string().optional()
+      message: stringJoiRequired
     });
 
 export const responseSchema = Joi.object({
