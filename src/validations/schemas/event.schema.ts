@@ -1,19 +1,20 @@
 import Joi from 'joi';
+import { dateJoiOptional, dateJoiRequired, stringJoiOptional, stringJoiRequired } from './base.schema';
 
 export const EventSchema = Joi.object({
-    title: Joi.string().required(),
-    description: Joi.string().optional(),
-    startTime: Joi.date().required(),
-    endTime: Joi.date().required(),
-    date: Joi.date().required(),
+    title: stringJoiRequired,
+    description: stringJoiOptional,
+    startTime: dateJoiRequired,
+    endTime: dateJoiRequired,
+    date: dateJoiRequired,
     color: Joi.string().optional().default("blue")
 });
 
 export const UpdateEventSchema = Joi.object({
-    title: Joi.string().optional(),
-    description: Joi.string().optional(),
-    startTime: Joi.date().optional(),
-    endTime: Joi.date().optional(),
-    date: Joi.date().optional(),
-    color: Joi.string().optional()
+    title: stringJoiOptional,
+    description: stringJoiOptional,
+    startTime: dateJoiOptional,
+    endTime: dateJoiOptional,
+    date: dateJoiOptional,
+    color: stringJoiOptional
 });

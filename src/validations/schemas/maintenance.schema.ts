@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { stringJoiOptional, stringJoiRequired } from './base.schema';
 
 export const maintenanceSchema = Joi.object({
   description: Joi.string().optional(),
@@ -17,14 +18,13 @@ export const maintenanceSchema = Joi.object({
 });
 
 export const maintenanceCancelSchema = Joi.object({
-  reason: Joi.string().optional(),
+  reason: stringJoiOptional,
 });
 
 export const checkWhitelistedSchema = Joi.object({
-  propertyId: Joi.string().optional(),
-  categoryId: Joi.string().required(),
-  // subcategoryIds: Joi.array().items(Joi.string()).optional(),
-  subcategoryId: Joi.string().optional(),
+  propertyId: stringJoiOptional,
+  categoryId: stringJoiRequired,
+  subcategoryId: stringJoiOptional,
 });
 export const maintenanceChatSchema = Joi.object({
   receiverId: Joi.string().required(),
