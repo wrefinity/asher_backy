@@ -98,6 +98,24 @@ class SupportContentRouter {
       "/support-agents/:id",
       SupportContentController.deleteSupportAgent
     );
+
+    // AI Generation Routes
+    this.router.post(
+      "/ai/generate-article",
+      SupportContentController.generateHelpArticleAI
+    );
+    this.router.post(
+      "/ai/generate-faqs",
+      SupportContentController.generateFAQsFromTicketsAI
+    );
+    this.router.post(
+      "/ai/video-summary/:videoId",
+      SupportContentController.generateVideoSummaryAI
+    );
+    this.router.post(
+      "/ai/enhance-article/:articleId",
+      SupportContentController.enhanceHelpArticleAI
+    );
   }
 }
 

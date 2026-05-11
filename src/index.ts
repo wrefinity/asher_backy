@@ -46,6 +46,7 @@ import loggers from "./utils/loggers";
 import supportContentRoutes from "./routes/supportContent.routes";
 import adminRouter from "./routes/admin.routes";
 import CreditScoreRouter from "./routes/creditScore.routes";
+import AIRouter from "./routes/ai.routes";
 
 // WebSocket tracking
 // Configure Prisma with connection pooling to prevent connection exhaustion
@@ -152,6 +153,7 @@ class Server {
         this.app.use("/api/complaints", ComplaintRoutes);
         this.app.use("/api/suggestions", SuggestionRoutes);
         this.app.use("/api/support-content", supportContentRoutes);
+        this.app.use("/api/ai", AIRouter);
 
         // Attach swagger docs after routes are fully registered so every route can be introspected
         attachExpressRoutesToSwagger(this.app);

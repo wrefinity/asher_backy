@@ -558,7 +558,104 @@ class SupportContentController {
     }
   };
 
+  // ============ AI-Powered Support Content ============
+  generateHelpArticleAI = async (req: CustomRequest, res: Response) => {
+    try {
+      const { topic, targetAudience, category } = req.body;
+
+      if (!topic || !category) {
+        return res.status(400).json({
+          success: false,
+          message: "Topic and category are required",
+        });
+      }
+
+      const article = await SupportContentService.generateHelpArticleWithAI({
+        topic,
+        targetAudience,
+        category,
+        createdBy: req.user?.id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Help article generated with AI successfully",
+        data: article,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  generateFAQsFromTicketsAI = async (req: CustomRequest, res: Response) => {
+    try {
+      const { category } = req.body;
+
+      if (!category) {
+        return res.status(400).json({
+          success: false,
+          message: "Category is required",
+        });
+      }
+
+      const faqs = await SupportContentService.generateFAQsFromTickets({
+        category,
+        createdBy: req.user?.id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: `${faqs.length} FAQs generated from tickets successfully`,
+        data: faqs,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  generateVideoSummaryAI = async (req: CustomRequest, res: Response) => {
+    try {
+      const { videoId } = req.params;
+
+      const summary = await SupportContentService.generateVideoSummaryWithAI(videoId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Video summary generated with AI successfully",
+        data: summary,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  enhanceHelpArticleAI = async (req: CustomRequest, res: Response) => {
+    try {
+      const { articleId } = req.params;
+      const { enhancementType } = req.body;
+
+      if (!enhancementType) {
+        return res.status(400).json({
+          success: false,
+          message: "Enhancement type is required (grammar, tone, expand, summarize)",
+        });
+      }
+
+      const enhancedArticle = await SupportContentService.enhanceHelpArticleWithAI(
+        articleId,
+        enhancementType as any,
+        req.user?.id
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Help article enhanced with AI successfully",
+        data: enhancedArticle,
+      });
+    } catch (error: any) {
+      ErrorService.handleError(error, res);
+    }
+  };
 }
 
 export default new SupportContentController();
-

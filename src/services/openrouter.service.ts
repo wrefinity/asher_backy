@@ -203,17 +203,17 @@ Return ONLY valid JSON.`;
 
       const prompt = `Analyze this video tutorial and create helpful metadata.
 
-Title: ${videoTitle}
-Description: ${videoDescription}
-Duration: ${duration}
+        Title: ${videoTitle}
+        Description: ${videoDescription}
+        Duration: ${duration}
 
-Provide a JSON response with:
-- summary: A 2-3 sentence overview of what viewers will learn
-- keyPoints: Array of 3-5 main learning points from this video
-- targetAudience: Who should watch this (e.g., "New landlords", "Property managers", "All users")
-- tags: Array of 5-7 relevant tags for categorization and search
+        Provide a JSON response with:
+        - summary: A 2-3 sentence overview of what viewers will learn
+        - keyPoints: Array of 3-5 main learning points from this video
+        - targetAudience: Who should watch this (e.g., "New landlords", "Property managers", "All users")
+        - tags: Array of 5-7 relevant tags for categorization and search
 
-Return ONLY valid JSON.`;
+        Return ONLY valid JSON.`;
 
       const completion = await this.client.chat.completions.create({
         model: this.defaultModel,
