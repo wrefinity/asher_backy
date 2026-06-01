@@ -38,6 +38,9 @@ class PropertyController {
                 zipcode,
                 amenities,
                 mustHaves,
+                currency,
+                displayCurrency,
+                countryCode,
                 page = 1,
                 limit = 10
             } = req.query;
@@ -148,7 +151,17 @@ class PropertyController {
             console.log("Final Filters:", filters);
 
             const totalProperties = await PropertyServices.countListedProperties(filters);
-            const properties = await PropertyServices.getAllListedProperties(filters, skip, pageSize);
+            const forwardedFor = req.headers['x-forwarded-for'];
+            const ipAddress = Array.isArray(forwardedFor)
+                ? forwardedFor[0]
+                : forwardedFor?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+
+            const properties = await PropertyServices.getAllListedProperties(filters, skip, pageSize, true, {
+                currency: String(displayCurrency || currency || ''),
+                countryCode: countryCode ? String(countryCode) : undefined,
+                country: country ? String(country) : undefined,
+                ipAddress,
+            });
             if (!properties || properties.length === 0) {
                 return res.status(404).json({ message: "No properties found for the given filters" });
             }

@@ -5,6 +5,7 @@ import { AvailabilityStatus } from "@prisma/client";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
+import { getCurrencyConversionRate, resolveCurrencyFromRegion } from "../utils/helpers";
 
 const decimalToNumber = (value?: Prisma.Decimal | null): number | undefined =>
     value ? value.toNumber() : undefined;
@@ -56,6 +57,18 @@ interface PropertyFilters {
     minSize?: number;
     maxSize?: number;
     mustHaves?: string[];
+}
+
+interface CurrencyDisplayOptions {
+    currency?: string | null;
+    countryCode?: string | null;
+    country?: string | null;
+    ipAddress?: string | null;
+}
+
+interface CurrencyDisplayContext {
+    country_code: string | null;
+    locationCurrency: string | null;
 }
 
 class PropertyService {
@@ -1605,7 +1618,7 @@ class PropertyService {
     };
 
 
-    getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10, availability: boolean = true) => {
+    getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10, availability: boolean = true, currencyOptions?: CurrencyDisplayOptions) => {
         const {
             landlordId,
             property,
@@ -1744,6 +1757,7 @@ class PropertyService {
         // Process related listings sequentially to prevent connection pool exhaustion
         // Sequential processing ensures we don't open too many concurrent connections
         const normalizedProperties: NormalizedListing[] = [];
+        const currencyContext = await this.resolveCurrencyDisplayContext(currencyOptions);
 
         for (const property of properties) {
             const normalized = ListingNormalizer.normalize(property);
@@ -1766,11 +1780,102 @@ class PropertyService {
                 };
             }
 
-            normalizedProperties.push(normalized);
+            normalizedProperties.push(await this.applyCurrencyDisplay(normalized, property.property?.currency, currencyContext));
         }
 
         return normalizedProperties;
     };
+
+    private async resolveCurrencyDisplayContext(currencyOptions?: CurrencyDisplayOptions): Promise<CurrencyDisplayContext> {
+        return resolveCurrencyFromRegion({
+            currency: currencyOptions?.currency,
+            countryCode: currencyOptions?.countryCode,
+            country: currencyOptions?.country,
+            ipAddress: currencyOptions?.ipAddress,
+        });
+    }
+
+    private parsePrice(value: any): number | null {
+        if (value === null || value === undefined || value === '') return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    private formatConvertedAmount(value: number): string {
+        return Number(value.toFixed(2)).toString();
+    }
+
+    private async applyCurrencyDisplay(
+        listing: NormalizedListing,
+        sourceCurrency?: string | null,
+        currencyContext: CurrencyDisplayContext = { country_code: null, locationCurrency: null }
+    ): Promise<NormalizedListing> {
+        const originalCurrency = sourceCurrency ? String(sourceCurrency) : listing.property.currency || null;
+        const displayCurrency = currencyContext.locationCurrency || originalCurrency;
+
+        const enrichedListing: any = {
+            ...listing,
+            originalPrice: listing.price,
+            originalCurrency,
+            displayCurrency,
+            currency: displayCurrency,
+            currencyContext,
+        };
+
+        if (!originalCurrency || !displayCurrency || originalCurrency === displayCurrency) {
+            enrichedListing.displayPrice = listing.price;
+            enrichedListing.conversionRate = 1;
+            return enrichedListing;
+        }
+
+        try {
+            const rate = await getCurrencyConversionRate(originalCurrency, displayCurrency);
+            const convert = (amount: string | null | undefined) => {
+                const parsed = this.parsePrice(amount);
+                return parsed === null ? amount : this.formatConvertedAmount(parsed * rate);
+            };
+
+            enrichedListing.price = convert(listing.price) || listing.price;
+            enrichedListing.displayPrice = enrichedListing.price;
+            enrichedListing.securityDeposit = convert(listing.securityDeposit) || listing.securityDeposit;
+            enrichedListing.applicationFeeAmount = convert(listing.applicationFeeAmount);
+            enrichedListing.conversionRate = rate;
+
+            if (enrichedListing.listingEntity?.entityPrice) {
+                enrichedListing.listingEntity = {
+                    ...enrichedListing.listingEntity,
+                    originalEntityPrice: enrichedListing.listingEntity.entityPrice,
+                    entityPrice: convert(enrichedListing.listingEntity.entityPrice),
+                    currency: displayCurrency,
+                };
+            }
+
+            enrichedListing.relatedListings = {
+                ...enrichedListing.relatedListings,
+                units: enrichedListing.relatedListings.units.map((unit: any) => ({
+                    ...unit,
+                    originalPrice: unit.price,
+                    price: convert(unit.price),
+                    currency: displayCurrency,
+                })),
+                rooms: enrichedListing.relatedListings.rooms.map((room: any) => ({
+                    ...room,
+                    originalPrice: room.price,
+                    price: convert(room.price),
+                    currency: displayCurrency,
+                })),
+            };
+
+            return enrichedListing;
+        } catch (error) {
+            console.error('Error converting listing currency:', error);
+            enrichedListing.displayPrice = listing.price;
+            enrichedListing.displayCurrency = originalCurrency;
+            enrichedListing.currency = originalCurrency;
+            enrichedListing.currencyConversionError = 'Currency conversion unavailable';
+            return enrichedListing;
+        }
+    }
 
     // Build hierarchy information for a listing
     private buildHierarchy(property: any) {
@@ -3601,7 +3706,7 @@ class PropertyService {
         });
     }
 
-    async searchPropertiesForRecommendation(filters: PropertySearchDto) {
+    async searchPropertiesForRecommendation(filters: PropertySearchDto, currencyOptions?: CurrencyDisplayOptions) {
         const {
             propertyCategory,
             propertyType,
@@ -3676,7 +3781,15 @@ class PropertyService {
             orderBy: { createdAt: 'desc' },
         });
 
-        return listings;
+        const normalizedListings: NormalizedListing[] = [];
+        const currencyContext = await this.resolveCurrencyDisplayContext(currencyOptions);
+
+        for (const listing of listings) {
+            const normalized = ListingNormalizer.normalize(listing);
+            normalizedListings.push(await this.applyCurrencyDisplay(normalized, listing.property?.currency, currencyContext));
+        }
+
+        return normalizedListings;
     }
 
     createEnquiry = async (data: {

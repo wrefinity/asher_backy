@@ -912,6 +912,10 @@ export const propertySearchSchema = Joi.object({
   // 🔹 Rent filters
   minRent: Joi.number().integer().min(0).optional(),
   maxRent: Joi.number().integer().min(0).optional(),
+  currency: Joi.string().valid(...Object.values(Currency)).optional(),
+  displayCurrency: Joi.string().valid(...Object.values(Currency)).optional(),
+  countryCode: Joi.string().trim().length(2).optional(),
+  country: Joi.string().trim().optional(),
 
   leaseDuration: Joi.number().integer().min(1).optional(),
 

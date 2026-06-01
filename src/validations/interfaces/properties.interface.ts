@@ -508,6 +508,10 @@ export interface PropertySearchDto {
     maxRent?: number;
     leaseDuration?: number;
     moveInDate?: Date;
+    currency?: Currency;
+    displayCurrency?: Currency;
+    countryCode?: string;
+    country?: string;
 
     // 🔹 Commercial-specific
     minSize?: number; // floor size min

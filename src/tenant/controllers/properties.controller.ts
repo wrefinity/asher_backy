@@ -12,7 +12,16 @@ class ProperyController {
 
     searchProperties = asyncHandler(async (req: CustomRequest, res: Response): Promise<void> => {
         const filters = req.body;
-        const properties = await propertyServices.searchPropertiesForRecommendation(filters as PropertySearchDto);
+        const forwardedFor = req.headers['x-forwarded-for'];
+        const ipAddress = Array.isArray(forwardedFor)
+            ? forwardedFor[0]
+            : forwardedFor?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+        const properties = await propertyServices.searchPropertiesForRecommendation(filters as PropertySearchDto, {
+            currency: filters.displayCurrency || filters.currency,
+            countryCode: filters.countryCode,
+            country: filters.country,
+            ipAddress,
+        });
         res.status(200).json(
             ApiResponse.success(properties)
         );
