@@ -420,3 +420,14 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-03-13 20:48:42"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-03-13 20:53:09"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-05-01 16:27:53"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:21:21"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:24:39"}
+{"level":"info","message":"Sending mail to - najaatsalami@gmail.com","service":"api-service","timestamp":"2026-06-01 23:27:33"}
+{"level":"info","message":"Email sent successfully. ID: 438436d2-3041-4df3-99e5-da7897607355","service":"api-service","timestamp":"2026-06-01 23:27:38"}
+{"level":"info","message":"Sending mail to - lxbrw23@gamil.com","service":"api-service","timestamp":"2026-06-01 23:28:47"}
+{"level":"info","message":"Email sent successfully. ID: dba9a291-b1f0-4319-8447-918f0a81792f","service":"api-service","timestamp":"2026-06-01 23:28:51"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:29:27"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:29:46"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:32:17"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:35:39"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-01 23:43:33"}

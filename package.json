@@ -14,7 +14,8 @@
     "format": "prettier --write src/**/*.ts",
     "migrate-dev": "prisma migrate dev --name init",
     "generate": "prisma generate",
-    "db:pull": "npx prisma db pull"
+    "db:pull": "npx prisma db pull",
+    "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "pre-commit": [
     "ts.check",
