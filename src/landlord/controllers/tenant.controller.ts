@@ -207,16 +207,24 @@ class TenantControls {
                 return res.status(403).json({ error: "Invalid landlord. Please re-login." });
             }
 
-            let rowErrors: string[] = [];
-            // Validate row data
+            // Validate payload once (array + required fields). If invalid, stop early.
             const { error, value } = tenantArraySchema.validate(req.body, { abortEarly: false });
             if (error) {
-                rowErrors.push(...error.details.map(detail => detail.message));
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    uploadErrors: [
+                        {
+                            email: 'Bulk Upload',
+                            errors: error.details.map(detail => detail.message),
+                        },
+                    ],
+                });
             }
 
             // Process each row
             for (const row of value) {
                 try {
+                    const rowErrors: string[] = [];
                     // Check for existing user
                     const existingUser = await UserServices.findUserByEmail(row.email.toString());
                     if (existingUser) {

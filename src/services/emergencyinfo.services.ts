@@ -8,6 +8,13 @@ class EmergencyContactService {
   // Upsert Emergency Contact Information
   upsertEmergencyContact = async (data: EmergencyContactIF, applicationId: string = null) => {
     const { userId, id, ...rest } = data;
+    const normalized = {
+      ...rest,
+      // Prisma requires phoneNumber; bulk upload may omit these.
+      phoneNumber: (rest as any).phoneNumber || '+00000000000',
+      email: (rest as any).email || 'emergency@example.com',
+      address: (rest as any).address || 'N/A',
+    };
 
     if (id) {
       // Check if the emergency contact exists
@@ -21,7 +28,7 @@ class EmergencyContactService {
       return await prismaClient.emergencyContact.update({
         where: { id },
         data: {
-          ...rest,
+          ...normalized,
           user: userId ? { connect: { id: userId } } : undefined,
         },
       });
@@ -29,11 +36,11 @@ class EmergencyContactService {
       // Perform create if ID does not exist
       const emergencyContact = await prismaClient.emergencyContact.create({
         data: {
-          ...rest,
+          ...normalized,
           user: userId ? { connect: { id: userId } } : undefined,
         },
       });
-      if (emergencyContact) {
+      if (emergencyContact && applicationId) {
         await ApplicantService.updateLastStepStop(applicationId, ApplicationSaveState.EMERGENCY_CONTACT )
         await ApplicantService.updateCompletedStep(applicationId, ApplicationSaveState.EMERGENCY_CONTACT )
       }

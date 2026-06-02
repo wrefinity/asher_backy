@@ -10,9 +10,9 @@ class ApplicantPersonalDetailsService {
       ...rest,
       user: userId ? { connect: { id: userId as string } } : null, // Handle user relation
       email: data.email || "", // Fallback for optional email
-      nextOfKin: nextOfKin
-        ? { connect: { id: nextOfKin.id as string } } // Handle nextOfKin relation
-        : undefined,
+      // Only connect NextOfKin when an id is provided.
+      // Bulk tenant upload sends NextOfKin object without id; that record is created later.
+      nextOfKin: nextOfKin?.id ? { connect: { id: nextOfKin.id as string } } : undefined,
     };
   
     if (id) {

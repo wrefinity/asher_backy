@@ -122,7 +122,9 @@ class PropertyController {
 
         for (const prop of properties) {
             try {
-                const state = await stateServices.getStateByName(prop?.state);
+                const stateName = prop?.state?.trim();
+                if (!stateName) throw new Error('State is required');
+                const state = await stateServices.getStateByName(stateName, landlordId);
                 if (!state) throw new Error('State not found');
 
                 const {

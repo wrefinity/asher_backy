@@ -500,13 +500,15 @@ class UserService {
         ]);
 
         // 3. Next of Kin (dependent on personalDetails)
+        // Tenant bulk upload supplies `nextOfKin` object (per Joi schema); support that here.
+        const nextOfKin = userData?.nextOfKin || {};
         await NextOfKinService.upsertNextOfKinInfo({
-            lastName: userData?.nextOfKinLastName,
-            firstName: userData?.nextOfKinFirstName,
-            relationship: userData?.relationship,
-            phoneNumber: userData?.nextOfKinPhoneNumber,
-            email: userData?.nextOfKinEmail,
-            middleName: userData?.nextOfKinMiddleName,
+            lastName: nextOfKin?.lastName,
+            firstName: nextOfKin?.firstName,
+            relationship: nextOfKin?.relationship,
+            phoneNumber: nextOfKin?.phoneNumber,
+            email: nextOfKin?.email,
+            middleName: nextOfKin?.middleName ?? undefined,
             applicantPersonalDetailsId: personalDetails.id,
             userId
         });

@@ -259,7 +259,8 @@ class AuthControls {
             throw ApiError.validationError(["Email or tenant code is required"]);
         }
 
-        if (email) user = await UserServices.findUserByEmail(email);
+        const normalizedEmail = email?.trim().toLowerCase();
+        if (normalizedEmail) user = await UserServices.findUserByEmail(normalizedEmail);
         if (!user && tenantCode) user = await UserServices.findUserByTenantCode(tenantCode);
         if (!user) throw ApiError.notFound("User does not exist");
 
