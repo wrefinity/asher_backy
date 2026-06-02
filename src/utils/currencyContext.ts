@@ -1,5 +1,6 @@
 import { Currency } from '@prisma/client';
 import PreferenceService from '../services/preferences.service';
+import { PLATFORM_DEFAULT_CURRENCY } from '../secrets';
 import {
   getCurrencyForCountry,
   normalizeCurrencyCode,
@@ -42,7 +43,10 @@ export async function resolveViewerCurrency(params: {
   ipAddress?: string | null;
   defaultCurrency?: Currency;
 }): Promise<ViewerCurrencyContext> {
-  const fallback = params.defaultCurrency || Currency.NGN;
+  const fallback =
+    params.defaultCurrency ||
+    (PLATFORM_DEFAULT_CURRENCY as Currency) ||
+    Currency.NGN;
   const explicit =
     normalizeCurrencyCode(params.displayCurrency) ||
     normalizeCurrencyCode(params.currency);
@@ -148,7 +152,7 @@ export async function resolvePropertyCreateCurrency(params: {
     if (viewer.currency) return viewer.currency as Currency;
   }
 
-  return Currency.NGN;
+  return (PLATFORM_DEFAULT_CURRENCY as Currency) || Currency.NGN;
 }
 
 export function formatPreferencesResponse<T extends Record<string, unknown> | null>(
@@ -158,5 +162,17 @@ export function formatPreferencesResponse<T extends Record<string, unknown> | nu
   return {
     ...preferences,
     country: (preferences.region as string) || null,
+  };
+}
+
+/** Legacy shape for existing call sites — delegates to resolveViewerCurrency. */
+export async function getCurrentCountryCurrency(
+  ipAddress?: string | null,
+  userId?: string | null
+) {
+  const viewer = await resolveViewerCurrency({ userId, ipAddress });
+  return {
+    country_code: viewer.countryCode,
+    locationCurrency: viewer.currency,
   };
 }

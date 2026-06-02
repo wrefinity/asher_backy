@@ -189,17 +189,6 @@ export const resolveCurrencyFromRegion = async (input: {
   };
 };
 
-export const getCurrentCountryCurrency = async (ipAddress?: string | null) => {
-  try {
-    // Get user's current location using an IP-based API
-    const locationResponse = await axios.get(ipAddress ? `https://ipapi.co/${ipAddress}/json/` : 'https://ipapi.co/json/');
-    const { country_code, currency: locationCurrency } = locationResponse.data;
-    return { country_code, locationCurrency: normalizeCurrencyCode(locationCurrency) || locationCurrency }
-  } catch (error) {
-    console.error('Error getting country code:', error)
-  }
-}
-
 export const getCurrencyConversionRate = async (from: string, to: string): Promise<number> => {
   const normalizedFrom = normalizeCurrencyCode(from);
   const normalizedTo = normalizeCurrencyCode(to);

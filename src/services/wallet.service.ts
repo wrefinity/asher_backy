@@ -8,7 +8,7 @@ import paymentGatewayService from "./paymentGateway.service";
 import flutterWaveService from "./flutterWave.service";
 import { generateIDs } from "../utils/helpers";
 import { Decimal } from "@prisma/client/runtime/library";
-import { convertCurrency, getCurrentCountryCurrency } from "../utils/helpers"
+import { convertCurrency } from "../utils/helpers"
 import paystackServices from "./paystack.services";
 
 
@@ -312,11 +312,11 @@ class WalletService {
         if (matchingCurrency && matchingCurrency != wallet.currency) {
             throw new Error('transaction needs same currency type');
         }
-        const { locationCurrency } = await getCurrentCountryCurrency()
-        if (!matchingCurrency && locationCurrency != currency) {
-            `Transaction requires a wallet in ${locationCurrency}, but got ${currency}`
+        if (wallet.currency !== currency) {
+            throw new Error(
+                `Wallet currency (${wallet.currency}) does not match transaction currency (${currency})`
+            );
         }
-        // const convertedPrice = await convertCurrency(price, property.currency, wallet.currency);
         // Convert price to Decimal if necessary
         const decimalPrice = price instanceof Decimal ? price : new Decimal(price);
 

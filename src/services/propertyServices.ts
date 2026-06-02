@@ -1113,6 +1113,7 @@ class PropertyService {
         }>[] = await prismaClient.properties.findMany({
             where: {
                 landlordId,
+                isDeleted: false,
             },
             include: this.propsInclusion,
         });
@@ -3104,8 +3105,16 @@ class PropertyService {
                 data: {
                     ...rest,
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
-                    marketValue: marketValue ? new Prisma.Decimal(marketValue) : null, // Convert if exist
-                    propertyValue: propertyValue ? new Prisma.Decimal(propertyValue) : null, // Convert if exist
+                    marketValue:
+                        marketValue != null && !Number.isNaN(Number(marketValue))
+                            ? new Prisma.Decimal(marketValue)
+                            : null,
+                    propertyValue:
+                        propertyValue != null && !Number.isNaN(Number(propertyValue))
+                            ? new Prisma.Decimal(propertyValue)
+                            : marketValue != null && !Number.isNaN(Number(marketValue))
+                              ? new Prisma.Decimal(marketValue)
+                              : null,
                     securityDeposit: depositAmount != null && Number(depositAmount) > 0 ? new Prisma.Decimal(Number(depositAmount)) : null,
                     keyFeatures: { set: keyFeatures },
                     specificationType,

@@ -9,6 +9,10 @@ import transactionServices from "../../services/transaction.services";
 import { Currency, TransactionReference, TransactionType, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "../../index";
 import { serverInstance } from "../../index";
+import {
+  getClientIpFromRequest,
+  resolveViewerCurrency,
+} from "../../utils/currencyContext";
 
 class TenantPaymentController {
   constructor() {}
@@ -65,6 +69,17 @@ class TenantPaymentController {
     }
 
     try {
+      const viewer = await resolveViewerCurrency({
+        userId,
+        ipAddress: getClientIpFromRequest(req),
+      });
+      const payCurrency = (
+        (bill as { currency?: string }).currency ||
+        bill.property?.currency ||
+        viewer.currency
+      ) as Currency;
+      const countryCode = viewer.countryCode || "NG";
+
       let paymentResult;
 
       if (paymentMethod === "wallet") {
@@ -77,11 +92,11 @@ class TenantPaymentController {
             billId: billId
           },
           tenantId,
-          Currency.NGN // Default currency, can be made dynamic
+          payCurrency
         );
       } else {
         // External payment gateway (Stripe, Paystack, etc.)
-        const wallet = await walletService.getUserWallet(userId, Currency.NGN);
+        const wallet = await walletService.getUserWallet(userId, payCurrency);
         if (!wallet) {
           throw ApiError.notFound("Wallet not found");
         }
@@ -104,8 +119,8 @@ class TenantPaymentController {
         const paymentData = await walletService.fundWalletGeneral(
           userId,
           amount,
-          Currency.NGN,
-          "NG", // Default country code
+          payCurrency,
+          countryCode,
           paymentGateway as any,
           paymentMethod
         );
@@ -258,7 +273,7 @@ class TenantPaymentController {
   // Fund tenant wallet
   fundWallet = asyncHandler(async (req: CustomRequest, res: Response) => {
     const userId = req.user?.id;
-    const { amount, paymentGateway, currency = "NGN", countryCode = "NG" } = req.body;
+    const { amount, paymentGateway, currency, countryCode } = req.body;
 
     if (!amount || amount <= 0) {
       throw ApiError.badRequest("Valid amount is required");
@@ -269,11 +284,16 @@ class TenantPaymentController {
     }
 
     try {
+      const viewer = await resolveViewerCurrency({
+        userId,
+        currency,
+        ipAddress: getClientIpFromRequest(req),
+      });
       const result = await walletService.fundWalletGeneral(
         userId,
         amount,
-        currency as Currency,
-        countryCode,
+        (currency || viewer.currency) as Currency,
+        countryCode || viewer.countryCode || "NG",
         paymentGateway as any
       );
 
@@ -289,10 +309,16 @@ class TenantPaymentController {
   // Get wallet balance
   getWalletBalance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const userId = req.user?.id;
-    const { currency = "NGN" } = req.query;
+    const { currency: currencyQuery } = req.query;
 
     try {
-      const wallet = await walletService.getUserWallet(userId, currency as string);
+      const viewer = await resolveViewerCurrency({
+        userId,
+        currency: currencyQuery as string | undefined,
+        ipAddress: getClientIpFromRequest(req),
+      });
+      const currency = (currencyQuery as string) || viewer.currency;
+      const wallet = await walletService.getUserWallet(userId, currency);
       
       if (!wallet) {
         // Create wallet if it doesn't exist

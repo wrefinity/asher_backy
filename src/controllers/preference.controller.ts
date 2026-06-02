@@ -8,6 +8,7 @@ import {
     getClientIpFromRequest,
     resolveViewerCurrency,
 } from "../utils/currencyContext";
+import { SUPPORTED_CURRENCY_CODES } from "../utils/helpers";
 
 class PreferencesController {
 
@@ -131,7 +132,7 @@ class PreferencesController {
             return res.json({
                 success: true,
                 viewerContext: viewer,
-                supportedCurrencies: ['NGN', 'USD', 'EUR', 'GBP'],
+                supportedCurrencies: SUPPORTED_CURRENCY_CODES,
             });
         } catch (error) {
             ErrorService.handleError(error, res);

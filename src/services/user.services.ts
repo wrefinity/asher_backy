@@ -11,7 +11,7 @@ import EmploymentService from "../services/employmentinfo.services"
 import NextOfKinService from "../services/nextkin.services"
 import ApplicantPersonalDetailsService from "../services/personaldetails.services"
 import WalletService from "./wallet.service";
-import { getCurrentCountryCurrency } from "../utils/helpers";
+import { getCurrentCountryCurrency } from "../utils/currencyContext";
 import sendMail from "../utils/emailer";
 import propertyServices from "./propertyServices";
 import applicantService from "../webuser/services/applicantService";
@@ -321,9 +321,14 @@ class UserService {
             user = await this.createNewUser({ userData }, false);
             await this.updateUserBasedOnRole(userData, user, userRoles?.LANDLORD);
         }
-        const countryData = await getCurrentCountryCurrency();
-        if (user && countryData?.locationCurrency) {
-            await WalletService.getOrCreateWallet(user.id, countryData.locationCurrency);
+        if (user) {
+            const countryData = await getCurrentCountryCurrency(null, user.id);
+            if (countryData?.locationCurrency) {
+                await WalletService.getOrCreateWallet(
+                    user.id,
+                    countryData.locationCurrency as any
+                );
+            }
         }
 
         return this.getUserById(user.id);

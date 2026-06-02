@@ -14,6 +14,7 @@ class AnalyticsRouter {
         // Dashboard Analytics
         this.router.get('/generic', dashboardController.getDashboardStats);
         this.router.get('/dashboard', AnalyticsController.getDashboardAnalytics.bind(AnalyticsController));
+        this.router.get('/portfolio', AnalyticsController.getPortfolioSummary.bind(AnalyticsController));
         this.router.get('/cash-flow', AnalyticsController.getCashFlowData.bind(AnalyticsController));
         this.router.get('/property-performance', AnalyticsController.getPropertyPerformance.bind(AnalyticsController));
         this.router.get('/maintenance', AnalyticsController.getMaintenanceAnalytics.bind(AnalyticsController));

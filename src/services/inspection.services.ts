@@ -299,6 +299,7 @@ class InspectionService {
         if (propertyIds.length === 0) {
             return {
                 total: 0,
+                notStarted: 0,
                 scheduled: 0,
                 inProgress: 0,
                 completed: 0,
@@ -306,10 +307,16 @@ class InspectionService {
             };
         }
 
-        const [total, scheduled, inProgress, completed, criticalIssuesData] =
+        const [total, notStarted, scheduled, inProgress, completed, criticalIssuesData] =
             await Promise.all([
                 prismaClient.inspection.count({
                     where: { propertyId: { in: propertyIds } },
+                }),
+                prismaClient.inspection.count({
+                    where: {
+                        propertyId: { in: propertyIds },
+                        status: 'Not Started',
+                    },
                 }),
                 prismaClient.inspection.count({
                     where: {
@@ -337,6 +344,7 @@ class InspectionService {
 
         return {
             total,
+            notStarted,
             scheduled,
             inProgress,
             completed,

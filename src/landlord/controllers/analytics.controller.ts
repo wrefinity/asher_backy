@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../../utils/ApiResponse';
 import AnalyticsService from '../services/analytics.service';
+import InspectionService from '../../services/inspection.services';
 import { CustomRequest } from '../../utils/types';
 import { prismaClient } from '../..';
 
@@ -18,25 +19,85 @@ class AnalyticsController {
         return landlord?.id ?? null;
     }
 
-    // Dashboard Analytics
+    // Dashboard Analytics — portfolio summary + financial KPIs + monthly cash flow series
     async getDashboardAnalytics(req: CustomRequest, res: Response) {
         try {
             const userId = req.user?.id;
-            const data = await AnalyticsService.getFinancialAnalyticLandlord(userId);
-            const data2 = await AnalyticsService.getLandlordFinancialCashFlow(userId);
-            res.status(200).json( ApiResponse.success({ ...data, ...data2 }, 'Financial analytics retrieved successfully'));
+            const landlordProfileId = await this.resolveLandlordProfileId(req);
+            if (!userId || !landlordProfileId) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
+            }
+
+            const [portfolio, financial, financialSeries, maintenanceSummary, inspectionStatistics] =
+                await Promise.all([
+                AnalyticsService.getDashboardAnalytics(landlordProfileId),
+                AnalyticsService.getFinancialAnalyticLandlord(userId),
+                AnalyticsService.getLandlordFinancialCashFlow(userId),
+                AnalyticsService.getMaintenanceAnalytics(landlordProfileId),
+                InspectionService.getInspectionStatistics(landlordProfileId),
+            ]);
+
+            const cashFlowChart = AnalyticsService.mapCashFlowToChartSeries(
+                financialSeries.cashFlow
+            );
+
+            const totalRevenue =
+                portfolio.totalRevenue > 0
+                    ? portfolio.totalRevenue
+                    : financial.totalIncome?.amount ?? 0;
+
+            res.status(200).json(
+                ApiResponse.success(
+                    {
+                        ...financial,
+                        ...portfolio,
+                        portfolio: portfolio.portfolio,
+                        portfolioCurrency: portfolio.portfolio?.currency,
+                        tenantBreakdown: portfolio.tenantBreakdown,
+                        totalRevenue,
+                        netProfit: financial.netProfit?.amount ?? portfolio.totalRevenue,
+                        cashFlow: cashFlowChart,
+                        incomeStatistics: financialSeries.incomeStatistics,
+                        expenseStatistics: financialSeries.expenseStatistics,
+                        budgets: financialSeries.budgets,
+                        subscription: financialSeries.subscription,
+                        maintenanceAnalytics: {
+                            totalRequests: maintenanceSummary.totalRequests,
+                            statusCounts: maintenanceSummary.statusCounts,
+                            priorityCounts: maintenanceSummary.priorityCounts,
+                            averageResolutionDays:
+                                maintenanceSummary.averageResolutionTime,
+                        },
+                        inspectionStatistics,
+                        unitOccupancy: portfolio.unitOccupancy,
+                    },
+                    'Dashboard analytics retrieved successfully'
+                )
+            );
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
         }
     }
-    async getDashboardAnalyticsx(req: CustomRequest, res: Response) {
+
+    async getPortfolioSummary(req: CustomRequest, res: Response) {
         try {
             const landlordProfileId = await this.resolveLandlordProfileId(req);
             if (!landlordProfileId) {
                 return res.status(403).json(new ApiResponse(403, null, 'Landlord context required'));
             }
-            const data = await AnalyticsService.getDashboardAnalytics(landlordProfileId);
-            res.status(200).json(new ApiResponse(200, data, 'Dashboard analytics retrieved successfully'));
+
+            const [portfolio, tenantBreakdown, unitOccupancy] = await Promise.all([
+                AnalyticsService.getPortfolioSummary(landlordProfileId),
+                AnalyticsService.getTenantBreakdown(landlordProfileId),
+                AnalyticsService.getUnitPortfolioBreakdown(landlordProfileId),
+            ]);
+
+            res.status(200).json(
+                ApiResponse.success(
+                    { portfolio, tenantBreakdown, unitOccupancy },
+                    'Portfolio summary retrieved successfully'
+                )
+            );
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
         }
@@ -177,7 +238,12 @@ class AnalyticsController {
                 throw new Error('Landlord not found for user');
             }
             
-            const data = await AnalyticsService.getPropertyAnalytics(landlordId, propertyId);
+            const period = (req.query.period as string) || '12months';
+            const data = await AnalyticsService.getPropertyAnalytics(
+                landlordId,
+                propertyId,
+                period
+            );
             res.status(200).json(new ApiResponse(200, data, 'Property analytics retrieved successfully'));
         } catch (error) {
             console.error('getPropertyAnalytics error:', error);

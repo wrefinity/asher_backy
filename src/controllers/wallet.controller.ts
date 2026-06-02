@@ -4,27 +4,27 @@ import errorService from "../services/error.service";
 import walletService from "../services/wallet.service";
 import { getCountryCodeFromIp } from "../utils/helpers";
 import { Currency, PaymentGateway } from '@prisma/client';
-import { getCurrentCountryCurrency } from "../utils/helpers";
+import { getClientIpFromRequest, resolveViewerCurrency } from "../utils/currencyContext";
 import paystackServices from "../services/paystack.services";
 import stripeService from "../services/stripe.service";
 
 class WalletController {
     getUserWallet = async (req: CustomRequest, res: Response) => {
         const userId = req.user.id;
-        // Parse the currency from query params, default to NGN if not provided
-        const currencyParam = req.query.locationCurrency as string;
-
-        // Validate and set the currency
-        let currency: Currency;
-        // Handle all supported currencies
-        if (Object.values(Currency).includes(currencyParam as Currency)) {
-            currency = currencyParam as Currency;
-        } else {
-            // Default to NGN if not specified or invalid
-            currency = Currency.NGN;
-        }
+        const currencyParam = req.query.locationCurrency as string | undefined;
 
         try {
+            let currency: Currency;
+            if (currencyParam && Object.values(Currency).includes(currencyParam as Currency)) {
+                currency = currencyParam as Currency;
+            } else {
+                const viewer = await resolveViewerCurrency({
+                    userId,
+                    ipAddress: getClientIpFromRequest(req),
+                });
+                currency = (viewer.currency as Currency) || Currency.NGN;
+            }
+
             const userWallet = await walletService.getOrCreateWallet(userId, currency);
             res.status(200).json({ userWallet });
         } catch (error) {

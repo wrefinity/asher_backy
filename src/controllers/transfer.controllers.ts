@@ -3,7 +3,7 @@ import { CustomRequest } from "../utils/types";
 import TransactionSchema from "../validations/schemas/transaction.schema";
 import errorService from "../services/error.service";
 import transferServices from "../services/transfer.services";
-import { getCurrentCountryCurrency } from "../utils/helpers";
+import { getClientIpFromRequest, getCurrentCountryCurrency } from "../utils/currencyContext";
 class TransferController {
     async makePayment(req: CustomRequest, res: Response) {
         const tenantId = req.user.id;
@@ -26,8 +26,16 @@ class TransferController {
             return res.status(400).json({ message: error.details[0].message });
         }
         try {
-            const {locationCurrency} = await getCurrentCountryCurrency();
-            const transfer = await transferServices.transferFunds(userId, value, locationCurrency)
+            const ipAddress = getClientIpFromRequest(req);
+            const { locationCurrency } = await getCurrentCountryCurrency(
+                ipAddress,
+                userId
+            );
+            const transfer = await transferServices.transferFunds(
+                userId,
+                value,
+                value.currency || locationCurrency
+            );
             res.status(200).json(transfer);
         } catch (error) {       
             errorService.handleError(error, res);

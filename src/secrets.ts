@@ -29,3 +29,8 @@ export const FLUTTERWAVE_SECRET_HASH=process.env.FLUTTERWAVE_SECRET_HASH!;
 export const APP_URL= process.env.APP_URL!;
 export const STRIPE_LINK= process.env.STRIPE_LINK!;
 export const RESEND_API_KEY= process.env.RESEND_API_KEY!;
+export const PLATFORM_DEFAULT_CURRENCY = (process.env.DEFAULT_CURRENCY || 'NGN') as
+  | 'NGN'
+  | 'USD'
+  | 'EUR'
+  | 'GBP';
