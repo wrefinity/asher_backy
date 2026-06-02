@@ -3,6 +3,11 @@ import ErrorService from "../services/error.service";
 import { Response } from "express";
 import { CustomRequest } from "../utils/types";
 import { preferencesSchema, preferencesPrivacySchema } from "../validations/schemas/profile";
+import {
+    formatPreferencesResponse,
+    getClientIpFromRequest,
+    resolveViewerCurrency,
+} from "../utils/currencyContext";
 
 class PreferencesController {
 
@@ -10,7 +15,7 @@ class PreferencesController {
         try {
             const userId = req.user.id;
             const preferences = await PreferencesService.getUserPreferences(userId);
-            res.json(preferences);
+            res.json(formatPreferencesResponse(preferences));
         } catch (error) {
             ErrorService.handleError(error, res);
         }
@@ -30,7 +35,7 @@ class PreferencesController {
 
             const userId = req.user.id;
             const updated = await PreferencesService.createOrUpdatePreferences(userId, value);
-            res.json(updated);
+            res.json(formatPreferencesResponse(updated));
 
         } catch (error) {
             ErrorService.handleError(error, res);
@@ -105,6 +110,33 @@ class PreferencesController {
             ErrorService.handleError(error, res);
         }
     }
+
+    /** Viewer currency for mobile/web — uses saved preferences, then query, then IP. */
+    getViewerContext = async (req: CustomRequest, res: Response) => {
+        try {
+            if (!req.user?.id) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const ipAddress = getClientIpFromRequest(req);
+            const viewer = await resolveViewerCurrency({
+                userId: req.user.id,
+                currency: req.query.currency as string | undefined,
+                displayCurrency: req.query.displayCurrency as string | undefined,
+                country: (req.query.country as string) || undefined,
+                countryCode: req.query.countryCode as string | undefined,
+                ipAddress,
+            });
+
+            return res.json({
+                success: true,
+                viewerContext: viewer,
+                supportedCurrencies: ['NGN', 'USD', 'EUR', 'GBP'],
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
 
     getOnboardingStatus = async (req: CustomRequest, res: Response) => {
         try {

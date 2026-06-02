@@ -472,3 +472,20 @@
 {"level":"info","message":"Email sent successfully. ID: cd2d450d-b6c9-418d-b81d-3cf3de85a9fd","service":"api-service","timestamp":"2026-06-02 20:19:49"}
 {"level":"info","message":"Sending mail to - bulk.tenant.1780427981209.2@example.com","service":"api-service","timestamp":"2026-06-02 20:19:49"}
 {"level":"info","message":"Email sent successfully. ID: d4c8b06d-bf95-4fdc-992f-b421f83cc8f1","service":"api-service","timestamp":"2026-06-02 20:19:53"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 20:33:23"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 20:37:28"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 20:38:28"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 20:48:40"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 20:56:09"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 20:56:25"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:05:28"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:05:30"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 21:05:49"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:06:42"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:07:55"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 21:08:34"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-02 21:31:08"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:32:24"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:32:26"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:32:32"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-02 21:32:35"}

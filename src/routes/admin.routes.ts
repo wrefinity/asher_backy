@@ -80,6 +80,12 @@ class AdminRouter {
             AdminController.cancelLandlordInvite
         );
 
+        this.router.delete(
+            "/landlords/:userId",
+            this.authenticateService.authorize,
+            AdminController.deleteLandlordAccount
+        );
+
         // Public endpoint for landlords to get admin users for chat
         this.router.get(
             "/admin-users",

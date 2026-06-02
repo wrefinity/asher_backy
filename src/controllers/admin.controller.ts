@@ -5,12 +5,14 @@ import UserServices from "../services/user.services";
 import { createVerificationToken } from "../services/verification_token.service";
 import { generateOtp } from "../utils/helpers";
 import sendMail from "../utils/emailer";
-import { userRoles, TicketStatus, TicketPriority, onlineStatus } from "@prisma/client";
-import { FRONTEND_URL } from "../secrets";
+import { userRoles, TicketStatus, TicketPriority, onlineStatus, LogType } from "@prisma/client";
+import { FRONTEND_URL, JWT_SECRET } from "../secrets";
 import { prismaClient } from "..";
 import { subDays, startOfDay, endOfDay, format } from "date-fns";
 import { SupportService } from "../services/support.services";
 import logger from "../utils/loggers";
+import { Jtoken } from "../middlewares/Jtoken";
+import logsServices from "../services/logs.services";
 
 interface InviteLandlordData {
   email: string;
@@ -20,6 +22,8 @@ interface InviteLandlordData {
 }
 
 class AdminController {
+  private tokenService = new Jtoken(JWT_SECRET);
+
   private buildLandlordInvitationEmail = (
     firstName: string | undefined,
     invitationLink: string
@@ -273,6 +277,68 @@ class AdminController {
   };
 
   /**
+   * Permanently delete a landlord account (active or pending)
+   */
+  deleteLandlordAccount = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const user = await this.getLandlordById(userId);
+
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Landlord not found" });
+      }
+
+      if (user.landlords?.id) {
+        const landlordId = user.landlords.id;
+
+        const propertyCount = await prismaClient.properties.count({
+          where: { landlordId, isDeleted: false },
+        });
+
+        if (propertyCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot delete this account because the landlord has active properties. Remove or transfer properties first.",
+          });
+        }
+
+        const tenantCount = await prismaClient.tenants.count({
+          where: { landlordId },
+        });
+
+        if (tenantCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot delete this account because the landlord still has tenants on record.",
+          });
+        }
+      }
+
+      const profileId = user.profileId;
+
+      await prismaClient.$transaction(async (tx) => {
+        await tx.verificationToken.deleteMany({ where: { userId: user.id } });
+        if (user.landlords?.id) {
+          await tx.landlords.delete({ where: { id: user.landlords.id } });
+        }
+        await tx.users.delete({ where: { id: user.id } });
+        if (profileId) {
+          await tx.profile.delete({ where: { id: profileId } });
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Landlord account deleted successfully",
+        data: { userId: user.id, email: user.email },
+      });
+    } catch (error: any) {
+      console.error("Error deleting landlord account:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
    * Set a temporary password so the landlord can log in directly
    */
   setLandlordTempPassword = async (req: CustomRequest, res: Response) => {
@@ -399,12 +465,35 @@ class AdminController {
         throw updateError; // Re-throw to be caught by outer catch
       }
 
+      await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+      const tokens = await this.tokenService.createToken({
+        id: user.id,
+        role: String(user.role),
+        email: String(user.email),
+      });
+
+      await logsServices.createLog({
+        events: `Landlord ${user.email} completed invitation password setup`,
+        type: LogType.ACTIVITY,
+        createdById: user.id,
+      });
+
+      const freshUser = await UserServices.getUserById(user.id);
+      const { password: _password, ...userDetails } = freshUser || user;
+
       return res.status(200).json({
         success: true,
         message: "Password set successfully. You can now login.",
         data: {
           userId: user.id,
           email: user.email,
+          token: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          userDetails: {
+            ...userDetails,
+            id: user.id,
+            onlineStatus: onlineStatus.online,
+          },
         },
       });
     } catch (error: any) {

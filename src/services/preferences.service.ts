@@ -1,5 +1,6 @@
 import { prismaClient } from "..";
 import { Currency, DateFormat, Language, TimeFormat } from "@prisma/client";
+import { getCurrencyForCountry } from "../utils/helpers";
 
 interface PreferencesInput {
     currency?: Currency;
@@ -13,6 +14,31 @@ interface PreferencesInput {
     defaultPaymentAccountId?: string;
 }
 
+function normalizePreferencesPayload(data: Record<string, unknown>): PreferencesInput {
+    const region =
+        (typeof data.region === 'string' && data.region.trim()) ||
+        (typeof data.country === 'string' && data.country.trim()) ||
+        undefined;
+
+    let currency = data.currency as Currency | undefined;
+    if (region && !currency) {
+        const mapped = getCurrencyForCountry(region);
+        if (mapped) currency = mapped as Currency;
+    }
+
+    return {
+        currency,
+        timeZone: data.timeZone as string | undefined,
+        timeFormat: data.timeFormat as TimeFormat | undefined,
+        dateFormat: data.dateFormat as DateFormat | undefined,
+        region,
+        language: data.language as Language | undefined,
+        showBasicProfile: data.showBasicProfile as boolean | undefined,
+        showContactDetails: data.showContactDetails as boolean | undefined,
+        defaultPaymentAccountId: data.defaultPaymentAccountId as string | undefined,
+    };
+}
+
 class PreferenceService {
 
     getUserPreferences = async (userId: string) => {
@@ -22,18 +48,7 @@ class PreferenceService {
     }
 
     createOrUpdatePreferences = async (userId: string, data: any) => {
-        // Convert string inputs to proper enum types
-        const convertedData: PreferencesInput = {
-            currency: data.currency ? data.currency as Currency : undefined,
-            timeFormat: data.timeFormat ? data.timeFormat as TimeFormat : undefined,
-            dateFormat: data.dateFormat ? data.dateFormat as DateFormat : undefined,
-            language: data.language ? data.language as Language : undefined,
-            timeZone: data.timeZone,
-            region: data.region,
-            showBasicProfile: data.showBasicProfile,
-            showContactDetails: data.showContactDetails,
-            defaultPaymentAccountId: data.defaultPaymentAccountId
-        };
+        const convertedData: PreferencesInput = normalizePreferencesPayload(data);
 
         return prismaClient.userPreferences.upsert({
             where: { userId },

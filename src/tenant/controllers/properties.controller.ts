@@ -7,23 +7,31 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import logsServices from "../../services/logs.services";
 import { LogType, EnquireStatus, logTypeStatus } from "@prisma/client";
 import { ApiError } from "../../utils/ApiError";
+import {
+    buildCurrencyDisplayOptions,
+    getClientIpFromRequest,
+    resolveViewerCurrency,
+} from "../../utils/currencyContext";
 
 class ProperyController {
 
     searchProperties = asyncHandler(async (req: CustomRequest, res: Response): Promise<void> => {
         const filters = req.body;
-        const forwardedFor = req.headers['x-forwarded-for'];
-        const ipAddress = Array.isArray(forwardedFor)
-            ? forwardedFor[0]
-            : forwardedFor?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
-        const properties = await propertyServices.searchPropertiesForRecommendation(filters as PropertySearchDto, {
+        const ipAddress = getClientIpFromRequest(req);
+        const viewerContext = await resolveViewerCurrency({
+            userId: req.user?.id,
             currency: filters.displayCurrency || filters.currency,
-            countryCode: filters.countryCode,
             country: filters.country,
+            countryCode: filters.countryCode,
             ipAddress,
         });
+        const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
+        const properties = await propertyServices.searchPropertiesForRecommendation(
+            filters as PropertySearchDto,
+            currencyOptions
+        );
         res.status(200).json(
-            ApiResponse.success(properties)
+            ApiResponse.success(properties, 'Success', { viewerContext })
         );
     })
     createPropertyEnquiry = asyncHandler(async (req: CustomRequest, res: Response) => {

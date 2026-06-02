@@ -83,6 +83,22 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   SCOTLAND: 'GBP',
   WALES: 'GBP',
   'NORTHERN IRELAND': 'GBP',
+  IE: 'EUR',
+  IRELAND: 'EUR',
+  FR: 'EUR',
+  FRANCE: 'EUR',
+  DE: 'EUR',
+  GERMANY: 'EUR',
+  ES: 'EUR',
+  SPAIN: 'EUR',
+  IT: 'EUR',
+  ITALY: 'EUR',
+  NL: 'EUR',
+  NETHERLANDS: 'EUR',
+  CA: 'USD',
+  CANADA: 'USD',
+  AU: 'USD',
+  AUSTRALIA: 'USD',
 };
 
 const rateCache = new Map<string, { rate: number; expiresAt: number }>();
@@ -95,10 +111,12 @@ const ipCurrencyCache = new Map<string, {
   expiresAt: number;
 }>();
 
-const normalizeCurrencyCode = (currency?: string | null) => {
+export const normalizeCurrencyCode = (currency?: string | null) => {
   const normalized = currency?.trim().toUpperCase();
   return normalized && SUPPORTED_CURRENCIES.includes(normalized) ? normalized : null;
 };
+
+export const SUPPORTED_CURRENCY_CODES = SUPPORTED_CURRENCIES;
 
 export const getCurrencyForCountry = (country?: string | null) => {
   if (!country) return null;

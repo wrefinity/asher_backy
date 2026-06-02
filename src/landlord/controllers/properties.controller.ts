@@ -22,6 +22,12 @@ import residentialServices from '../../services/residential.services';
 import maintenanceService from '../../services/maintenance.service';
 import { ApiError } from '../../utils/ApiError';
 import { ApiResponse } from '../../utils/ApiResponse';
+import {
+    buildCurrencyDisplayOptions,
+    getClientIpFromRequest,
+    resolvePropertyCreateCurrency,
+    resolveViewerCurrency,
+} from '../../utils/currencyContext';
 
 
 class PropertyController {
@@ -82,6 +88,12 @@ class PropertyController {
                         ...data
                     } = value;
 
+                    const resolvedCurrency = await resolvePropertyCreateCurrency({
+                        currency: data.currency,
+                        country: data.country,
+                        userId: req.user?.id,
+                    });
+
                     const specification: IPropertySpecificationDTO = {
                         propertySubType,
                         specificationType,
@@ -92,7 +104,7 @@ class PropertyController {
                     };
 
                     const property = await PropertyServices.createProperties(
-                        { ...data, name: numberedName, stateId: state.id, landlordId },
+                        { ...data, name: numberedName, stateId: state.id, landlordId, currency: resolvedCurrency },
                         specification,
                         uploadedFiles,
                         req.user?.id
@@ -148,6 +160,12 @@ class PropertyController {
                     residential
                 };
 
+                const resolvedCurrency = await resolvePropertyCreateCurrency({
+                    currency: data.currency,
+                    country: data.country,
+                    userId: req.user?.id,
+                });
+
                 for (let i = 1; i <= count; i++) {
                     const numberedName = count > 1
                         ? `${prop.name} ${i.toString().padStart(2, '0')}`
@@ -169,7 +187,8 @@ class PropertyController {
                             ...data,
                             name: numberedName,
                             stateId: state.id,
-                            landlordId
+                            landlordId,
+                            currency: resolvedCurrency,
                         },
                         specification,
                         uploadedFiles,
@@ -328,9 +347,18 @@ class PropertyController {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
+            const ipAddress = getClientIpFromRequest(req);
+            const viewerContext = await resolveViewerCurrency({
+                userId: req.user?.id,
+                currency: req.query.currency as string | undefined,
+                displayCurrency: req.query.displayCurrency as string | undefined,
+                country: req.query.country as string | undefined,
+                countryCode: req.query.countryCode as string | undefined,
+                ipAddress,
+            });
             const { propertiesGrouped, stateCountryByKey } = await PropertyServices.aggregatePropertiesByState(landlordId);
             const propertiesUnGrouped = await PropertyServices.getPropertiesByLandlord(landlordId);
-            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped, stateCountryByKey })
+            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped, stateCountryByKey, viewerContext })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -515,7 +543,17 @@ class PropertyController {
             }
 
             // Extract filters from the query parameters
-            const { state, country, propertySize, type, isActive, specificationType } = req.query;
+            const {
+                state,
+                country,
+                propertySize,
+                type,
+                isActive,
+                specificationType,
+                currency,
+                displayCurrency,
+                countryCode,
+            } = req.query;
 
             // Prepare the filter object
             const filters: any = {
@@ -560,15 +598,35 @@ class PropertyController {
                 }
             }
 
-            // Fetch the filtered properties
-            const properties = await PropertyServices.getAllListedProperties(filters);
+            const ipAddress = getClientIpFromRequest(req);
+            const viewerContext = await resolveViewerCurrency({
+                userId: req.user?.id,
+                currency: currency as string | undefined,
+                displayCurrency: displayCurrency as string | undefined,
+                country: country as string | undefined,
+                countryCode: countryCode as string | undefined,
+                ipAddress,
+            });
+            const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
+
+            // Fetch the filtered properties with display currency conversion
+            const properties = await PropertyServices.getAllListedProperties(
+                filters,
+                0,
+                1000,
+                true,
+                currencyOptions
+            );
             // Check if properties are found
             if (!properties || properties.length === 0) {
-                return res.status(404).json({ message: "No properties found for this landlord with the given filters" });
+                return res.status(404).json({
+                    message: "No properties found for this landlord with the given filters",
+                    viewerContext,
+                });
             }
 
             // Return the filtered properties
-            return res.status(200).json({ properties });
+            return res.status(200).json({ properties, viewerContext });
         } catch (err) {
             // Handle any errors
             ErrorService.handleError(err, res);

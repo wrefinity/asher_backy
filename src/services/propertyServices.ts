@@ -10,17 +10,6 @@ import { getCurrencyConversionRate, resolveCurrencyFromRegion } from "../utils/h
 const decimalToNumber = (value?: Prisma.Decimal | null): number | undefined =>
     value ? value.toNumber() : undefined;
 
-interface InactiveListingResult {
-    property: any; // Replace 'any' with your Property type
-    unit: any; // Replace 'any' with your UnitConfiguration type
-    room: any | null; // Replace 'any' with your RoomDetail type
-    specificationDetails: {
-        residential: any | null; // Replace 'any' with your ResidentialProperty type
-        commercial: any | null; // Replace 'any' with your CommercialProperty type
-    };
-    specificationType: PropertySpecificationType;
-}
-
 type PropertyWithSpecification = Prisma.propertiesGetPayload<{
     include: any;
 }>;
@@ -1290,88 +1279,252 @@ class PropertyService {
         return ListingNormalizer.normalizeMany(listings);
     }
 
-    getInactiveListings = async (landlordId: string) => {
-        // Get all properties with their specifications and units/rooms
+    /** Keys for entities already on the active (listed + vacant) tab */
+    private entityListingKey = (
+        propertyId: string,
+        unitId?: string | null,
+        roomId?: string | null
+    ) => `${propertyId}:${unitId ?? ''}:${roomId ?? ''}`;
+
+    private resolveVacancyStatus = (
+        availability: AvailabilityStatus | string | null | undefined,
+        fallback?: AvailabilityStatus | string | null | undefined
+    ): 'VACANT' | 'OCCUPIED' | 'OTHER' => {
+        const raw =
+            availability != null && String(availability).trim() !== ''
+                ? String(availability).trim().toUpperCase()
+                : null;
+        if (raw === 'VACANT') return 'VACANT';
+        if (raw === 'OCCUPIED') return 'OCCUPIED';
+        if (raw) return 'OTHER';
+        const fb =
+            fallback != null && String(fallback).trim() !== ''
+                ? String(fallback).trim().toUpperCase()
+                : null;
+        if (fb === 'VACANT') return 'VACANT';
+        if (fb === 'OCCUPIED') return 'OCCUPIED';
+        return 'VACANT';
+    };
+
+    private isEntityVacant = (
+        availability: AvailabilityStatus | string | null | undefined,
+        fallback?: AvailabilityStatus | string | null | undefined
+    ) => this.resolveVacancyStatus(availability, fallback) === 'VACANT';
+
+    private async getActiveVacantListingKeys(landlordId: string): Promise<Set<string>> {
+        const rows = await prismaClient.propertyListingHistory.findMany({
+            where: {
+                onListing: true,
+                property: {
+                    landlordId,
+                    availability: AvailabilityStatus.VACANT,
+                },
+            },
+            select: { propertyId: true, unitId: true, roomId: true },
+        });
+        return new Set(
+            rows
+                .filter((r) => r.propertyId)
+                .map((r) => this.entityListingKey(r.propertyId!, r.unitId, r.roomId))
+        );
+    }
+
+    private vacantUnlistedPropertyInclude() {
+        return {
+            specification: {
+                include: {
+                    residential: {
+                        include: {
+                            unitConfigurations: {
+                                where: { isDeleted: false },
+                                include: {
+                                    RoomDetail: {
+                                        where: { isDeleted: false },
+                                        include: { images: true },
+                                    },
+                                    images: true,
+                                },
+                            },
+                            sharedFacilities: true,
+                        },
+                    },
+                    commercial: {
+                        include: {
+                            unitConfigurations: {
+                                where: { isDeleted: false },
+                                include: {
+                                    RoomDetail: {
+                                        where: { isDeleted: false },
+                                        include: { images: true },
+                                    },
+                                    images: true,
+                                },
+                            },
+                        },
+                    },
+                    shortlet: true,
+                },
+            },
+            state: true,
+            images: true,
+            videos: true,
+            landlord: this.landlordInclusion,
+        };
+    }
+
+    private buildUnlistedVacantListingStub(
+        property: any,
+        type: ListingType,
+        unit?: any,
+        room?: any,
+        activeSpec?: any
+    ) {
+        const price = room?.price ?? unit?.price ?? property.price ?? 0;
+        return {
+            id: `unlisted-${room?.id ?? unit?.id ?? property.id}`,
+            type,
+            onListing: false,
+            isActive: false,
+            createdAt: property.createdAt,
+            price,
+            priceFrequency:
+                room?.priceFrequency ?? unit?.priceFrequency ?? property.priceFrequency ?? null,
+            securityDeposit: property.securityDeposit ?? 0,
+            applicationFeeAmount: null,
+            payApplicationFee: false,
+            availableFrom: null,
+            availableTo: null,
+            listAs: activeSpec?.specificationType ?? property.specificationType,
+            property,
+            unit: unit ?? null,
+            room: room ?? null,
+        };
+    }
+
+    /**
+     * Vacant properties/units/rooms that are not actively listed (`onListing: false`).
+     * Shown on the landlord "Inactive Listing" tab; listed vacant items use getPropertyListingDetails.
+     */
+    getInactiveListings = async (landlordId: string): Promise<NormalizedListing[]> => {
+        const activeKeys = await this.getActiveVacantListingKeys(landlordId);
+
         const properties = await prismaClient.properties.findMany({
             where: {
                 landlordId,
                 isDeleted: false,
-                specification: {
-                    some: {
-                        isActive: true
-                    }
-                }
+                OR: [
+                    { availability: AvailabilityStatus.VACANT },
+                    { availability: null },
+                ],
             },
-            include: {
-                specification: {
-                    include: {
-                        residential: {
-                            include: {
-                                unitConfigurations: {
-                                    where: { isListed: false, isDeleted: false },
-                                    include: {
-                                        RoomDetail: {
-                                            where: { isListed: false, isDeleted: false }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        commercial: {
-                            include: {
-                                unitConfigurations: {
-                                    where: { isListed: false, isDeleted: false },
-                                    include: {
-                                        RoomDetail: {
-                                            where: { isListed: false, isDeleted: false }
-                                        }
-                                    }
-                                }
-                            }
+            include: this.vacantUnlistedPropertyInclude(),
+        });
+
+        const stubs: any[] = [];
+
+        for (const property of properties) {
+            if (!this.isEntityVacant(property.availability, AvailabilityStatus.VACANT)) {
+                continue;
+            }
+
+            const activeSpec =
+                property.specification?.find((s: { isActive?: boolean }) => s.isActive) ??
+                property.specification?.[0];
+
+            const resUnits = activeSpec?.residential?.unitConfigurations ?? [];
+            const comUnits = activeSpec?.commercial?.unitConfigurations ?? [];
+            const allUnits = [...resUnits, ...comUnits];
+
+            if (allUnits.length === 0) {
+                const key = this.entityListingKey(property.id);
+                if (!activeKeys.has(key)) {
+                    stubs.push(
+                        this.buildUnlistedVacantListingStub(
+                            property,
+                            ListingType.ENTIRE_PROPERTY,
+                            undefined,
+                            undefined,
+                            activeSpec
+                        )
+                    );
+                }
+                continue;
+            }
+
+            let addedUnitOrRoom = false;
+
+            for (const unit of allUnits) {
+                if (!this.isEntityVacant(unit.availability, property.availability)) {
+                    continue;
+                }
+
+                const rooms = unit.RoomDetail ?? [];
+                if (rooms.length > 0) {
+                    for (const room of rooms) {
+                        if (
+                            !this.isEntityVacant(
+                                room.availability,
+                                unit.availability ?? property.availability
+                            )
+                        ) {
+                            continue;
                         }
+                        const roomKey = this.entityListingKey(property.id, unit.id, room.id);
+                        if (!activeKeys.has(roomKey)) {
+                            stubs.push(
+                                this.buildUnlistedVacantListingStub(
+                                    property,
+                                    ListingType.ROOM,
+                                    unit,
+                                    room,
+                                    activeSpec
+                                )
+                            );
+                            addedUnitOrRoom = true;
+                        }
+                    }
+                } else {
+                    const unitKey = this.entityListingKey(property.id, unit.id);
+                    if (!activeKeys.has(unitKey)) {
+                        stubs.push(
+                            this.buildUnlistedVacantListingStub(
+                                property,
+                                ListingType.SINGLE_UNIT,
+                                unit,
+                                undefined,
+                                activeSpec
+                            )
+                        );
+                        addedUnitOrRoom = true;
                     }
                 }
             }
-        });
 
-        // Transform the data into the desired format
-        const result = properties.flatMap(property => {
-            return property.specification.flatMap(spec => {
-                // Create a base object that will be common to all listings
-                const baseListing = {
-                    property,
-                    specificationType: spec.specificationType,
-                    specificationDetails: {
-                        residential: spec.residential,
-                        commercial: spec.commercial
-                    }
-                };
-
-                // Handle unit configurations based on specification type
-                if (spec.specificationType === 'RESIDENTIAL' && spec.residential) {
-                    return spec.residential.unitConfigurations.map(unit => (
-                        {
-                            ...baseListing,
-                            unit,
-                            room: unit.RoomDetail.length > 0 ? unit.RoomDetail[0] : null,
-                            listingType: unit.RoomDetail.length > 0 ? 'SINGLE_ROOM' : 'SINGLE_UNIT'
-                        }));
+            if (!addedUnitOrRoom) {
+                const key = this.entityListingKey(property.id);
+                if (!activeKeys.has(key)) {
+                    stubs.push(
+                        this.buildUnlistedVacantListingStub(
+                            property,
+                            ListingType.ENTIRE_PROPERTY,
+                            undefined,
+                            undefined,
+                            activeSpec
+                        )
+                    );
                 }
+            }
+        }
 
-                if (spec.specificationType === 'COMMERCIAL' && spec.commercial) {
-                    return spec.commercial.unitConfigurations.map(unit => ({
-                        ...baseListing,
-                        unit,
-                        room: unit.RoomDetail.length > 0 ? unit.RoomDetail[0] : null,
-                        listingType: unit.RoomDetail.length > 0 ? 'SINGLE_ROOM' : 'SINGLE_UNIT'
-                    }));
-                }
-
-                return [];
-            });
-        });
-
-        return result;
+        const normalized: NormalizedListing[] = [];
+        for (const stub of stubs) {
+            try {
+                normalized.push(ListingNormalizer.normalize(stub));
+            } catch (err) {
+                console.warn(`Could not normalize vacant unlisted stub ${stub.id}:`, err);
+            }
+        }
+        return normalized;
     };
 
 

@@ -78,6 +78,9 @@ export async function validateVerificationToken(
 
     return verificationToken;
   } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
     loggers.error(`Error validating verification token: ${error}`);
     throw ApiError.internal("Failed to validate verification token", error);
   }
