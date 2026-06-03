@@ -8,6 +8,7 @@ import {
 import { prismaClient } from '../..';
 import { PLATFORM_DEFAULT_CURRENCY } from '../../secrets';
 import { getCurrencyForCountry, normalizeCurrencyCode } from '../../utils/helpers';
+import { countTenantsByLeaseBucket } from '../../utils/categorizeTenantLeaseStatus';
 
 class AnalyticsService {
     // Dashboard Analytics
@@ -308,7 +309,7 @@ class AnalyticsService {
         };
     }
 
-    /** Current / future / past tenants from lease dates and isCurrentLease. */
+    /** Current / future / past tenants — same rules as property tenants tab. */
     async getTenantBreakdown(landlordId: string) {
         const tenants = await prismaClient.tenants.findMany({
             where: { landlordId },
@@ -319,45 +320,16 @@ class AnalyticsService {
             },
         });
 
-        const now = new Date();
-        let current = 0;
-        let future = 0;
-        let past = 0;
-
-        for (const tenant of tenants) {
-            const start = tenant.leaseStartDate
-                ? new Date(tenant.leaseStartDate)
-                : null;
-            const end = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : null;
-
-            if (start && start > now) {
-                future += 1;
-                continue;
-            }
-
-            if (
-                tenant.isCurrentLease === false ||
-                (end && end < now)
-            ) {
-                past += 1;
-                continue;
-            }
-
-            current += 1;
-        }
-
-        const total = tenants.length;
-        const pct = (n: number) =>
-            total > 0 ? Math.round((n / total) * 1000) / 10 : 0;
+        const breakdown = countTenantsByLeaseBucket(tenants);
 
         return {
-            current,
-            future,
-            past,
-            total,
-            currentPercent: pct(current),
-            futurePercent: pct(future),
-            pastPercent: pct(past),
+            current: breakdown.current,
+            future: breakdown.future,
+            past: breakdown.past,
+            total: breakdown.total,
+            currentPercent: breakdown.currentPercent,
+            futurePercent: breakdown.futurePercent,
+            pastPercent: breakdown.pastPercent,
         };
     }
 
@@ -907,7 +879,15 @@ class AnalyticsService {
             },
         ];
 
-        const [logs, transactions, maintenanceRows, applications] = await Promise.all([
+        const [
+            logs,
+            transactions,
+            maintenanceRows,
+            applications,
+            tenantRows,
+            inspectionRows,
+            listingRows,
+        ] = await Promise.all([
             prismaClient.log.findMany({
                 where: { propertyId },
                 orderBy: { createdAt: 'desc' },
@@ -916,7 +896,7 @@ class AnalyticsService {
                     users: {
                         select: {
                             email: true,
-                            profile: { select: { fullname: true } },
+                            profile: { select: { fullname: true, firstName: true, lastName: true } },
                         },
                     },
                 },
@@ -934,6 +914,31 @@ class AnalyticsService {
             }),
             prismaClient.application.findMany({
                 where: { propertiesId: propertyId, isDeleted: false },
+                orderBy: { createdAt: 'desc' },
+                take: 50,
+            }),
+            prismaClient.tenants.findMany({
+                where: { propertyId },
+                orderBy: { createdAt: 'desc' },
+                take: 100,
+                include: {
+                    user: {
+                        select: {
+                            email: true,
+                            profile: {
+                                select: { fullname: true, firstName: true, lastName: true },
+                            },
+                        },
+                    },
+                },
+            }),
+            prismaClient.inspection.findMany({
+                where: { propertyId },
+                orderBy: { createdAt: 'desc' },
+                take: 80,
+            }),
+            prismaClient.propertyListingHistory.findMany({
+                where: { propertyId },
                 orderBy: { createdAt: 'desc' },
                 take: 50,
             }),
@@ -983,19 +988,118 @@ class AnalyticsService {
         }
 
         for (const app of applications) {
+            const statusLabel = app.status
+                ? app.status.replace(/_/g, ' ').toLowerCase()
+                : 'submitted';
             events.push({
                 id: `app-${app.id}`,
                 date: new Date(app.createdAt).toISOString().split('T')[0],
                 createdAt: app.createdAt,
                 category: 'Application',
-                event: 'Tenant application submitted',
+                event: `Tenant application ${statusLabel}`,
                 status: app.status ?? undefined,
+            });
+        }
+
+        for (const tenant of tenantRows) {
+            const label = this.formatTenantTimelineLabel(tenant);
+            events.push({
+                id: `tenant-${tenant.id}`,
+                date: tenant.createdAt.toISOString().split('T')[0],
+                createdAt: tenant.createdAt,
+                category: 'Tenant',
+                event: `Tenant added — ${label}`,
+                status: tenant.isCurrentLease ? 'ACTIVE' : 'INACTIVE',
+            });
+        }
+
+        for (const inspection of inspectionRows) {
+            const typeLabel = inspection.type?.trim() || 'Inspection';
+            const scheduled =
+                inspection.scheduledDate != null
+                    ? new Date(inspection.scheduledDate).toLocaleDateString('en-GB')
+                    : null;
+
+            events.push({
+                id: `insp-booked-${inspection.id}`,
+                date: inspection.createdAt.toISOString().split('T')[0],
+                createdAt: inspection.createdAt,
+                category: 'Inspection',
+                event: scheduled
+                    ? `${typeLabel} booked for ${scheduled}`
+                    : `${typeLabel} booked`,
+                status: inspection.status ?? 'Scheduled',
+            });
+
+            if (inspection.completedAt) {
+                events.push({
+                    id: `insp-done-${inspection.id}`,
+                    date: inspection.completedAt.toISOString().split('T')[0],
+                    createdAt: inspection.completedAt,
+                    category: 'Inspection',
+                    event: `${typeLabel} completed`,
+                    status: 'Completed',
+                });
+            } else if (
+                inspection.status &&
+                inspection.status.toLowerCase() === 'completed'
+            ) {
+                events.push({
+                    id: `insp-done-${inspection.id}`,
+                    date: (inspection.updatedAt ?? inspection.createdAt)
+                        .toISOString()
+                        .split('T')[0],
+                    createdAt: inspection.updatedAt ?? inspection.createdAt,
+                    category: 'Inspection',
+                    event: `${typeLabel} completed`,
+                    status: 'Completed',
+                });
+            }
+        }
+
+        for (const listing of listingRows) {
+            const createdAt = listing.createdAt ?? new Date();
+            const listed = listing.onListing && listing.isActive;
+            const listAs = listing.listAs
+                ? listing.listAs.replace(/_/g, ' ').toLowerCase()
+                : 'property';
+            events.push({
+                id: `listing-${listing.id}`,
+                date: createdAt.toISOString().split('T')[0],
+                createdAt,
+                category: 'Listing',
+                event: listed
+                    ? `Listed for rent (${listAs})`
+                    : 'Removed from listings',
+                status: listed ? 'ACTIVE' : 'INACTIVE',
             });
         }
 
         events.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-        return events.slice(0, 200).map(({ createdAt, ...rest }) => rest);
+        return events.slice(0, 250).map(({ createdAt, ...rest }) => rest);
+    }
+
+    private formatTenantTimelineLabel(tenant: {
+        tenantCode?: string | null;
+        tenantWebUserEmail?: string | null;
+        user?: {
+            email?: string | null;
+            profile?: {
+                fullname?: string | null;
+                firstName?: string | null;
+                lastName?: string | null;
+            } | null;
+        } | null;
+    }): string {
+        const profile = tenant.user?.profile;
+        const name =
+            profile?.fullname?.trim() ||
+            [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim() ||
+            tenant.tenantWebUserEmail ||
+            tenant.user?.email ||
+            'Tenant';
+        return tenant.tenantCode ? `${name} (${tenant.tenantCode})` : name;
     }
 
     private formatTransactionEventLabel(

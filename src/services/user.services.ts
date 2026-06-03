@@ -2,7 +2,8 @@ import { prismaClient } from "..";
 import { hashSync, compareSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus } from "@prisma/client";
+import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus, LogType } from "@prisma/client";
+import LogsServices from "./logs.services";
 import { CreateLandlordIF, RegisterVendorInput } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
@@ -262,7 +263,11 @@ class UserService {
 
             const application = await this.completeApplicationProfile(userData, user.id, createdBy);
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
-            const result = await this.updateUserBasedOnRole({ ...userData, applicationId: application?.id }, user, roleToUse);
+            const result = await this.updateUserBasedOnRole(
+                { ...userData, applicationId: application?.id, createdById: createdBy ?? undefined },
+                user,
+                roleToUse
+            );
             const tenant = result as any;
             sendMail(
                 user.email,
@@ -275,8 +280,13 @@ class UserService {
                     <p>Thank you for choosing us. </p>
                     <p>Best regards,</p>`
             );
-            // make the property occupied
-            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
+            if (userData?.isCurrentLease !== false) {
+                await propertyServices.updateAvailabiltyStatus(
+                    userData?.landlordId,
+                    userData?.propertyId,
+                    AvailabilityStatus.OCCUPIED
+                );
+            }
         }
 
         // for web user complete tenant account profile creation
@@ -608,12 +618,23 @@ class UserService {
 
                 const connectData: any = {
                     tenantCode,
-                    user: { connect: { id: user.id } }, // MUST point to existing user
+                    user: { connect: { id: user.id } },
                     landlord: { connect: { id: landlord.id } },
                     initialDeposit: userData.initialDeposit || 0,
                     tenantWebUserEmail: userData.tenantWebUserEmail,
                     leaseStartDate,
                     leaseEndDate: leaseEndDate ?? undefined,
+                    isCurrentLease:
+                        userData.isCurrentLease !== undefined
+                            ? Boolean(userData.isCurrentLease)
+                            : true,
+                    rentstatus:
+                        userData.rentstatus !== undefined
+                            ? Number(userData.rentstatus)
+                            : undefined,
+                    dateOfFirstRent: userData.dateOfFirstRent
+                        ? new Date(userData.dateOfFirstRent)
+                        : leaseStartDate,
                     application: userData.applicationId
                         ? { connect: { id: userData.applicationId } }
                         : undefined,
