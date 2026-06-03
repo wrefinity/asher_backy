@@ -2,6 +2,7 @@ import { IdType, ListingType, PriceFrequency, Prisma, PrismaClient, PropertySpec
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
+import LogsServices, { formatAvailabilityLabel } from "./logs.services";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
@@ -861,11 +862,47 @@ class PropertyService {
         updateData.propertyDocument = { deleteMany: { id: { in: data.deleteDocuments } } };
       }
 
+      const availabilityChanging =
+        data.availability !== undefined &&
+        data.availability !== existingProperty.availability;
+      const listingChanging =
+        data.isListed !== undefined &&
+        data.isListed !== existingProperty.isListed;
+
       // Update property
       await tx.properties.update({
         where: { id: propertyId },
         data: updateData
       });
+
+      if (availabilityChanging) {
+        const label = formatAvailabilityLabel(String(data.availability));
+        try {
+          await LogsServices.logPropertyStatusChange({
+            propertyId,
+            events: `Property marked as ${label}`,
+            subjects: label,
+            createdById: userId,
+          });
+        } catch {
+          /* non-blocking */
+        }
+      }
+
+      if (listingChanging) {
+        try {
+          await LogsServices.logPropertyStatusChange({
+            propertyId,
+            events: data.isListed
+              ? 'Property listed for rent'
+              : 'Property unlisted',
+            subjects: data.isListed ? 'Listed' : 'Unlisted',
+            createdById: userId,
+          });
+        } catch {
+          /* non-blocking */
+        }
+      }
 
       // Handle new media uploads
       if (uploadedFiles.length > 0) {
@@ -1017,11 +1054,37 @@ class PropertyService {
             }
         });
     }
-    updateAvailabiltyStatus = async (landlordId: string, id: string, availability: AvailabilityStatus) => {
-        return await prismaClient.properties.update({
+    updateAvailabiltyStatus = async (
+        landlordId: string,
+        id: string,
+        availability: AvailabilityStatus,
+        createdById?: string
+    ) => {
+        const existing = await prismaClient.properties.findFirst({
             where: { id, landlordId },
-            data: { availability }
+            select: { availability: true },
         });
+
+        const property = await prismaClient.properties.update({
+            where: { id, landlordId },
+            data: { availability },
+        });
+
+        if (existing?.availability !== availability) {
+            const label = formatAvailabilityLabel(availability);
+            try {
+                await LogsServices.logPropertyStatusChange({
+                    propertyId: id,
+                    events: `Property marked as ${label}`,
+                    subjects: label,
+                    createdById,
+                });
+            } catch {
+                /* non-blocking */
+            }
+        }
+
+        return property;
     }
 
     flatten = (property: PropertyWithSpecification): FlattenedProperty => {
@@ -2431,6 +2494,32 @@ class PropertyService {
                 response.success = false;
             }
 
+            if (data.createdById && response.listings.length > 0) {
+                for (const listing of response.listings) {
+                    if (!listing.propertyId) continue;
+                    let event = 'Listed for rent';
+                    if (listing.type === ListingType.ROOM) {
+                        event = 'Room listed for rent';
+                    } else if (listing.type === ListingType.SINGLE_UNIT) {
+                        event = 'Unit listed for rent';
+                    } else if (listing.type === ListingType.ENTIRE_PROPERTY) {
+                        event = 'Property listed for rent';
+                    }
+                    try {
+                        await LogsServices.logPropertyStatusChange({
+                            propertyId: listing.propertyId,
+                            events: event,
+                            subjects: 'Listed',
+                            createdById: data.createdById,
+                            unitId: listing.unitId ?? undefined,
+                            roomId: listing.roomId ?? undefined,
+                        });
+                    } catch {
+                        /* non-blocking */
+                    }
+                }
+            }
+
             return response;
         }, {
             maxWait: 30000,
@@ -2439,7 +2528,7 @@ class PropertyService {
     }
 
 
-    deletePropertyListing = async (resourceId: string) => {
+    deletePropertyListing = async (resourceId: string, createdById?: string) => {
         try {
             let updatedResource: any = null;
             let resourceType: 'property' | 'unit' | 'room' | null = null;
@@ -2698,6 +2787,26 @@ class PropertyService {
                     }
                 }
             });
+
+            const resolvedPropertyId =
+                resourceType === 'property'
+                    ? resourceId
+                    : updatedResource?.residentialPropertyId ||
+                      updatedResource?.commercialPropertyId ||
+                      null;
+
+            if (createdById && resolvedPropertyId) {
+                try {
+                    await LogsServices.logPropertyStatusChange({
+                        propertyId: resolvedPropertyId,
+                        events: 'Unlisted — removed from rent listings',
+                        subjects: 'Unlisted',
+                        createdById,
+                    });
+                } catch {
+                    /* non-blocking */
+                }
+            }
 
             return updatedResource;
 

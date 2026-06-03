@@ -9,6 +9,7 @@ import { prismaClient } from '../..';
 import { PLATFORM_DEFAULT_CURRENCY } from '../../secrets';
 import { getCurrencyForCountry, normalizeCurrencyCode } from '../../utils/helpers';
 import { countTenantsByLeaseBucket } from '../../utils/categorizeTenantLeaseStatus';
+import { formatAvailabilityLabel } from '../../services/logs.services';
 
 class AnalyticsService {
     // Dashboard Analytics
@@ -853,10 +854,7 @@ class AnalyticsService {
         };
     }
 
-    private async buildPropertyEventTimeline(
-        propertyId: string,
-        property: { name?: string | null; createdAt: Date }
-    ) {
+    private async buildPropertyEventTimeline(propertyId: string, property: any) {
         type TimelineEvent = {
             id: string;
             date: string;
@@ -878,6 +876,8 @@ class AnalyticsService {
                     : 'Property created',
             },
         ];
+
+        this.appendOccupancyAndListingSnapshots(propertyId, property, events);
 
         const [
             logs,
@@ -1063,21 +1063,136 @@ class AnalyticsService {
             const listAs = listing.listAs
                 ? listing.listAs.replace(/_/g, ' ').toLowerCase()
                 : 'property';
+            let listingEvent = listed ? 'Listed for rent' : 'Unlisted';
+            if (listed) {
+                if (listing.roomId) listingEvent = 'Room listed for rent';
+                else if (listing.unitId) listingEvent = 'Unit listed for rent';
+                else if (listing.type === 'ENTIRE_PROPERTY') {
+                    listingEvent = 'Property listed for rent';
+                } else {
+                    listingEvent = `Listed for rent (${listAs})`;
+                }
+            } else {
+                listingEvent = 'Unlisted — removed from rent listings';
+            }
             events.push({
                 id: `listing-${listing.id}`,
                 date: createdAt.toISOString().split('T')[0],
                 createdAt,
                 category: 'Listing',
-                event: listed
-                    ? `Listed for rent (${listAs})`
-                    : 'Removed from listings',
-                status: listed ? 'ACTIVE' : 'INACTIVE',
+                event: listingEvent,
+                status: listed ? 'LISTED' : 'UNLISTED',
             });
         }
 
         events.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
         return events.slice(0, 250).map(({ createdAt, ...rest }) => rest);
+    }
+
+    private appendOccupancyAndListingSnapshots(
+        propertyId: string,
+        property: any,
+        events: Array<{
+            id: string;
+            date: string;
+            createdAt: Date;
+            category: string;
+            event: string;
+            amount?: number;
+            status?: string;
+        }>
+    ) {
+        const statusAt = property.updatedAt ?? new Date();
+
+        if (property.availability) {
+            const label = formatAvailabilityLabel(property.availability);
+            events.push({
+                id: `property-availability-${propertyId}`,
+                date: statusAt.toISOString().split('T')[0],
+                createdAt: statusAt,
+                category: 'Occupancy',
+                event: `Property marked as ${label}`,
+                status: property.availability,
+            });
+        }
+
+        if (property.isListed) {
+            events.push({
+                id: `property-islisted-${propertyId}`,
+                date: statusAt.toISOString().split('T')[0],
+                createdAt: statusAt,
+                category: 'Listing',
+                event: 'Property listed for rent',
+                status: 'LISTED',
+            });
+        }
+
+        const pushSlot = (
+            prefix: 'unit' | 'room',
+            slot: {
+                id: string;
+                label: string;
+                availability?: string | null;
+                isListed?: boolean;
+                updatedAt: Date;
+            }
+        ) => {
+            if (slot.availability) {
+                const label = formatAvailabilityLabel(slot.availability);
+                events.push({
+                    id: `${prefix}-availability-${slot.id}`,
+                    date: slot.updatedAt.toISOString().split('T')[0],
+                    createdAt: slot.updatedAt,
+                    category: 'Occupancy',
+                    event: `${slot.label} marked as ${label}`,
+                    status: slot.availability,
+                });
+            }
+            if (slot.isListed) {
+                events.push({
+                    id: `${prefix}-listed-${slot.id}`,
+                    date: slot.updatedAt.toISOString().split('T')[0],
+                    createdAt: slot.updatedAt,
+                    category: 'Listing',
+                    event: `${slot.label} listed for rent`,
+                    status: 'LISTED',
+                });
+            }
+        };
+
+        for (const spec of property.specification ?? []) {
+            for (const block of [spec.residential, spec.commercial]) {
+                if (!block) continue;
+                for (const unit of block.unitConfigurations ?? []) {
+                    pushSlot('unit', {
+                        id: unit.id,
+                        label: unit.unitNumber?.trim() || unit.unitType || 'Unit',
+                        availability: unit.availability,
+                        isListed: unit.isListed,
+                        updatedAt: unit.updatedAt ?? new Date(),
+                    });
+                }
+                for (const room of block.roomDetails ?? []) {
+                    pushSlot('room', {
+                        id: room.id,
+                        label: room.roomName?.trim() || 'Room',
+                        availability: room.availability,
+                        isListed: room.isListed,
+                        updatedAt: room.updatedAt ?? new Date(),
+                    });
+                }
+            }
+            for (const room of spec.shortlet?.roomDetails ?? []) {
+                pushSlot('room', {
+                    id: room.id,
+                    label: room.roomName?.trim() || 'Room',
+                    availability: room.availability,
+                    isListed: room.isListed,
+                    updatedAt: room.updatedAt ?? new Date(),
+                });
+            }
+        }
     }
 
     private formatTenantTimelineLabel(tenant: {

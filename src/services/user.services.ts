@@ -284,7 +284,8 @@ class UserService {
                 await propertyServices.updateAvailabiltyStatus(
                     userData?.landlordId,
                     userData?.propertyId,
-                    AvailabilityStatus.OCCUPIED
+                    AvailabilityStatus.OCCUPIED,
+                    userData.createdById
                 );
             }
         }
@@ -295,7 +296,11 @@ class UserService {
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
             // const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id, userData?.propertyId)
             // if (tenantExist) return tenantExist;
-            const result = await this.updateUserBasedOnRole(userData, user, roleToUse) as any;
+            const result = await this.updateUserBasedOnRole(
+                { ...userData, createdById: createdBy ?? userData.createdById },
+                user,
+                roleToUse
+            ) as any;
 
             sendMail(
                 user.email,
@@ -309,7 +314,12 @@ class UserService {
                     <p>Best regards,</p>`
             );
             // make the property occupied
-            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
+            await propertyServices.updateAvailabiltyStatus(
+                userData?.landlordId,
+                userData?.propertyId,
+                AvailabilityStatus.OCCUPIED,
+                createdBy ?? userData.createdById
+            );
             //unlist the property
             await propertyServices.deletePropertyListing(userData?.propertyId);
             await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.TENANT_CREATED);
@@ -662,6 +672,21 @@ class UserService {
 
                 if (tenant) {
                     await this.updateUserRole(user.id, userRoles.TENANT);
+                    const label = tenant.tenantCode || user.email;
+                    try {
+                        await LogsServices.createLog({
+                            propertyId: userData.propertyId,
+                            events: `Tenant added — ${label}`,
+                            type: LogType.ACTIVITY,
+                            createdById: userData.createdById,
+                            subjects: 'Tenant added',
+                            unitId: userData.unitId,
+                            roomId: userData.roomId,
+                            applicationId: userData.applicationId,
+                        });
+                    } catch (logErr) {
+                        loggers.warn('Failed to write tenant-added activity log', logErr);
+                    }
                 }
 
                 return tenant;

@@ -1,6 +1,14 @@
 import { prismaClient } from "..";
 import { LogType, InvitedResponse, logTypeStatus, YesNo, EnquireStatus } from "@prisma/client"
 import applicationServices from "./application.services";
+
+/** Human-readable label for AvailabilityStatus (e.g. OCCUPIED → Occupied) */
+export const formatAvailabilityLabel = (status: string) =>
+  status
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, char => char.toUpperCase());
+
 // Interface for Log creation
 export interface LogIF {
   events: string;
@@ -92,6 +100,26 @@ class LogService {
 
 
     return log;
+  };
+
+  /** Property occupancy / listing status change for activity log */
+  logPropertyStatusChange = async (params: {
+    propertyId: string;
+    events: string;
+    subjects?: string;
+    createdById?: string;
+    unitId?: string;
+    roomId?: string;
+  }) => {
+    return this.createLog({
+      propertyId: params.propertyId,
+      events: params.events,
+      type: LogType.ACTIVITY,
+      subjects: params.subjects,
+      createdById: params.createdById,
+      unitId: params.unitId,
+      roomId: params.roomId,
+    });
   };
 
   // Get all logs by types, status, etc.

@@ -433,7 +433,12 @@ class PropertyController {
             const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
             if (!propertyExist) return res.status(404).json({ message: "property does not exists for this landlord" })
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
-            const property = await PropertyServices.updateAvailabiltyStatus(landlordId, propertiesId, value.availability);
+            const property = await PropertyServices.updateAvailabiltyStatus(
+                landlordId,
+                propertiesId,
+                value.availability,
+                req.user?.id
+            );
             if (!property) return res.status(200).json({ message: "No Property listed yet" })
             return res.status(200).json({ property })
         } catch (error) {
@@ -511,7 +516,11 @@ class PropertyController {
                 }
             }
 
-            const listing = await PropertyServices.createPropertyListing({ ...data, listAs: checkOwnership.specificationType });
+            const listing = await PropertyServices.createPropertyListing({
+                ...data,
+                listAs: checkOwnership.specificationType,
+                createdById: req.user?.id,
+            });
             return res.status(201).json(listing);
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -525,7 +534,10 @@ class PropertyController {
             const checkOwnership = await PropertyServices.checkLandlordPropertyExist(landlordId, propertyId);
             // scenario where property doesnot belong to landlord
             if (!checkOwnership) return res.status(404).json({ message: 'property does not exist under landlord' });
-            const unlisted = await PropertyServices.deletePropertyListing(propertyId);
+            const unlisted = await PropertyServices.deletePropertyListing(
+                propertyId,
+                req.user?.id
+            );
             return res.status(200).json({ message: 'Property unlisted', unlisted });
         } catch (err) {
             ErrorService.handleError(err, res);
