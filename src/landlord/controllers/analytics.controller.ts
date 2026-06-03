@@ -251,6 +251,40 @@ class AnalyticsController {
         }
     }
 
+    async getUnitAnalytics(req: CustomRequest, res: Response) {
+        try {
+            const landlordId = await this.resolveLandlordProfileId(req);
+            const unitId = req.params.unitId;
+
+            if (!landlordId) {
+                throw new Error('Landlord not found for user');
+            }
+
+            const data = await AnalyticsService.getUnitAnalytics(landlordId, unitId);
+            res.status(200).json(new ApiResponse(200, data, 'Unit analytics retrieved successfully'));
+        } catch (error) {
+            console.error('getUnitAnalytics error:', error);
+            res.status(500).json(new ApiResponse(500, null, error.message));
+        }
+    }
+
+    async getRoomAnalytics(req: CustomRequest, res: Response) {
+        try {
+            const landlordId = await this.resolveLandlordProfileId(req);
+            const roomId = req.params.roomId;
+
+            if (!landlordId) {
+                throw new Error('Landlord not found for user');
+            }
+
+            const data = await AnalyticsService.getRoomAnalytics(landlordId, roomId);
+            res.status(200).json(new ApiResponse(200, data, 'Room analytics retrieved successfully'));
+        } catch (error) {
+            console.error('getRoomAnalytics error:', error);
+            res.status(500).json(new ApiResponse(500, null, error.message));
+        }
+    }
+
     async getPropertyListingAnalytics(req: CustomRequest, res: Response) {
         try {
             const userId = req.user?.id;

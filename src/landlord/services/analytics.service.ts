@@ -12,6 +12,22 @@ import { countTenantsByLeaseBucket } from '../../utils/categorizeTenantLeaseStat
 import { formatAvailabilityLabel } from '../../services/logs.services';
 
 class AnalyticsService {
+    private readonly analyticsPropertySelect = {
+        id: true,
+        name: true,
+        landlordId: true,
+        isDeleted: true,
+        country: true,
+        currency: true,
+        priceFrequency: true,
+        rentalPeriod: true,
+        specificationType: true,
+        marketValue: true,
+        propertyValue: true,
+        price: true,
+        yearBuilt: true,
+    } as const;
+
     // Dashboard Analytics
 
     getFinancialAnalyticLandlord = async (userId: string) => {
@@ -682,53 +698,6 @@ class AnalyticsService {
             where: { id: propertyId, landlordId },
             include: {
                 tenants: { where: { isCurrentLease: true } },
-                specification: {
-                    where: { isActive: true },
-                    include: {
-                        residential: {
-                            include: {
-                                unitConfigurations: {
-                                    where: { isDeleted: false },
-                                    include: {
-                                        tenants: { where: { isCurrentLease: true } },
-                                    },
-                                },
-                                roomDetails: {
-                                    where: { isDeleted: false },
-                                    include: {
-                                        tenants: { where: { isCurrentLease: true } },
-                                    },
-                                },
-                            },
-                        },
-                        commercial: {
-                            include: {
-                                unitConfigurations: {
-                                    where: { isDeleted: false },
-                                    include: {
-                                        tenants: { where: { isCurrentLease: true } },
-                                    },
-                                },
-                                roomDetails: {
-                                    where: { isDeleted: false },
-                                    include: {
-                                        tenants: { where: { isCurrentLease: true } },
-                                    },
-                                },
-                            },
-                        },
-                        shortlet: {
-                            include: {
-                                roomDetails: {
-                                    where: { isDeleted: false },
-                                    include: {
-                                        tenants: { where: { isCurrentLease: true } },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
                 transactions: {
                     where: {
                         createdAt: { gte: startDate },
@@ -753,7 +722,90 @@ class AnalyticsService {
                 },
                 ratings: true,
                 reviews: true,
-            },
+                application: {
+                    where: { isDeleted: false }
+                },
+                specification: {
+                    where: { isActive: true },
+                    include: {
+                        residential: {
+                            include: {
+                                unitConfigurations: {
+                                    where: { isDeleted: false },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } },
+                                        RoomDetail: {
+                                            where: { isDeleted: false },
+                                            include: {
+                                                tenants: { where: { isCurrentLease: true } },
+                                                Transaction: true,
+                                                maintenance: true,
+                                                application: { where: { isDeleted: false } }
+                                            }
+                                        }
+                                    }
+                                },
+                                roomDetails: {
+                                    where: { isDeleted: false, unitId: null },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } }
+                                    }
+                                }
+                            }
+                        },
+                        commercial: {
+                            include: {
+                                unitConfigurations: {
+                                    where: { isDeleted: false },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } },
+                                        RoomDetail: {
+                                            where: { isDeleted: false },
+                                            include: {
+                                                tenants: { where: { isCurrentLease: true } },
+                                                Transaction: true,
+                                                maintenance: true,
+                                                application: { where: { isDeleted: false } }
+                                            }
+                                        }
+                                    }
+                                },
+                                roomDetails: {
+                                    where: { isDeleted: false, unitId: null },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } }
+                                    }
+                                }
+                            }
+                        },
+                        shortlet: {
+                            include: {
+                                roomDetails: {
+                                    where: { isDeleted: false, unitId: null },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         if (!property) {
@@ -851,6 +903,324 @@ class AnalyticsService {
             profitMargin: this.calculatePropertyProfitMargin(property.transactions),
             monthlyRent: Number(property.price) || 0,
             currentTenants: property.tenants.length,
+        };
+    }
+
+    async getUnitAnalytics(
+        landlordId: string,
+        unitId: string,
+        period: string = '12months'
+    ) {
+        const startDate = this.getPeriodStartDate(period);
+
+        const unit = await prismaClient.unitConfiguration.findFirst({
+            where: { id: unitId, isDeleted: false },
+            include: {
+                tenants: { where: { isCurrentLease: true } },
+                Transaction: {
+                    where: {
+                        createdAt: { gte: startDate },
+                        status: TransactionStatus.COMPLETED,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                maintenance: {
+                    where: {
+                        isDeleted: false,
+                        createdAt: { gte: startDate },
+                    },
+                    include: {
+                        category: true,
+                        vendor: {
+                            include: {
+                                user: { select: { email: true, profile: { select: { fullname: true } } } },
+                            },
+                        },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                application: { where: { isDeleted: false } },
+                RoomDetail: {
+                    where: { isDeleted: false },
+                    include: {
+                        tenants: { where: { isCurrentLease: true } },
+                    },
+                },
+                ResidentialProperty: {
+                    include: {
+                        PropertySpecification: {
+                            where: { isActive: true },
+                            include: { property: { select: this.analyticsPropertySelect } },
+                        },
+                    },
+                },
+                CommercialProperty: {
+                    include: {
+                        PropertySpecification: {
+                            where: { isActive: true },
+                            include: { property: { select: this.analyticsPropertySelect } },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!unit) {
+            throw new Error('Unit not found');
+        }
+
+        const property = this.getSlotParentProperty([
+            ...(unit.ResidentialProperty?.PropertySpecification ?? []),
+            ...(unit.CommercialProperty?.PropertySpecification ?? []),
+        ]);
+
+        if (!property || property.landlordId !== landlordId || property.isDeleted) {
+            throw new Error('Unit not found');
+        }
+
+        const overdueAgg = await prismaClient.transaction.aggregate({
+            where: {
+                unitId,
+                reference: TransactionReference.RENT_DUE,
+                status: TransactionStatus.PENDING,
+                isDue: true,
+            },
+            _sum: { amount: true },
+        });
+
+        return this.buildSlotAnalytics({
+            slot: unit,
+            property,
+            slotId: unit.id,
+            slotType: 'unit',
+            slotName: unit.unitNumber?.trim() || unit.unitType || 'Unit',
+            period,
+            overdueAmount: Number(overdueAgg._sum.amount ?? 0),
+            nestedRoomCount: unit.RoomDetail?.length ?? 0,
+        });
+    }
+
+    async getRoomAnalytics(
+        landlordId: string,
+        roomId: string,
+        period: string = '12months'
+    ) {
+        const startDate = this.getPeriodStartDate(period);
+
+        const room = await prismaClient.roomDetail.findFirst({
+            where: { id: roomId, isDeleted: false },
+            include: {
+                tenants: { where: { isCurrentLease: true } },
+                Transaction: {
+                    where: {
+                        createdAt: { gte: startDate },
+                        status: TransactionStatus.COMPLETED,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                maintenance: {
+                    where: {
+                        isDeleted: false,
+                        createdAt: { gte: startDate },
+                    },
+                    include: {
+                        category: true,
+                        vendor: {
+                            include: {
+                                user: { select: { email: true, profile: { select: { fullname: true } } } },
+                            },
+                        },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                application: { where: { isDeleted: false } },
+                unit: true,
+                ResidentialProperty: {
+                    include: {
+                        PropertySpecification: {
+                            where: { isActive: true },
+                            include: { property: { select: this.analyticsPropertySelect } },
+                        },
+                    },
+                },
+                CommercialProperty: {
+                    include: {
+                        PropertySpecification: {
+                            where: { isActive: true },
+                            include: { property: { select: this.analyticsPropertySelect } },
+                        },
+                    },
+                },
+                ShortletProperty: {
+                    include: {
+                        PropertySpecification: {
+                            where: { isActive: true },
+                            include: { property: { select: this.analyticsPropertySelect } },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!room) {
+            throw new Error('Room not found');
+        }
+
+        const property = this.getSlotParentProperty([
+            ...(room.ResidentialProperty?.PropertySpecification ?? []),
+            ...(room.CommercialProperty?.PropertySpecification ?? []),
+            ...(room.ShortletProperty?.PropertySpecification ?? []),
+        ]);
+
+        if (!property || property.landlordId !== landlordId || property.isDeleted) {
+            throw new Error('Room not found');
+        }
+
+        const overdueAgg = await prismaClient.transaction.aggregate({
+            where: {
+                roomId,
+                reference: TransactionReference.RENT_DUE,
+                status: TransactionStatus.PENDING,
+                isDue: true,
+            },
+            _sum: { amount: true },
+        });
+
+        return this.buildSlotAnalytics({
+            slot: room,
+            property,
+            slotId: room.id,
+            slotType: 'room',
+            slotName: room.roomName?.trim() || 'Room',
+            period,
+            overdueAmount: Number(overdueAgg._sum.amount ?? 0),
+            parentUnit: room.unit
+                ? {
+                    id: room.unit.id,
+                    name: room.unit.unitNumber?.trim() || room.unit.unitType || 'Unit',
+                }
+                : null,
+        });
+    }
+
+    private getSlotParentProperty(
+        specifications: Array<{ property?: any } | null | undefined>
+    ) {
+        return specifications.find(spec => spec?.property)?.property ?? null;
+    }
+
+    private buildSlotAnalytics({
+        slot,
+        property,
+        slotId,
+        slotType,
+        slotName,
+        period,
+        overdueAmount,
+        nestedRoomCount,
+        parentUnit,
+    }: {
+        slot: any;
+        property: any;
+        slotId: string;
+        slotType: 'unit' | 'room';
+        slotName: string;
+        period: string;
+        overdueAmount: number;
+        nestedRoomCount?: number;
+        parentUnit?: { id: string; name: string } | null;
+    }) {
+        const transactions = slot.Transaction ?? [];
+        const maintenance = slot.maintenance ?? [];
+        const tenants = slot.tenants ?? [];
+        const applications = slot.application ?? [];
+        const credits = transactions.filter((t: any) => t.type === TransactionType.CREDIT);
+        const debits = transactions.filter((t: any) => t.type === TransactionType.DEBIT);
+        const monthCount = this.getMonthsForPeriod(period);
+        const monthlyListedRent = Number(slot.price) || 0;
+        const occupied =
+            slot.availability === 'OCCUPIED' || (tenants?.length ?? 0) > 0;
+        const periodRevenue = credits.reduce(
+            (sum: number, t: any) => sum + Number(t.amount),
+            0
+        );
+        const periodExpenses = debits.reduce(
+            (sum: number, t: any) => sum + Number(t.amount),
+            0
+        );
+        const maintenanceOpen = maintenance.filter(
+            (m: any) => m.status !== 'COMPLETED' && m.status !== 'CANCEL'
+        ).length;
+        const incomeBreakdown = this.buildPropertyIncomeBreakdown(credits);
+        const expenseBreakdown = this.buildPropertyExpenseBreakdown(debits);
+        const rentTrend = this.buildPropertyRentTrend(transactions, monthCount);
+
+        return {
+            [`${slotType}Id`]: slotId,
+            [`${slotType}Name`]: slotName,
+            propertyId: property.id,
+            propertyName: property.name,
+            currency: this.resolvePropertySourceCurrency(property),
+            country: property.country,
+            priceFrequency: slot.priceFrequency ?? property.priceFrequency,
+            rentalPeriod: property.rentalPeriod,
+            specificationType: property.specificationType,
+            period,
+            periodLabel: this.formatPeriodLabel(period),
+            parentUnit,
+            roomCount: nestedRoomCount,
+            marketValue: Number(property.marketValue ?? 0),
+            propertyValue: Number(property.propertyValue ?? property.marketValue ?? 0),
+            slotFormData: {
+                price: monthlyListedRent,
+                availability: slot.availability,
+                isListed: slot.isListed,
+                description: slot.description,
+                furnished: slot.furnished,
+                ensuite: slot.ensuite,
+                floorNumber: slot.floorNumber,
+                bedrooms: slot.bedrooms,
+                bathrooms: slot.bathrooms,
+                roomSize: slot.roomSize,
+            },
+            occupancyStatus: occupied ? 'OCCUPIED' : 'VACANT',
+            occupancyRate: occupied ? 100 : 0,
+            occupancyDetail: {
+                totalUnits: 1,
+                occupiedUnits: occupied ? 1 : 0,
+                vacantUnits: occupied ? 0 : 1,
+                occupancyRate: occupied ? 100 : 0,
+            },
+            monthlyRevenue: this.calculateMonthlyRevenue(credits),
+            totalExpenses: this.calculateMonthlyExpenses(debits),
+            periodRevenue,
+            periodExpenses,
+            periodNetIncome: periodRevenue - periodExpenses,
+            outstandingRent: overdueAmount,
+            incomeBreakdown,
+            expenseBreakdown,
+            maintenanceExpenses: this.buildMaintenanceExpenseRows(maintenance),
+            rentHistory: this.buildRentHistoryRows(credits),
+            monthlySeries: this.buildPropertyMonthlySeries(transactions, monthCount),
+            rentTrend,
+            rentTrendSummary: this.buildRentTrendSummary(rentTrend),
+            rentValue: {
+                monthlyListedRent,
+                annualRentValue: monthlyListedRent * 12,
+                periodRentCollected: incomeBreakdown.rent,
+                monthlyRentCollected: this.calculateMonthlyRentCollected(credits),
+            },
+            maintenanceRequests: maintenance.length,
+            maintenanceSummary: {
+                total: maintenance.length,
+                open: maintenanceOpen,
+                completed: maintenance.filter((m: any) => m.status === 'COMPLETED').length,
+                averageResolutionDays: this.calculateAverageResolutionTime(maintenance),
+            },
+            applications: applications.length,
+            currentTenants: tenants.length,
+            monthlyRent: monthlyListedRent,
+            profitMargin: this.calculatePropertyProfitMargin(transactions),
         };
     }
 
@@ -2256,8 +2626,14 @@ class AnalyticsService {
 
     private calculateAverageRating(ratings: any[]): number {
         if (ratings.length === 0) return 0;
-        const sum = ratings.reduce((total, rating) => total + rating.ratingValue, 0);
-        return sum / ratings.length;
+        const values = ratings
+            .map(rating => Number(rating.ratingValue ?? rating.rating ?? 0))
+            .filter(rating => rating > 0);
+
+        if (values.length === 0) return 0;
+
+        const sum = values.reduce((total, rating) => total + rating, 0);
+        return sum / values.length;
     }
 
     private groupByStatus(maintenance: any[]): Record<string, number> {

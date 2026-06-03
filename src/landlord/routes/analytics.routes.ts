@@ -27,6 +27,8 @@ class AnalyticsRouter {
         // Performance Analytics
         this.router.get('/tenant-performance', AnalyticsController.getTenantPerformanceAnalytics.bind(AnalyticsController));
         this.router.get('/rental-performance', AnalyticsController.getRentalPerformanceAnalytics.bind(AnalyticsController));
+        this.router.get('/unit/:unitId', AnalyticsController.getUnitAnalytics.bind(AnalyticsController));
+        this.router.get('/room/:roomId', AnalyticsController.getRoomAnalytics.bind(AnalyticsController));
         this.router.get('/property/:propertyId', AnalyticsController.getPropertyAnalytics.bind(AnalyticsController));
         this.router.get('/property-listing/:propertyId', AnalyticsController.getPropertyListingAnalytics.bind(AnalyticsController));
         this.router.get('/property-application-stats/:propertyId', AnalyticsController.getPropertyApplicationStats.bind(AnalyticsController));
