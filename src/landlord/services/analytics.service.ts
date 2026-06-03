@@ -494,7 +494,89 @@ class AnalyticsService {
                 transactions: true,
                 maintenance: true,
                 ratings: true,
-                reviews: true
+                reviews: true,
+                application: {
+                    where: { isDeleted: false }
+                },
+                specification: {
+                    include: {
+                        residential: {
+                            include: {
+                                unitConfigurations: {
+                                    where: { isDeleted: false },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } },
+                                        RoomDetail: {
+                                            where: { isDeleted: false },
+                                            include: {
+                                                tenants: { where: { isCurrentLease: true } },
+                                                Transaction: true,
+                                                maintenance: true,
+                                                application: { where: { isDeleted: false } }
+                                            }
+                                        }
+                                    }
+                                },
+                                roomDetails: {
+                                    where: { isDeleted: false, unitId: null },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } }
+                                    }
+                                }
+                            }
+                        },
+                        commercial: {
+                            include: {
+                                unitConfigurations: {
+                                    where: { isDeleted: false },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } },
+                                        RoomDetail: {
+                                            where: { isDeleted: false },
+                                            include: {
+                                                tenants: { where: { isCurrentLease: true } },
+                                                Transaction: true,
+                                                maintenance: true,
+                                                application: { where: { isDeleted: false } }
+                                            }
+                                        }
+                                    }
+                                },
+                                roomDetails: {
+                                    where: { isDeleted: false, unitId: null },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } }
+                                    }
+                                }
+                            }
+                        },
+                        shortlet: {
+                            include: {
+                                roomDetails: {
+                                    where: { isDeleted: false, unitId: null },
+                                    include: {
+                                        tenants: { where: { isCurrentLease: true } },
+                                        Transaction: true,
+                                        maintenance: true,
+                                        application: { where: { isDeleted: false } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -502,19 +584,376 @@ class AnalyticsService {
             throw new Error('Property not found');
         }
 
+        const units = this.getPropertyUnits(property);
+        const standaloneRooms = this.getPropertyStandaloneRooms(property);
+        const unitAnalytics = units.map(unit => this.buildUnitAnalytics(unit));
+        const standaloneRoomAnalytics = standaloneRooms.map(room => this.buildRoomAnalytics(room));
+        const allRoomAnalytics = [
+            ...unitAnalytics.flatMap(unit => unit.roomAnalytics),
+            ...standaloneRoomAnalytics
+        ];
+
+        const propertyDirectStats = this.buildAnalyticsStats({
+            transactions: property.transactions,
+            maintenance: property.maintenance,
+            tenants: property.tenants,
+            applications: property.application,
+            monthlyRent: Number(property.price) || 0,
+            ratings: property.ratings,
+            reviews: property.reviews,
+            entityCount: 1,
+            occupiedEntityCount: this.isOccupied(property, property.tenants) ? 1 : 0
+        });
+        const childStats = this.combineAnalyticsStats([
+            ...unitAnalytics.map(unit => unit.stats),
+            ...standaloneRoomAnalytics.map(room => room.stats)
+        ]);
+        const stats = this.combineAnalyticsStats([propertyDirectStats, childStats]);
+
         return {
             propertyId: property.id,
             propertyName: property.name,
-            occupancyStatus: property.tenants.length > 0 ? 'OCCUPIED' : 'VACANT',
-            monthlyRevenue: this.calculateMonthlyRevenue(property.transactions.filter(t => t.type === 'CREDIT')),
-            totalExpenses: this.calculateTotalExpenses(property.transactions.filter(t => t.type === 'DEBIT')),
-            maintenanceRequests: property.maintenance.length,
-            averageRating: this.calculateAverageRating(property.ratings),
-            tenantSatisfaction: this.calculateAverageRating(property.reviews),
-            profitMargin: this.calculatePropertyProfitMargin(property.transactions),
-            monthlyRent: Number(property.price) || 0,
-            currentTenants: property.tenants.length
+            scope: 'PROPERTY',
+            occupancyStatus: stats.occupiedEntityCount > 0 ? 'OCCUPIED' : 'VACANT',
+            monthlyRevenue: stats.monthlyRevenue,
+            totalExpenses: stats.totalExpenses,
+            maintenanceRequests: stats.maintenanceRequests,
+            averageRating: stats.averageRating,
+            tenantSatisfaction: stats.tenantSatisfaction,
+            profitMargin: stats.profitMargin,
+            monthlyRent: stats.monthlyRent,
+            currentTenants: stats.currentTenants,
+            applications: stats.applications,
+            occupancyRate: stats.occupancyRate,
+            entityCounts: {
+                properties: 1,
+                units: unitAnalytics.length,
+                rooms: allRoomAnalytics.length,
+                totalRentableEntities: stats.entityCount,
+                occupiedRentableEntities: stats.occupiedEntityCount,
+                vacantRentableEntities: stats.entityCount - stats.occupiedEntityCount
+            },
+            directStats: propertyDirectStats,
+            unitAnalytics,
+            roomAnalytics: standaloneRoomAnalytics
         };
+    }
+
+    async getUnitAnalytics(landlordId: string, unitId: string) {
+        const unit = await prismaClient.unitConfiguration.findFirst({
+            where: {
+                id: unitId,
+                isDeleted: false,
+                OR: [
+                    {
+                        ResidentialProperty: {
+                            PropertySpecification: {
+                                some: {
+                                    property: { landlordId }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        CommercialProperty: {
+                            PropertySpecification: {
+                                some: {
+                                    property: { landlordId }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            include: {
+                tenants: { where: { isCurrentLease: true } },
+                Transaction: true,
+                maintenance: true,
+                application: { where: { isDeleted: false } },
+                RoomDetail: {
+                    where: { isDeleted: false },
+                    include: {
+                        tenants: { where: { isCurrentLease: true } },
+                        Transaction: true,
+                        maintenance: true,
+                        application: { where: { isDeleted: false } }
+                    }
+                }
+            }
+        });
+
+        if (!unit) {
+            throw new Error('Unit not found');
+        }
+
+        return this.buildUnitAnalytics(unit);
+    }
+
+    async getRoomAnalytics(landlordId: string, roomId: string) {
+        const room = await prismaClient.roomDetail.findFirst({
+            where: {
+                id: roomId,
+                isDeleted: false,
+                OR: [
+                    {
+                        unit: {
+                            OR: [
+                                {
+                                    ResidentialProperty: {
+                                        PropertySpecification: {
+                                            some: {
+                                                property: { landlordId }
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    CommercialProperty: {
+                                        PropertySpecification: {
+                                            some: {
+                                                property: { landlordId }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        ResidentialProperty: {
+                            PropertySpecification: {
+                                some: {
+                                    property: { landlordId }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        CommercialProperty: {
+                            PropertySpecification: {
+                                some: {
+                                    property: { landlordId }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        ShortletProperty: {
+                            PropertySpecification: {
+                                some: {
+                                    property: { landlordId }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            include: {
+                tenants: { where: { isCurrentLease: true } },
+                Transaction: true,
+                maintenance: true,
+                application: { where: { isDeleted: false } }
+            }
+        });
+
+        if (!room) {
+            throw new Error('Room not found');
+        }
+
+        return this.buildRoomAnalytics(room);
+    }
+
+    private getPropertyUnits(property: any): any[] {
+        const unitMap = new Map<string, any>();
+
+        for (const specification of property.specification || []) {
+            const units = [
+                ...(specification.residential?.unitConfigurations || []),
+                ...(specification.commercial?.unitConfigurations || [])
+            ];
+
+            for (const unit of units) {
+                unitMap.set(unit.id, unit);
+            }
+        }
+
+        return Array.from(unitMap.values());
+    }
+
+    private getPropertyStandaloneRooms(property: any): any[] {
+        const roomMap = new Map<string, any>();
+
+        for (const specification of property.specification || []) {
+            const rooms = [
+                ...(specification.residential?.roomDetails || []),
+                ...(specification.commercial?.roomDetails || []),
+                ...(specification.shortlet?.roomDetails || [])
+            ];
+
+            for (const room of rooms) {
+                roomMap.set(room.id, room);
+            }
+        }
+
+        return Array.from(roomMap.values());
+    }
+
+    private buildUnitAnalytics(unit: any) {
+        const roomAnalytics = (unit.RoomDetail || []).map((room: any) => this.buildRoomAnalytics(room));
+        const unitDirectStats = this.buildAnalyticsStats({
+            transactions: unit.Transaction || [],
+            maintenance: unit.maintenance || [],
+            tenants: unit.tenants || [],
+            applications: unit.application || [],
+            monthlyRent: this.parseMoney(unit.price),
+            entityCount: 1,
+            occupiedEntityCount: this.isOccupied(unit, unit.tenants) ? 1 : 0
+        });
+        const roomStats = this.combineAnalyticsStats(roomAnalytics.map((room: any) => room.stats));
+        const stats = this.combineAnalyticsStats([unitDirectStats, roomStats]);
+
+        return {
+            unitId: unit.id,
+            unitName: unit.unitNumber || unit.unitType || unit.id,
+            scope: 'UNIT',
+            occupancyStatus: stats.occupiedEntityCount > 0 ? 'OCCUPIED' : 'VACANT',
+            monthlyRevenue: stats.monthlyRevenue,
+            totalExpenses: stats.totalExpenses,
+            maintenanceRequests: stats.maintenanceRequests,
+            averageRating: stats.averageRating,
+            tenantSatisfaction: stats.tenantSatisfaction,
+            profitMargin: stats.profitMargin,
+            monthlyRent: stats.monthlyRent,
+            currentTenants: stats.currentTenants,
+            applications: stats.applications,
+            occupancyRate: stats.occupancyRate,
+            entityCounts: {
+                units: 1,
+                rooms: roomAnalytics.length,
+                totalRentableEntities: stats.entityCount,
+                occupiedRentableEntities: stats.occupiedEntityCount,
+                vacantRentableEntities: stats.entityCount - stats.occupiedEntityCount
+            },
+            directStats: unitDirectStats,
+            roomAnalytics,
+            stats
+        };
+    }
+
+    private buildRoomAnalytics(room: any) {
+        const stats = this.buildAnalyticsStats({
+            transactions: room.Transaction || [],
+            maintenance: room.maintenance || [],
+            tenants: room.tenants || [],
+            applications: room.application || [],
+            monthlyRent: this.parseMoney(room.price),
+            entityCount: 1,
+            occupiedEntityCount: this.isOccupied(room, room.tenants) ? 1 : 0
+        });
+
+        return {
+            roomId: room.id,
+            roomName: room.roomName || room.id,
+            unitId: room.unitId,
+            scope: 'ROOM',
+            occupancyStatus: stats.occupiedEntityCount > 0 ? 'OCCUPIED' : 'VACANT',
+            monthlyRevenue: stats.monthlyRevenue,
+            totalExpenses: stats.totalExpenses,
+            maintenanceRequests: stats.maintenanceRequests,
+            averageRating: stats.averageRating,
+            tenantSatisfaction: stats.tenantSatisfaction,
+            profitMargin: stats.profitMargin,
+            monthlyRent: stats.monthlyRent,
+            currentTenants: stats.currentTenants,
+            applications: stats.applications,
+            occupancyRate: stats.occupancyRate,
+            stats
+        };
+    }
+
+    private buildAnalyticsStats(input: {
+        transactions?: any[];
+        maintenance?: any[];
+        tenants?: any[];
+        applications?: any[];
+        monthlyRent?: number;
+        ratings?: any[];
+        reviews?: any[];
+        entityCount?: number;
+        occupiedEntityCount?: number;
+    }) {
+        const transactions = input.transactions || [];
+        const creditTransactions = transactions.filter(t => t.type === 'CREDIT');
+        const debitTransactions = transactions.filter(t => t.type === 'DEBIT');
+        const entityCount = input.entityCount || 0;
+        const occupiedEntityCount = input.occupiedEntityCount || 0;
+
+        return {
+            monthlyRevenue: this.calculateMonthlyRevenue(creditTransactions),
+            totalExpenses: this.calculateTotalExpenses(debitTransactions),
+            maintenanceRequests: (input.maintenance || []).length,
+            averageRating: this.calculateAverageRating(input.ratings || []),
+            tenantSatisfaction: this.calculateAverageRating(input.reviews || []),
+            profitMargin: this.calculatePropertyProfitMargin(transactions),
+            monthlyRent: input.monthlyRent || 0,
+            currentTenants: (input.tenants || []).length,
+            applications: (input.applications || []).length,
+            entityCount,
+            occupiedEntityCount,
+            occupancyRate: entityCount > 0 ? (occupiedEntityCount / entityCount) * 100 : 0
+        };
+    }
+
+    private combineAnalyticsStats(statsList: any[]) {
+        const validStats = statsList.filter(Boolean);
+        const totals = validStats.reduce(
+            (acc, stats) => ({
+                monthlyRevenue: acc.monthlyRevenue + stats.monthlyRevenue,
+                totalExpenses: acc.totalExpenses + stats.totalExpenses,
+                maintenanceRequests: acc.maintenanceRequests + stats.maintenanceRequests,
+                monthlyRent: acc.monthlyRent + stats.monthlyRent,
+                currentTenants: acc.currentTenants + stats.currentTenants,
+                applications: acc.applications + stats.applications,
+                entityCount: acc.entityCount + stats.entityCount,
+                occupiedEntityCount: acc.occupiedEntityCount + stats.occupiedEntityCount
+            }),
+            {
+                monthlyRevenue: 0,
+                totalExpenses: 0,
+                maintenanceRequests: 0,
+                monthlyRent: 0,
+                currentTenants: 0,
+                applications: 0,
+                entityCount: 0,
+                occupiedEntityCount: 0
+            }
+        );
+        const ratings = validStats.map(stats => stats.averageRating).filter((rating: number) => rating > 0);
+        const satisfactionRatings = validStats.map(stats => stats.tenantSatisfaction).filter((rating: number) => rating > 0);
+
+        return {
+            ...totals,
+            averageRating: ratings.length > 0
+                ? ratings.reduce((sum: number, rating: number) => sum + rating, 0) / ratings.length
+                : 0,
+            tenantSatisfaction: satisfactionRatings.length > 0
+                ? satisfactionRatings.reduce((sum: number, rating: number) => sum + rating, 0) / satisfactionRatings.length
+                : 0,
+            profitMargin: totals.monthlyRevenue > 0
+                ? ((totals.monthlyRevenue - totals.totalExpenses) / totals.monthlyRevenue) * 100
+                : 0,
+            occupancyRate: totals.entityCount > 0
+                ? (totals.occupiedEntityCount / totals.entityCount) * 100
+                : 0
+        };
+    }
+
+    private isOccupied(entity: any, tenants: any[] = []): boolean {
+        return entity?.availability === 'OCCUPIED' || tenants.length > 0;
+    }
+
+    private parseMoney(value: any): number {
+        return Number(value || 0) || 0;
     }
 
     // Property Listing Analytics - for property rental website analytics
@@ -880,8 +1319,14 @@ class AnalyticsService {
 
     private calculateAverageRating(ratings: any[]): number {
         if (ratings.length === 0) return 0;
-        const sum = ratings.reduce((total, rating) => total + rating.ratingValue, 0);
-        return sum / ratings.length;
+        const values = ratings
+            .map(rating => Number(rating.ratingValue ?? rating.rating ?? 0))
+            .filter(rating => rating > 0);
+
+        if (values.length === 0) return 0;
+
+        const sum = values.reduce((total, rating) => total + rating, 0);
+        return sum / values.length;
     }
 
     private groupByStatus(maintenance: any[]): Record<string, number> {
