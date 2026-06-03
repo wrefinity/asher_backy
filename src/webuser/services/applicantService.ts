@@ -123,6 +123,7 @@ class ApplicantService {
   }
 
   updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {
+    if (!applicationId) return;
     await prismaClient.application.update({
       where: { id: applicationId },
       data: {
@@ -131,6 +132,7 @@ class ApplicantService {
     });
   }
   updateCompletedStep = async (applicationId: string, step: ApplicationSaveState) => {
+    if (!applicationId) return;
     // Fetch the current application to get the existing completedSteps
     const application = await prismaClient.application.findUnique({
       where: { id: applicationId },

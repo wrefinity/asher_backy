@@ -8,6 +8,11 @@ import { LogType, logTypeStatus, PropertySpecificationType, PropertyType, Availa
 import { LandlordService } from "../landlord/services/landlord.service";
 import propertyUnitService from "../services/property.unit.service";
 import propertyRoomService from "../services/property.room.service";
+import {
+    buildCurrencyDisplayOptions,
+    getClientIpFromRequest,
+    resolveViewerCurrency,
+} from "../utils/currencyContext";
 
 class PropertyController {
     constructor() { }
@@ -151,23 +156,31 @@ class PropertyController {
             console.log("Final Filters:", filters);
 
             const totalProperties = await PropertyServices.countListedProperties(filters);
-            const forwardedFor = req.headers['x-forwarded-for'];
-            const ipAddress = Array.isArray(forwardedFor)
-                ? forwardedFor[0]
-                : forwardedFor?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
-
-            const properties = await PropertyServices.getAllListedProperties(filters, skip, pageSize, true, {
-                currency: String(displayCurrency || currency || ''),
-                countryCode: countryCode ? String(countryCode) : undefined,
-                country: country ? String(country) : undefined,
+            const ipAddress = getClientIpFromRequest(req);
+            const viewerContext = await resolveViewerCurrency({
+                userId: req.user?.id,
+                currency: currency as string | undefined,
+                displayCurrency: displayCurrency as string | undefined,
+                country: country as string | undefined,
+                countryCode: countryCode as string | undefined,
                 ipAddress,
             });
+            const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
+
+            const properties = await PropertyServices.getAllListedProperties(
+                filters,
+                skip,
+                pageSize,
+                true,
+                currencyOptions
+            );
             if (!properties || properties.length === 0) {
                 return res.status(404).json({ message: "No properties found for the given filters" });
             }
 
             return res.status(200).json({
                 properties,
+                viewerContext,
                 pagination: {
                     total: totalProperties,
                     page: pageNumber,
@@ -327,8 +340,24 @@ class PropertyController {
     }
     getListedProperties = async (req: CustomRequest, res: Response) => {
         try {
-            const properties = await PropertyServices.getAllListedProperties()
-            return res.status(200).json(properties)
+            const ipAddress = getClientIpFromRequest(req);
+            const viewerContext = await resolveViewerCurrency({
+                userId: req.user?.id,
+                currency: req.query.currency as string | undefined,
+                displayCurrency: req.query.displayCurrency as string | undefined,
+                country: req.query.country as string | undefined,
+                countryCode: req.query.countryCode as string | undefined,
+                ipAddress,
+            });
+            const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
+            const properties = await PropertyServices.getAllListedProperties(
+                {},
+                0,
+                1000,
+                true,
+                currencyOptions
+            );
+            return res.status(200).json({ properties, viewerContext });
         } catch (error) {
             ErrorService.handleError(error, res)
         }

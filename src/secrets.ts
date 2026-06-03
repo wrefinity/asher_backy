@@ -3,7 +3,7 @@ dotenv.config({ path: ".env" });
 
 export const PORT =  process.env.PORT!;
 export const JWT_SECRET =  process.env.JWT_SECRET!;
-export const FRONTEND_URL =  process.env.FRONTEND_URL!;
+export const FRONTEND_URL = (process.env.FRONTEND_URL || "https://asherlanlord.vercel.app").replace(/\/+$/, "");
 export const MAIL_HOST = process.env.MAIL_HOST!;
 export const NODE_ENV = process.env.NODE_ENV!;
 export const MAIL_USERNAME = process.env.MAIL_USERNAME!;
@@ -29,3 +29,8 @@ export const FLUTTERWAVE_SECRET_HASH=process.env.FLUTTERWAVE_SECRET_HASH!;
 export const APP_URL= process.env.APP_URL!;
 export const STRIPE_LINK= process.env.STRIPE_LINK!;
 export const RESEND_API_KEY= process.env.RESEND_API_KEY!;
+export const PLATFORM_DEFAULT_CURRENCY = (process.env.DEFAULT_CURRENCY || 'NGN') as
+  | 'NGN'
+  | 'USD'
+  | 'EUR'
+  | 'GBP';

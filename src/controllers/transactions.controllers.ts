@@ -5,7 +5,7 @@ import transactionServices from "../services/transaction.services";
 import walletService from "../services/wallet.service";
 import { CustomRequest } from "../utils/types";
 import transactionScheam, { TransactionQuerySchema } from "../validations/schemas/transaction.schema";
-import { getCurrentCountryCurrency } from "../utils/helpers";
+import { getClientIpFromRequest, getCurrentCountryCurrency } from "../utils/currencyContext";
 import PropertyServices from "../services/propertyServices";
 
 
@@ -27,9 +27,20 @@ class TransactionController {
             // get the landlordId
             const landlordUserId = props.landlord.userId;
 
-            let transaction;
-            const locationData = await getCurrentCountryCurrency();
-            transaction = await transactionServices.createTransact({ userId, currency: locationData?.locationCurrency, ...value, amount }, landlordUserId)
+            const ipAddress = getClientIpFromRequest(req);
+            const locationData = await getCurrentCountryCurrency(
+                ipAddress,
+                userId
+            );
+            const transaction = await transactionServices.createTransact(
+                {
+                    userId,
+                    currency: locationData?.locationCurrency || value.currency,
+                    ...value,
+                    amount,
+                },
+                landlordUserId
+            );
             res.status(201).json({ transaction })
 
         } catch (error) {
@@ -47,10 +58,18 @@ class TransactionController {
             const amount = Number(value.amount);
             // const authorizationUrl = await walletService.fundWallet(userId, amount)
             // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
-            let authorizationUrl;
-            const locationData = await getCurrentCountryCurrency();
-            // if(value.gateWayType == GateWayType.STRIPE){
-            authorizationUrl = await walletService.fundWalletGeneral(userId, amount, locationData?.locationCurrency, locationData.country_code, value.gateWayType)
+            const ipAddress = getClientIpFromRequest(req);
+            const locationData = await getCurrentCountryCurrency(
+                ipAddress,
+                userId
+            );
+            const authorizationUrl = await walletService.fundWalletGeneral(
+                userId,
+                amount,
+                (value.currency || locationData?.locationCurrency) as any,
+                locationData?.country_code || value.countryCode,
+                value.gateWayType
+            );
             // }
             res.status(201).json({ authorizationUrl })
 

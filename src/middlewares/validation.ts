@@ -18,6 +18,7 @@ export const validateBody = (schema: Schema) => {
       
       const details = error.details.map(d => ({
         field: d.context?.key,
+        path: d.path,
         message: d.message.replace(/["]/g, ''),
         type: d.type
       }));

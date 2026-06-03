@@ -2,7 +2,8 @@ import { prismaClient } from "..";
 import { hashSync, compareSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus } from "@prisma/client";
+import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus, LogType } from "@prisma/client";
+import LogsServices from "./logs.services";
 import { CreateLandlordIF, RegisterVendorInput } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
 import RefereeService from "../services/referees.services"
@@ -11,7 +12,7 @@ import EmploymentService from "../services/employmentinfo.services"
 import NextOfKinService from "../services/nextkin.services"
 import ApplicantPersonalDetailsService from "../services/personaldetails.services"
 import WalletService from "./wallet.service";
-import { getCurrentCountryCurrency } from "../utils/helpers";
+import { getCurrentCountryCurrency } from "../utils/currencyContext";
 import sendMail from "../utils/emailer";
 import propertyServices from "./propertyServices";
 import applicantService from "../webuser/services/applicantService";
@@ -262,7 +263,11 @@ class UserService {
 
             const application = await this.completeApplicationProfile(userData, user.id, createdBy);
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
-            const result = await this.updateUserBasedOnRole({ ...userData, applicationId: application?.id }, user, roleToUse);
+            const result = await this.updateUserBasedOnRole(
+                { ...userData, applicationId: application?.id, createdById: createdBy ?? undefined },
+                user,
+                roleToUse
+            );
             const tenant = result as any;
             sendMail(
                 user.email,
@@ -275,8 +280,14 @@ class UserService {
                     <p>Thank you for choosing us. </p>
                     <p>Best regards,</p>`
             );
-            // make the property occupied
-            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
+            if (userData?.isCurrentLease !== false) {
+                await propertyServices.updateAvailabiltyStatus(
+                    userData?.landlordId,
+                    userData?.propertyId,
+                    AvailabilityStatus.OCCUPIED,
+                    userData.createdById
+                );
+            }
         }
 
         // for web user complete tenant account profile creation
@@ -285,7 +296,11 @@ class UserService {
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
             // const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id, userData?.propertyId)
             // if (tenantExist) return tenantExist;
-            const result = await this.updateUserBasedOnRole(userData, user, roleToUse) as any;
+            const result = await this.updateUserBasedOnRole(
+                { ...userData, createdById: createdBy ?? userData.createdById },
+                user,
+                roleToUse
+            ) as any;
 
             sendMail(
                 user.email,
@@ -299,7 +314,12 @@ class UserService {
                     <p>Best regards,</p>`
             );
             // make the property occupied
-            await propertyServices.updateAvailabiltyStatus(userData?.landlordId, userData?.propertyId, AvailabilityStatus.OCCUPIED);
+            await propertyServices.updateAvailabiltyStatus(
+                userData?.landlordId,
+                userData?.propertyId,
+                AvailabilityStatus.OCCUPIED,
+                createdBy ?? userData.createdById
+            );
             //unlist the property
             await propertyServices.deletePropertyListing(userData?.propertyId);
             await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.TENANT_CREATED);
@@ -321,9 +341,14 @@ class UserService {
             user = await this.createNewUser({ userData }, false);
             await this.updateUserBasedOnRole(userData, user, userRoles?.LANDLORD);
         }
-        const countryData = await getCurrentCountryCurrency();
-        if (user && countryData?.locationCurrency) {
-            await WalletService.getOrCreateWallet(user.id, countryData.locationCurrency);
+        if (user) {
+            const countryData = await getCurrentCountryCurrency(null, user.id);
+            if (countryData?.locationCurrency) {
+                await WalletService.getOrCreateWallet(
+                    user.id,
+                    countryData.locationCurrency as any
+                );
+            }
         }
 
         return this.getUserById(user.id);
@@ -500,13 +525,15 @@ class UserService {
         ]);
 
         // 3. Next of Kin (dependent on personalDetails)
+        // Tenant bulk upload supplies `nextOfKin` object (per Joi schema); support that here.
+        const nextOfKin = userData?.nextOfKin || {};
         await NextOfKinService.upsertNextOfKinInfo({
-            lastName: userData?.nextOfKinLastName,
-            firstName: userData?.nextOfKinFirstName,
-            relationship: userData?.relationship,
-            phoneNumber: userData?.nextOfKinPhoneNumber,
-            email: userData?.nextOfKinEmail,
-            middleName: userData?.nextOfKinMiddleName,
+            lastName: nextOfKin?.lastName,
+            firstName: nextOfKin?.firstName,
+            relationship: nextOfKin?.relationship,
+            phoneNumber: nextOfKin?.phoneNumber,
+            email: nextOfKin?.email,
+            middleName: nextOfKin?.middleName ?? undefined,
             applicantPersonalDetailsId: personalDetails.id,
             userId
         });
@@ -601,12 +628,23 @@ class UserService {
 
                 const connectData: any = {
                     tenantCode,
-                    user: { connect: { id: user.id } }, // MUST point to existing user
+                    user: { connect: { id: user.id } },
                     landlord: { connect: { id: landlord.id } },
                     initialDeposit: userData.initialDeposit || 0,
                     tenantWebUserEmail: userData.tenantWebUserEmail,
                     leaseStartDate,
                     leaseEndDate: leaseEndDate ?? undefined,
+                    isCurrentLease:
+                        userData.isCurrentLease !== undefined
+                            ? Boolean(userData.isCurrentLease)
+                            : true,
+                    rentstatus:
+                        userData.rentstatus !== undefined
+                            ? Number(userData.rentstatus)
+                            : undefined,
+                    dateOfFirstRent: userData.dateOfFirstRent
+                        ? new Date(userData.dateOfFirstRent)
+                        : leaseStartDate,
                     application: userData.applicationId
                         ? { connect: { id: userData.applicationId } }
                         : undefined,
@@ -634,6 +672,21 @@ class UserService {
 
                 if (tenant) {
                     await this.updateUserRole(user.id, userRoles.TENANT);
+                    const label = tenant.tenantCode || user.email;
+                    try {
+                        await LogsServices.createLog({
+                            propertyId: userData.propertyId,
+                            events: `Tenant added — ${label}`,
+                            type: LogType.ACTIVITY,
+                            createdById: userData.createdById,
+                            subjects: 'Tenant added',
+                            unitId: userData.unitId,
+                            roomId: userData.roomId,
+                            applicationId: userData.applicationId,
+                        });
+                    } catch (logErr) {
+                        loggers.warn('Failed to write tenant-added activity log', logErr);
+                    }
                 }
 
                 return tenant;

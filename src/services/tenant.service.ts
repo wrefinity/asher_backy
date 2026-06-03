@@ -1,5 +1,6 @@
 import { prismaClient } from "..";
 import { TenantNormalizer } from "../utils/TenantNormalizer";
+import { groupTenantsByLeaseBucket } from "../utils/categorizeTenantLeaseStatus";
 
 
 class TenantService {
@@ -127,90 +128,20 @@ class TenantService {
       },
       include: this.getTenantInclude(),
     });
-    const currentDate = new Date();
-    const categorizedTenants = {
-      current: [] as any[],
-      previous: [] as any[],
-      future: [] as any[]
-    };
+    const categorizedTenants = groupTenantsByLeaseBucket(tenants);
 
-    tenants.forEach((tenant) => {
-      if (!tenant.leaseStartDate) return;
-
-      const leaseStart = new Date(tenant.leaseStartDate);
-      const leaseEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : null;
-
-      // CURRENT TENANT
-      if (
-        tenant.isCurrentLease === true ||
-        (leaseStart <= currentDate && (!leaseEnd || leaseEnd >= currentDate))
-      ) {
-        categorizedTenants.current.push(tenant);
-        return;
-      }
-
-      // PREVIOUS TENANT
-      if (leaseEnd && leaseEnd < currentDate) {
-        categorizedTenants.previous.push(tenant);
-        return;
-      }
-
-      // FUTURE TENANT
-      if (leaseStart > currentDate) {
-        categorizedTenants.future.push(tenant);
-        return;
-      }
-    });
-
-    // Normalize all tenants for consistency
     return {
       current: TenantNormalizer.normalizeMany(categorizedTenants.current),
       previous: TenantNormalizer.normalizeMany(categorizedTenants.previous),
       future: TenantNormalizer.normalizeMany(categorizedTenants.future),
     };
-  }
-
+  };
 
   // Get all tenants for a given property and categorize them into previous, current, and future
   getTenantsByLeaseStatus = async (propertyId: string) => {
-    const currentDate = new Date();
     const tenants = await this.getTenantsForProperty(propertyId);
+    const categorizedTenants = groupTenantsByLeaseBucket(tenants);
 
-    const categorizedTenants = {
-      current: [] as any[],
-      previous: [] as any[],
-      future: [] as any[]
-    };
-
-    tenants.forEach((tenant) => {
-      if (!tenant.leaseStartDate) return;
-
-      const leaseStart = new Date(tenant.leaseStartDate);
-      const leaseEnd = tenant.leaseEndDate ? new Date(tenant.leaseEndDate) : null;
-
-      // CURRENT TENANT
-      if (
-        tenant.isCurrentLease === true ||
-        (leaseStart <= currentDate && (!leaseEnd || leaseEnd >= currentDate))
-      ) {
-        categorizedTenants.current.push(tenant);
-        return;
-      }
-
-      // PREVIOUS TENANT
-      if (leaseEnd && leaseEnd < currentDate) {
-        categorizedTenants.previous.push(tenant);
-        return;
-      }
-
-      // FUTURE TENANT
-      if (leaseStart > currentDate) {
-        categorizedTenants.future.push(tenant);
-        return;
-      }
-    });
-
-    // Normalize all tenants using TenantNormalizer
     return {
       current: TenantNormalizer.normalizeMany(categorizedTenants.current),
       previous: TenantNormalizer.normalizeMany(categorizedTenants.previous),

@@ -5,12 +5,14 @@ import UserServices from "../services/user.services";
 import { createVerificationToken } from "../services/verification_token.service";
 import { generateOtp } from "../utils/helpers";
 import sendMail from "../utils/emailer";
-import { userRoles, TicketStatus, TicketPriority, onlineStatus } from "@prisma/client";
-import { FRONTEND_URL } from "../secrets";
+import { userRoles, TicketStatus, TicketPriority, onlineStatus, LogType } from "@prisma/client";
+import { FRONTEND_URL, JWT_SECRET } from "../secrets";
 import { prismaClient } from "..";
 import { subDays, startOfDay, endOfDay, format } from "date-fns";
 import { SupportService } from "../services/support.services";
 import logger from "../utils/loggers";
+import { Jtoken } from "../middlewares/Jtoken";
+import logsServices from "../services/logs.services";
 
 interface InviteLandlordData {
   email: string;
@@ -20,59 +22,12 @@ interface InviteLandlordData {
 }
 
 class AdminController {
-  /**
-   * Invite landlord - Creates user without password and sends invitation email
-   * User will set password when they click the invitation link
-   */
-  inviteLandlord = async (req: CustomRequest, res: Response) => {
-    try {
-      const { email, firstName, lastName, phoneNumber } = req.body as InviteLandlordData;
+  private tokenService = new Jtoken(JWT_SECRET);
 
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message: "Email is required"
-        });
-      }
-
-      // Check if user already exists
-      const existingUser = await UserServices.findUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: "User with this email already exists"
-        });
-      }
-
-      // Create user without password (password will be set via invitation link)
-      const newUser = await UserServices.createLandlord({
-        email: email.toLowerCase(),
-        password: null,
-        isVerified: false,
-
-        profile: {
-          firstName: firstName || '',
-          lastName: lastName || '',
-          fullname: `${firstName || ''} ${lastName || ''}`.trim() || email.split('@')[0],
-          phoneNumber: phoneNumber || null,
-        },
-
-        landlord: {
-          isDeleted: false,
-        },
-      });
-
-      // Create invitation token
-      const token = await createVerificationToken(
-        { userId: newUser.id, email: email.toLowerCase() },
-        generateOtp
-      );
-
-      // Generate invitation link
-      const invitationLink = `${FRONTEND_URL}/set-password?token=${token}&email=${encodeURIComponent(email.toLowerCase())}`;
-
-      // Send invitation email
-      const emailHtml = `
+  private buildLandlordInvitationEmail = (
+    firstName: string | undefined,
+    invitationLink: string
+  ) => `
         <!DOCTYPE html>
         <html>
         <head>
@@ -110,23 +65,314 @@ class AdminController {
         </html>
       `;
 
-      // Send email in background - user is already created, email is just notification
-      sendMail(email.toLowerCase(), "Welcome to Asher - Set Your Password", emailHtml).catch((emailError) => {
-        console.error('Failed to send landlord invitation email:', emailError);
-        // Log the error but don't throw - user creation should still succeed
+  /**
+   * Invite landlord - Creates user without password and sends invitation email
+   * User will set password when they click the invitation link
+   */
+  inviteLandlord = async (req: CustomRequest, res: Response) => {
+    try {
+      const { email, firstName, lastName, phoneNumber } = req.body as InviteLandlordData;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required"
+        });
+      }
+
+      const normalizedEmail = email.toLowerCase();
+      const existingUser = await UserServices.findUserByEmail(normalizedEmail);
+
+      if (existingUser) {
+        const isPendingLandlordInvite =
+          existingUser.role.includes(userRoles.LANDLORD) &&
+          !existingUser.isVerified &&
+          !existingUser.password;
+
+        if (!isPendingLandlordInvite) {
+          return res.status(400).json({
+            success: false,
+            message: "User with this email already exists"
+          });
+        }
+      }
+
+      const landlordUser = existingUser || await UserServices.createLandlord({
+        email: normalizedEmail,
+        password: null,
+        isVerified: false,
+
+        profile: {
+          firstName: firstName || '',
+          lastName: lastName || '',
+          fullname: `${firstName || ''} ${lastName || ''}`.trim() || normalizedEmail.split('@')[0],
+          phoneNumber: phoneNumber || null,
+        },
+
+        landlord: {
+          isDeleted: false,
+        },
       });
 
-      return res.status(201).json({
+      const token = await createVerificationToken(
+        { userId: landlordUser.id, email: normalizedEmail },
+        generateOtp
+      );
+
+      const invitationLink = `${FRONTEND_URL}/set-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+      const emailHtml = this.buildLandlordInvitationEmail(firstName, invitationLink);
+
+      let emailSent = false;
+      let emailError: string | undefined;
+
+      try {
+        await sendMail(normalizedEmail, "Welcome to Asher - Set Your Password", emailHtml);
+        emailSent = true;
+      } catch (error: any) {
+        emailError = error?.message || "Failed to send invitation email";
+        logger.error("Failed to send landlord invitation email:", error);
+      }
+
+      return res.status(existingUser ? 200 : 201).json({
         success: true,
-        message: "Landlord invitation sent successfully",
+        message: emailSent
+          ? existingUser
+            ? "Invitation email resent successfully"
+            : "Landlord invitation sent successfully"
+          : "Landlord created, but the invitation email could not be sent. Share the invitation link manually.",
         data: {
-          userId: newUser.id,
-          email: newUser.email,
-          invitationLink, // Return link for testing (remove in production)
+          userId: landlordUser.id,
+          email: landlordUser.email,
+          invitationLink,
+          emailSent,
+          emailError,
         },
       });
     } catch (error: any) {
       console.error("Error inviting landlord:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  private getLandlordById = async (userId: string) => {
+    return prismaClient.users.findFirst({
+      where: { id: userId, role: { has: userRoles.LANDLORD } },
+      include: { profile: true, landlords: true },
+    });
+  };
+
+  private createLandlordInvitationLink = async (userId: string, email: string) => {
+    const token = await createVerificationToken({ userId, email }, generateOtp);
+    return `${FRONTEND_URL}/set-password?token=${token}&email=${encodeURIComponent(email)}`;
+  };
+
+  /**
+   * Resend invitation email or regenerate invitation link for a pending landlord
+   */
+  resendLandlordInvite = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const sendEmail = req.body?.sendEmail !== false;
+
+      const user = await this.getLandlordById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Landlord not found" });
+      }
+
+      if (user.isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "This user has already activated their account",
+        });
+      }
+
+      const invitationLink = await this.createLandlordInvitationLink(user.id, user.email);
+      const firstName = user.profile?.firstName || undefined;
+      let emailSent = false;
+      let emailError: string | undefined;
+
+      if (sendEmail) {
+        try {
+          await sendMail(
+            user.email,
+            "Welcome to Asher - Set Your Password",
+            this.buildLandlordInvitationEmail(firstName, invitationLink)
+          );
+          emailSent = true;
+        } catch (error: any) {
+          emailError = error?.message || "Failed to send invitation email";
+          logger.error("Failed to resend landlord invitation email:", error);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: sendEmail
+          ? emailSent
+            ? "Invitation email resent successfully"
+            : "Invitation link regenerated, but email could not be sent"
+          : "Invitation link generated",
+        data: { userId: user.id, email: user.email, invitationLink, emailSent, emailError },
+      });
+    } catch (error: any) {
+      console.error("Error resending landlord invite:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Cancel a pending landlord invite and remove the user record
+   */
+  cancelLandlordInvite = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const user = await this.getLandlordById(userId);
+
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Landlord not found" });
+      }
+
+      if (user.isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot cancel invite for an active account. Suspend the account instead.",
+        });
+      }
+
+      if (user.landlords?.id) {
+        const propertyCount = await prismaClient.properties.count({
+          where: { landlordId: user.landlords.id, isDeleted: false },
+        });
+
+        if (propertyCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot cancel invite because this landlord already has properties",
+          });
+        }
+      }
+
+      const profileId = user.profileId;
+
+      await prismaClient.$transaction(async (tx) => {
+        await tx.verificationToken.deleteMany({ where: { userId: user.id } });
+        if (user.landlords?.id) {
+          await tx.landlords.delete({ where: { id: user.landlords.id } });
+        }
+        await tx.users.delete({ where: { id: user.id } });
+        if (profileId) {
+          await tx.profile.delete({ where: { id: profileId } });
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Invitation cancelled and user removed",
+        data: { userId: user.id, email: user.email },
+      });
+    } catch (error: any) {
+      console.error("Error cancelling landlord invite:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Permanently delete a landlord account (active or pending)
+   */
+  deleteLandlordAccount = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const user = await this.getLandlordById(userId);
+
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Landlord not found" });
+      }
+
+      if (user.landlords?.id) {
+        const landlordId = user.landlords.id;
+
+        const propertyCount = await prismaClient.properties.count({
+          where: { landlordId, isDeleted: false },
+        });
+
+        if (propertyCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot delete this account because the landlord has active properties. Remove or transfer properties first.",
+          });
+        }
+
+        const tenantCount = await prismaClient.tenants.count({
+          where: { landlordId },
+        });
+
+        if (tenantCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot delete this account because the landlord still has tenants on record.",
+          });
+        }
+      }
+
+      const profileId = user.profileId;
+
+      await prismaClient.$transaction(async (tx) => {
+        await tx.verificationToken.deleteMany({ where: { userId: user.id } });
+        if (user.landlords?.id) {
+          await tx.landlords.delete({ where: { id: user.landlords.id } });
+        }
+        await tx.users.delete({ where: { id: user.id } });
+        if (profileId) {
+          await tx.profile.delete({ where: { id: profileId } });
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Landlord account deleted successfully",
+        data: { userId: user.id, email: user.email },
+      });
+    } catch (error: any) {
+      console.error("Error deleting landlord account:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Set a temporary password so the landlord can log in directly
+   */
+  setLandlordTempPassword = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const { tempPassword } = req.body;
+
+      if (!tempPassword || tempPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Temporary password must be at least 8 characters long",
+        });
+      }
+
+      const user = await this.getLandlordById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Landlord not found" });
+      }
+
+      await UserServices.updateUserPassword(user.id, tempPassword);
+      await UserServices.updateUserVerificationStatus(user.id, true);
+      await prismaClient.verificationToken.deleteMany({ where: { userId: user.id } });
+
+      return res.status(200).json({
+        success: true,
+        message: "Temporary password set. The user can now log in and change it from their account settings.",
+        data: {
+          userId: user.id,
+          email: user.email,
+          status: "Active",
+        },
+      });
+    } catch (error: any) {
+      console.error("Error setting landlord temporary password:", error);
       ErrorService.handleError(error, res);
     }
   };
@@ -219,12 +465,35 @@ class AdminController {
         throw updateError; // Re-throw to be caught by outer catch
       }
 
+      await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+      const tokens = await this.tokenService.createToken({
+        id: user.id,
+        role: String(user.role),
+        email: String(user.email),
+      });
+
+      await logsServices.createLog({
+        events: `Landlord ${user.email} completed invitation password setup`,
+        type: LogType.ACTIVITY,
+        createdById: user.id,
+      });
+
+      const freshUser = await UserServices.getUserById(user.id);
+      const { password: _password, ...userDetails } = freshUser || user;
+
       return res.status(200).json({
         success: true,
         message: "Password set successfully. You can now login.",
         data: {
           userId: user.id,
           email: user.email,
+          token: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          userDetails: {
+            ...userDetails,
+            id: user.id,
+            onlineStatus: onlineStatus.online,
+          },
         },
       });
     } catch (error: any) {
@@ -476,8 +745,10 @@ class AdminController {
           email: user.email,
           role: 'Landlord',
           systemId: '4', // Rent Mgmt System
-          status: user.isVerified ? 'Active' : 'Pending',
-          lastActive: user.onlineStatus === onlineStatus.online ? 'Online' : 'Offline',
+          status: user.isVerified ? 'Active' : 'Pending Invite',
+          lastActive: user.isVerified
+            ? (user.onlineStatus === onlineStatus.online ? 'Online' : 'Offline')
+            : 'Invitation sent',
           ticketsRaised: ticketCountMap.get(user.id) || 0,
           phone: user.profile?.phoneNumber || '',
           createdAt: user.createdAt,

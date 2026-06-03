@@ -62,6 +62,30 @@ class AdminRouter {
             AdminController.getAllLandlords
         );
 
+        this.router.post(
+            "/landlords/:userId/resend-invite",
+            this.authenticateService.authorize,
+            AdminController.resendLandlordInvite
+        );
+
+        this.router.post(
+            "/landlords/:userId/temp-password",
+            this.authenticateService.authorize,
+            AdminController.setLandlordTempPassword
+        );
+
+        this.router.delete(
+            "/landlords/:userId/invite",
+            this.authenticateService.authorize,
+            AdminController.cancelLandlordInvite
+        );
+
+        this.router.delete(
+            "/landlords/:userId",
+            this.authenticateService.authorize,
+            AdminController.deleteLandlordAccount
+        );
+
         // Public endpoint for landlords to get admin users for chat
         this.router.get(
             "/admin-users",

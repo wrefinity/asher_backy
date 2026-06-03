@@ -11,6 +11,8 @@ import { CustomRequest } from '../../utils/types';
 import propertyServices from '../../services/propertyServices';
 import { prismaClient } from '../..';
 import logger from '../../utils/loggers';
+import LogsServices from '../../services/logs.services';
+import { LogType } from '@prisma/client';
 
 
 class InspectionController {
@@ -45,6 +47,24 @@ class InspectionController {
       console.log('✅ Property verified, creating inspection...');
       const inspection = await InspectionService.createInspection(req.body);
       console.log('✅ Inspection created successfully:', inspection.id);
+
+      const scheduledLabel = inspection.scheduledDate
+        ? new Date(inspection.scheduledDate).toLocaleDateString('en-GB')
+        : null;
+      const typeLabel = inspection.type?.trim() || 'Inspection';
+      try {
+        await LogsServices.createLog({
+          propertyId: inspection.propertyId,
+          events: scheduledLabel
+            ? `${typeLabel} booked for ${scheduledLabel}`
+            : `${typeLabel} booked`,
+          type: LogType.ACTIVITY,
+          createdById: req.user?.id,
+          subjects: 'Inspection booked',
+        });
+      } catch (logErr) {
+        console.warn('Failed to write inspection-booked activity log', logErr);
+      }
 
       // Send notification to tenant if inspection is scheduled and tenant is assigned
       if (inspection.tenantId && inspection.status === 'Scheduled') {
@@ -223,6 +243,24 @@ class InspectionController {
         req.params.id,
         req.body
       );
+
+      if (
+        (req.body.status === 'Completed' && inspection.status !== 'Completed') ||
+        (req.body.completedAt && !inspection.completedAt)
+      ) {
+        const typeLabel = updatedInspection.type?.trim() || 'Inspection';
+        try {
+          await LogsServices.createLog({
+            propertyId: updatedInspection.propertyId,
+            events: `${typeLabel} completed`,
+            type: LogType.ACTIVITY,
+            createdById: req.user?.id,
+            subjects: 'Inspection completed',
+          });
+        } catch (logErr) {
+          console.warn('Failed to write inspection-completed activity log', logErr);
+        }
+      }
 
       // Send notification when inspection is marked as completed
       if (req.body.status === 'Completed' && inspection.status !== 'Completed') {

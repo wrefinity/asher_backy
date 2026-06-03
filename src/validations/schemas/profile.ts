@@ -54,7 +54,8 @@ export const preferencesSchema = Joi.object({
   dateFormat: Joi.string()
     .valid(...Object.values(DateFormat))
     .optional(),
-  region: Joi.string().optional(), // e.g., "US", "EU"
+  region: Joi.string().optional(),
+  country: Joi.string().optional(),
   language: Joi.string()
     .valid(...Object.values(Language))
     .default('ENGLISH'),
