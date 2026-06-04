@@ -145,6 +145,23 @@ class BillService {
             },
         })
     }
+
+    /** Ensures a default bill category exists for CSV / bulk imports. */
+    ensureDefaultBillCategory = async (): Promise<string> => {
+        const existing = await prismaClient.bills.findFirst({
+            where: { name: { equals: 'General', mode: 'insensitive' } },
+            select: { id: true },
+        });
+        if (existing) return existing.id;
+
+        const created = await prismaClient.bills.create({
+            data: {
+                name: 'General',
+                description: 'Default bill category (auto-created)',
+            },
+        });
+        return created.id;
+    }
     getBillsCategories = async () => {
         return await prismaClient.bills.findMany({
         })

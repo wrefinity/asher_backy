@@ -13,16 +13,17 @@ class BillController {
         if (error) return res.status(400).json({ message: error.details[0].message });
         const landlordId = req.user?.landlords?.id;
         try {
-            const {notify, ...data} = value
+            const { notify, ...data } = value;
             const bill = await billServices.createSubBills(data, landlordId);
-            if(notify){
+            if (notify) {
                 //TODO:
             }
             return res.status(201).json({ bill });
         } catch (error) {
-            errorService.handleError(error, res)
+            errorService.handleError(error, res);
         }
-    }
+    };
+
     createBillCategory = async (req: CustomRequest, res: Response) => {
         const { error, value } = billCategorySchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
@@ -30,9 +31,53 @@ class BillController {
             const bill = await billServices.createBills(value);
             return res.status(201).json({ bill });
         } catch (error) {
-            errorService.handleError(error, res)
+            errorService.handleError(error, res);
         }
-    }
+    };
+
+    bulkUploadBills = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        if (!landlordId) {
+            return res.status(401).json({ message: 'Unauthorized - Landlord ID missing' });
+        }
+
+        const bills = Array.isArray(req.body?.bills) ? req.body.bills : [];
+        if (bills.length === 0) {
+            return res.status(400).json({ message: 'At least one bill record is required' });
+        }
+
+        const defaultCategoryId = await billServices.ensureDefaultBillCategory();
+
+        const created: unknown[] = [];
+        const errors: { index: number; message: string }[] = [];
+
+        for (let index = 0; index < bills.length; index++) {
+            const row = {
+                ...bills[index],
+                billCategoryId: bills[index]?.billCategoryId || defaultCategoryId,
+            };
+            const { error, value } = billSchema.validate(row);
+            if (error) {
+                errors.push({ index, message: error.details[0].message });
+                continue;
+            }
+            try {
+                const { notify, ...data } = value;
+                const bill = await billServices.createSubBills(data, landlordId);
+                created.push(bill);
+            } catch (err: any) {
+                errors.push({ index, message: err.message || 'Failed to create bill' });
+            }
+        }
+
+        return res.status(201).json({
+            success: errors.length === 0,
+            createdCount: created.length,
+            errorCount: errors.length,
+            created,
+            errors,
+        });
+    };
 
     updateBill = async (req: CustomRequest, res: Response) => {
         const { billId } = req.params;

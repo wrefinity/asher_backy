@@ -22,6 +22,8 @@ class PreferenceRoutes {
         this.router.get('/dashboard-layout', this.authenticateService.authorize, PreferencesController.getDashboardLayout);
         this.router.post('/dashboard-layout', this.authenticateService.authorize, PreferencesController.updateDashboardLayout);
         this.router.get('/onboarding-status', this.authenticateService.authorize, PreferencesController.getOnboardingStatus);
+        this.router.post('/onboarding/skip-step', this.authenticateService.authorize, PreferencesController.skipOnboardingStep);
+        this.router.post('/onboarding/complete', this.authenticateService.authorize, PreferencesController.completeOnboarding);
     }
 }
 

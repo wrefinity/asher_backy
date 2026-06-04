@@ -1,7 +1,17 @@
 
-import {  PaymentFrequency, PayableBy, PriceFrequency, LatePaymentFeeType } from '@prisma/client';
+import { PaymentFrequency, PriceFrequency } from '@prisma/client';
 import { prismaClient } from "../..";
-import { OverdueAnalysis,PaymentFrequencyCalc, OverdueBill, OverdueRent } from '../../validations/interfaces/bills.interface';
+import LandlordSettingsService from '../../landlord/services/propertySetting.service';
+import {
+  computeLateFee,
+  mergeFinancialRules,
+  PERIOD_DAYS,
+  periodDaysForFrequency,
+  propertySettingsToOverride,
+  resolveFinancialRules,
+  type ResolvedFinancialRules,
+} from '../../utils/globalSettings.util';
+import { OverdueAnalysis, PaymentFrequencyCalc, OverdueBill, OverdueRent } from '../../validations/interfaces/bills.interface';
 
 
 class TenantBills {
@@ -54,7 +64,6 @@ class TenantBills {
    */
   async getTenantOverdueAnalysis(tenantId: string): Promise<OverdueAnalysis> {
     try {
-      // Get tenant basic information
       const tenant = await prismaClient.tenants.findUnique({
         where: { id: tenantId },
         include: {
@@ -69,11 +78,9 @@ class TenantBills {
               id: true,
               name: true,
               address: true,
-              settings: {
-                where: {
-                  settingType: 'LATEFEE'
-                }
-              }
+              price: true,
+              priceFrequency: true,
+              landlordId: true,
             }
           },
           unit: {
@@ -100,7 +107,20 @@ class TenantBills {
         throw new Error('Tenant not found');
       }
 
-      // Get all bills for the tenant
+      const rentAmount = this.getRentAmount(tenant);
+      const rentFrequency = this.getRentFrequency(tenant);
+      const globalSettings = await LandlordSettingsService.getAllGlobalSettings(
+        tenant.property.landlordId
+      );
+      const propertyLateFee = await LandlordSettingsService.getPropertyLateFeeOverride(
+        tenant.property.id
+      );
+      const baseRules = resolveFinancialRules(globalSettings, rentAmount, rentFrequency);
+      const rules = mergeFinancialRules(
+        baseRules,
+        propertySettingsToOverride(propertyLateFee)
+      );
+
       const tenantBills = await prismaClient.billsSubCategory.findMany({
         where: {
           tenantId: tenantId,
@@ -119,7 +139,6 @@ class TenantBills {
         }
       });
 
-      // Get rent payment history
       const rentPaymentHistory = await prismaClient.tenantPaymentHistory.findMany({
         where: {
           tenantId: tenantId
@@ -129,7 +148,6 @@ class TenantBills {
         }
       });
 
-      // Get all transactions for the tenant
       const tenantTransactions = await prismaClient.transaction.findMany({
         where: {
           userId: tenant.userId,
@@ -140,14 +158,9 @@ class TenantBills {
         }
       });
 
-      // Analyze overdue bills
-      const overdueBills = await this.analyzeOverdueBills(tenantBills, tenantTransactions);
-
-      // Analyze overdue rent
-      const overdueRent = this.analyzeOverdueRent(tenant, rentPaymentHistory);
-
-      // Calculate summary
-      const summary = this.calculateSummary(overdueBills, overdueRent, tenant.property.settings[0]);
+      const overdueBills = this.analyzeOverdueBills(tenantBills, tenantTransactions, rules);
+      const overdueRent = this.analyzeOverdueRent(tenant, rentPaymentHistory, rules);
+      const summary = this.calculateSummary(overdueBills, overdueRent, rules, rentFrequency);
 
       return {
         tenant: {
@@ -173,8 +186,8 @@ class TenantBills {
           startDate: tenant.leaseStartDate!,
           endDate: tenant.leaseEndDate!,
           isCurrentLease: tenant.isCurrentLease,
-          rentAmount: this.getRentAmount(tenant),
-          rentFrequency: this.getRentFrequency(tenant)
+          rentAmount,
+          rentFrequency
         },
         overdueBills,
         overdueRent,
@@ -185,25 +198,19 @@ class TenantBills {
     }
   }
 
-  /**
-   * Analyze overdue bills considering frequencies and payment history
-   */
-  private async analyzeOverdueBills(
+  private analyzeOverdueBills(
     bills: any[],
-    transactions: any[]
-  ): Promise<OverdueBill[]> {
+    transactions: any[],
+    rules: ResolvedFinancialRules
+  ): OverdueBill[] {
     const overdueBills: OverdueBill[] = [];
     const now = new Date();
 
     for (const bill of bills) {
-      const frequencyConfig = this.getFrequencyConfig(bill.billFrequency);
       const billTransactions = bill.transactions || [];
-      
-      // Get the last paid date for this bill
       const lastPaidTransaction = billTransactions[0];
       const lastPaidDate = lastPaidTransaction?.createdAt;
 
-      // Calculate due dates based on frequency
       const dueDates = this.calculateDueDates(
         bill.dueDate,
         bill.billFrequency,
@@ -213,7 +220,6 @@ class TenantBills {
 
       for (const dueDate of dueDates) {
         if (dueDate < now) {
-          // Check if this due date was paid
           const wasPaid = this.wasBillPaidForPeriod(
             billTransactions,
             dueDate,
@@ -222,10 +228,9 @@ class TenantBills {
 
           if (!wasPaid) {
             const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-            const lateFeeAmount = this.calculateLateFee(bill.amount, daysOverdue);
+            const lateFeeAmount = computeLateFee(rules, Number(bill.amount), daysOverdue);
             const totalAmountDue = Number(bill.amount) + lateFeeAmount;
 
-            // Calculate next due date for recurring bills
             let nextDueDate: Date | undefined;
             if (bill.billFrequency !== PaymentFrequency.ANNUALLY) {
               nextDueDate = this.calculateNextDueDate(dueDate, bill.billFrequency);
@@ -247,7 +252,6 @@ class TenantBills {
               transactionHistory: billTransactions
             });
 
-            // For recurring bills, we only show the most recent overdue instance
             if (bill.billFrequency !== PaymentFrequency.ANNUALLY) {
               break;
             }
@@ -259,10 +263,11 @@ class TenantBills {
     return overdueBills.sort((a, b) => b.daysOverdue - a.daysOverdue);
   }
 
-  /**
-   * Analyze overdue rent payments
-   */
-  private analyzeOverdueRent(tenant: any, paymentHistory: any[]): OverdueRent[] {
+  private analyzeOverdueRent(
+    tenant: any,
+    paymentHistory: any[],
+    rules: ResolvedFinancialRules
+  ): OverdueRent[] {
     const overdueRent: OverdueRent[] = [];
     const now = new Date();
     const rentAmount = this.getRentAmount(tenant);
@@ -272,7 +277,6 @@ class TenantBills {
       return overdueRent;
     }
 
-    // Generate expected rent periods
     const rentPeriods = this.generateRentPeriods(
       tenant.dateOfFirstRent,
       tenant.leaseEndDate || new Date(),
@@ -281,7 +285,6 @@ class TenantBills {
 
     for (const period of rentPeriods) {
       if (period.dueDate < now) {
-        // Find payment for this period
         const periodPayment = paymentHistory.find(payment => 
           this.isSameRentPeriod(payment.rentStartDate, period.startDate, rentFrequency)
         );
@@ -292,7 +295,7 @@ class TenantBills {
 
         if (!isFullyPaid) {
           const daysOverdue = Math.floor((now.getTime() - period.dueDate.getTime()) / (1000 * 60 * 60 * 24));
-          const lateFeeAmount = this.calculateRentLateFee(rentAmount, daysOverdue);
+          const lateFeeAmount = computeLateFee(rules, rentAmount, daysOverdue);
           const totalAmountDue = rentAmount - paidAmount + lateFeeAmount;
 
           overdueRent.push({
@@ -312,9 +315,6 @@ class TenantBills {
     return overdueRent.sort((a, b) => b.daysOverdue - a.daysOverdue);
   }
 
-  /**
-   * Calculate due dates based on frequency and payment history
-   */
   private calculateDueDates(
     initialDueDate: Date,
     frequency: PaymentFrequency,
@@ -325,7 +325,6 @@ class TenantBills {
     const frequencyConfig = this.getFrequencyConfig(frequency);
     let currentDate = lastPaidDate ? new Date(lastPaidDate) : new Date(initialDueDate);
 
-    // If there's a last paid date, start from the next period after last payment
     if (lastPaidDate) {
       currentDate = new Date(lastPaidDate.getTime() + frequencyConfig.milliseconds);
     }
@@ -338,9 +337,6 @@ class TenantBills {
     return dueDates;
   }
 
-  /**
-   * Generate rent periods based on lease dates and frequency
-   */
   private generateRentPeriods(
     startDate: Date,
     endDate: Date,
@@ -366,9 +362,6 @@ class TenantBills {
     return periods;
   }
 
-  /**
-   * Check if a bill was paid for a specific period
-   */
   private wasBillPaidForPeriod(
     transactions: any[],
     dueDate: Date,
@@ -385,46 +378,21 @@ class TenantBills {
     });
   }
 
-  /**
-   * Calculate late fees for bills
-   */
-  private calculateLateFee(amount: number, daysOverdue: number): number {
-    // Default late fee calculation: 5% of amount + 1% per day overdue
-    const baseLateFee = amount * 0.05;
-    const dailyLateFee = amount * 0.01 * daysOverdue;
-    return baseLateFee + dailyLateFee;
-  }
-
-  /**
-   * Calculate late fees for rent
-   */
-  private calculateRentLateFee(rentAmount: number, daysOverdue: number): number {
-    // Rent late fee: 10% of rent + 2% per day overdue
-    const baseLateFee = rentAmount * 0.10;
-    const dailyLateFee = rentAmount * 0.02 * daysOverdue;
-    return baseLateFee + dailyLateFee;
-  }
-
-  /**
-   * Get frequency configuration
-   */
   private getFrequencyConfig(frequency: PaymentFrequency | PriceFrequency): PaymentFrequencyCalc {
+    const dayMs = 24 * 60 * 60 * 1000;
     const configs: Record<PaymentFrequency | PriceFrequency, PaymentFrequencyCalc> = {
-      DAILY: { milliseconds: 24 * 60 * 60 * 1000, description: 'Daily' },
-      WEEKLY: { milliseconds: 7 * 24 * 60 * 60 * 1000, description: 'Weekly' },
-      MONTHLY: { milliseconds: 30 * 24 * 60 * 60 * 1000, description: 'Monthly' },
-      QUARTERLY: { milliseconds: 90 * 24 * 60 * 60 * 1000, description: 'Quarterly' },
-      ANNUALLY: { milliseconds: 365 * 24 * 60 * 60 * 1000, description: 'Annually' },
-      YEARLY: { milliseconds: 365 * 24 * 60 * 60 * 1000, description: 'Yearly' },
-      PER_SQFT: { milliseconds: 30 * 24 * 60 * 60 * 1000, description: 'Per Sq Ft' }
+      DAILY: { milliseconds: PERIOD_DAYS.DAILY * dayMs, description: 'Daily' },
+      WEEKLY: { milliseconds: PERIOD_DAYS.WEEKLY * dayMs, description: 'Weekly' },
+      MONTHLY: { milliseconds: PERIOD_DAYS.MONTHLY * dayMs, description: 'Monthly' },
+      QUARTERLY: { milliseconds: PERIOD_DAYS.QUARTERLY * dayMs, description: 'Quarterly' },
+      ANNUALLY: { milliseconds: PERIOD_DAYS.ANNUALLY * dayMs, description: 'Annually' },
+      PER_SQFT: { milliseconds: PERIOD_DAYS.PER_SQFT * dayMs, description: 'Per Sq Ft' },
+      YEARLY: { milliseconds: PERIOD_DAYS.ANNUALLY * dayMs, description: 'Yearly' },
     };
 
     return configs[frequency] || configs.MONTHLY;
   }
 
-  /**
-   * Get period name for rent periods
-   */
   private getPeriodName(date: Date, frequency: PriceFrequency): string {
     switch (frequency) {
       case PriceFrequency.DAILY:
@@ -433,9 +401,10 @@ class TenantBills {
         return `Week of ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
       case PriceFrequency.MONTHLY:
         return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      case PriceFrequency.QUARTERLY:
+      case PriceFrequency.QUARTERLY: {
         const quarter = Math.floor(date.getMonth() / 3) + 1;
         return `Q${quarter} ${date.getFullYear()}`;
+      }
       case PriceFrequency.ANNUALLY:
         return date.getFullYear().toString();
       default:
@@ -443,9 +412,6 @@ class TenantBills {
     }
   }
 
-  /**
-   * Check if two dates are in the same rent period
-   */
   private isSameRentPeriod(date1: Date, date2: Date, frequency: PriceFrequency): boolean {
     const d1 = new Date(date1);
     const d2 = new Date(date2);
@@ -453,16 +419,18 @@ class TenantBills {
     switch (frequency) {
       case PriceFrequency.DAILY:
         return d1.toDateString() === d2.toDateString();
-      case PriceFrequency.WEEKLY:
+      case PriceFrequency.WEEKLY: {
         const week1 = this.getWeekNumber(d1);
         const week2 = this.getWeekNumber(d2);
         return week1 === week2 && d1.getFullYear() === d2.getFullYear();
+      }
       case PriceFrequency.MONTHLY:
         return d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
-      case PriceFrequency.QUARTERLY:
+      case PriceFrequency.QUARTERLY: {
         const quarter1 = Math.floor(d1.getMonth() / 3);
         const quarter2 = Math.floor(d2.getMonth() / 3);
         return quarter1 === quarter2 && d1.getFullYear() === d2.getFullYear();
+      }
       case PriceFrequency.ANNUALLY:
         return d1.getFullYear() === d2.getFullYear();
       default:
@@ -491,21 +459,27 @@ class TenantBills {
   }
 
   private getRentAmount(tenant: any): number {
-    if (tenant.unit) {
+    if (tenant.unit?.price) {
       return parseFloat(tenant.unit.price) || 0;
     }
-    if (tenant.room) {
+    if (tenant.room?.price) {
       return parseFloat(tenant.room.price) || 0;
+    }
+    if (tenant.property?.price) {
+      return parseFloat(tenant.property.price) || 0;
     }
     return 0;
   }
 
   private getRentFrequency(tenant: any): PriceFrequency {
-    if (tenant.unit) {
-      return tenant.unit.priceFrequency || PriceFrequency.MONTHLY;
+    if (tenant.unit?.priceFrequency) {
+      return tenant.unit.priceFrequency;
     }
-    if (tenant.room) {
-      return tenant.room.priceFrequency || PriceFrequency.MONTHLY;
+    if (tenant.room?.priceFrequency) {
+      return tenant.room.priceFrequency;
+    }
+    if (tenant.property?.priceFrequency) {
+      return tenant.property.priceFrequency;
     }
     return PriceFrequency.MONTHLY;
   }
@@ -513,7 +487,8 @@ class TenantBills {
   private calculateSummary(
     overdueBills: OverdueBill[],
     overdueRent: OverdueRent[],
-    lateFeeSettings?: any
+    rules: ResolvedFinancialRules,
+    rentFrequency: PriceFrequency
   ) {
     const totalOverdueBills = overdueBills.reduce((sum, bill) => sum + bill.totalAmountDue, 0);
     const totalOverdueRent = overdueRent.reduce((sum, rent) => sum + rent.totalAmountDue, 0);
@@ -529,16 +504,17 @@ class TenantBills {
       totalOverdueBills: overdueBills.length,
       totalOverdueRent: overdueRent.length,
       mostOverdueDays,
-      gracePeriodDays: lateFeeSettings?.gracePeriodDays || 5,
-      lateFeeSettings: lateFeeSettings ? {
-        lateFee: Number(lateFeeSettings.lateFee) || 0,
-        lateFeeFrequency: lateFeeSettings.lateFeeFrequency || LatePaymentFeeType.DAILY,
-        lateFeePercentage: lateFeeSettings.lateFeePercentage || 0,
-        gracePeriodDays: lateFeeSettings.gracePeriodDays || 5
-      } : undefined
+      gracePeriodDays: rules.graceDays,
+      periodDays: periodDaysForFrequency(rentFrequency),
+      lateFeeSettings: {
+        lateFee: rules.lateFeeFixed > 0 ? rules.lateFeeFixed : rules.lateFeeAmount,
+        lateFeePercentage: rules.lateFeePercent,
+        gracePeriodDays: rules.graceDays,
+        lateFeeEnabled: rules.lateFeeEnabled,
+        lateFeeFrequency: rules.lateFeeFrequency,
+      },
     };
   }
 }
-
 
 export default new TenantBills();

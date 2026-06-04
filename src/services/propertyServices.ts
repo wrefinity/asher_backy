@@ -5,8 +5,11 @@ import { AvailabilityStatus } from "@prisma/client";
 import LogsServices, { formatAvailabilityLabel } from "./logs.services";
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO, PropertySearchDto } from "../validations/interfaces/properties.interface";
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
+import LandlordSettingsService from "../landlord/services/propertySetting.service";
+import { resolveFinancialRules } from "../utils/globalSettings.util";
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
 import { getCurrencyConversionRate, resolveCurrencyFromRegion } from "../utils/helpers";
+import { ConflictError, NotFoundError } from "./error.service";
 
 const decimalToNumber = (value?: Prisma.Decimal | null): number | undefined =>
     value ? value.toNumber() : undefined;
@@ -470,6 +473,109 @@ class PropertyService {
   /**
    * Update residential property
    */
+  private buildResidentialPrismaData(data: any) {
+    const {
+      safetyFeatures,
+      coolingTypes,
+      heatingTypes,
+      customSafetyFeatures,
+      buildingAmenityFeatures,
+      outdoorsSpacesFeatures,
+      otherSharedFacilities,
+      roomDetails,
+      unitConfigurations,
+      sharedFacilities,
+      PropertySpecification,
+      bills,
+      ...rest
+    } = data;
+
+    const out: any = {
+      ...rest,
+      safetyFeatures: Array.isArray(safetyFeatures)
+        ? { set: safetyFeatures }
+        : undefined,
+      customSafetyFeatures: Array.isArray(customSafetyFeatures)
+        ? { set: customSafetyFeatures }
+        : undefined,
+      coolingTypes: Array.isArray(coolingTypes) ? { set: coolingTypes } : undefined,
+      heatingTypes: Array.isArray(heatingTypes) ? { set: heatingTypes } : undefined,
+      buildingAmenityFeatures: Array.isArray(buildingAmenityFeatures)
+        ? { set: buildingAmenityFeatures }
+        : undefined,
+      outdoorsSpacesFeatures: Array.isArray(outdoorsSpacesFeatures)
+        ? { set: outdoorsSpacesFeatures }
+        : undefined,
+      otherSharedFacilities: Array.isArray(otherSharedFacilities)
+        ? { set: otherSharedFacilities }
+        : undefined,
+    };
+
+    if (Array.isArray(roomDetails)) {
+      out.roomDetails = {
+        deleteMany: {},
+        create: roomDetails.flatMap((room: any) =>
+          Array.from({ length: room.count || 1 }, () => ({
+            roomName: room.roomName,
+            roomSize: room.roomSize,
+            count: room.count,
+            ensuite: room.ensuite,
+            furnished: room.furnished,
+            price: room.price,
+            description: room?.description,
+            priceFrequency: room.priceFrequency,
+          }))
+        ),
+      };
+    }
+
+    if (sharedFacilities != null && typeof sharedFacilities === 'object') {
+      out.sharedFacilities = {
+        deleteMany: {},
+        create: [
+          {
+            kitchen: sharedFacilities.kitchen ?? false,
+            bathroom: sharedFacilities.bathroom ?? false,
+            livingRoom: sharedFacilities.livingRoom ?? false,
+            garden: sharedFacilities.garden ?? false,
+            garage: sharedFacilities.garage ?? false,
+            laundry: sharedFacilities.laundry ?? false,
+            parking: sharedFacilities.parking ?? false,
+            other: sharedFacilities.other || '',
+          },
+        ],
+      };
+    }
+
+    if (Array.isArray(unitConfigurations)) {
+      out.unitConfigurations = {
+        deleteMany: {},
+        create: unitConfigurations.flatMap((unit: any) =>
+          Array.from({ length: unit.count || 1 }, (_, i) => ({
+            unitType: unit.unitType,
+            unitNumber: unit.unitNumber
+              ? `${unit.unitNumber}${i + 1}`
+              : String(i + 1),
+            floorNumber: unit.floorNumber,
+            bedrooms: unit.bedrooms,
+            bathrooms: unit.bathrooms,
+            kitchens: unit.kitchens,
+            furnished: unit.furnished,
+            ensuite: unit.ensuite,
+            count: unit.count,
+            price: unit.price,
+            priceFrequency: unit.priceFrequency,
+            area: unit.area,
+            description: unit.description,
+            availability: unit.availability,
+          }))
+        ),
+      };
+    }
+
+    return out;
+  }
+
   private async updateResidentialProps(
     propertyId: string,
     residentialData: any,
@@ -486,10 +592,10 @@ class PropertyService {
     });
 
     if (!existingSpec?.residential) {
-      // Create new residential property
+      const prismaData = this.buildResidentialPrismaData(residentialData);
       return tx.residentialProperty.create({
         data: {
-          ...residentialData,
+          ...prismaData,
           PropertySpecification: {
             create: {
               propertyId,
@@ -502,10 +608,12 @@ class PropertyService {
       });
     }
 
+    const prismaData = this.buildResidentialPrismaData(residentialData);
+
     // Update existing residential property
     return tx.residentialProperty.update({
       where: { id: existingSpec.residential.id },
-      data: residentialData
+      data: prismaData
     });
   }
 
@@ -1046,12 +1154,34 @@ class PropertyService {
 
 
     deleteProperty = async (landlordId: string, id: string) => {
+        const property = await prismaClient.properties.findFirst({
+            where: { id, landlordId, isDeleted: false },
+        });
+
+        if (!property) {
+            throw new NotFoundError("Property not found");
+        }
+
+        const activeTenantCount = await prismaClient.tenants.count({
+            where: {
+                propertyId: id,
+                landlordId,
+                isCurrentLease: true,
+            },
+        });
+
+        if (activeTenantCount > 0) {
+            throw new ConflictError(
+                "Cannot delete a property with active tenants. End or remove tenancies first."
+            );
+        }
+
         return await prismaClient.properties.update({
             where: { id, landlordId },
-            data: { isDeleted: true },
+            data: { isDeleted: true, isListed: false },
             include: {
-                ...this.propsInclusion
-            }
+                ...this.propsInclusion,
+            },
         });
     }
     updateAvailabiltyStatus = async (
@@ -1285,13 +1415,21 @@ class PropertyService {
         })
     }
 
-    getPropertyGlobalFees = async (landlordId: string, settingType: PropsSettingType) => {
-        return await prismaClient.propertySettings.findFirst({
-            where: {
-                landlordId,
-                settingType
-            }
-        })
+    getPropertyGlobalFees = async (landlordId: string, _settingType?: PropsSettingType) => {
+        const settings = await prismaClient.settings.findFirst({
+            where: { landlordId, isDeleted: false },
+        });
+        if (!settings) return null;
+
+        return {
+            applicationFee: settings.applicationFeePercentage,
+            depositPercentage: settings.depositPercentage,
+            lateFeePercentage: settings.lateFeePercentage,
+            lateFeeFrequency: settings.lateFeeFrequency,
+            gracePeriodDays: settings.lateFeeGracePeriod,
+            refundPolicy: settings.refundPolicy,
+            refundTimeframe: settings.refundTimeframe,
+        };
     }
     // property listings
     getActiveOrInactivePropsListing = async (landlordId: string, isActive: boolean = true, availability: AvailabilityStatus = AvailabilityStatus.VACANT) => {
@@ -2338,29 +2476,30 @@ class PropertyService {
     async createPropertyListing(data: PropertyListingDTO | any) {
 
         const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
-        const response: {
-            success: boolean;
-            message: string;
-            listings: any[];
-            alreadyListed: {
-                units: string[];
-                rooms: string[];
-                property?: boolean;
-            };
-            newlyListed: {
-                units: string[];
-                rooms: string[];
-                property?: boolean;
-            };
-        } = {
-            success: true,
-            message: '',
-            listings: [],
-            alreadyListed: { units: [], rooms: [] },
-            newlyListed: { units: [], rooms: [] }
-        };
 
-        return await prismaClient.$transaction(async (tx) => {
+        const response = await prismaClient.$transaction(async (tx) => {
+            const response: {
+                success: boolean;
+                message: string;
+                listings: any[];
+                alreadyListed: {
+                    units: string[];
+                    rooms: string[];
+                    property?: boolean;
+                };
+                newlyListed: {
+                    units: string[];
+                    rooms: string[];
+                    property?: boolean;
+                };
+            } = {
+                success: true,
+                message: '',
+                listings: [],
+                alreadyListed: { units: [], rooms: [] },
+                newlyListed: { units: [], rooms: [] }
+            };
+
             // Check for existing ENTIRE_PROPERTY listing
             if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
 
@@ -2525,6 +2664,23 @@ class PropertyService {
             maxWait: 30000,
             timeout: 30000
         });
+
+        if (response.success && response.listings.length > 0 && baseData.payApplicationFee) {
+            const property = await prismaClient.properties.findUnique({
+                where: { id: propertyId },
+                select: { landlordId: true, price: true, priceFrequency: true },
+            });
+            if (property?.landlordId) {
+                await LandlordSettingsService.syncApplicationSettingsFromGlobal(
+                    property.landlordId,
+                    propertyId,
+                    Number(baseData.applicationFeeAmount ?? property.price ?? 0),
+                    property.priceFrequency
+                );
+            }
+        }
+
+        return response;
     }
 
 
@@ -3172,7 +3328,19 @@ class PropertyService {
             const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, securityDeposit, initialDeposit, virtualTourUrl: virtualTourUrlRaw, ...rest } = data;
 
             // Store deposit: use securityDeposit; for Nigeria frontend may send initialDeposit only, so fall back to it
-            const depositAmount = securityDeposit ?? initialDeposit;
+            let depositAmount = securityDeposit ?? initialDeposit;
+
+            if ((!depositAmount || Number(depositAmount) <= 0) && price && landlordId) {
+                const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+                const rules = resolveFinancialRules(
+                    globalSettings,
+                    Number(price),
+                    (rest as { priceFrequency?: PriceFrequency }).priceFrequency
+                );
+                if (rules.depositAmount > 0) {
+                    depositAmount = rules.depositAmount;
+                }
+            }
 
             if (!landlordId || !stateId) {
                 throw new Error("Missing required fields: landlordId or stateId.");

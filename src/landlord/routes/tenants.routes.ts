@@ -4,6 +4,7 @@ import TenantLandlordController from "../controllers/tenant.controller";
 import DocumentRequestController from "../controllers/documentRequest.controller";
 import { uploadcsv } from "../../configs/multer";
 import upload from "../../configs/multer";
+import { requireLandlordIdentityVerified } from "../../middlewares/requireIdentityVerified";
 class TenantsLandlordRouter {
     public router: Router;
     authenticateService: Authorize
@@ -48,7 +49,11 @@ class TenantsLandlordRouter {
         // Other tenant routes
         this.router.get('/get/:tenantId', TenantLandlordController.getTenant)
         this.router.get('/documents/:tenantId', TenantLandlordController.getterTenantsDocument)
-        this.router.patch('/create-tenant-application-info/:userId/:inviteId', TenantLandlordController.createApplicationFromLast)
+        this.router.patch(
+            '/create-tenant-application-info/:userId/:inviteId',
+            requireLandlordIdentityVerified,
+            TenantLandlordController.createApplicationFromLast
+        );
     }
 }
 

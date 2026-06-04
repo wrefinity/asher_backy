@@ -1,6 +1,10 @@
-import { ReminderMethodType } from "@prisma/client";
+import { PropsSettingType, Refundability, ReminderMethodType, RefundPolicyType } from "@prisma/client";
 import { prismaClient } from "../..";
 import { IPropApartmentSettings, IGlobalSetting } from '../validations/interfaces/propsSettings';
+import {
+  mapToPropertyLateFeeFrequency,
+  resolveFinancialRules,
+} from '../../utils/globalSettings.util';
 
 class LandlordSettingsService {
 
@@ -43,36 +47,36 @@ class LandlordSettingsService {
         });
     }
 
-    // Update landlord settings with enum validation
-    async updateLandlordSettings(landlordId: string, updateData: IGlobalSetting) {
-        // Validate reminderMethods if provided
-        if (updateData.reminderMethods) {
+    async updateLandlordSettings(landlordId: string, updateData: Partial<IGlobalSetting>) {
+        const data = { ...updateData };
+
+        if (data.reminderMethods) {
             const validMethods = Object.values(ReminderMethodType);
-            updateData.reminderMethods = updateData.reminderMethods
+            data.reminderMethods = data.reminderMethods
                 .filter((method: string) => validMethods.includes(method as ReminderMethodType))
                 .map(method => method.toUpperCase() as ReminderMethodType);
         }
 
-        // First check if settings exist for this landlord
         const existingSettings = await prismaClient.settings.findFirst({
-            where: { landlordId }
+            where: { landlordId, isDeleted: false },
         });
 
         if (existingSettings) {
-            // Update existing settings
-            return await prismaClient.settings.update({
+            return prismaClient.settings.update({
                 where: { id: existingSettings.id },
-                data: updateData
-            });
-        } else {
-            // Create new settings
-            return await prismaClient.settings.create({
-                data: {
-                    landlordId,
-                    ...updateData
-                }
+                data,
             });
         }
+
+        return prismaClient.settings.create({
+            data: {
+                landlordId,
+                lateFeeEnabled: data.lateFeeEnabled ?? false,
+                notificationEnabled: data.notificationEnabled ?? false,
+                reminderMethods: data.reminderMethods ?? [],
+                ...data,
+            },
+        });
     }
     delete = async (id: string) => {
         return prismaClient.propertySettings.delete({
@@ -88,17 +92,11 @@ class LandlordSettingsService {
         return prismaClient.settings.findUnique({ where: { id } });
     }
 
-    getAllGlobalSettings = async (landlordId: string): Promise<IGlobalSetting> => {
-        return prismaClient.settings.findFirst({ where: { landlordId } });
-    }
-    getLandlordGlobalSettingWithStatus = async (landlordId: string, type: string): Promise<IGlobalSetting | null> => {
+    getAllGlobalSettings = async (landlordId: string): Promise<IGlobalSetting | null> => {
+        if (!landlordId) return null;
         return prismaClient.settings.findFirst({
-            where: {
-                ...(type ? { type } : {}),
-                landlordId
-            }
-        }
-        );
+            where: { landlordId, isDeleted: false },
+        });
     }
 
     updateGlobalSetting = async (id: string, data: Partial<IGlobalSetting>): Promise<IGlobalSetting | null> => {
@@ -110,6 +108,92 @@ class LandlordSettingsService {
     deleteGlobalSetting = async (id: string): Promise<IGlobalSetting | null> => {
         return prismaClient.settings.update({ where: { id }, data: { isDeleted: true } });
     }
+
+    getPropertyLateFeeOverride = async (propertyId: string) => {
+        return prismaClient.propertySettings.findFirst({
+            where: { propertyId, settingType: PropsSettingType.LATEFEE },
+        });
+    };
+
+    upsertPropertyLateFeeSettings = async (params: {
+        landlordId: string;
+        propertyId: string;
+        lateFeePercentage?: number;
+        lateFeeFixed?: number;
+        gracePeriodDays?: number;
+        lateFeeFrequency?: IGlobalSetting['lateFeeFrequency'];
+    }) => {
+        const { landlordId, propertyId, lateFeePercentage, lateFeeFixed, gracePeriodDays, lateFeeFrequency } =
+            params;
+
+        return prismaClient.propertySettings.upsert({
+            where: {
+                propertyId_settingType: {
+                    propertyId,
+                    settingType: PropsSettingType.LATEFEE,
+                },
+            },
+            update: {
+                lateFeePercentage: lateFeePercentage ?? 0,
+                lateFee: lateFeeFixed ?? 0,
+                gracePeriodDays: gracePeriodDays ?? 0,
+                lateFeeFrequency: mapToPropertyLateFeeFrequency(lateFeeFrequency),
+            },
+            create: {
+                landlordId,
+                propertyId,
+                settingType: PropsSettingType.LATEFEE,
+                lateFeePercentage: lateFeePercentage ?? 0,
+                lateFee: lateFeeFixed ?? 0,
+                gracePeriodDays: gracePeriodDays ?? 0,
+                lateFeeFrequency: mapToPropertyLateFeeFrequency(lateFeeFrequency),
+            },
+        });
+    };
+
+    syncApplicationSettingsFromGlobal = async (
+        landlordId: string,
+        propertyId: string,
+        rent: number,
+        priceFrequency?: string | null
+    ) => {
+        const globalSettings = await this.getAllGlobalSettings(landlordId);
+        if (!globalSettings) return null;
+
+        const rules = resolveFinancialRules(
+            globalSettings,
+            rent,
+            priceFrequency as any
+        );
+
+        return prismaClient.propertySettings.upsert({
+            where: {
+                propertyId_settingType: {
+                    propertyId,
+                    settingType: PropsSettingType.APPLICATION,
+                },
+            },
+            update: {
+                applicationFee: rules.applicationFeePercent,
+                refundPolicy:
+                    rules.refundPolicy === RefundPolicyType.NONE
+                        ? Refundability.NO
+                        : Refundability.YES,
+                refundTimeframe: rules.refundTimeframe ?? undefined,
+            },
+            create: {
+                landlordId,
+                propertyId,
+                settingType: PropsSettingType.APPLICATION,
+                applicationFee: rules.applicationFeePercent,
+                refundPolicy:
+                    rules.refundPolicy === RefundPolicyType.NONE
+                        ? Refundability.NO
+                        : Refundability.YES,
+                refundTimeframe: rules.refundTimeframe ?? undefined,
+            },
+        });
+    };
 }
 
 export default new LandlordSettingsService();

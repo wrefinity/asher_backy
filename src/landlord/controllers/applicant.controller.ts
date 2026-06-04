@@ -18,6 +18,13 @@ import { PropertyDocumentService } from "../../services/propertyDocument.service
 import emailService from "../../services/emailService"
 import logger from "../../utils/loggers"
 import { ViewingInviteNormalizer } from "../../utils/ViewingInviteNormalizer"
+import LandlordSettingsService from "../services/propertySetting.service";
+import {
+  calculateApplicationFeeRefundAmount,
+  resolveFinancialRules,
+  getApplicationFeeRefundInfo,
+} from "../../utils/globalSettings.util";
+import { prismaClient } from "../..";
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -429,8 +436,44 @@ class ApplicationControls {
     updateEnquireToRejected = async (req: CustomRequest, res: Response) => {
         try {
             const enquireId = req.params.enquireId;
+            const landlordId = req.user?.landlords?.id;
+            const enquiry = await logsServices.getLogsById(enquireId);
+
             const leasingUpdated = await logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED });
-            return res.status(200).json({ leasingUpdated });
+
+            let applicationFeeRefund = null;
+            if (landlordId && enquiry?.propertyId) {
+                const property = await propertyServices.getPropertiesById(enquiry.propertyId);
+                const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+                const rent = Number(property?.price ?? 0);
+                const rules = resolveFinancialRules(
+                    globalSettings,
+                    rent,
+                    property?.priceFrequency
+                );
+                const appSettings = await LandlordSettingsService.syncApplicationSettingsFromGlobal(
+                    landlordId,
+                    enquiry.propertyId,
+                    rent,
+                    property?.priceFrequency
+                );
+                const listing = await prismaClient.propertyListingHistory.findFirst({
+                    where: { propertyId: enquiry.propertyId, onListing: true, isActive: true },
+                    orderBy: { createdAt: 'desc' },
+                });
+                const feePaid = Number(
+                    listing?.applicationFeeAmount ?? rules.applicationFeeAmount
+                );
+                const refundInfo = getApplicationFeeRefundInfo(rules);
+                applicationFeeRefund = {
+                    ...refundInfo,
+                    suggestedRefundAmount: calculateApplicationFeeRefundAmount(feePaid, rules),
+                    applicationFeePaid: feePaid,
+                    propertyApplicationSettings: appSettings,
+                };
+            }
+
+            return res.status(200).json({ leasingUpdated, applicationFeeRefund });
         } catch (error) {
             errorService.handleError(error, res)
         }

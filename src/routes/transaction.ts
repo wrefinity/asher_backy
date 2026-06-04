@@ -2,6 +2,7 @@ import { Router } from "express";
 import transactionsControllers from "../controllers/transactions.controllers";
 import transferControllers from "../controllers/transfer.controllers";
 import { Authorize } from "../middlewares/authorize";
+import { requireLandlordAppAccess } from "../middlewares/requireOnboardingComplete";
 
 class TransactionRouter {
     public router: Router;
@@ -14,6 +15,7 @@ class TransactionRouter {
     }
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize)
+        this.router.use(requireLandlordAppAccess)
         this.router.post('/fund-wallet', transactionsControllers.fundWallet)
         // this.router.patch('/verify/:referenceId', transactionsControllers.verifyPayment)
         // this.router.patch('/verify-flutter/:referenceId', transactionsControllers.verifyFlutterWave)

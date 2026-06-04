@@ -8,8 +8,8 @@ import {
 import { CustomRequest } from '../../utils/types';
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
-import { SettingType } from '../validations/interfaces/propsSettings';
 import { LandlordService } from '../services/landlord.service';
+import { resolveFinancialRules, getApplicationFeeRefundInfo } from '../../utils/globalSettings.util';
 class SettingsController {
 
     createPropApartmentSetting = async (req: CustomRequest, res: Response) => {
@@ -108,17 +108,10 @@ class SettingsController {
     // Retrieve all global settings associated with the landlord
     getAllGlobalSettings = async (req: CustomRequest, res: Response): Promise<void> => {
         try {
-            console.log("was called===========")
-            // Get landlord ID from authenticated user
             const landlordId = req.user?.landlords?.id;
-
-            // Fetch all settings for the specified landlord
             const settings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
-
-            // Return the retrieved settings
-            res.status(200).json({settings});
+            res.status(200).json({ settings });
         } catch (error) {
-            // Handle any errors using the error service
             ErrorService.handleError(error, res);
         }
     }
@@ -158,7 +151,7 @@ class SettingsController {
             const landlordId = req.user?.landlords?.id;
 
             // Verify that only the landlord who created the setting can delete it
-            if (checkSetting.landlordId == landlordId) {
+            if (checkSetting.landlordId != landlordId) {
                 return res.status(403).json({ message: "Only the landlord who created this setting can delete it" });
             }
 
@@ -178,12 +171,19 @@ class SettingsController {
             const { id } = req.params;
             const landlord = await new LandlordService().getLandlordById(id);
             if (!landlord) return res.status(404).json({ message: "Landlord not found" });
-            const applicationFee = await LandlordSettingsService.getLandlordGlobalSettingWithStatus(
-                landlord.id,
-                SettingType.APPLICATION_FEE
-            );
-            if (!applicationFee) return res.status(404).json({ message: "The current landlord needs to set application" });
-            return res.status(200).json({applicationFee});
+
+            const settings = await LandlordSettingsService.getAllGlobalSettings(landlord.id);
+            if (!settings?.applicationFeePercentage) {
+                return res.status(404).json({ message: "The current landlord needs to set application fee in global settings" });
+            }
+
+            const rules = resolveFinancialRules(settings, 0);
+
+            return res.status(200).json({
+                applicationFeePercent: settings.applicationFeePercentage,
+                settings,
+                ...getApplicationFeeRefundInfo(rules),
+            });
         } catch (error) {
             ErrorService.handleError(error, res);
         }

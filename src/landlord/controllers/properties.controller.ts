@@ -407,16 +407,23 @@ class PropertyController {
         try {
             const landlordId = req.user?.landlords?.id;
             const propertiesId = req.params.propertyId;
-            const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
-            if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
             if (!landlordId) return res.status(404).json({ message: "Landlord not found" })
 
-            if (landlordId !== propertyExist.landlordId) {
-                return res.status(404).json({ message: "only lanlord that created the props can delist it" })
+            const propertyExist = await PropertyServices.checkLandlordPropertyExist(landlordId, propertiesId);
+            if (!propertyExist) return res.status(404).json({ message: "property does not exists" })
+            if (propertyExist.isDeleted) {
+                return res.status(410).json({ message: "Property has already been deleted" })
             }
-            const properties = await PropertyServices.delistPropertyListing(propertiesId);
-            if (!properties) return res.status(200).json({ message: "No Property listed yet" })
-            return res.status(200).json(properties)
+
+            if (landlordId !== propertyExist.landlordId) {
+                return res.status(403).json({ message: "Only the property owner can delete this property" })
+            }
+
+            const deleted = await PropertyServices.deleteProperty(landlordId, propertiesId);
+            return res.status(200).json({
+                message: "Property deleted successfully",
+                property: deleted,
+            })
         } catch (error) {
             ErrorService.handleError(error, res)
         }

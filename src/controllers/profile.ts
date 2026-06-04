@@ -6,6 +6,8 @@ import { ApiResponse } from "../utils/ApiResponse";
 import { ApiError } from "../utils/ApiError";
 import { asyncHandler } from "../utils/asyncHandler";
 import { prismaClient } from "..";
+import PreferencesService from "../services/preferences.service";
+import { getCurrencyForCountry } from "../utils/helpers";
 
 class ProfileControls {
   profileUpdate = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -46,6 +48,22 @@ class ProfileControls {
       await prismaClient.landlords.update({
         where: { id: landlordId },
         data: { businessName: businessName || null },
+      });
+    }
+
+    const country =
+      typeof data.country === 'string' && data.country.trim()
+        ? data.country.trim()
+        : undefined;
+    if (country) {
+      const existingPrefs = await PreferencesService.getUserPreferences(userId);
+      const mappedCurrency = getCurrencyForCountry(country);
+      await PreferencesService.createOrUpdatePreferences(userId, {
+        region: country,
+        country,
+        ...(mappedCurrency && !existingPrefs?.currency
+          ? { currency: mappedCurrency }
+          : {}),
       });
     }
 

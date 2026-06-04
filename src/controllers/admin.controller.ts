@@ -13,6 +13,11 @@ import { SupportService } from "../services/support.services";
 import logger from "../utils/loggers";
 import { Jtoken } from "../middlewares/Jtoken";
 import logsServices from "../services/logs.services";
+import {
+  approveLandlordIdentityVerification,
+  listPendingIdentityVerifications,
+  rejectLandlordIdentityVerification,
+} from "../services/landlordIdentity.service";
 
 interface InviteLandlordData {
   email: string;
@@ -2036,6 +2041,51 @@ class AdminController {
         success: false,
         message: errorMessage,
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  getPendingIdentityVerifications = async (_req: CustomRequest, res: Response) => {
+    try {
+      const pending = await listPendingIdentityVerifications();
+      return res.status(200).json({ success: true, data: pending });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  approveLandlordIdentity = async (req: CustomRequest, res: Response) => {
+    try {
+      const { landlordId } = req.params;
+      const identity = await approveLandlordIdentityVerification(landlordId);
+      return res.status(200).json({
+        success: true,
+        message: 'Identity verification approved',
+        data: identity,
+      });
+    } catch (error: any) {
+      const status = error?.statusCode ?? 500;
+      return res.status(status).json({
+        success: false,
+        message: error?.message ?? 'Failed to approve identity verification',
+      });
+    }
+  };
+
+  rejectLandlordIdentity = async (req: CustomRequest, res: Response) => {
+    try {
+      const { landlordId } = req.params;
+      const identity = await rejectLandlordIdentityVerification(landlordId);
+      return res.status(200).json({
+        success: true,
+        message: 'Identity verification rejected',
+        data: identity,
+      });
+    } catch (error: any) {
+      const status = error?.statusCode ?? 500;
+      return res.status(status).json({
+        success: false,
+        message: error?.message ?? 'Failed to reject identity verification',
       });
     }
   };

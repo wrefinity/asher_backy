@@ -413,6 +413,7 @@ class UserService {
     }
 
     createLandlord = async (userData: CreateLandlordIF) => {
+        const landlordCode = await this.generateUniqueLandlordCode();
         return await prismaClient.users.create({
             data: {
                 email: userData?.email,
@@ -426,12 +427,15 @@ class UserService {
                         address: userData?.profile?.address,
                         dateOfBirth: userData?.profile?.dateOfBirth,
                         fullname: userData?.profile?.fullname,
+                        firstName: userData?.profile?.firstName,
+                        lastName: userData?.profile?.lastName,
                         profileUrl: userData?.profile?.profileUrl,
                     },
                 },
                 landlords: {
                     create: {
                         isDeleted: false,
+                        landlordCode,
                     },
                 },
             },

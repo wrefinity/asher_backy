@@ -62,6 +62,27 @@ class AdminRouter {
             AdminController.getAllLandlords
         );
 
+        this.router.get(
+            "/landlords/identity-verifications/pending",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.getPendingIdentityVerifications
+        );
+
+        this.router.post(
+            "/landlords/:landlordId/identity-verification/approve",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.approveLandlordIdentity
+        );
+
+        this.router.post(
+            "/landlords/:landlordId/identity-verification/reject",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.rejectLandlordIdentity
+        );
+
         this.router.post(
             "/landlords/:userId/resend-invite",
             this.authenticateService.authorize,

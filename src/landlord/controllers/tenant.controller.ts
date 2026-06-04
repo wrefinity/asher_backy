@@ -16,6 +16,11 @@ import PerformanceCalculator from '../../services/PerformanceCalculator';
 import applicantService from "../../webuser/services/applicantService";
 import { sendApplicationCompletionEmails } from "../../utils/emailer";
 import propertyServices from '../../services/propertyServices';
+import LandlordSettingsService from '../services/propertySetting.service';
+import {
+  parseGracePeriodDays,
+  resolveFinancialRules,
+} from '../../utils/globalSettings.util';
 
 
 
@@ -551,9 +556,38 @@ class TenantControls {
             
             const property = await prismaClient.properties.findUnique({
                 where: { id: tenant.propertyId },
-                select: { price: true }
+                select: { price: true, priceFrequency: true, landlordId: true },
             });
             const oldRent = property?.price ? Number(property.price) : 0;
+
+            const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+            const baseRules = resolveFinancialRules(
+                globalSettings,
+                Number(scheduledRent),
+                property?.priceFrequency
+            );
+
+            const graceDays =
+                parseGracePeriodDays(gracePeriod) ??
+                baseRules.graceDays;
+
+            const lateFeePercentage =
+                lateFeeType === 'percentage' && lateFeeAmount != null
+                    ? Number(lateFeeAmount)
+                    : undefined;
+            const lateFeeFixed =
+                lateFeeType === 'fixed' && lateFeeAmount != null
+                    ? Number(lateFeeAmount)
+                    : undefined;
+
+            await LandlordSettingsService.upsertPropertyLateFeeSettings({
+                landlordId,
+                propertyId: tenant.propertyId,
+                lateFeePercentage,
+                lateFeeFixed,
+                gracePeriodDays: graceDays,
+                lateFeeFrequency: globalSettings?.lateFeeFrequency ?? baseRules.lateFeeFrequency,
+            });
 
             // Update property price (this affects the tenant's rent)
             const updatedProperty = await prismaClient.properties.update({
@@ -565,7 +599,7 @@ class TenantControls {
 
             // Create log entry to track rent adjustment history
             await LogsServices.createLog({
-                events: `Rent adjusted from ${oldRent} to ${scheduledRent} for tenant ${tenantId}`,
+                events: `Rent adjusted from ${oldRent} to ${scheduledRent} for tenant ${tenantId}. Late fee: ${lateFeeType === 'percentage' ? `${lateFeeAmount}%` : lateFeeFixed}, grace: ${graceDays} days.`,
                 type: LogType.ACTIVITY,
                 propertyId: tenant.propertyId,
                 createdById: req.user?.id,
@@ -580,7 +614,13 @@ class TenantControls {
                     propertyId: tenant.propertyId,
                     oldRent,
                     newRent: scheduledRent,
-                    property: updatedProperty
+                    property: updatedProperty,
+                    lateFeeSettings: {
+                        gracePeriodDays: graceDays,
+                        lateFeeType,
+                        lateFeeAmount: Number(lateFeeAmount) || 0,
+                        lateFeeFrequency: globalSettings?.lateFeeFrequency ?? baseRules.lateFeeFrequency,
+                    },
                 }
             });
         } catch (error) {

@@ -11,6 +11,7 @@ class BillRouter {
 
     private initializeRoutes() {
         this.router.post('/', billController.createBill)
+        this.router.post('/upload', billController.bulkUploadBills)
         this.router.post('/category', billController.createBillCategory)
         this.router.get('/categories', billController.getBillsCategories)
         this.router.get('/list', billController.getAllBills)

@@ -156,6 +156,58 @@ class PreferencesController {
             ErrorService.handleError(error, res);
         }
     }
+
+    skipOnboardingStep = async (req: CustomRequest, res: Response) => {
+        try {
+            if (!req.user?.id) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const step = req.body?.step;
+            if (step !== 'tenants' && step !== 'finance') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'step must be "tenants" or "finance"',
+                });
+            }
+
+            const onboarding = await PreferencesService.skipOnboardingStep(
+                req.user.id,
+                step
+            );
+
+            return res.json({ success: true, data: onboarding });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
+
+    completeOnboarding = async (req: CustomRequest, res: Response) => {
+        try {
+            if (!req.user?.id) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            if (req.body?.acceptedTerms !== true) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'acceptedTerms must be true to finish setup',
+                });
+            }
+
+            const onboarding = await PreferencesService.completeOnboarding(
+                req.user.id,
+                {
+                    acceptedTerms: true,
+                    termsVersion: req.body?.termsVersion,
+                }
+            );
+
+            return res.json({ success: true, data: onboarding });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
 }
 
 export default new PreferencesController()

@@ -6,6 +6,16 @@ model landlords {
   isDeleted            Boolean                @default(false)
   stripeCustomerId     String?                @unique
   emailDomains         String?                @unique
+  identityVerificationStatus LandlordIdentityVerificationStatus @default(NONE)
+  identityDocumentUrls String[]               @default([])
+  identityVerifiedAt   DateTime?
+  identityVerificationSkippedAt DateTime?
+  identitySubmittedAt  DateTime?
+  identityRejectedAt   DateTime?
+  onboardingTenantsSkippedAt DateTime?
+  onboardingFinanceSkippedAt DateTime?
+  onboardingCompletedAt DateTime?
+  onboardingTermsVersion String?
   Broadcast            Broadcast[]
   BroadcastCategory    BroadcastCategory[]
   globalSettings       Settings[]
@@ -24,4 +34,11 @@ model landlords {
 
   PropertyEnquiry PropertyEnquiry[]
   createdStates   state[]
+}
+
+enum LandlordIdentityVerificationStatus {
+  NONE
+  PENDING
+  VERIFIED
+  SKIPPED
 }

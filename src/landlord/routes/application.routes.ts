@@ -5,6 +5,7 @@ import upload, { uploadcsv } from "../../configs/multer";
 import { uploadToCloudinary } from "../../middlewares/multerCloudinary";
 import { validateBody } from "../../middlewares/validation";
 import { agreementDocumentSchema, createApplicationInviteSchema } from "../validations/schema/applicationInvitesSchema";
+import { requireLandlordIdentityVerified } from "../../middlewares/requireIdentityVerified";
 
 
 class ApplicationLandlordRouter {
@@ -17,6 +18,7 @@ class ApplicationLandlordRouter {
         this.initializeRoutes()
     }
     private initializeRoutes() {
+        this.router.use(requireLandlordIdentityVerified);
         this.router.patch('/statuses/:id', ApplicationController.updateApplicationStatusStep);
         this.router.patch('/reminder/:id', ApplicationController.sendApplicationReminder);
         this.router.get('/all', ApplicationController.getApplicationsWithInvites);

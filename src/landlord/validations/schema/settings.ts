@@ -27,7 +27,8 @@ export const GlobalSettingsSchema = Joi.object({
   // Late Fee Settings
   lateFeeEnabled: Joi.boolean().default(false),
   lateFeePercentage: Joi.number().min(0).max(100).precision(2).optional(),
-  lateFeeGracePeriod: Joi.number().integer().min(0).max(365).optional(),
+  /** % of billing period before late fee applies (e.g. 20 = 20% of monthly cycle). */
+  lateFeeGracePeriod: Joi.number().min(0).max(100).optional(),
   lateFeeFrequency: Joi.string().valid(...Object.values(FrequencyType)).optional(),
   
   // Deposit Settings
@@ -42,7 +43,8 @@ export const GlobalSettingsSchema = Joi.object({
   
   // Notification Settings
   notificationEnabled: Joi.boolean().default(false),
-  notificationFrequency: Joi.number().integer().min(1).max(365).optional(),
+  /** % of billing period between rent/bill reminders. */
+  notificationFrequency: Joi.number().min(0).max(100).optional(),
   reminderMethods: Joi.array().items(
     Joi.string().valid(...Object.values(ReminderMethodType))
   ).default([]),

@@ -68,9 +68,10 @@ export interface OverdueRent {
 
 export interface LateFeeSettings {
   lateFee: number;
-  lateFeeFrequency: LatePaymentFeeType;
   lateFeePercentage?: number;
   gracePeriodDays?: number;
+  lateFeeEnabled?: boolean;
+  lateFeeFrequency?: string | null;
 }
 
 export interface PaymentFrequencyCalc {

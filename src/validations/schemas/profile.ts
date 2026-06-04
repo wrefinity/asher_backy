@@ -9,7 +9,9 @@ export const userSearchPreferenceSchema = Joi.object({
 });
 
 export const profileSchema = Joi.object({
-  gender: Joi.string().valid('Male', 'Female', 'Other'),
+  gender: Joi.string()
+    .valid('Male', 'Female', 'Other')
+    .insensitive(),
   id: stringJoiOptional,
   phoneNumber: Joi.string().pattern(/^[0-9]{10,15}$/).optional(),
   address: stringJoiOptional,

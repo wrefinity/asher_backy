@@ -43,6 +43,58 @@ class LandlordController {
         }
     }
 
+    submitIdentityVerification = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(401).json({ success: false, message: 'Landlord not found' });
+            }
+            const documentUrls = Array.isArray(req.body?.documentUrls)
+                ? req.body.documentUrls.filter((url: unknown) => typeof url === 'string' && url.trim())
+                : req.body?.cloudinaryUrls?.filter((url: unknown) => typeof url === 'string') ?? [];
+
+            if (documentUrls.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'At least one identity document URL is required',
+                });
+            }
+
+            const { submitLandlordIdentityDocuments } = await import('../../services/landlordIdentity.service');
+            const identity = await submitLandlordIdentityDocuments(landlordId, documentUrls);
+
+            return res.status(200).json({
+                success: true,
+                message: 'Identity documents submitted for admin review',
+                data: identity,
+            });
+        } catch (err: any) {
+            const status = err?.statusCode ?? 500;
+            return res.status(status).json({ success: false, message: err.message });
+        }
+    }
+
+    skipIdentityVerification = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) {
+                return res.status(401).json({ success: false, message: 'Landlord not found' });
+            }
+
+            const { skipLandlordIdentityVerification } = await import('../../services/landlordIdentity.service');
+            const identity = await skipLandlordIdentityVerification(landlordId);
+
+            return res.status(200).json({
+                success: true,
+                message: 'Identity verification skipped. Leasing and application flows remain locked until you verify.',
+                data: identity,
+            });
+        } catch (err: any) {
+            const status = err?.statusCode ?? 500;
+            return res.status(status).json({ success: false, message: err.message });
+        }
+    }
+
     // Delete a landlord
     deleteLandlord = async (req: CustomRequest, res: Response) => {
         try {

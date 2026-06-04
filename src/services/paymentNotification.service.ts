@@ -1,7 +1,9 @@
 import { Server as IOServer } from "socket.io";
 import { prismaClient } from "..";
-import { TransactionType } from "@prisma/client";
+import { PriceFrequency, TransactionType } from "@prisma/client";
 import loggers from "../utils/loggers";
+import LandlordSettingsService from "../landlord/services/propertySetting.service";
+import { resolveFinancialRules } from "../utils/globalSettings.util";
 
 export interface PaymentNotification {
   type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder';
@@ -262,36 +264,54 @@ export class PaymentNotificationService {
    */
   async checkAndSendDueBillsReminders(): Promise<void> {
     try {
-      const today = new Date();
-      today.setHours(23, 59, 59, 999); // End of today
-      
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0); // Start of tomorrow
+      const now = new Date();
+      const settingsCache = new Map<string, Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>>();
 
-      const dueBills = await prismaClient.billsSubCategory.findMany({
+      const upcomingBills = await prismaClient.billsSubCategory.findMany({
         where: {
-          dueDate: {
-            gte: today,
-            lt: tomorrow
-          },
-          isDeleted: false
+          isDeleted: false,
+          dueDate: { gte: now },
         },
         include: {
           tenants: { include: { user: true } },
-          property: true
-        }
+          property: { select: { name: true, price: true, priceFrequency: true } },
+        },
       });
 
-      for (const bill of dueBills) {
-        if (bill.tenants?.user) {
+      let sent = 0;
+
+      for (const bill of upcomingBills) {
+        if (!bill.tenants?.user || !bill.landlordId) continue;
+
+        if (!settingsCache.has(bill.landlordId)) {
+          settingsCache.set(
+            bill.landlordId,
+            await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
+          );
+        }
+
+        const settings = settingsCache.get(bill.landlordId);
+        if (!settings?.notificationEnabled) continue;
+
+        const frequency = bill.property?.priceFrequency ?? PriceFrequency.MONTHLY;
+        const rentBase = Number(bill.property?.price ?? bill.amount);
+        const rules = resolveFinancialRules(settings, rentBase, frequency);
+
+        if (rules.reminderIntervalDays <= 0) continue;
+
+        const daysUntilDue = Math.ceil(
+          (new Date(bill.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (daysUntilDue >= 0 && daysUntilDue <= rules.reminderIntervalDays) {
           await this.sendBillDueReminder(bill.id);
+          sent += 1;
         }
       }
 
-      console.log(`📅 Checked ${dueBills.length} bills due today`);
+      loggers.info(`Checked ${upcomingBills.length} upcoming bills, sent ${sent} reminders`);
     } catch (error) {
-      console.error('❌ Error checking due bills:', error);
+      loggers.error('Error checking due bills:', error);
     }
   }
 

@@ -28,7 +28,7 @@ import StorageAnalyticsRouter from './storageAnalytics.routes';
 import violationRoutes from "./violation.routes";
 import { validateBody } from "../../middlewares/validation";
 import { updateLandlordSchema } from "../../validations/schemas/auth";
-import { valid } from "joi/lib";
+import { requireLandlordOnboardingComplete } from "../../middlewares/requireOnboardingComplete";
 class LandlordRouter {
     public router: Router;
     authenticateService: Authorize
@@ -42,6 +42,7 @@ class LandlordRouter {
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize)
         this.router.use(this.authenticateService.authorizeRole(userRoles.LANDLORD))
+        this.router.use(requireLandlordOnboardingComplete)
          // update landlord informations route
          this.router.get(
             '/info',
@@ -51,6 +52,14 @@ class LandlordRouter {
             '/info',
             validateBody(updateLandlordSchema),
             LandlordControl.updateLandlordProfile
+        );
+        this.router.post(
+            '/identity-verification',
+            LandlordControl.submitIdentityVerification
+        );
+        this.router.post(
+            '/identity-verification/skip',
+            LandlordControl.skipIdentityVerification
         );
         this.router.get(
             '/',

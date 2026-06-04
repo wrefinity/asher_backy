@@ -39,8 +39,7 @@ class ConflictError extends Error {
     }
 }
 
-// Export ConflictError so it can be used in other services
-export { ConflictError };
+export { BadRequestError, ConflictError, InternalServerError, NotFoundError };
 
 class PrismaError extends Error {
     statusCode: number;

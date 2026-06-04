@@ -18,13 +18,15 @@ import {
 } from '../schemas';
 import {updateAgreementSchema } from "../../landlord/validations/schema/applicationInvitesSchema"
 import ErrorService from "../../services/error.service";
-import { ApplicationStatus, InvitedResponse, LogType, PropsSettingType } from '@prisma/client';
+import { ApplicationStatus, InvitedResponse, LogType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
 import { updateApplicationInviteSchema } from '../../landlord/validations/schema/applicationInvitesSchema';
 import sendMail, { sendApplicationCompletionEmails } from "../../utils/emailer"
 import logsServices from '../../services/logs.services';
 import emailService from '../../services/emailService';
 import { LandlordService } from '../../landlord/services/landlord.service';
+import LandlordSettingsService from '../../landlord/services/propertySetting.service';
+import { resolveFinancialRules, getApplicationFeeRefundInfo } from '../../utils/globalSettings.util';
 import userServices from '../../services/user.services';
 import logger from '../../utils/loggers';
 import { ViewingInviteNormalizer } from '../../utils/ViewingInviteNormalizer';
@@ -228,23 +230,19 @@ class ApplicantControls {
         return res.status(400).json({ error: 'Invalid property data.' });
       }
 
-      // Fetch global settings for application fees
-      const propsSettings = await PropertyServices.getPropertyGlobalFees(
-        landlordId,
-        PropsSettingType.APPLICATION
-      );
+      const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+      const rent = Number(price);
+      const rules = resolveFinancialRules(globalSettings, rent, property.priceFrequency);
 
-      // Validate propsSettings
-      if (!propsSettings || !propsSettings.applicationFee) {
+      if (!globalSettings || rules.applicationFeePercent <= 0) {
         return res.status(400).json({ error: 'Application fee settings not found.' });
       }
 
-      // Calculate application fee
-      const applicationFee = Number(price) * Number(propsSettings.applicationFee);
-
       return res.status(200).json({
         property,
-        applicationFee,
+        applicationFee: rules.applicationFeeAmount,
+        applicationFeePercent: rules.applicationFeePercent,
+        ...getApplicationFeeRefundInfo(rules),
       });
     } catch (error) {
       ErrorService.handleError(error, res)

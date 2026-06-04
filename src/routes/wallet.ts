@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Authorize } from "../middlewares/authorize";
+import { requireLandlordAppAccess } from "../middlewares/requireOnboardingComplete";
 import walletController from "../controllers/wallet.controller";
 
 
@@ -14,6 +15,7 @@ class WalletRouter {
     }
     private initializeRoutes(): void {
         this.router.use(this.authenticateService.authorize)
+        this.router.use(requireLandlordAppAccess)
         this.router.get('/', walletController.getUserWallet)
         this.router.get('/all', walletController.getUserWallets)
         this.router.get('/user-wallet/:userId', walletController.getUserWalletsByUserId)
