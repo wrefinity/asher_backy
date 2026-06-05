@@ -113,6 +113,9 @@ model properties {
   specificationType      PropertySpecificationType? @default(RESIDENTIAL)
   keyFeatures            String[]
   customKeyFeatures      String[]
+  nearbyAmenities        String[]                 @default([])
+  customNearbyAmenities  String[]                 @default([])
+  amenityDistances       Json?
   count                  Int?
   isListed               Boolean                    @default(false)
   BroadcastCategory      BroadcastCategory[]

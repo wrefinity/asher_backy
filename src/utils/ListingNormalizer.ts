@@ -60,6 +60,7 @@ export interface NormalizedListing {
         // Property-level images (for ENTIRE_PROPERTY or fallback)
         images: Array<{ id: string; url: string; caption: string; isPrimary?: boolean }>;
         videos: Array<{ id: string; url: string; caption: string }>;
+        virtualTours: Array<{ id: string; url: string; caption: string }>;
         // Basic property info
         bedrooms?: number;
         bathrooms?: number;
@@ -68,6 +69,16 @@ export interface NormalizedListing {
         // Property-level amenities/features (for inheritance)
         keyFeatures: string[];
         customKeyFeatures: string[];
+        nearbyAmenities: string[];
+        customNearbyAmenities: string[];
+        amenityDistances: Record<string, string | number> | null;
+        reviews: Array<{
+            id: string;
+            rating: number;
+            comment: string | null;
+            createdAt: string | Date;
+            author: string | null;
+        }>;
         /** Listing rent is priced in this currency (Prisma `properties.currency`). */
         currency?: string | null;
         landlord: {
@@ -100,11 +111,15 @@ export interface NormalizedListing {
             areaUnit: string | null;
             buildingAmenityFeatures: string[];
             safetyFeatures: string[];
+            outdoorsSpacesFeatures: string[];
             epcRating: string | null;
+            councilTaxBand: string | null;
             heatingTypes: string[];
             coolingTypes: string[];
             glazingTypes: string | null;
-            // Shared facilities
+            rentalTerms: string | null;
+            utilities: string[];
+            receiptionRooms: number | null;
             sharedFacilities?: {
                 kitchen: boolean;
                 bathroom: boolean;
@@ -284,12 +299,17 @@ export class ListingNormalizer {
             latitude: property.latitude ? String(property.latitude) : null,
             images: this.extractMediaFiles(property.images || []),
             videos: this.extractMediaFiles(property.videos || []),
+            virtualTours: this.extractMediaFiles(property.virtualTours || []),
             bedrooms: property.bedrooms || this.getBedroomsFromSpec(property),
             bathrooms: property.bathrooms || this.getBathroomsFromSpec(property),
             propertySubType: property.propertySubType || null,
             specificationType: property.specificationType || 'RESIDENTIAL',
             keyFeatures: property.keyFeatures || [],
             customKeyFeatures: property.customKeyFeatures || [],
+            nearbyAmenities: property.nearbyAmenities || [],
+            customNearbyAmenities: property.customNearbyAmenities || [],
+            amenityDistances: (property.amenityDistances as Record<string, string | number> | null) ?? null,
+            reviews: this.extractReviews(property.reviews),
             currency: property.currency == null ? null : String(property.currency),
             landlord: this.extractLandlord(property.landlord)
         };
@@ -326,10 +346,16 @@ export class ListingNormalizer {
                 areaUnit: residential.areaUnit || null,
                 buildingAmenityFeatures: residential.buildingAmenityFeatures || [],
                 safetyFeatures: residential.safetyFeatures || [],
+                outdoorsSpacesFeatures: residential.outdoorsSpacesFeatures || [],
                 epcRating: residential.epcRating || null,
+                councilTaxBand: residential.councilTaxBand || null,
                 heatingTypes: residential.heatingTypes || [],
                 coolingTypes: residential.coolingTypes || [],
                 glazingTypes: residential.glazingTypes || null,
+                rentalTerms: residential.rentalTerms || null,
+                utilities: residential.utilities || [],
+                receiptionRooms:
+                    residential.receiptionRooms ?? residential.receptionRooms ?? null,
                 sharedFacilities: residential.sharedFacilities || null
             } : undefined,
             commercial: spec?.commercial || property.commercial || undefined
@@ -492,6 +518,29 @@ export class ListingNormalizer {
         }
 
         return this.extractMediaFiles(images);
+    }
+
+    /**
+     * Extract property reviews for listing display
+     */
+    private static extractReviews(reviews: any[] | undefined): NormalizedListing['property']['reviews'] {
+        if (!Array.isArray(reviews)) return [];
+
+        return reviews
+            .filter((review) => review && !review.isDeleted)
+            .map((review) => ({
+                id: String(review.id),
+                rating: typeof review.rating === 'number' ? review.rating : Number(review.rating) || 0,
+                comment: review.comment ?? null,
+                createdAt: review.createdAt,
+                author:
+                    review.user?.profile?.fullname ||
+                    [review.user?.profile?.firstName, review.user?.profile?.lastName]
+                        .filter(Boolean)
+                        .join(' ') ||
+                    null,
+            }))
+            .filter((review) => review.comment || review.rating);
     }
 
     /**

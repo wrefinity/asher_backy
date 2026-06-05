@@ -16,9 +16,9 @@ class ChatRoutes {
     }
 
     private initializeRoutes(): void {
-        this.router.post('/room/message',   upload.array('files'), uploadToCloudinary,  this.authenticateService.authorize, ChatControls.createChatRoomAndMessage.bind(ChatControls));
-        this.router.get('/room/:receiverId',  this.authenticateService.authorize, ChatControls.getChatsBetweenUsers.bind(ChatControls),);
-        this.router.get('/rooms/',  this.authenticateService.authorize, ChatControls.getAllChatRoomsForUser.bind(ChatControls),);
+        this.router.post('/room/message', upload.array('files'), uploadToCloudinary, this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ChatControls.createChatRoomAndMessage.bind(ChatControls));
+        this.router.get('/room/:receiverId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ChatControls.getChatsBetweenUsers.bind(ChatControls));
+        this.router.get('/rooms/', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ChatControls.getAllChatRoomsForUser.bind(ChatControls));
     }
 
    

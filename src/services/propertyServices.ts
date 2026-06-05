@@ -21,37 +21,13 @@ type PropertyWithSpecification = Prisma.propertiesGetPayload<{
 
 type FlattenedProperty = Record<string, any>;
 
-interface PropertyFilters {
-    landlordId?: string;
-    property?: {
-        state?: string;
-        country?: string;
-        isActive?: boolean;
-        specificationType?: string;
-        propertysize?: number;
-        marketValue?: number;
-        maxRentalFee?: number;
-        minRentalFee?: number;
-        rentalFee?: number;
-        maxBedRoom?: number;
-        minBedRoom?: number;
-        // noBathRoom?: number;
-        maxBathRoom?: number;
-        minBathRoom?: number;
-        noKitchen?: number;
-        minGarage?: number;
-        maxGarage?: number;
-        type?: PropertyType | PropertyType[];
-    };
-    isShortlet?: boolean,
-    dueDate?: Date,
-    yearBuilt?: Date,
-    zipcode?: string,
-    amenities?: [string],
-    minSize?: number;
-    maxSize?: number;
-    mustHaves?: string[];
-}
+import {
+    buildListedPropertyOrderBy,
+    buildListedPropertyWhereClause,
+    ListedPropertySearchFilters,
+} from '../utils/listedPropertySearch';
+
+type PropertyFilters = ListedPropertySearchFilters;
 
 interface CurrencyDisplayOptions {
     currency?: string | null;
@@ -272,6 +248,8 @@ class PropertyService {
       // Handle arrays
       if (propertyData.keyFeatures) propertyData.keyFeatures = { set: propertyData.keyFeatures };
       if (propertyData.customKeyFeatures) propertyData.customKeyFeatures = { set: propertyData.customKeyFeatures };
+      if (propertyData.nearbyAmenities) propertyData.nearbyAmenities = { set: propertyData.nearbyAmenities };
+      if (propertyData.customNearbyAmenities) propertyData.customNearbyAmenities = { set: propertyData.customNearbyAmenities };
 
       // Update main property
       const updatedProperty = await tx.properties.update({
@@ -958,6 +936,9 @@ class PropertyService {
       // Handle array fields
       if (data.keyFeatures) updateData.keyFeatures = { set: data.keyFeatures };
       if (data.customKeyFeatures) updateData.customKeyFeatures = { set: data.customKeyFeatures };
+      if (data.nearbyAmenities) updateData.nearbyAmenities = { set: data.nearbyAmenities };
+      if (data.customNearbyAmenities) updateData.customNearbyAmenities = { set: data.customNearbyAmenities };
+      if (data.amenityDistances !== undefined) updateData.amenityDistances = data.amenityDistances;
 
       // Handle media deletions
       if (data.deleteImages) {
@@ -1867,227 +1848,16 @@ class PropertyService {
     }
 
     countListedProperties = async (filters: PropertyFilters = {}, availability: boolean = true) => {
-        const {
-            landlordId,
-            property,
-            minSize,
-            maxSize,
-            isShortlet,
-            dueDate,
-            yearBuilt,
-            zipcode,
-            amenities,
-            mustHaves
-        } = filters;
-
-        const {
-            type,
-            state,
-            country,
-            specificationType,
-            isActive,
-            rentalFee,
-            maxBedRoom,
-            minBedRoom,
-            maxBathRoom,
-            minBathRoom,
-            maxRentalFee,
-            minRentalFee,
-            marketValue,
-            noKitchen,
-            minGarage,
-            maxGarage
-        } = property || {};
-
         return await prismaClient.propertyListingHistory.count({
-            where: {
-                ...(isActive !== undefined && { isActive }),
-                ...(isActive !== undefined && { onListing: isActive }),
-                ...(type && {
-                    propertySubType: {
-                        in: Array.isArray(type) ? type : [type]
-                    }
-                }),
-                property: {
-                    ...(landlordId && { landlordId }),
-                    ...(specificationType && { specificationType }),
-                    ...(state && {
-                        state: {
-                            is: {
-                                name: {
-                                    contains: String(state).trim(),
-                                    mode: 'insensitive'
-                                }
-                            }
-                        }
-                    }),
-                    ...(availability && { availability: AvailabilityStatus.VACANT }),
-                    ...(country && {
-                        country: {
-                            equals: String(country).trim(),
-                            mode: 'insensitive'
-                        }
-                    }),
-                    ...(marketValue && { marketValue: Number(marketValue) }),
-                    ...(rentalFee && { price: Number(rentalFee) }),
-                    ...(minRentalFee || maxRentalFee
-                        ? {
-                            price: {
-                                gte: minRentalFee ?? undefined,
-                                lte: maxRentalFee ?? undefined,
-                            },
-                        }
-                        : {}),
-                    // ...(maxBedRoom || minBedRoom
-                    //     ? {
-                    //         noBedRoom: {
-                    //             gte: minBedRoom ?? undefined,
-                    //             lte: maxBedRoom ?? undefined,
-                    //         },
-                    //     }
-                    //     : {}),
-                    // ...(maxBathRoom || minBathRoom
-                    //     ? {
-                    //         noBathRoom: {
-                    //             gte: minBathRoom ?? undefined,
-                    //             lte: maxBathRoom ?? undefined,
-                    //         },
-                    //     }
-                    //     : {}),
-                    // ...(minGarage || maxGarage
-                    //     ? {
-                    //         noGarage: {
-                    //             gte: minGarage ?? undefined,
-                    //             lte: maxGarage ?? undefined,
-                    //         },
-                    //     }
-                    //     : {}),
-                    // ...(noKitchen && { noKitchen: Number(noKitchen) }),
-                    ...(zipcode && { zipcode }),
-                    // ...(isShortlet !== undefined && { isShortlet }),
-                    // ...(shortletDuration && { shortletDuration: Number(shortletDuration) }),
-                    // ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
-                    ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
-                    ...(minSize || maxSize
-                        ? {
-                            propertysize: {
-                                gte: minSize ?? undefined,
-                                lte: maxSize ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {}),
-                    ...(mustHaves && mustHaves.length > 0
-                        ? {
-                            OR: mustHaves.map(mh => ({
-                                amenities: {
-                                    has: mh
-                                }
-                            }))
-                        }
-                        : {}),
-                } as any,
-            },
+            where: buildListedPropertyWhereClause(filters, availability),
         });
-
-
     };
 
 
     getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10, availability: boolean = true, currencyOptions?: CurrencyDisplayOptions) => {
-        const {
-            landlordId,
-            property,
-            minSize,
-            maxSize,
-            isShortlet,
-            dueDate,
-            yearBuilt,
-            zipcode,
-            amenities,
-            mustHaves
-        } = filters;
-
-        const {
-            type,
-            state,
-            country,
-            specificationType,
-            isActive,
-            rentalFee,
-            maxBedRoom,
-            minBedRoom,
-            maxBathRoom,
-            minBathRoom,
-            maxRentalFee,
-            minRentalFee,
-            marketValue,
-            noKitchen,
-            minGarage,
-            maxGarage
-        } = property || {};
         const properties = await prismaClient.propertyListingHistory.findMany({
-            where: {
-                ...(isActive !== undefined && { isActive }),
-                ...(isActive !== undefined && { onListing: isActive }),
-                ...(type && {
-                    propertySubType: {
-                        in: Array.isArray(type) ? type : [type]
-                    }
-                }),
-                property: {
-                    ...(landlordId && { landlordId }),
-                    ...(availability && { availability: AvailabilityStatus.VACANT }),
-                    ...(specificationType && { specificationType }),
-                    ...(state && {
-                        state: {
-                            is: {
-                                name: {
-                                    contains: String(state).trim(),
-                                    mode: 'insensitive'
-                                }
-                            }
-                        }
-                    }),
-                    ...(country && {
-                        country: {
-                            equals: String(country).trim(),
-                            mode: 'insensitive'
-                        }
-                    }),
-                    ...(marketValue && { marketValue: Number(marketValue) }),
-                    ...(rentalFee && { price: Number(rentalFee) }),
-                    ...(minRentalFee || maxRentalFee
-                        ? {
-                            price: {
-                                gte: minRentalFee ?? undefined,
-                                lte: maxRentalFee ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(zipcode && { zipcode }),
-                    ...(dueDate && { dueDate: new Date(dueDate.toString()) }),
-                    ...(yearBuilt && { yearBuilt: new Date(yearBuilt.toString()) }),
-                    ...(minSize || maxSize
-                        ? {
-                            propertysize: {
-                                gte: minSize ?? undefined,
-                                lte: maxSize ?? undefined,
-                            },
-                        }
-                        : {}),
-                    ...(amenities && amenities.length > 0 ? { amenities: { hasSome: amenities } } : {}),
-                    ...(mustHaves && mustHaves.length > 0
-                        ? {
-                            OR: mustHaves.map(mh => ({
-                                amenities: {
-                                    has: mh
-                                }
-                            }))
-                        }
-                        : {}),
-                } as any,
-            },
+            where: buildListedPropertyWhereClause(filters, availability),
+            orderBy: buildListedPropertyOrderBy(filters.sort),
             include: {
                 property: {
                     include: {
@@ -3141,6 +2911,29 @@ class PropertyService {
                             state: true,
                             images: true,
                             videos: true,
+                            virtualTours: true,
+                            reviews: {
+                                where: { isDeleted: false },
+                                orderBy: { createdAt: 'desc' },
+                                take: 20,
+                                select: {
+                                    id: true,
+                                    rating: true,
+                                    comment: true,
+                                    createdAt: true,
+                                    user: {
+                                        select: {
+                                            profile: {
+                                                select: {
+                                                    fullname: true,
+                                                    firstName: true,
+                                                    lastName: true,
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
                             landlord: {
                                 select: {
                                     id: true,
@@ -3353,10 +3146,48 @@ class PropertyService {
         const { shortlet, specificationType, residential, commercial } = specification;
 
         return prismaClient.$transaction(async (tx) => {
-            const { agencyId, landlordId, stateId, keyFeatures, price, marketValue, propertyValue, securityDeposit, initialDeposit, virtualTourUrl: virtualTourUrlRaw, ...rest } = data;
+            const {
+                agencyId,
+                landlordId,
+                stateId,
+                keyFeatures,
+                customKeyFeatures,
+                nearbyAmenities,
+                customNearbyAmenities,
+                amenityDistances,
+                price,
+                marketValue,
+                propertyValue,
+                securityDeposit,
+                initialDeposit,
+                virtualTourUrl: virtualTourUrlRaw,
+                images: _omitImages,
+                videos: _omitVideos,
+                virtualTours: _omitVirtualTours,
+                propertyDocument: _omitPropertyDocument,
+                specification: _omitSpecification,
+                state: _omitState,
+                landlord: _omitLandlord,
+                propertySubType: _omitPropertySubType,
+                otherTypeSpecific: _omitOtherTypeSpecific,
+                ...rest
+            } = data as IBasePropertyDTO & Record<string, unknown>;
 
-            // Store deposit: use securityDeposit; for Nigeria frontend may send initialDeposit only, so fall back to it
-            let depositAmount = securityDeposit ?? initialDeposit;
+            // Prefer the first positive deposit; Nigeria forms may send initialDeposit while securityDeposit is 0
+            const secNum =
+                securityDeposit != null && !Number.isNaN(Number(securityDeposit))
+                    ? Number(securityDeposit)
+                    : null;
+            const initNum =
+                initialDeposit != null && !Number.isNaN(Number(initialDeposit))
+                    ? Number(initialDeposit)
+                    : null;
+            let depositAmount =
+                secNum != null && secNum > 0
+                    ? secNum
+                    : initNum != null && initNum > 0
+                      ? initNum
+                      : undefined;
 
             if ((!depositAmount || Number(depositAmount) <= 0) && price && landlordId) {
                 const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
@@ -3405,10 +3236,39 @@ class PropertyService {
             ];
             const documents = uploadedFiles?.filter(file => file?.identifier === 'DocTable');
 
+            const imageCreates =
+                images?.map(img => ({
+                    type: img.type,
+                    size: img.size,
+                    fileType: img.fileType,
+                    url: img.url,
+                    isPrimary: img.isPrimary,
+                    caption: img.caption,
+                })) ?? [];
+            const videoCreates =
+                videos?.map(vid => ({
+                    type: vid.type,
+                    size: vid.size,
+                    fileType: vid.fileType,
+                    url: vid.url,
+                    isPrimary: vid.isPrimary,
+                    caption: vid.caption,
+                })) ?? [];
+            const documentCreates =
+                documents?.map(doc => ({
+                    documentName: doc?.documentName,
+                    documentUrl: doc?.url || doc?.documentUrl,
+                    size: doc?.size,
+                    type: doc?.type,
+                    ...(doc?.docType && { docType: doc?.docType }),
+                    ...(doc?.idType && { idType: doc?.idType }),
+                    ...(userId ? { users: { connect: { id: userId } } } : {}),
+                })) ?? [];
+
             // Create the main property - REMOVE documentName from here
             const property = await tx.properties.create({
                 data: {
-                    ...rest,
+                    ...(rest as Prisma.propertiesCreateInput),
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
                     marketValue:
                         marketValue != null && !Number.isNaN(Number(marketValue))
@@ -3421,45 +3281,27 @@ class PropertyService {
                               ? new Prisma.Decimal(marketValue)
                               : null,
                     securityDeposit: depositAmount != null && Number(depositAmount) > 0 ? new Prisma.Decimal(Number(depositAmount)) : null,
-                    keyFeatures: { set: keyFeatures },
+                    keyFeatures: { set: keyFeatures ?? [] },
+                    customKeyFeatures: customKeyFeatures?.length ? { set: customKeyFeatures } : undefined,
+                    nearbyAmenities: nearbyAmenities?.length ? { set: nearbyAmenities } : undefined,
+                    customNearbyAmenities: customNearbyAmenities?.length ? { set: customNearbyAmenities } : undefined,
+                    amenityDistances: amenityDistances ?? undefined,
                     specificationType,
                     landlord: { connect: { id: landlordId } },
                     agency: agencyId ? { connect: { id: agencyId } } : undefined,
                     state: { connect: { id: stateId } },
-                    images: {
-                        create: images?.map(img => ({
-                            type: img.type,
-                            size: img.size,
-                            fileType: img.fileType,
-                            url: img.url,
-                            isPrimary: img.isPrimary,
-                            caption: img.caption,
-                        }))
-                    },
-                    videos: {
-                        create: videos?.map(vid => ({
-                            type: vid.type,
-                            size: vid.size,
-                            fileType: vid.fileType,
-                            url: vid.url,
-                            isPrimary: vid.isPrimary,
-                            caption: vid.caption,
-                        }))
-                    },
-                    virtualTours: {
-                        create: virtualToursCreate.length > 0 ? virtualToursCreate : undefined,
-                    },
-                    propertyDocument: {
-                        create: documents?.map(doc => ({
-                            documentName: doc?.documentName,
-                            documentUrl: doc?.url || doc?.documentUrl,
-                            size: doc?.size,
-                            type: doc?.type,
-                            ...(doc?.docType && { docType: doc?.docType }),
-                            ...(doc?.idType && { idType: doc?.idType }),
-                            users: { connect: { id: userId } }
-                        }))
-                    },
+                    ...(imageCreates.length > 0
+                        ? { images: { create: imageCreates } }
+                        : {}),
+                    ...(videoCreates.length > 0
+                        ? { videos: { create: videoCreates } }
+                        : {}),
+                    ...(virtualToursCreate.length > 0
+                        ? { virtualTours: { create: virtualToursCreate } }
+                        : {}),
+                    ...(documentCreates.length > 0
+                        ? { propertyDocument: { create: documentCreates } }
+                        : {}),
                 }
             });
 

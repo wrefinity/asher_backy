@@ -13,147 +13,24 @@ import {
     getClientIpFromRequest,
     resolveViewerCurrency,
 } from "../utils/currencyContext";
+import {
+    buildListedPropertySearchFiltersFromQuery,
+} from "../utils/buildListedPropertySearchFilters";
 
 class PropertyController {
     constructor() { }
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
-            // Extract filters from the query parameters
-            const {
-                state,
-                country,
-                propertySize,
-                type,
-                isActive,
-                specificationType,
-                marketValue,
-                minBedRoom,
-                maxBedRoom,
-                maxRentalFee,
-                minRentalFee,
-                minBathRoom,
-                maxBathRoom,
-                noKitchen,
-                minGarage,
-                maxGarage,
-                isShortlet,
-                dueDate,
-                yearBuilt,
-                zipcode,
-                amenities,
-                mustHaves,
-                currency,
-                displayCurrency,
-                countryCode,
-                page = 1,
-                limit = 10
-            } = req.query;
+            const { currency, displayCurrency, countryCode, page = 1, limit = 10 } = req.query;
 
-
-            // Prepare the filter object
-            const filters: any = {
-
-            };
-
-            // Add filters to the query if they are provided
-            if (state) filters.property = { ...filters.property, state: String(state) };
-            if (country) filters.property = { ...filters.property, country: String(country) };
-            if (propertySize) filters.property = { ...filters.property, propertysize: Number(propertySize) };
-            if (marketValue) filters.property = { ...filters.property, marketValue: Number(marketValue) };
-            if (minRentalFee) filters.property = { ...filters.property, minRentalFee: Number(minRentalFee) };
-            if (maxRentalFee) filters.property = { ...filters.property, maxRentalFee: Number(maxRentalFee) };
-            if (minBedRoom) filters.property = { ...filters.property, minBedRoom: Number(minBedRoom) };
-            if (maxBedRoom) filters.property = { ...filters.property, maxBedRoom: Number(maxBedRoom) };
-            if (minBathRoom) filters.property = { ...filters.property, minBathRoom: Number(minBathRoom) };
-            if (maxBathRoom) filters.property = { ...filters.property, maxBathRoom: Number(maxBathRoom) };
-            if (minGarage) filters.property = { ...filters.property, minGarage: Number(minGarage) };
-            if (maxGarage) filters.property = { ...filters.property, maxGarage: Number(maxGarage) };
-            // if (noBathRoom) filters.property = { ...filters.property, noBathRoom: Number(noBathRoom) };
-            if (noKitchen) filters.property = { ...filters.property, noKitchen: Number(noKitchen) };
-            if (zipcode) filters.property = { ...filters.property, zipcode: Number(zipcode) };
-
-            if (isActive) {
-                // Convert isActive to a number
-                const isActiveNumber = parseInt(isActive.toString(), 10);
-
-                if (!isNaN(isActiveNumber)) {
-                    filters.property = {
-                        ...filters.property,
-                        isActive: isActiveNumber === 1
-                    };
-                } else {
-                    throw new Error(`Invalid isActive: ${isActive}. Must be one of integer 1 or 0 for active and inactive`);
-                }
-            }
-
-            // Validate specificationType against the enum
-            if (specificationType) {
-                const isValidSpecificationType = Object.values(PropertySpecificationType).includes(specificationType as PropertySpecificationType);
-                if (isValidSpecificationType) {
-                    filters.property = { ...filters.property, specificationType: String(specificationType) };
-                } else {
-                    throw new Error(`Invalid specificationType: ${specificationType}. Must be one of ${Object.values(PropertySpecificationType).join(', ')}`);
-                }
-            }
-            // if (type) {
-            //     const isValidType = Object.values(PropertyType).includes(type as PropertyType);
-            //     if (isValidType) {
-            //         filters.property = { ...filters.property, type: String(type) };
-            //     } else {
-            //         throw new Error(`Invalid type: ${type}. Must be one of ${Object.values(PropertyType).join(', ')}`);
-            //     }
-            // }
-
-            // In your controller
-            if (type) {
-                const typesArray = Array.isArray(type) ? type : [type];
-                const isValidTypes = typesArray.every(t =>
-                    Object.values(PropertyType).includes(t as PropertyType)
-                );
-
-                if (!isValidTypes) {
-                    throw new Error('Invalid property types');
-                }
-
-                filters.property = {
-                    ...filters.property,
-                    type: typesArray
-                };
-            }
-
-            // Convert isShortlet to boolean
-            if (isShortlet) {
-                filters.isShortlet = isShortlet.toString() === "true";
-            }
-
-            // Convert dueDate and yearBuilt to Date objects
-            if (dueDate) filters.dueDate = new Date(dueDate.toString());
-            if (yearBuilt) filters.yearBuilt = new Date(yearBuilt.toString());
-
-            // Filter by amenities (array search)
-            if (amenities) {
-                const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
-                filters.amenities = { hasSome: amenitiesArray };
-            }
-            // Handle mustHaves (Case Insensitive)
-            if (mustHaves) {
-                let mustHavesArray: string[];
-
-                if (Array.isArray(mustHaves)) {
-                    mustHavesArray = mustHaves.map(mh => String(mh));
-                } else {
-                    mustHavesArray = [String(mustHaves)];
-                }
-
-                filters.mustHaves = mustHavesArray;
-            }
+            const filters = buildListedPropertySearchFiltersFromQuery(
+                req.query as Record<string, unknown>
+            );
 
             const pageNumber = parseInt(page as string, 10) || 1;
             const pageSize = parseInt(limit as string, 10) || 10;
             const skip = (pageNumber - 1) * pageSize;
-
-            console.log("Final Filters:", filters);
 
             const totalProperties = await PropertyServices.countListedProperties(filters);
             const ipAddress = getClientIpFromRequest(req);
@@ -161,7 +38,7 @@ class PropertyController {
                 userId: req.user?.id,
                 currency: currency as string | undefined,
                 displayCurrency: displayCurrency as string | undefined,
-                country: country as string | undefined,
+                country: filters.property?.country,
                 countryCode: countryCode as string | undefined,
                 ipAddress,
             });
@@ -174,23 +51,18 @@ class PropertyController {
                 true,
                 currencyOptions
             );
-            if (!properties || properties.length === 0) {
-                return res.status(404).json({ message: "No properties found for the given filters" });
-            }
 
             return res.status(200).json({
-                properties,
+                properties: properties ?? [],
                 viewerContext,
                 pagination: {
                     total: totalProperties,
                     page: pageNumber,
                     limit: pageSize,
-                    totalPages: Math.ceil(totalProperties / pageSize)
-                }
+                    totalPages: Math.ceil(totalProperties / pageSize) || 0,
+                },
             });
-
         } catch (err) {
-            // Handle any errors
             ErrorService.handleError(err, res);
         }
     };

@@ -267,7 +267,11 @@ export class ViewingInviteNormalizer {
           isPrimary: img.isPrimary || false
         })),
         videos: [],
-        // Extract bedrooms/bathrooms from specification if not directly on property
+        virtualTours: [],
+        nearbyAmenities: property?.nearbyAmenities || [],
+        customNearbyAmenities: property?.customNearbyAmenities || [],
+        amenityDistances: property?.amenityDistances ?? null,
+        reviews: [],
         bedrooms: property?.bedrooms ?? 
           (property?.specification?.residential?.bedrooms ?? null),
         bathrooms: property?.bathrooms ?? 
@@ -393,7 +397,11 @@ export class ViewingInviteNormalizer {
           isPrimary: img.isPrimary || false
         })),
         videos: [],
-        // Extract bedrooms/bathrooms from specification if not directly on property
+        virtualTours: [],
+        nearbyAmenities: property?.nearbyAmenities || [],
+        customNearbyAmenities: property?.customNearbyAmenities || [],
+        amenityDistances: property?.amenityDistances ?? null,
+        reviews: [],
         bedrooms: property?.bedrooms ?? 
           (property?.specification?.residential?.bedrooms ?? null),
         bathrooms: property?.bathrooms ?? 

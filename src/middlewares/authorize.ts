@@ -5,6 +5,7 @@ import { CustomRequest, JWTPayload } from "../utils/types";
 import { Jtoken } from "./Jtoken";
 import UserService from "../services/user.services";
 import { userRoles } from "@prisma/client";
+import { requireWebUserPortalRole as requireWebUserPortalRoleMiddleware } from "./requireWebUserPortalRole";
 
 export class Authorize {
     private tokenService: Jtoken;
@@ -209,6 +210,14 @@ export class Authorize {
         res.setHeader("x-refresh-token", newTokens.refreshToken);
 
         return next();
+    }
+
+    /**
+     * Blocks LANDLORD-only / VENDOR-only tokens from tenant portal (AsherWebUser) APIs.
+     * Must run after authorize().
+     */
+    requireWebUserPortalRole() {
+        return requireWebUserPortalRoleMiddleware();
     }
 
     /**

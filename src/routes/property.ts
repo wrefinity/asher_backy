@@ -17,7 +17,7 @@ class PropertyRouter {
     private initializeRoutes() {
     //     this.router.post("/property/features",  this.authenticateService.authorize, PropertyController.createFeatures);
     //     this.router.get("/property/features",  this.authenticateService.authorize, PropertyController.getFeatures);
-        this.router.post("/property/enquire",  this.authenticateService.authorize, PropertyController.enquireProperty);
+        this.router.post("/property/enquire", this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.enquireProperty);
         this.router.use("/docs", PropertDocumentRouter);
         this.router.use("/bookings", BookingRouter);
         this.router.get('/property', PropertyController.getProperty)
@@ -27,8 +27,8 @@ class PropertyRouter {
         this.router.get('/property/room/:id', PropertyController.getPropsRoom)
         this.router.get('/property/rooms/:propertyId', PropertyController.getPropsRoomByPropertyId)
         this.router.get('/property/landlord/:landlordId', PropertyController.getPropertyListedByLandlord)
-        this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, PropertyController.createLikeProperty)
-        this.router.get('/property/user/likes', this.authenticateService.authorize, PropertyController.getLikePropertyHistories)
+        this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.createLikeProperty)
+        this.router.get('/property/user/likes', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.getLikePropertyHistories)
         this.router.get('/property/listing/:id', PropertyController.getPropertyListingById)
         // Specific routes must come before parameterized routes to avoid route conflicts
         this.router.get('/property/:propertyId/related-listings', PropertyController.getRelatedListings)
@@ -37,7 +37,7 @@ class PropertyRouter {
         this.router.get('/property/listing', PropertyController.getListedProperties)
         this.router.get('/property/maintenance/:propertyId', PropertyController.getPropsMaintenance)
         this.router.get('/property/vendors/:propertyId', PropertyController.getVendorsServicesOnProps)
-        this.router.patch("/property/view/:propertyId",  this.authenticateService.authorize, PropertyController.viewProperty);
+        this.router.patch("/property/view/:propertyId", this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.viewProperty);
     }
 }
 

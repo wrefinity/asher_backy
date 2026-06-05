@@ -15,7 +15,10 @@ class EmailRouter {
     }
 
     private initializeRoutes() {
-        this.router.use(this.authenticateService.authorize)
+        this.router.use(
+            this.authenticateService.authorize,
+            this.authenticateService.requireWebUserPortalRole()
+        );
         this.router.get('/', EmailController.getUserInbox)
         this.router.post('/', upload.array('files'), uploadToCloudinary, EmailController.createEmail);
         this.router.post('/reply', upload.array('files'), uploadToCloudinary, EmailController.replyToEmail);

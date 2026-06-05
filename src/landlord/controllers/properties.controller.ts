@@ -423,7 +423,17 @@ class PropertyController {
                 message: 'Property duplicated successfully',
                 property: duplicated,
             });
-        } catch (error) {
+        } catch (error: any) {
+            const rawMessage = String(error?.message ?? '');
+            if (
+                rawMessage.includes('PrismaClientValidationError') ||
+                rawMessage.includes('Unknown argument')
+            ) {
+                return res.status(400).json({
+                    message: 'Could not duplicate this property. Some of its data is not compatible with a copy.',
+                    error: 'Property duplicate failed',
+                });
+            }
             ErrorService.handleError(error, res);
         }
     };

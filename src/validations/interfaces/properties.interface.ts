@@ -108,9 +108,9 @@ export interface IBasePropertyDTO {
 
     keyFeatures: string[];
     customKeyFeatures: string[];
-    // nearbyAmenities: string[];
-    // customNearbyAmenities: string[];
-    // amenityDistances?: Record<string, number>;
+    nearbyAmenities?: string[];
+    customNearbyAmenities?: string[];
+    amenityDistances?: Record<string, string | number> | null;
 
     propertyDocument: PropertyDocument[]
     image?: PropertyMediaFiles[]

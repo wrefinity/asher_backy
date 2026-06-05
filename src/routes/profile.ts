@@ -13,7 +13,10 @@ class ProfileRoutes {
     constructor() {
         this.router = Router();
         this.authenticateService = new Authorize()
-        this.router.use(this.authenticateService.authorize)
+        this.router.use(
+            this.authenticateService.authorize,
+            this.authenticateService.requireWebUserPortalRole()
+        );
         this.initializeRoutes();
     }
 

@@ -21,38 +21,38 @@ class ApplicantRoutes {
     }
 
     private initializeRoutes(): void {
-        this.router.get('/applicant/stats', this.authenticateService.authorize,  ApplicantControls.getBasicStats);
-        this.router.get('/invities/all', this.authenticateService.authorize,  ApplicantControls.getInvites);
-        this.router.get('/invities/:id/get', this.authenticateService.authorize,  ApplicantControls.getInvite);
+        this.router.get('/applicant/stats', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.getBasicStats);
+        this.router.get('/invities/all', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.getInvites);
+        this.router.get('/invities/:id/get', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.getInvite);
         this.router.patch('/invites/update/:id', ApplicantControls.updateInvite);
         this.router.patch('/move-in-date/:id', ApplicantControls.updateMoveInDate);
 
-        this.router.post('/:propertiesId', this.authenticateService.authorize, ApplicantControls.createOrUpdateApplicantBioData);
-        this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, ApplicantControls.getPropertyApplicationFee);
-        this.router.get('/milestones/:propertyId/:applicationId', this.authenticateService.authorize, ApplicantControls.getApplicationPropsMilestone);
-        this.router.get('/pending', this.authenticateService.authorize, ApplicantControls.getPendingApplications);
-        this.router.get('/all', this.authenticateService.authorize, ApplicantControls.getApplications);
-        this.router.post('/complete/:applicationId', this.authenticateService.authorize, ApplicantControls.completeApplication);
-        this.router.post('/guarantor/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateGuarantor);
-        this.router.post('/emergency-contact/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateEmergencyContact);
-        this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, validateBody(employmentInformationSchema), ApplicantControls.createOrUpdateEmploymentInformation);
-        this.router.post('/residential-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateResidentialInformation);
-        this.router.post('/additional-info/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateAdditionInfo);
-        this.router.post('/referees/:applicationId', this.authenticateService.authorize, ApplicantControls.createOrUpdateRefree);
-        // this.router.post('/document/:applicationId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ApplicantControls.createApplicantionDocument);
-        this.router.post('/document/:applicationId', upload.array('files'), this.authenticateService.authorize, ApplicantControls.uploadAppDocuments);
-        this.router.post('/declaration/:applicationId', this.authenticateService.authorize, upload.array('files'), uploadToCloudinary, ApplicantControls.createOrUpdateDeclaration);
+        this.router.post('/:propertiesId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateApplicantBioData);
+        this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getPropertyApplicationFee);
+        this.router.get('/milestones/:propertyId/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getApplicationPropsMilestone);
+        this.router.get('/pending', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getPendingApplications);
+        this.router.get('/all', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getApplications);
+        this.router.post('/complete/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.completeApplication);
+        this.router.post('/guarantor/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateGuarantor);
+        this.router.post('/emergency-contact/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateEmergencyContact);
+        this.router.post('/employer-info/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), validateBody(employmentInformationSchema), ApplicantControls.createOrUpdateEmploymentInformation);
+        this.router.post('/residential-info/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateResidentialInformation);
+        this.router.post('/additional-info/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateAdditionInfo);
+        this.router.post('/referees/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateRefree);
+        // this.router.post('/document/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), upload.array('files'), uploadToCloudinary, ApplicantControls.createApplicantionDocument);
+        this.router.post('/document/:applicationId', upload.array('files'), this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.uploadAppDocuments);
+        this.router.post('/declaration/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), upload.array('files'), uploadToCloudinary, ApplicantControls.createOrUpdateDeclaration);
 
-        this.router.get('/:id', this.authenticateService.authorize,  ApplicantControls.getApplication);
-        this.router.delete('/:id', this.authenticateService.authorize,  ApplicantControls.deleteApplicant);
+        this.router.get('/:id', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.getApplication);
+        this.router.delete('/:id', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.deleteApplicant);
         
         // application reference for landlord and guarantor
         this.router.post('/landlord-reference/:id', LandlordReferenceFormControls.createReferenceForm);
         this.router.post('/guarantor-reference/:id', GuarantorReferenceFormControls.createGuarantorAgreement);
         this.router.post('/employee-reference/:id', EmployeeReferenceFormControls.createEmployeeReference);
         this.router.get('/references/:id', LandlordReferenceFormControls.getReferenceForm);
-        this.router.post('/sign/:id', this.authenticateService.authorize,  upload.array('files'), uploadToCloudinary, ApplicantControls.signAgreementForm); 
-        this.router.get('/last-application/user', this.authenticateService.authorize, ApplicantControls.getLastApplicationDataForUser);}
+        this.router.post('/sign/:id', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  upload.array('files'), uploadToCloudinary, ApplicantControls.signAgreementForm); 
+        this.router.get('/last-application/user', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getLastApplicationDataForUser);}
 }
 
 export default new ApplicantRoutes().router;

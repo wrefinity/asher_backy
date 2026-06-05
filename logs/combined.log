@@ -906,3 +906,35 @@
 {"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 20:46:22"}
 {"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 20:48:30"}
 {"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 20:54:02"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 21:12:24"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 21:17:29"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 21:19:16"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 21:20:27"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 21:27:34"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-05 21:42:26"}
+{"level":"info","message":"Checked 0 upcoming bills, sent 0 reminders","service":"api-service","timestamp":"2026-06-05 21:44:53"}
+{"level":"error","message":"An unexpected error occurred Listing not found","service":"api-service","stack":"Error: Listing not found\n    at PropertyService.getPropertyListingByListingIdNew (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3170:23)\n    at async getPropertyListingById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:327:30)","timestamp":"2026-06-05 22:15:43"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 22:28:12"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 22:31:54"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 22:31:57"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 22:32:00"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 22:32:09"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:03"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:05"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:13"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:18"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:22"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:27"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:03:44"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:08:47"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:59:46"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:59:50"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:59:52"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-05 23:59:54"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:00:00"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:00:15"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:00:22"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:00:28"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:01:29"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:01:50"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-06 00:02:06"}

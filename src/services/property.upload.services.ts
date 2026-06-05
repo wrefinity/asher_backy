@@ -15,12 +15,20 @@ import {
     GarageType,
 } from '@prisma/client';
 import { IBasePropertyDTO } from '../validations/interfaces/properties.interface';
+import { resolvePropertyDepositForStorage } from '../utils/depositField.util';
 
 class PropertyBulkUploadService {
 
     transformRowToDto = async (row: any, specificationType: PropertySpecificationType): Promise<IBasePropertyDTO> => {
         if (!row.state) new Error("Kindly supply the state")
         const state = await stateServices.getStateByName(row?.state)
+
+        const depositAmount = resolvePropertyDepositForStorage({
+            country: row?.country,
+            securityDeposit: row.securityDeposit,
+            initialDeposit: row.initialDeposit,
+            deposit: row.deposit,
+        });
 
         const baseDto = {
             stateId: state.id,
@@ -41,8 +49,8 @@ class PropertyBulkUploadService {
             currency: row?.currency as Currency,
             marketValue: row.marketValue ? parseFloat(row.marketValue) : undefined,
             price: parseFloat(row.price),
-            securityDeposit: row.securityDeposit ? parseFloat(row.securityDeposit) : undefined,
-            initialDeposit: row.initialDeposit ? parseFloat(row.initialDeposit) : undefined,
+            securityDeposit: depositAmount,
+            initialDeposit: depositAmount,
             priceFrequency: row.priceFrequency as PriceFrequency,
             rentalPeriod: row.rentalPeriod,
             specificationType: specificationType,

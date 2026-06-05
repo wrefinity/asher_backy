@@ -172,6 +172,18 @@ export const handlePropertyUploads = async (
         req.body[field] = JSON.parse(req.body[field]);
       }
     });
+    if (req.body.amenityDistances && typeof req.body.amenityDistances === 'string') {
+      try {
+        req.body.amenityDistances = JSON.parse(req.body.amenityDistances);
+      } catch {
+        req.body.amenityDistances = {};
+      }
+    }
+    ['nearbyAmenities', 'customNearbyAmenities', 'keyFeatures', 'customKeyFeatures'].forEach((field) => {
+      if (req.body[field] != null && !Array.isArray(req.body[field])) {
+        req.body[field] = [req.body[field]];
+      }
+    });
     const files: Express.Multer.File[] = Object.values(req.files || {}).flat();
     if (!files.length) return res.status(400).json({ error: "No files provided" });
 

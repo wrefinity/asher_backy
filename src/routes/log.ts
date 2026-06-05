@@ -15,7 +15,7 @@ class LogRoutes {
         this.initializeRoutes();
     }
     private initializeRoutes(): void {
-        this.router.post('/', validateBody(logSchema), this.authenticateService.authorize, LogControls.createLog);
+        this.router.post('/', validateBody(logSchema), this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), LogControls.createLog);
         this.router.get('/property/:propertyId', LogControls.getProperyLog);
     }
 }

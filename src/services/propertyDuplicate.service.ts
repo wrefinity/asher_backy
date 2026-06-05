@@ -65,11 +65,16 @@ function mapMediaFiles(source: {
   }
 
   for (const doc of source.propertyDocument ?? []) {
+    const docUrls = Array.isArray(doc.documentUrl)
+      ? doc.documentUrl
+      : doc.documentUrl
+        ? [doc.documentUrl]
+        : [];
     files.push({
       identifier: 'DocTable',
       documentName: doc.documentName,
-      url: doc.documentUrl,
-      documentUrl: doc.documentUrl,
+      url: docUrls,
+      documentUrl: docUrls,
       size: doc.size,
       type: doc.type,
       docType: doc.docType,
@@ -96,6 +101,7 @@ function sanitizeResidential(residential: any) {
     outdoorsSpacesFeatures,
     buildingAmenityFeatures,
     safetyFeatures,
+    PropertySpecification: _propertySpecification,
     ...rest
   } = residential;
 
@@ -253,6 +259,7 @@ export async function duplicatePropertyForLandlord(
 
   const uploadedFiles = mapMediaFiles(source);
 
+  // Only fields that exist on the `properties` table — spec fields live in `specification`
   const baseData = {
     name: duplicateName,
     landlordId,
@@ -260,9 +267,9 @@ export async function duplicatePropertyForLandlord(
     agencyId: source.agencyId ?? undefined,
     specificationType: source.specificationType,
     address: source.address,
+    address2: source.address2 ?? undefined,
     city: source.city,
     country: source.country,
-    county: source.county,
     zipcode: source.zipcode,
     latitude: source.latitude,
     longitude: source.longitude,
@@ -270,19 +277,21 @@ export async function duplicatePropertyForLandlord(
     priceFrequency: source.priceFrequency,
     rentalPeriod: source.rentalPeriod,
     availability: source.availability,
-    propertySubType: activeSpec.propertySubType,
-    otherTypeSpecific: activeSpec.otherTypeSpecific,
     description: source.description,
     landRegistryNumber: source.landRegistryNumber,
-    postcodeVerified: source.postcodeVerified,
+    postalCodeVerified:
+      source.postalCodeVerified ?? source.postcodeVerified ?? false,
+    businessRateVerified: source.businessRateVerified ?? false,
     purchaseType: source.purchaseType,
-    councilTaxBand: source.councilTaxBand,
-    tenure: source.tenure,
-    leaseYearsRemaining: source.leaseYearsRemaining,
-    groundRent: source.groundRent,
-    serviceCharge: source.serviceCharge,
-    tags: source.tags,
+    vatStatus: source.vatStatus,
+    areaUnit: source.areaUnit,
+    propertySize: source.propertySize,
+    yearBuilt: source.yearBuilt,
     keyFeatures: source.keyFeatures ?? [],
+    customKeyFeatures: source.customKeyFeatures ?? [],
+    nearbyAmenities: source.nearbyAmenities ?? [],
+    customNearbyAmenities: source.customNearbyAmenities ?? [],
+    amenityDistances: (source.amenityDistances as Record<string, string | number> | null) ?? null,
     price: decimalToNumber(source.price),
     marketValue: decimalToNumber(source.marketValue),
     propertyValue: decimalToNumber(source.propertyValue),

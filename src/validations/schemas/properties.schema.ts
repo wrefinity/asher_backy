@@ -56,6 +56,9 @@ export const updatePropertySchemaNew = Joi.object({
   // Property Features
   keyFeatures: Joi.array().items(Joi.string()).optional(),
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+  nearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  amenityDistances: Joi.object().pattern(Joi.string(), Joi.alternatives().try(Joi.string(), Joi.number())).optional(),
 
   // Specification
   specificationType: Joi.string().valid('COMMERCIAL', 'RESIDENTIAL', 'SHORTLET').optional(),
@@ -892,6 +895,9 @@ export const IBasePropertyDTOSchema = Joi.object({
 
   keyFeatures: Joi.array().items(Joi.string()).optional(),
   customKeyFeatures: Joi.array().items(Joi.string()).optional(),
+  nearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  customNearbyAmenities: Joi.array().items(Joi.string()).optional(),
+  amenityDistances: Joi.object().pattern(Joi.string(), Joi.alternatives().try(Joi.string(), Joi.number())).optional(),
 
   propertyDocument: Joi.array().items(propertyDocumentSchema).optional(),
   images: Joi.array().items(propertyMediaFilesSchema).optional(),
