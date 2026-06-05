@@ -28,6 +28,7 @@ import {
     resolvePropertyCreateCurrency,
     resolveViewerCurrency,
 } from '../../utils/currencyContext';
+import { duplicatePropertyForLandlord } from '../../services/propertyDuplicate.service';
 
 
 class PropertyController {
@@ -402,6 +403,30 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+
+    duplicateProperty = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            const { propertyId } = req.params;
+
+            if (!landlordId) {
+                return res.status(403).json({ error: 'Kindly login' });
+            }
+
+            const duplicated = await duplicatePropertyForLandlord(
+                landlordId,
+                propertyId,
+                req.user?.id
+            );
+
+            return res.status(201).json({
+                message: 'Property duplicated successfully',
+                property: duplicated,
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
 
     deleteLandlordProperties = async (req: CustomRequest, res: Response) => {
         try {

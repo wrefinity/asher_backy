@@ -390,7 +390,7 @@ export const commercialPropertyFloorSchema = Joi.object({
   available: Joi.boolean().optional(),
   partialFloor: Joi.boolean().optional(),
   description: Joi.string().allow('', null),
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus.VACANT)).messages({
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).allow('', null).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
     'string.base': 'AvailabilityStatus type must be a string'
   }).optional(),
@@ -437,9 +437,9 @@ export const unitConfigurationSchema = Joi.object({
     'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
     'string.base': 'priceFrequency type must be a string'
   }).optional(),
-  area: Joi.string().optional(),
-  description: Joi.string().optional(),
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
+  area: Joi.string().allow('', null).optional(),
+  description: Joi.string().allow('', null).optional(),
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).allow('', null).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
     'string.base': 'AvailabilityStatus type must be a string'
   }).optional(),
@@ -450,7 +450,7 @@ export const roomDetailSchema = Joi.object({
   residentialPropertyId: Joi.string().optional(),
   commercialPropertyId: Joi.string().optional(),
   unitId: Joi.string().optional(),
-  description: Joi.string().optional(),
+  description: Joi.string().allow('', null).optional(),
   // media files attachement for middlewares
   documentName: Joi.array().items(Joi.string()).optional(),
   docType: Joi.array().items(Joi.string()).optional(),
@@ -466,7 +466,7 @@ export const roomDetailSchema = Joi.object({
     'any.only': `priceFrequency type must be one of: ${Object.values(PriceFrequency).join(',')}`,
     'string.base': 'priceFrequency type must be a string'
   }).optional(),
-  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).messages({
+  availability: Joi.string().valid(...Object.values(AvailabilityStatus)).allow('', null).messages({
     'any.only': `AvailabilityStatus type must be one of: ${Object.values(AvailabilityStatus).join(',')}`,
     'string.base': 'AvailabilityStatus type must be a string'
   }).default(AvailabilityStatus.VACANT),
@@ -753,7 +753,7 @@ export const commercialPropertySchema = Joi.object({
     'any.only': `areaUnit type must be one of: ${Object.values(LeaseTermUnit).join(',')}`,
     'string.base': 'areaUnit type must be a string'
   }).required(),
-  businessRates: Joi.string().optional(),
+  businessRates: Joi.string().allow('', null).optional(),
   serviceCharge: Joi.number().optional(),
 
   leaseTermUnit: Joi.string().valid(...Object.values(LeaseTermUnit)).messages({
@@ -763,35 +763,35 @@ export const commercialPropertySchema = Joi.object({
   minimumLeaseTerm: Joi.number().required(),
   maximumLeaseTerm: Joi.number().optional(),
 
-  buildingClass: Joi.string().valid(...Object.values(BuildingClass)).messages({
+  buildingClass: Joi.string().valid(...Object.values(BuildingClass)).allow('', null).messages({
     'any.only': `buildingClass type must be one of: ${Object.values(BuildingClass).join(',')}`,
     'string.base': 'buildingClass type must be a string'
   }).optional(),
-  lastRefurbished: Joi.string().optional(),
+  lastRefurbished: Joi.string().allow('', null).optional(),
   totalFloors: Joi.number().optional(),
-  zoning: Joi.string().optional(),
+  zoning: Joi.string().allow('', null).optional(),
   yearBuilt: Joi.number().optional(),
   totalRooms: Joi.number().required(),
   parkingSpaces: Joi.number().default(0),
   floorLevel: Joi.number().optional(),
-  availableFrom: Joi.date().optional(),
+  availableFrom: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null)).optional(),
 
   floorNumber: Joi.number().optional(),
   workstations: Joi.number().optional(),
   meetingRooms: Joi.number().optional(),
-  officeLayout: Joi.string().optional(),
+  officeLayout: Joi.string().valid(...Object.values(OfficeLayout)).allow('', null).optional(),
 
   highRiseFloors: Joi.number().optional(),
   floorAvailability: Joi.array().items(commercialPropertyFloorSchema).optional(),
 
-  securityFeatures: Joi.array().items(Joi.string()),
-  clearHeight: Joi.string().optional(),
+  securityFeatures: Joi.array().items(Joi.string()).optional().default([]),
+  clearHeight: Joi.string().allow('', null).optional(),
   loadingDoorsCount: Joi.number().optional(),
-  powerSupply: Joi.string().optional(),
-  floorLoad: Joi.string().optional(),
-  columnSpacing: Joi.string().optional(),
+  powerSupply: Joi.string().allow('', null).optional(),
+  floorLoad: Joi.string().allow('', null).optional(),
+  columnSpacing: Joi.string().allow('', null).optional(),
   hasYard: Joi.boolean().default(false),
-  yardDepth: Joi.string().optional(),
+  yardDepth: Joi.string().allow('', null).optional(),
 
   safetyFeatures: Joi.array().items(Joi.string()).optional(),
   customSafetyFeatures: Joi.array().items(Joi.string()).optional(),
@@ -800,36 +800,36 @@ export const commercialPropertySchema = Joi.object({
 
   energyEfficiencyRating: Joi.number().optional(),
   environmentalImpactRating: Joi.number().optional(),
-  heatingTypes: Joi.array().items(Joi.string()),
-  coolingTypes: Joi.array().items(Joi.string()),
+  heatingTypes: Joi.array().items(Joi.string()).optional().default([]),
+  coolingTypes: Joi.array().items(Joi.string()).optional().default([]),
 
   hasGreenCertification: Joi.boolean().default(false),
-  greenCertificationType: Joi.string().optional(),
-  greenCertificationLevel: Joi.string().optional(),
+  greenCertificationType: Joi.string().allow('', null).optional(),
+  greenCertificationLevel: Joi.string().allow('', null).optional(),
 
   totalUnits: Joi.number().optional(),
   unitConfigurations: Joi.array().items(unitConfigurationSchema).optional(),
 
-  leaseTerm: Joi.string().optional(),
+  leaseTerm: Joi.string().allow('', null).optional(),
   leaseTermNegotiable: Joi.boolean().default(true),
-  rentReviewPeriod: Joi.string().optional(),
-  breakClause: Joi.string().optional(),
+  rentReviewPeriod: Joi.string().allow('', null).optional(),
+  breakClause: Joi.string().allow('', null).optional(),
   rentFreeOffered: Joi.boolean().default(false),
-  rentFreePeriod: Joi.string().optional(),
+  rentFreePeriod: Joi.string().allow('', null).optional(),
 
   suitableFor: Joi.array().items(Joi.string()).optional(),
   roomDetails: Joi.array().items(roomDetailSchema).optional(),
   sharedFacilities: sharedFacilitiesSchema.optional(),
   otherSharedFacilities: Joi.array().items(Joi.string()).optional(),
-  houseRule: Joi.string().optional(),
+  houseRule: Joi.string().allow('', null).optional(),
   maxOccupant: Joi.number().optional(),
   isHMO: Joi.boolean().optional(),
   isShareHouse: Joi.boolean().optional(),
   isHMOLicenced: Joi.boolean().optional(),
-  hmoLicenceNumber: Joi.string().optional(),
+  hmoLicenceNumber: Joi.string().allow('', null).optional(),
   hmoLicenceExpiryDate: Joi.date().optional(),
   totalOccupants: Joi.number().optional(),
-  occupantsDetails: Joi.string().optional(),
+  occupantsDetails: Joi.string().allow('', null).optional(),
 });
 
 export const IBasePropertyDTOSchema = Joi.object({
@@ -837,7 +837,7 @@ export const IBasePropertyDTOSchema = Joi.object({
     .description('Number of properties to create (will append numbers to name)'),
   uploadedFiles: Joi.array().items(Joi.object()).optional(),
   name: Joi.string().required(),
-  description: Joi.string().optional(),
+  description: Joi.string().allow('', null).optional(),
   propertySize: Joi.number().optional(),
   areaUnit: Joi.string().valid(...Object.values(AreaUnit)).messages({
     'any.only': `AreaUnit type must be one of: ${Object.values(AreaUnit).join(',')}`,

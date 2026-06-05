@@ -10,6 +10,7 @@ import { resolveFinancialRules } from "../utils/globalSettings.util";
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
 import { getCurrencyConversionRate, resolveCurrencyFromRegion } from "../utils/helpers";
 import { ConflictError, NotFoundError } from "./error.service";
+import { resolveCommercialLeaseTerm } from "../utils/commercialLeaseTerm";
 
 const decimalToNumber = (value?: Prisma.Decimal | null): number | undefined =>
     value ? value.toNumber() : undefined;
@@ -648,7 +649,27 @@ class PropertyService {
       otherSharedFacilities: Array.isArray(otherSharedFacilities) ? { set: otherSharedFacilities } : undefined,
       leaseTermUnit: rest.leaseTermUnit || "YEARS",
       minimumLeaseTerm: rest.minimumLeaseTerm ?? 12,
+      leaseTerm: resolveCommercialLeaseTerm({
+        leaseTerm: rest.leaseTerm,
+        minimumLeaseTerm: rest.minimumLeaseTerm ?? 12,
+        maximumLeaseTerm: rest.maximumLeaseTerm,
+        leaseTermUnit: rest.leaseTermUnit || "YEARS",
+      }),
     };
+
+    for (const key of [
+      "buildingClass",
+      "officeLayout",
+      "occupantsDetails",
+      "rentFreePeriod",
+      "zoning",
+      "powerSupply",
+      "epcRating",
+      "greenCertificationType",
+      "greenCertificationLevel",
+    ] as const) {
+      if (out[key] === "" || out[key] == null) delete out[key];
+    }
 
     if (Array.isArray(floorAvailability)) {
       out.floorAvailability = {
@@ -3612,6 +3633,12 @@ class PropertyService {
                 // Required fields from your model
                 leaseTermUnit: rest.leaseTermUnit || "YEARS",
                 minimumLeaseTerm: rest.minimumLeaseTerm || 12,
+                leaseTerm: resolveCommercialLeaseTerm({
+                    leaseTerm: rest.leaseTerm,
+                    minimumLeaseTerm: rest.minimumLeaseTerm || 12,
+                    maximumLeaseTerm: rest.maximumLeaseTerm,
+                    leaseTermUnit: rest.leaseTermUnit || "YEARS",
+                }),
                 // Nested creates
                 floorAvailability: {
                     create: floorAvailability?.map((floor: any) => ({

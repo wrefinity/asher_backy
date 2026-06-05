@@ -35,6 +35,7 @@ class ApartmentLandlordRouter {
         this.router.post('/create-unit', upload.array("files"), handlePropertyUploads, PropertyController.createUnit)
         // this.router.post('/upload', uploadcsv.single("files"), PropertyController.bulkPropsUpload)
         this.router.post('/upload', validateBody(BulkPropertyUploadSchema),PropertyController.createPropertiesBulk)
+        this.router.post('/property/:propertyId/duplicate', PropertyController.duplicateProperty)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
         this.router.patch('/property/:propertyId', validateBody(updatePropertySchemaNew), PropertyController.updateProperty)

@@ -2,6 +2,7 @@ import { Prisma, PropertySpecificationType } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType } from "@prisma/client"
 import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPricing, IShortletDTO, UnavailableDate, ICreateProperty, IPropertySpecificationDTO, IBasePropertyDTO } from "../validations/interfaces/properties.interface";
+import { resolveCommercialLeaseTerm } from "../utils/commercialLeaseTerm";
 
 
 
@@ -170,6 +171,12 @@ class CommercialPropertyService {
                 // Required fields from your model
                 leaseTermUnit: rest.leaseTermUnit || "YEARS",
                 minimumLeaseTerm: rest.minimumLeaseTerm || 12,
+                leaseTerm: resolveCommercialLeaseTerm({
+                    leaseTerm: rest.leaseTerm,
+                    minimumLeaseTerm: rest.minimumLeaseTerm || 12,
+                    maximumLeaseTerm: rest.maximumLeaseTerm,
+                    leaseTermUnit: rest.leaseTermUnit || "YEARS",
+                }),
                 // Nested creates
                 floorAvailability: {
                     create: floorAvailability?.map((floor: any) => ({
