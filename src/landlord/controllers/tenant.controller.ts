@@ -230,10 +230,53 @@ class TenantControls {
             for (const row of value) {
                 try {
                     const rowErrors: string[] = [];
-                    // Check for existing user
+                    const userEmail = row.email.toString().split('@')[0];
+                    const tenantEmail = `${userEmail}${landlord.emailDomains}`;
+
                     const existingUser = await UserServices.findUserByEmail(row.email.toString());
+
                     if (existingUser) {
-                        rowErrors.push("User already exists.");
+                        const { prismaClient } = await import('../..');
+                        const duplicateActiveLease = await prismaClient.tenants.findFirst({
+                            where: {
+                                userId: existingUser.id,
+                                landlordId,
+                                propertyId: row.propertyId,
+                                isCurrentLease: true,
+                            },
+                        });
+
+                        if (duplicateActiveLease) {
+                            rowErrors.push(
+                                'This person is already an active tenant on this property. Use a different property, or end their current lease first.'
+                            );
+                        } else {
+                            const linkedUser = await UserServices.createUser(
+                                {
+                                    ...row,
+                                    landlordId,
+                                    role: userRoles.TENANT,
+                                    tenantWebUserEmail: tenantEmail,
+                                    createdById: req.user?.id,
+                                },
+                                false,
+                                req.user?.id,
+                                true
+                            );
+                            uploaded.push(linkedUser);
+                        }
+                    } else {
+                        const newUser = await UserServices.createUser(
+                            {
+                                ...row,
+                                landlordId,
+                                role: userRoles.TENANT,
+                                tenantWebUserEmail: tenantEmail,
+                                createdById: req.user?.id,
+                            },
+                            true
+                        );
+                        uploaded.push(newUser);
                     }
 
                     if (rowErrors.length > 0) {
@@ -245,20 +288,6 @@ class TenantControls {
                         }
                         continue;
                     }
-
-                    // Generate tenant email
-                    const userEmail = row.email.toString().split('@')[0];
-                    const tenantEmail = `${userEmail}${landlord.emailDomains}`;
-
-                    // Create new user
-                    const newUser = await UserServices.createUser({
-                        ...row,
-                        landlordId,
-                        role: userRoles.TENANT,
-                        tenantWebUserEmail: tenantEmail,
-                    }, true);
-
-                    uploaded.push(newUser);
                 } catch (err) {
                     let existingError = uploadErrors.find(err => err.email === row.email);
                     if (existingError) {
