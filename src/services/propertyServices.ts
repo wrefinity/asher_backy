@@ -2475,7 +2475,14 @@ class PropertyService {
 
     async createPropertyListing(data: PropertyListingDTO | any) {
 
-        const { propertyId, unitId: unitIds = [], roomId: roomIds = [], type, ...baseData } = data;
+        const {
+            propertyId,
+            unitId: unitIds = [],
+            roomId: roomIds = [],
+            type,
+            createdById,
+            ...baseData
+        } = data;
 
         const response = await prismaClient.$transaction(async (tx) => {
             const response: {
@@ -2633,7 +2640,7 @@ class PropertyService {
                 response.success = false;
             }
 
-            if (data.createdById && response.listings.length > 0) {
+            if (createdById && response.listings.length > 0) {
                 for (const listing of response.listings) {
                     if (!listing.propertyId) continue;
                     let event = 'Listed for rent';
@@ -2649,7 +2656,7 @@ class PropertyService {
                             propertyId: listing.propertyId,
                             events: event,
                             subjects: 'Listed',
-                            createdById: data.createdById,
+                            createdById,
                             unitId: listing.unitId ?? undefined,
                             roomId: listing.roomId ?? undefined,
                         });
