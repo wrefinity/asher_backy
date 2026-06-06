@@ -5,6 +5,7 @@ import { ApiResponse } from '../../utils/ApiResponse';
 import { ApiError } from '../../utils/ApiError';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { prismaClient } from '../..';
+import { enrichLeaseRenewal } from '../../utils/leaseRenewalHelpers';
 
 class LandlordLeaseRenewalController {
   constructor() {}
@@ -127,7 +128,7 @@ class LandlordLeaseRenewalController {
 
     return res.status(200).json(
       ApiResponse.success(
-        renewals,
+        renewals.map((renewal) => enrichLeaseRenewal(renewal)),
         "Lease renewals retrieved successfully"
       )
     );
@@ -168,7 +169,7 @@ class LandlordLeaseRenewalController {
 
     return res.status(200).json(
       ApiResponse.success(
-        updatedProposal,
+        enrichLeaseRenewal(updatedProposal),
         "Renewal proposal response sent successfully"
       )
     );

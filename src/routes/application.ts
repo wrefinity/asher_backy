@@ -41,15 +41,21 @@ class ApplicantRoutes {
         this.router.post('/referees/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateRefree);
         // this.router.post('/document/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), upload.array('files'), uploadToCloudinary, ApplicantControls.createApplicantionDocument);
         this.router.post('/document/:applicationId', upload.array('files'), this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.uploadAppDocuments);
-        this.router.post('/declaration/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), upload.array('files'), uploadToCloudinary, ApplicantControls.createOrUpdateDeclaration);
+        this.router.post('/declaration/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateDeclaration);
 
         this.router.get('/:id', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.getApplication);
         this.router.delete('/:id', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  ApplicantControls.deleteApplicant);
         
         // application reference for landlord and guarantor
         this.router.post('/landlord-reference/:id', LandlordReferenceFormControls.createReferenceForm);
+        this.router.post('/landlord-nomination/:id/accept', LandlordReferenceFormControls.acceptNomination);
+        this.router.post('/landlord-nomination/:id/decline', LandlordReferenceFormControls.declineNomination);
         this.router.post('/guarantor-reference/:id', GuarantorReferenceFormControls.createGuarantorAgreement);
+        this.router.post('/guarantor-nomination/:id/accept', GuarantorReferenceFormControls.acceptNomination);
+        this.router.post('/guarantor-nomination/:id/decline', GuarantorReferenceFormControls.declineNomination);
         this.router.post('/employee-reference/:id', EmployeeReferenceFormControls.createEmployeeReference);
+        this.router.post('/employer-nomination/:id/accept', EmployeeReferenceFormControls.acceptNomination);
+        this.router.post('/employer-nomination/:id/decline', EmployeeReferenceFormControls.declineNomination);
         this.router.get('/references/:id', LandlordReferenceFormControls.getReferenceForm);
         this.router.post('/sign/:id', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(),  upload.array('files'), uploadToCloudinary, ApplicantControls.signAgreementForm); 
         this.router.get('/last-application/user', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getLastApplicationDataForUser);}

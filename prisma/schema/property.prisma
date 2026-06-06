@@ -20,6 +20,8 @@ model propertyListingHistory {
   applicationFeeAmount Decimal?                   @default(0.00) @db.Decimal(18, 2)
   Log                  Log[]
   applicationInvites   applicationInvites[]
+  applications         application[]
+  tenants              tenants[]
   property             properties?                @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   room                 RoomDetail?                @relation(fields: [roomId], references: [id])
   unit                 UnitConfiguration?         @relation(fields: [unitId], references: [id])
@@ -100,6 +102,8 @@ model properties {
   zipcode                String
   longitude              Decimal?                   @db.Decimal(18, 6)
   latitude               Decimal?                   @db.Decimal(18, 6)
+  /// PostGIS geography point (EPSG:4326). Synced from longitude/latitude via DB trigger.
+  location               Unsupported("geography(Point,4326)")?
   address                String
   address2               String?
   currency               Currency?                  @default(NGN)

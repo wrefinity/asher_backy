@@ -6,25 +6,35 @@ import { uploadSchema } from './upload.schema';
 
 export const LoginSchema = Joi.object({
   email: Joi.string().email().lowercase(),
-  password: Joi.string(),
-  tenantCode: Joi.string()
+  password: Joi.string().required(),
+  tenantCode: Joi.string(),
 })
-  .xor('email', 'tenantCode') // enforce only one of them
-  .when(Joi.object({ email: Joi.exist() }).unknown(), {
-    then: Joi.object({
-      password: Joi.string().required(), // require password only if email is used
-    }),
-  })
-  .when(Joi.object({ tenantCode: Joi.exist() }).unknown(), {
-    then: Joi.object({
-      password: Joi.forbidden(), // forbid password if tenantCode is used
-      email: Joi.forbidden(),    // forbid email if tenantCode is used
-    }),
-  })
+  .xor('email', 'tenantCode')
   .messages({
     'object.missing': 'Either email or tenantCode is required',
     'object.xor': 'Cannot provide both email and tenantCode',
   });
+
+export const validateTenantSchema = Joi.object({
+  tenantCode: Joi.string().trim().required().messages({
+    'any.required': 'Tenant code is required',
+    'string.empty': 'Tenant code is required',
+  }),
+});
+
+export const setTenantPasswordSchema = Joi.object({
+  tenantCode: Joi.string().trim().required().messages({
+    'any.required': 'Tenant code is required',
+  }),
+  password: Joi.string()
+    .min(8)
+    .max(128)
+    .required()
+    .messages({
+      'string.min': 'Password must be at least 8 characters long',
+      'any.required': 'Password is required',
+    }),
+});
 
 // Joi schema for validating landlord creation data
 export const createLandlordSchema = Joi.object({
@@ -167,14 +177,16 @@ export const RegisterSchema = Joi.object({
     .required()
     .min(8)
     .max(30)
-    .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])'))
     .messages({
       'string.empty': 'Password is required',
       'string.min': 'Password must be at least 8 characters long',
       'string.max': 'Password cannot exceed 30 characters',
-      'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character (!@#$%^&*)',
       'any.required': 'Password is required'
     }),
+  firstName: Joi.string().trim().min(1).max(100).optional(),
+  lastName: Joi.string().trim().min(1).max(100).optional(),
+  phone: Joi.string().optional().allow(''),
+  phoneNumber: Joi.string().optional().allow(''),
   role: Joi.string()
     .valid(...Object.values(userRoles))
     .default(userRoles.WEBUSER)

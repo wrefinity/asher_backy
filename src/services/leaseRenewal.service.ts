@@ -2,6 +2,11 @@ import { prismaClient } from "..";
 import { serverInstance } from "../index";
 import { ApiError } from "../utils/ApiError";
 import emailService from "./emailService";
+import { createRenewalAgreementDocument } from "./renewalAgreement.service";
+import {
+  canUserRespondToRenewal,
+  resolveEffectiveRenewalTerms,
+} from "../utils/leaseRenewalHelpers";
 
 export interface LeaseRenewalData {
   tenantId: string;
@@ -279,6 +284,19 @@ class LeaseRenewalService {
     }
 
     // Create renewal proposal (proposedBy = user who initiated: landlord or tenant)
+    const existingPending = await prismaClient.leaseRenewal.findFirst({
+      where: {
+        tenantId: data.tenantId,
+        propertyId: data.propertyId,
+        status: { in: ['PENDING', 'COUNTER_OFFER'] },
+      },
+    });
+    if (existingPending) {
+      throw ApiError.badRequest(
+        'An active renewal proposal already exists for this tenancy. Respond to it before creating a new one.'
+      );
+    }
+
     const renewalProposal = await prismaClient.leaseRenewal.create({
       data: {
         tenantId: data.tenantId,
@@ -293,24 +311,29 @@ class LeaseRenewalService {
       }
     });
 
-    // Send notification to tenant
+    const landlordUser = tenant.property.landlord.user;
+    const isTenantProposer = data.proposedByUserId === tenant.user.id;
+    const recipient = isTenantProposer ? landlordUser : tenant.user;
+    const sender = isTenantProposer ? tenant.user : landlordUser;
+
     await this.emailService.createEmail({
-      senderEmail: tenant.property.landlord.user.email,
-      receiverEmail: tenant.user.email,
+      senderEmail: sender.email,
+      receiverEmail: recipient.email,
       subject: `Asher - Lease Renewal Proposal`,
       attachment: [],
       body: this.generateRenewalProposalBody(tenant, data),
-      senderId: tenant.property.landlord.userId,
-      receiverId: tenant.user.id
+      senderId: sender.id,
+      receiverId: recipient.id,
     });
 
-    // Send real-time notification
-    this.sendRealtimeNotification(tenant.user.id, {
+    this.sendRealtimeNotification(recipient.id, {
       type: 'LEASE_RENEWAL_PROPOSAL',
       title: 'Lease Renewal Proposal',
-      message: `You have received a lease renewal proposal for ${tenant.property.name}`,
+      message: isTenantProposer
+        ? `Your tenant requested a lease renewal for ${tenant.property.name}`
+        : `You have received a lease renewal proposal for ${tenant.property.name}`,
       proposalId: renewalProposal.id,
-      propertyId: data.propertyId
+      propertyId: data.propertyId,
     });
 
     return renewalProposal;
@@ -375,6 +398,17 @@ class LeaseRenewalService {
       throw new Error("Renewal proposal not found");
     }
 
+    if (!canUserRespondToRenewal(userId, proposal)) {
+      throw ApiError.badRequest(
+        'You cannot respond to this proposal. It may be closed or awaiting the other party.'
+      );
+    }
+
+    const effectiveOnAccept =
+      response === 'ACCEPTED'
+        ? resolveEffectiveRenewalTerms(proposal as Parameters<typeof resolveEffectiveRenewalTerms>[0])
+        : null;
+
     // Update proposal with response
     const updateData: any = {
       status: response,
@@ -384,6 +418,7 @@ class LeaseRenewalService {
 
     if (response === 'COUNTER_OFFER' && counterOffer) {
       updateData.counterOffer = counterOffer;
+      updateData.status = 'COUNTER_OFFER';
     }
 
     const updatedProposal = await prismaClient.leaseRenewal.update({
@@ -392,8 +427,9 @@ class LeaseRenewalService {
     });
 
     // When renewal is ACCEPTED, update tenant record with new lease dates (Option B: update existing)
+    let renewalAgreement: Awaited<ReturnType<typeof createRenewalAgreementDocument>> = null;
     if (response === 'ACCEPTED') {
-      const terms = (updatedProposal.renewalTerms || proposal.renewalTerms) as
+      const terms = (effectiveOnAccept?.renewalTerms || proposal.renewalTerms) as
         | { startDate?: string; endDate?: string; duration?: string }
         | null;
       if (terms && (terms.startDate || terms.endDate)) {
@@ -407,6 +443,40 @@ class LeaseRenewalService {
             isCurrentLease: true,
           },
         });
+      }
+
+      try {
+        renewalAgreement = await createRenewalAgreementDocument(proposal, {
+          proposedRent: effectiveOnAccept?.proposedRent,
+          renewalTerms: effectiveOnAccept?.renewalTerms,
+        });
+      } catch (agreementError) {
+        console.error('Failed to create renewal agreement document:', agreementError);
+      }
+
+      const effectiveRent = effectiveOnAccept?.proposedRent ?? proposal.proposedRent;
+      const currentRent = Number(proposal.currentRent ?? 0);
+      if (Number(effectiveRent) > currentRent) {
+        try {
+          const billTemplateService = (await import('./billTemplate.service')).default;
+          const terms = (effectiveOnAccept?.renewalTerms || proposal.renewalTerms) as
+            | { startDate?: string }
+            | null;
+          const dueDate = terms?.startDate ? new Date(terms.startDate) : new Date();
+          const rentBill = await billTemplateService.createRentIncreaseBill({
+            landlordId: proposal.property.landlordId,
+            propertyId: proposal.propertyId,
+            tenantId: proposal.tenantId,
+            oldRent: currentRent,
+            newRent: Number(effectiveRent),
+            dueDate,
+          });
+          if (rentBill && serverInstance.paymentNotificationService) {
+            await serverInstance.paymentNotificationService.sendNewBillNotification(rentBill.id);
+          }
+        } catch (billError) {
+          console.error('Failed to create rent increase bill on renewal accept:', billError);
+        }
       }
     }
 
@@ -434,10 +504,30 @@ class LeaseRenewalService {
       message: `Lease renewal proposal has been ${response.toLowerCase()}`,
       proposalId: proposalId,
       response,
-      propertyId: proposal.propertyId
+      propertyId: proposal.propertyId,
+      ...(renewalAgreement
+        ? {
+            renewalAgreement,
+            message:
+              response === 'ACCEPTED'
+                ? 'Renewal accepted. Please sign your updated lease agreement in Documents.'
+                : `Lease renewal proposal has been ${response.toLowerCase()}`,
+          }
+        : {}),
     });
 
-    return updatedProposal;
+    if (response === 'ACCEPTED' && renewalAgreement && proposal.tenant.user.id) {
+      this.sendRealtimeNotification(proposal.tenant.user.id, {
+        type: 'LEASE_AGREEMENT_PENDING',
+        title: 'Sign your renewal lease',
+        message: `Your renewal for ${proposal.property.name} is ready. Open Documents to sign.`,
+        applicationId: renewalAgreement.applicationId,
+        agreementDocumentId: renewalAgreement.agreementDocumentId,
+        propertyId: proposal.propertyId,
+      });
+    }
+
+    return { ...updatedProposal, renewalAgreement };
   }
 
   /**

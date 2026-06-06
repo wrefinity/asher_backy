@@ -47,6 +47,7 @@ model users {
   NotificationPreference   NotificationPreference[]
   notificationsReceived    Notification[]             @relation("NotificationDest")
   notificationsSent        Notification[]             @relation("NotificationSource")
+  PushDeviceToken          PushDeviceToken[]
   ratingsGiven             Rating[]                   @relation("ratedByUser")
   ratingsReceived          Rating[]                   @relation("userRated")
   Subscription             Subscription[]

@@ -64,6 +64,9 @@ export const mapNotificationToPreferenceField = (
       if (typeLower.includes('payment_initiated') || typeLower.includes('initiated')) {
         return 'notifyPaymentInitiated';
       }
+      if (typeLower.includes('bill') || typeLower.includes('invoice')) {
+        return 'notifyPaymentInitiated';
+      }
       break;
     case 'MAINTENANCE_REQUESTS':
       if (typeLower.includes('new') || typeLower.includes('created')) {

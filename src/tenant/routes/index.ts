@@ -12,6 +12,7 @@ import ViolationRoutes from "./violation.routes";
 import DocumentRequestRouter from "./documentRequest.routes";
 import TenantLeaseRenewalRouter from "./leaseRenewal.routes";
 import TenantLeaseExtensionRouter from "./leaseExtension.routes";
+import TenantPaymentRouter from "./payment.routes";
 import tenantLeaseRenewalController from "../controllers/leaseRenewal.controller";
 
 class TenantRouter {
@@ -27,6 +28,7 @@ class TenantRouter {
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize, this.authenticateService.authorizeRole(userRoles.TENANT))
         this.router.use('/bills', TenantBillRouter)
+        this.router.use('/payments', TenantPaymentRouter)
         this.router.use('/violations', ViolationRoutes)
         this.router.use('/dashboard', TenantDashboardRouter)
         this.router.use('/maintenances', MaintenanceRouter)

@@ -6,6 +6,7 @@ import { ApiError } from '../../utils/ApiError';
 import { asyncHandler } from '../../utils/asyncHandler';
 import Joi from 'joi';
 import { prismaClient } from '../..';
+import { enrichLeaseRenewal } from '../../utils/leaseRenewalHelpers';
 
 
 class TenantLeaseRenewalController {
@@ -61,7 +62,7 @@ class TenantLeaseRenewalController {
 
     return res.status(200).json(
       ApiResponse.success(
-        renewals,
+        renewals.map((renewal) => enrichLeaseRenewal(renewal)),
         "Lease renewals retrieved successfully"
       )
     );
@@ -116,7 +117,7 @@ class TenantLeaseRenewalController {
 
     return res.status(200).json(
       ApiResponse.success(
-        updatedProposal,
+        enrichLeaseRenewal(updatedProposal),
         "Renewal proposal response sent successfully"
       )
     );
@@ -215,7 +216,7 @@ class TenantLeaseRenewalController {
       reminderStatus,
       reminderDates,
       config,
-      pendingRenewals
+      pendingRenewals: pendingRenewals.map((renewal) => enrichLeaseRenewal(renewal)),
     };
 
     return res.status(200).json(

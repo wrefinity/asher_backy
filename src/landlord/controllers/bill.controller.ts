@@ -4,6 +4,7 @@ import { CustomRequest } from "../../utils/types";
 import { billSchema, billUpdateSchema, billCategorySchema } from "../validations/schema/billSchema";
 import billServices, { BillQueryParams } from "../services/bill.services";
 import { PayableBy } from "@prisma/client";
+import { serverInstance } from "../..";
 
 class BillController {
     constructor() { }
@@ -15,8 +16,8 @@ class BillController {
         try {
             const { notify, ...data } = value;
             const bill = await billServices.createSubBills(data, landlordId);
-            if (notify) {
-                //TODO:
+            if (notify && serverInstance.paymentNotificationService) {
+                await serverInstance.paymentNotificationService.sendNewBillNotification(bill.id);
             }
             return res.status(201).json({ bill });
         } catch (error) {
@@ -86,8 +87,8 @@ class BillController {
         try {
             const {notify, ...data} = value
             const bill = await billServices.updateBill(billId, data);
-            if(notify){
-                // NOTE: When we create a new bill we want to alert tenants and show on their side too
+            if (notify && serverInstance.paymentNotificationService) {
+                await serverInstance.paymentNotificationService.sendNewBillNotification(bill.id);
             }
             return res.status(201).json({ bill });
 
@@ -177,6 +178,74 @@ class BillController {
             errorService.handleError(error, res)
         }
     }
+
+    getBillCatalog = async (req: CustomRequest, res: Response) => {
+        try {
+            const market = (req.query.market as string) || 'UK';
+            const { getBillCatalogForMarket } = await import('../../utils/billCatalog');
+            return res.status(200).json({
+                market: market.toUpperCase(),
+                categories: getBillCatalogForMarket(market),
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    seedBillCatalog = async (req: CustomRequest, res: Response) => {
+        try {
+            const market = (req.body?.market as string) || 'UK';
+            const result = await billServices.seedMarketBillCategories(market);
+            return res.status(201).json(result);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    getPropertyBillTemplates = async (req: CustomRequest, res: Response) => {
+        try {
+            const { propertyId } = req.params;
+            const billTemplateService = (await import('../../services/billTemplate.service')).default;
+            const templates = await billTemplateService.getPropertyChargeTemplates(propertyId);
+            return res.status(200).json({ propertyId, templates });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    createBillFromTemplate = async (req: CustomRequest, res: Response) => {
+        const landlordId = req.user?.landlords?.id;
+        if (!landlordId) {
+            return res.status(401).json({ message: 'Unauthorized - Landlord ID missing' });
+        }
+
+        const { templateKey, propertyId, tenantId, amount, dueDate, notify } = req.body ?? {};
+        if (!templateKey || !propertyId || !dueDate) {
+            return res.status(400).json({
+                message: 'templateKey, propertyId, and dueDate are required',
+            });
+        }
+
+        try {
+            const billTemplateService = (await import('../../services/billTemplate.service')).default;
+            const bill = await billTemplateService.createBillFromTemplate(landlordId, {
+                templateKey,
+                propertyId,
+                tenantId,
+                amount,
+                dueDate,
+                notify,
+            });
+
+            if (notify && serverInstance.paymentNotificationService) {
+                await serverInstance.paymentNotificationService.sendNewBillNotification(bill.id);
+            }
+
+            return res.status(201).json({ bill });
+        } catch (error: any) {
+            return res.status(400).json({ message: error.message || 'Failed to create bill from template' });
+        }
+    };
 }
 
 export default new BillController();

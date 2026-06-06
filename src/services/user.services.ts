@@ -14,6 +14,12 @@ import ApplicantPersonalDetailsService from "../services/personaldetails.service
 import WalletService from "./wallet.service";
 import { getCurrentCountryCurrency } from "../utils/currencyContext";
 import sendMail from "../utils/emailer";
+import {
+  buildAgreementInfoSnapshot,
+  loadApplicationForTenantCopy,
+  resolveLeaseDatesFromApplication,
+  sendTenantWelcomeEmail,
+} from "./tenantOnboarding.service";
 import propertyServices from "./propertyServices";
 import applicantService from "../webuser/services/applicantService";
 import { ApiError } from "../utils/ApiError";
@@ -143,7 +149,7 @@ class UserService {
     }
 
     createNewUser = async (userData: any, landlordBulkUploads: boolean = false) => {
-        const createdUser = prismaClient.users.create({
+        const createdUser = await prismaClient.users.create({
             data: {
                 email: userData?.email,
                 role: userData?.role ? [userData.role] : [userRoles?.WEBUSER],
@@ -269,17 +275,19 @@ class UserService {
                 roleToUse
             );
             const tenant = result as any;
-            sendMail(
-                user.email,
-                "ACCOUNT CREATION",
-                `<h3>Your account has been created successfully.</h3>
-                    <p>Dear ${user?.profile?.firstName},</p>
-                    <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
-                    <p>To get started, please login to your account using the credentials below:</p>
-                    <p>Username: ${tenant?.tenantCode}</p>
-                    <p>Thank you for choosing us. </p>
-                    <p>Best regards,</p>`
-            );
+            const property = userData.propertyId
+                ? await prismaClient.properties.findUnique({
+                    where: { id: userData.propertyId },
+                    select: { name: true, address: true },
+                  })
+                : null;
+
+            await sendTenantWelcomeEmail({
+                email: user.email,
+                firstName: user?.profile?.firstName,
+                tenantCode: tenant?.tenantCode,
+                propertyName: property?.name || property?.address,
+            });
             if (userData?.isCurrentLease !== false) {
                 await propertyServices.updateAvailabiltyStatus(
                     userData?.landlordId,
@@ -292,39 +300,47 @@ class UserService {
 
         // for web user complete tenant account profile creation
         if (user && !landlordBulkUploads && userData?.role === userRoles.TENANT && createTenantProfile) {
-            // user = await this.createNewUser(userData, landlordBulkUploads);
             const roleToUse = user.role.includes(userRoles.TENANT) ? userRoles.TENANT : userData?.role;
-            // const tenantExist = await this.tenantExistsForLandlord(userData?.landlordId, user?.id, userData?.propertyId)
-            // if (tenantExist) return tenantExist;
             const result = await this.updateUserBasedOnRole(
                 { ...userData, createdById: createdBy ?? userData.createdById },
                 user,
                 roleToUse
             ) as any;
 
-            sendMail(
-                user.email,
-                "ACCOUNT CREATION",
-                `<h3>Your account has been created successfully.</h3>
-                    <p>Dear ${user?.profile?.firstName},</p>
-                    <p>We are pleased to inform you that your account has been created successfully. You can now access your account and enjoy our services.</p>
-                    <p>To get started, please login to your account using the credentials below:</p>
-                    <p>Username: ${result?.tenantCode}</p>
-                    <p>Thank you for choosing us. </p>
-                    <p>Best regards,</p>`
-            );
-            // make the property occupied
+            const property = userData.propertyId
+                ? await prismaClient.properties.findUnique({
+                    where: { id: userData.propertyId },
+                    select: { name: true, address: true },
+                  })
+                : null;
+
+            await sendTenantWelcomeEmail({
+                email: user.email,
+                firstName: user?.profile?.firstName,
+                tenantCode: result?.tenantCode,
+                propertyName: property?.name || property?.address,
+            });
             await propertyServices.updateAvailabiltyStatus(
                 userData?.landlordId,
                 userData?.propertyId,
                 AvailabilityStatus.OCCUPIED,
                 createdBy ?? userData.createdById
             );
-            //unlist the property
             await propertyServices.deletePropertyListing(userData?.propertyId);
             await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.TENANT_CREATED);
             await applicantService.updateApplicationStatusStep(userData?.applicationId, ApplicationStatus.COMPLETED);
 
+            if (userData?.applicationId) {
+                const countryData = await getCurrentCountryCurrency(null, user.id);
+                if (countryData?.locationCurrency) {
+                    await WalletService.getOrCreateWallet(
+                        user.id,
+                        countryData.locationCurrency as any
+                    );
+                }
+            }
+
+            return result;
         }
 
         if (user && userData?.role === userRoles.VENDOR) {
@@ -660,6 +676,11 @@ class UserService {
                 }
                 if (userData.roomId) {
                     connectData.room = { connect: { id: userData.roomId } };
+                }
+                if (userData.propertyListingId) {
+                    connectData.propertyListing = {
+                        connect: { id: userData.propertyListingId },
+                    };
                 }
 
                 // Fix: Ensure user exists before creating tenant

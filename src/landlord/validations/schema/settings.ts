@@ -48,6 +48,9 @@ export const GlobalSettingsSchema = Joi.object({
   reminderMethods: Joi.array().items(
     Joi.string().valid(...Object.values(ReminderMethodType))
   ).default([]),
+
+  /** Minimum years of address history on tenant applications (current + previous). */
+  minimumTenancyHistoryYears: Joi.number().integer().min(0).max(20).optional(),
 });
 
 export const propApartmentSettingsUpdateSchema = Joi.object({

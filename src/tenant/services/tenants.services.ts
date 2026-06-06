@@ -238,6 +238,8 @@ class TenantService {
                             },
                         },
                         guarantorInformation: true,
+                        employmentInfo: true,
+                        agreementDocument: true,
                         referenceForm: true,
                         guarantorAgreement: true,
                         employeeReference: true,

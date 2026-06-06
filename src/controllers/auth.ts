@@ -1,5 +1,6 @@
 import { compareSync } from "bcrypt";
 import { Request, Response } from "express";
+import { prismaClient } from "..";
 
 import { Jtoken } from "../middlewares/Jtoken";
 import { GOOGLE_CLIENT_ID, JWT_SECRET } from "../secrets";
@@ -7,7 +8,7 @@ import UserServices from "../services/user.services";
 import {
     createVerificationToken,
     deleteVerificationToken,
-    getTokensByUserId,
+    deleteUnusedVerificationTokensForUser,
     updateTokenToUsed,
     validateVerificationToken,
 } from "../services/verification_token.service";
@@ -22,9 +23,9 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { ApiError } from "../utils/ApiError";
 import userServices from "../services/user.services";
-import tenantService from "../services/tenant.service";
 import logger from "../utils/loggers";
 import oauth2Client from "../configs/oauth.config";
+import { calculateAgeFromDob } from "../services/tenantOnboarding.service";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -48,14 +49,27 @@ class AuthControls {
     };
 
     register = asyncHandler(async (req: Request, res: Response) => {
-        const { email } = req.body;
+        const phoneDigits = String(req.body.phoneNumber || req.body.phone || "")
+            .replace(/\D/g, "");
+
+        const userData = {
+            ...req.body,
+            email: String(req.body.email || "").trim().toLowerCase(),
+            firstName: req.body.firstName?.trim(),
+            lastName: req.body.lastName?.trim(),
+            phoneNumber: phoneDigits || undefined,
+            role: req.body.role || userRoles.WEBUSER,
+        };
+        delete userData.phone;
+
+        const { email } = userData;
 
         const existingUser = await UserServices.findUserByEmail(email);
         if (existingUser) {
             throw ApiError.validationError(["User already exists"]);
         }
 
-        const newUser = await UserServices.createUser(req.body);
+        const newUser = await UserServices.createUser(userData);
         await this.verificationTokenCreator({ userId: newUser.id, email });
 
         return res
@@ -128,21 +142,28 @@ class AuthControls {
     });
 
     confirmation = asyncHandler(async (req: Request, res: Response) => {
-        const { email, token } = req.body;
+        const email = String(req.body.email || "").trim().toLowerCase();
+        const token = String(req.body.token || "").trim();
 
         const user = await UserServices.findUserByEmail(email);
         if (!user) throw ApiError.notFound("User not found");
 
-        const isValidToken = await validateVerificationToken(token, { userId: user.id });
-        if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
+        let verificationRecord;
+        try {
+            verificationRecord = await validateVerificationToken(token, {
+                userId: user.id,
+                email,
+            });
+        } catch {
+            throw ApiError.validationError(["Invalid or expired verification code"]);
+        }
 
         const updatedUser = await UserServices.updateUserVerificationStatus(
             user.id,
             true
         );
 
-        const tokenRet = await getTokensByUserId(user.id, token);
-        await deleteVerificationToken(Number(tokenRet.id));
+        await deleteVerificationToken(verificationRecord.id);
 
         const { password, ...userWithoutPassword } = updatedUser;
 
@@ -168,17 +189,40 @@ class AuthControls {
         const { email } = req.body;
         if (!email) throw ApiError.validationError(["Email is required"]);
 
-        const normalizedEmail = email.toLowerCase();
+        const normalizedEmail = email.trim().toLowerCase();
         const user = await UserServices.findUserByEmail(normalizedEmail);
         if (!user) throw ApiError.notFound("User does not exist");
 
+        await deleteUnusedVerificationTokensForUser(user.id);
         await this.verificationTokenCreator({
+            userId: user.id,
             email: normalizedEmail,
         });
 
         return res
             .status(201)
             .json(ApiResponse.success({}, "Password reset code sent to email"));
+    });
+
+    resendVerificationCode = asyncHandler(async (req: Request, res: Response) => {
+        const email = String(req.body.email || "").trim().toLowerCase();
+        if (!email) throw ApiError.validationError(["Email is required"]);
+
+        const user = await UserServices.findUserByEmail(email);
+        if (!user) throw ApiError.notFound("User not found");
+
+        if (user.isVerified) {
+            throw ApiError.validationError(["Account is already verified"]);
+        }
+
+        await deleteUnusedVerificationTokensForUser(user.id);
+        await this.verificationTokenCreator({ userId: user.id, email });
+
+        return res
+            .status(201)
+            .json(
+                ApiResponse.success({}, "Verification code sent to your email")
+            );
     });
 
     passwordReset = asyncHandler(async (req: Request, res: Response) => {
@@ -219,41 +263,93 @@ class AuthControls {
         return res.status(200).json(ApiResponse.success(tokens, "Token refreshed successfully"));
     });
 
+    private buildTenantLoginPayload = async (user: any, tenantCode: string) => {
+        const activeTenant = await prismaClient.tenants.findUnique({
+            where: { tenantCode },
+            include: { property: { select: { id: true, name: true, address: true } } },
+        });
+        if (!activeTenant) throw ApiError.notFound("Tenant record not found");
+
+        await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
+        const tokens = await this.tokenService.createToken({
+            id: user.id,
+            role: String(user.role),
+            email: String(user.email),
+            tenantCode,
+            tenantId: activeTenant.id,
+        });
+
+        const { password, ...userDetails } = user;
+        const tenantsArray = Array.isArray(user.tenants) ? user.tenants : [];
+
+        return {
+            token: tokens.accessToken,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            userDetails: {
+                ...userDetails,
+                id: user.id,
+                onlineStatus: onlineStatus.online,
+                tenants: tenantsArray,
+                currentTenant: activeTenant,
+            },
+        };
+    };
+
+    validateTenant = asyncHandler(async (req: Request, res: Response) => {
+        const { tenantCode } = req.body;
+        const user = await UserServices.findUserByTenantCode(tenantCode);
+        if (!user) throw ApiError.notFound("Invalid tenant code");
+
+        const tenant = user.tenants?.find((t: any) => t.tenantCode === tenantCode);
+        if (!tenant) throw ApiError.notFound("Tenant record not found");
+
+        const property = tenant.property;
+        const dob = user.profile?.dateOfBirth;
+
+        return res.status(200).json(
+            ApiResponse.success(
+                {
+                    fullname:
+                        user.profile?.fullname ||
+                        [user.profile?.firstName, user.profile?.lastName].filter(Boolean).join(" "),
+                    age: calculateAgeFromDob(dob),
+                    property: property?.name || property?.address || "Your property",
+                    hasPassword: Boolean(user.password),
+                },
+                "Tenant validated successfully"
+            )
+        );
+    });
+
+    setTenantPassword = asyncHandler(async (req: Request, res: Response) => {
+        const { tenantCode, password } = req.body;
+        const user = await UserServices.findUserByTenantCode(tenantCode);
+        if (!user) throw ApiError.notFound("Invalid tenant code");
+
+        if (user.password) {
+            throw ApiError.validationError(["Password already set. Please log in with your tenant ID and password."]);
+        }
+
+        await UserServices.updateUserInfo(user.id, { password, isVerified: true });
+        const refreshedUser = await UserServices.findUserByTenantCode(tenantCode);
+        const payload = await this.buildTenantLoginPayload(refreshedUser, tenantCode);
+
+        await logsServices.createLog({
+            events: `Tenant ${tenantCode} completed mobile password setup`,
+            type: LogType.ACTIVITY,
+            createdById: user.id,
+        });
+
+        return res.status(200).json(
+            ApiResponse.success(payload, "Password set successfully")
+        );
+    });
+
     login = asyncHandler(async (req: Request, res: Response) => {
 
         const { email, tenantCode, password: userPassword } = req.body;
         let user = null;
-        let activeTenant: any = null;
-
-        // tenantCode only login
-        if (tenantCode && !email && !userPassword) {
-            user = await UserServices.findUserByTenantCode(tenantCode);
-            if (!user) throw ApiError.notFound("No user found for the provided tenant code");
-
-            // Get the specific tenant record for this tenantCode
-            activeTenant = await tenantService.getTenantByCode(tenantCode);
-            if (!activeTenant) throw ApiError.notFound("Tenant record not found");
-
-            await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
-            const tokens = await this.tokenService.createToken({
-                id: user.id,
-                role: String(user.role),
-                email: String(user.email),
-                tenantCode: tenantCode,
-                tenantId: activeTenant.id
-            });
-
-            const { password, ...userDetails } = user;
-            return res.status(200).json(
-                ApiResponse.success(
-                    {
-                        userDetails: { ...userDetails, id: user.id, onlineStatus: onlineStatus.online },
-                        ...tokens,
-                    },
-                    "Tenant-specific user retrieved successfully"
-                )
-            );
-        }
 
         if (!email && !tenantCode) {
             throw ApiError.validationError(["Email or tenant code is required"]);
@@ -269,8 +365,15 @@ class AuthControls {
         }
 
         if (!user.isVerified) {
-            await this.verificationTokenCreator({ userId: user.id, email });
+            await this.verificationTokenCreator({ userId: user.id, email: user.email });
             throw ApiError.unauthorized("Account not verified, verification code sent to email");
+        }
+
+        if (tenantCode && !email) {
+            const payload = await this.buildTenantLoginPayload(user, tenantCode);
+            return res.status(200).json(
+                ApiResponse.success(payload, "Tenant logged in successfully")
+            );
         }
 
         await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
@@ -297,20 +400,6 @@ class AuthControls {
                 "User logged in successfully"
             )
         );
-    });
-
-    registerTenant = asyncHandler(async (req: Request, res: Response) => {
-        const { tenantId, password } = req.body;
-        if (!tenantId || !password) {
-            throw ApiError.validationError(["Tenant ID and password are required"]);
-        }
-
-        const otp = await createVerificationToken({ userId: tenantId }, generateOtp);
-        console.log(otp);
-
-        return res
-            .status(200)
-            .json(ApiResponse.success({}, "Tenant verification email sent successfully"));
     });
 
     updatePassword = asyncHandler(async (req: CustomRequest, res: Response) => {

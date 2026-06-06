@@ -13,11 +13,20 @@ import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
 import sendMail from "../../utils/emailer"
+import {
+    loadApplicationForTenantCopy,
+    resolveLeaseDatesFromApplication,
+    seedTenantOnboardingMilestones,
+} from "../../services/tenantOnboarding.service";
 import applicantService from "../../webuser/services/applicantService"
 import { PropertyDocumentService } from "../../services/propertyDocument.service"
 import emailService from "../../services/emailService"
 import logger from "../../utils/loggers"
 import { ViewingInviteNormalizer } from "../../utils/ViewingInviteNormalizer"
+import { getApplicationFormConfig } from '../../utils/applicationFormConfig';
+import { resolveApplicationMarketFromRecord } from '../../utils/applicationCompletionRules';
+import { resolveApplicationMarket } from '../../utils/applicationAddressFields';
+import { validateLandlordInviteUpdate } from "../../utils/InviteStateMachine";
 import LandlordSettingsService from "../services/propertySetting.service";
 import {
   calculateApplicationFeeRefundAmount,
@@ -120,6 +129,19 @@ class ApplicationControls {
                 return res.status(404).json({ message: "Application doesn't exist" });
             }
 
+            const latestAgreement = Array.isArray(application.agreementDocument)
+              ? application.agreementDocument[application.agreementDocument.length - 1]
+              : null;
+            if (
+              latestAgreement?.id &&
+              !(await applicantService.isAgreementFullySigned(latestAgreement.id))
+            ) {
+              return res.status(400).json({
+                message:
+                  "Cannot create tenant until both tenant and landlord have signed the lease agreement.",
+              });
+            }
+
             // Approve invite
             await ApplicationInvitesService.updateInvite(
                 application.applicationInviteId,
@@ -146,6 +168,15 @@ class ApplicationControls {
                 });
             }
 
+            const propertyListingId =
+                application.propertyListingId ??
+                application.applicationInvites?.propertyListingId ??
+                application.applicationInvites?.enquires?.propertyListingId ??
+                null;
+
+            const { leaseStartDate, leaseEndDate, initialDeposit } =
+                resolveLeaseDatesFromApplication(application);
+
             // Pass property, unit, room separately
             const tenant = await userServices.createUser(
                 {
@@ -154,12 +185,15 @@ class ApplicationControls {
                     userId: application?.user?.id,
                     tenantWebUserEmail,
                     propertyId,
+                    propertyListingId,
                     unitId: application.applicationInvites?.unitId,
                     roomId: application.applicationInvites?.roomId,
                     applicationId,
                     role: userRoles.TENANT,
-                    password: application?.personalDetails?.firstName,
                     landlordId,
+                    leaseStartDate,
+                    leaseEndDate,
+                    initialDeposit,
                 },
                 false,
                 req.user?.id,
@@ -170,11 +204,19 @@ class ApplicationControls {
                 return res.status(400).json({ message: "Tenant not created" });
             }
 
-            await applicantService.updateApplicationStatusStep(
-                applicationId,
-                ApplicationStatus.TENANT_CREATED
-            );
             await applicantService.copyApplicationDataToTenant(applicationId);
+
+            const applicationForMilestones = await loadApplicationForTenantCopy(applicationId);
+            if (applicationForMilestones) {
+                await seedTenantOnboardingMilestones({
+                    application: applicationForMilestones,
+                    tenantId: tenant.id,
+                    propertyId,
+                    unitId: application.applicationInvites?.unitId,
+                    roomId: application.applicationInvites?.roomId,
+                    createdById: req.user?.id,
+                });
+            }
 
             return res.status(200).json({
                 message: "Tenant created successfully",
@@ -210,7 +252,7 @@ class ApplicationControls {
                 propertyListingId,
                 enquiryId,
                 responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING]
-            }, { propertyId, unitId, roomId },);
+            }, { propertyId, unitId, roomId, propertyListingId },);
 
             const property = await propertyServices.getPropertyById(propertyId);
             if (!property) {
@@ -278,13 +320,33 @@ class ApplicationControls {
             const unitId = type === 'unit' ? id : undefined;
             const roomId = type === 'room' ? id : undefined;
 
+            let resolvedListingId = value.propertyListingId ?? null;
+            if (!resolvedListingId && propertyId) {
+                const activeListing = await prismaClient.propertyListingHistory.findFirst({
+                    where: {
+                        propertyId,
+                        isActive: true,
+                        onListing: true,
+                    },
+                    orderBy: { createdAt: "desc" },
+                    select: { id: true },
+                });
+                resolvedListingId = activeListing?.id ?? null;
+            }
+
             const invite = await ApplicationInvitesService.createInvite({
                 ...rest,
                 invitedByLandordId,
                 userInvitedId: userExist?.id,
                 enquiryId: enquire?.id,
+                propertyListingId: resolvedListingId,
                 responseStepsCompleted: value.response ? [value.response] : [InvitedResponse.PENDING]
-            }, { propertyId, unitId, roomId },);
+            }, {
+                propertyId,
+                unitId,
+                roomId,
+                propertyListingId: resolvedListingId,
+            },);
 
             // send message to the tenants
             const htmlContent = `
@@ -319,7 +381,31 @@ class ApplicationControls {
             // Normalize the invite to include listing with hierarchy
             const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
 
-            return res.status(200).json({ invite: normalizedInvite });
+            const landlordId = req.user?.landlords?.id;
+            if (normalizedInvite?.application?.id) {
+              await applicantService.reconcileAgreementWorkflowStatus(
+                normalizedInvite.application.id
+              );
+              const refreshedInvite = await ApplicationInvitesService.getInviteById(id);
+              if (refreshedInvite) {
+                const refreshedNormalized =
+                  await ViewingInviteNormalizer.normalize(refreshedInvite);
+                Object.assign(normalizedInvite, refreshedNormalized);
+              }
+            }
+            const application = normalizedInvite?.application;
+            const globalSettings = landlordId
+              ? await LandlordSettingsService.getAllGlobalSettings(landlordId)
+              : null;
+            const marketCountry = application
+              ? resolveApplicationMarketFromRecord(application)
+              : resolveApplicationMarket(normalizedInvite?.properties?.country);
+            const formConfig = getApplicationFormConfig(
+              marketCountry,
+              globalSettings?.minimumTenancyHistoryYears
+            );
+
+            return res.status(200).json({ invite: normalizedInvite, formConfig });
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -364,31 +450,15 @@ class ApplicationControls {
                 return res.status(400).json({ error: error.details[0].message });
             }
 
-            if (value.response === InvitedResponse.APPLY) {
-                // Check if states has PENDING, SCHEDULED, and FEEDBACK steps are completed
-                const requiredSteps: InvitedResponse[] = [InvitedResponse.FEEDBACK, InvitedResponse.AWAITING_FEEDBACK, InvitedResponse.PENDING];
-                // Verify that all required steps are included in responseStepsCompleted
-                const hasAllRequiredSteps = requiredSteps.every(step =>
-                    invite.responseStepsCompleted?.includes(step)
+            if (value.response) {
+                const transitionCheck = validateLandlordInviteUpdate(
+                    invite,
+                    value.response
                 );
-                if (!hasAllRequiredSteps) {
-                    return res.status(400).json({
-                        error: "Application requires completion of SCHEDULING, FEEDBACK, and PENDING steps before prompting the user to apply"
-                    });
+                if (!transitionCheck.valid) {
+                    return res.status(400).json({ error: transitionCheck.error });
                 }
             }
-
-            // Check response steps history
-            const hasForbiddenHistory = invite.responseStepsCompleted?.some(step =>
-                ([InvitedResponse.DECLINED, InvitedResponse.REJECTED] as InvitedResponse[]).includes(step)
-            );
-
-            if (hasForbiddenHistory) {
-                return res.status(400).json({
-                    error: "This invitation was declined or rejected"
-                });
-            }
-
 
             // Handle enquiry validation if present
             if (value.enquiryId) {
@@ -947,21 +1017,31 @@ class ApplicationControls {
                 });
             }
 
-            // Get user info
-            const user = await userServices.getUserById(userId);
-            if (!user) {
-                return res.status(400).json({
-                    error: "User not found",
-                    message: "The user associated with this application is not found."
+            // Authorization: only the property landlord may counter-sign
+            const propertyLandlordId =
+                app?.properties?.landlordId ??
+                app?.applicationInvites?.properties?.landlordId ??
+                null;
+            const requestingLandlordId = req.user?.landlords?.id;
+
+            if (!requestingLandlordId || requestingLandlordId !== propertyLandlordId) {
+                return res.status(403).json({
+                    error: "Unauthorized",
+                    message: "Only the property landlord can counter-sign this agreement",
                 });
             }
 
-            // Authorization check
-            const actualUserId = agreement.application.user?.id;
-            if (user.id !== actualUserId) {
-                return res.status(403).json({
-                    error: "Unauthorized",
-                    message: "You can only sign agreement forms for applications you applied for"
+            if (!agreement.signedByTenantAt) {
+                return res.status(400).json({
+                    error: "Tenant signature required",
+                    message: "The tenant must sign the agreement before the landlord can counter-sign.",
+                });
+            }
+
+            if (agreement.signedByLandlordAt) {
+                return res.status(400).json({
+                    error: "Already signed",
+                    message: "This agreement has already been counter-signed by the landlord.",
                 });
             }
 
@@ -990,56 +1070,45 @@ class ApplicationControls {
             // Build HTML content
             const htmlContent = `
         <div style="font-family: Arial, sans-serif;">
-          <h2>Agreement Form Signed Notification</h2>
+          <h2>Agreement Counter-Signed</h2>
           <p>Hello,</p>
-          <p>Please find the mail inbox for the agreement form signed by the applicant</p>
+          <p>Your landlord has counter-signed the lease agreement.</p>
           <p>Best regards,<br/>Asher</p>
         </div>
       `;
 
-            // Send in-house inbox message
-            const mailBox = await emailService.createEmail({
-                senderEmail: user.email,
-                receiverEmail: landlord.user.email,
-                body: `Kindly check your email inbox for the agreement form signed by the applicant`,
+            const tenantUser = agreement.application.user;
+            if (tenantUser?.email) {
+              await emailService.createEmail({
+                senderEmail: landlord.user.email,
+                receiverEmail: tenantUser.email,
+                body: `Your landlord has counter-signed the lease agreement for ${agreement.application?.properties?.name ?? 'the property'}.`,
                 attachment: documentUrls,
-                subject: `Asher - ${agreement?.application.properties?.name} Agreement Form SignUp`,
+                subject: `Asher - ${agreement?.application.properties?.name} Agreement Counter-Signed`,
                 senderId: req.user.id,
-                receiverId: agreement.application.user.id,
-            });
+                receiverId: tenantUser.id,
+              }).catch(() => undefined);
 
-            if (!mailBox) {
-                return res.status(400).json({ message: "Mail not sent" });
+              sendMail(
+                tenantUser.email,
+                `Asher - ${agreement.application?.properties?.name} Agreement Counter-Signed`,
+                htmlContent
+              ).catch((emailError) => {
+                logger.error('Failed to send landlord counter-sign email:', emailError);
+              });
             }
 
-            // Send email notification in background - don't fail the request if email fails
-            sendMail(
-                landlord.user.email,
-                `Asher - ${agreement.application?.properties?.name} Agreement Form`,
-                htmlContent
-            ).catch((emailError) => {
-                logger.error('Failed to send agreement signed email:', emailError);
-            });
-
-            // Create audit log
             await logsServices.createLog({
                 applicationId: agreement.applicationId,
-                subjects: "Asher Agreement Letter SignUp",
-                events: `Agreement letter signed for the property: ${agreement.application?.properties?.name}`,
+                subjects: "Landlord Agreement Counter-Signature",
+                events: `Landlord counter-signed agreement for ${agreement.application?.properties?.name}`,
                 createdById: userId,
                 type: LogType.EMAIL,
             });
 
-            // Update application status
-            await applicantService.updateApplicationStatusStep(
-                agreement.applicationId,
-                ApplicationStatus.AGREEMENTS_SIGNED
-            );
-
             return res.status(200).json({
-                message: "Agreement letter signed and sent successfully",
-                recipient: landlord.user.email,
-                agreementDocument: documentUrls
+                message: "Agreement counter-signed successfully",
+                agreementDocument: created,
             });
         } catch (error) {
             errorService.handleError(error, res);

@@ -24,6 +24,7 @@ export interface LogIF {
   transactionId?: string;
   viewAgain?: YesNo;
   considerRenting?: YesNo;
+  proposedViewingDate?: Date | string;
   applicationId?: string;
   applicationInvitedId?: string;
   createdById?: string;
@@ -56,12 +57,31 @@ class LogService {
   }
 
   createLog = async (data: LogIF) => {
+    const considerRenting = data.considerRenting?.toString().toUpperCase();
+    const viewAgain = data.viewAgain?.toString().toUpperCase();
+
+    let events = data.events?.trim();
+    if (!events) {
+      if (considerRenting === "YES") {
+        events = "Interested in renting this property.";
+      } else if (considerRenting === "NO") {
+        events = "Not interested in renting at this time.";
+      } else if (viewAgain === "YES") {
+        events = "Requested another viewing.";
+      } else {
+        events = "Viewing feedback submitted.";
+      }
+    }
+
     const logData: any = {
-      events: data.events,
-      type: data.type,
+      events,
+      type: data.type ?? LogType.FEEDBACK,
       status: data.status || undefined,
       viewAgain: data.viewAgain,
       considerRenting: data.considerRenting,
+      proposedViewingDate: data.proposedViewingDate
+        ? new Date(data.proposedViewingDate)
+        : undefined,
       enquireStatus: data?.enquireStatus,
       transactionId: data?.transactionId || undefined,
       // createdById: data?.createdById || undefined,
@@ -228,6 +248,35 @@ class LogService {
       where: { id },
       data: updateData,
       include: this.inclusion
+    });
+  };
+
+  getUserEnquiries = async (userId: string) => {
+    return await prismaClient.log.findMany({
+      where: {
+        createdById: userId,
+        type: LogType.ENQUIRED,
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        property: {
+          include: {
+            state: true,
+            images: true,
+            specification: {
+              where: { isActive: true },
+              include: { residential: true },
+              take: 1,
+            },
+          },
+        },
+        propertyListing: true,
+        applicationInvites: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
     });
   };
 

@@ -113,6 +113,7 @@ export interface ResidentialInformationIF extends BaseIF {
   country: string;
   zipCode: string;
   reasonForLeaving: string;
+  monthlyRentPaid?: string | null;
   lengthOfResidence: string;
   landlordOrAgencyPhoneNumber: string;
   landlordOrAgencyEmail: string;
@@ -132,6 +133,7 @@ export interface AdditionalInformationIF extends BaseIF {
   haveOutstandingDebts?: AnswersEnum | null;
   additionalOccupants?: string | null;
   additionalInformation?: string | null;
+  moveInDate?: Date | string | null;
 
 }
 export interface EmploymentInformationIF extends BaseIF {

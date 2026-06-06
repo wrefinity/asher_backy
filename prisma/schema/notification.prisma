@@ -18,3 +18,16 @@ model Notification {
   @@index([createdAt])
   @@map("notification")
 }
+
+model PushDeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_device_token")
+}

@@ -411,6 +411,177 @@ class BillService {
         // Normalize bills to include scope information
         return BillNormalizer.normalizeMany(bills);
     }
+
+    /** Bills visible to a tenant: tenant-specific, property-wide, or landlord-wide (tenant-payable only). */
+    getBillsForTenant = async (
+        tenantId: string,
+        propertyId: string | null,
+        landlordId: string | null,
+        options: {
+            pagination?: PaginationOptions;
+            includeOptions?: IncludeOptions;
+            payableBy?: PayableBy;
+            status?: 'paid' | 'unpaid';
+            dateRange?: BillFilterOptions['dateRange'];
+            billId?: string;
+        } = {}
+    ) => {
+        const scopeConditions: any[] = [{ tenantId }];
+        if (propertyId) {
+            scopeConditions.push({ tenantId: null, propertyId });
+        }
+        if (landlordId) {
+            scopeConditions.push({ tenantId: null, propertyId: null, landlordId });
+        }
+
+        const where: any = {
+            isDeleted: false,
+            OR: scopeConditions,
+        };
+
+        if (options.payableBy) where.payableBy = options.payableBy;
+        if (options.billId) where.billId = options.billId;
+        if (options.dateRange) {
+            where.dueDate = {};
+            if (options.dateRange.start) where.dueDate.gte = options.dateRange.start;
+            if (options.dateRange.end) where.dueDate.lte = options.dateRange.end;
+        }
+        if (options.status === 'paid') where.transactions = { some: {} };
+        if (options.status === 'unpaid') where.transactions = { none: {} };
+
+        const page = options.pagination?.page ?? 1;
+        const pageSize = options.pagination?.pageSize ?? 50;
+        const includeOptions = options.includeOptions ?? {};
+
+        const include: any = {
+            tenants: { select: { id: true, tenantCode: true } },
+            property: { select: { id: true, name: true } },
+            landlord: { select: { id: true, landlordCode: true } },
+        };
+        if (includeOptions.includeTransactions) include.transactions = true;
+        if (includeOptions.includeBillCategory) include.bills = true;
+
+        const [total, bills] = await Promise.all([
+            prismaClient.billsSubCategory.count({ where }),
+            prismaClient.billsSubCategory.findMany({
+                where,
+                include,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+                orderBy: { dueDate: 'asc' },
+            }),
+        ]);
+
+        return {
+            data: BillNormalizer.normalizeMany(bills),
+            pagination: {
+                total,
+                page,
+                pageSize,
+                totalPages: Math.ceil(total / pageSize) || 1,
+            },
+        };
+    };
+
+    private buildTenantBillScopeWhere(
+        tenantId: string,
+        propertyId: string | null,
+        landlordId: string | null
+    ) {
+        const scopeConditions: any[] = [{ tenantId }];
+        if (propertyId) {
+            scopeConditions.push({ tenantId: null, propertyId });
+        }
+        if (landlordId) {
+            scopeConditions.push({ tenantId: null, propertyId: null, landlordId });
+        }
+
+        return {
+            isDeleted: false,
+            payableBy: PayableBy.TENANT,
+            OR: scopeConditions,
+        };
+    }
+
+    getUpcomingBillsForTenant = async (
+        tenantId: string,
+        propertyId: string | null,
+        landlordId: string | null,
+        days = 30
+    ) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const futureDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
+
+        const bills = await prismaClient.billsSubCategory.findMany({
+            where: {
+                ...this.buildTenantBillScopeWhere(tenantId, propertyId, landlordId),
+                dueDate: { gte: today, lte: futureDate },
+                transactions: { none: {} },
+            },
+            include: {
+                property: { select: { id: true, name: true } },
+                bills: true,
+                transactions: true,
+            },
+            orderBy: { dueDate: 'asc' },
+        });
+
+        return BillNormalizer.normalizeMany(bills);
+    };
+
+    getOverdueBillsForTenant = async (
+        tenantId: string,
+        propertyId: string | null,
+        landlordId: string | null
+    ) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const bills = await prismaClient.billsSubCategory.findMany({
+            where: {
+                ...this.buildTenantBillScopeWhere(tenantId, propertyId, landlordId),
+                dueDate: { lt: today },
+                transactions: { none: {} },
+            },
+            include: {
+                property: { select: { id: true, name: true } },
+                bills: true,
+                transactions: true,
+            },
+            orderBy: { dueDate: 'asc' },
+        });
+
+        return BillNormalizer.normalizeMany(bills);
+    };
+
+    seedMarketBillCategories = async (market: string) => {
+        const { getBillCatalogForMarket } = await import('../../utils/billCatalog');
+        const catalog = getBillCatalogForMarket(market);
+        const createdCategories: string[] = [];
+        const skippedCategories: string[] = [];
+
+        for (const category of catalog) {
+            const existing = await prismaClient.bills.findFirst({
+                where: {
+                    name: { equals: category.name, mode: 'insensitive' },
+                },
+            });
+            if (existing) {
+                skippedCategories.push(category.name);
+                continue;
+            }
+            await prismaClient.bills.create({
+                data: {
+                    name: category.name,
+                    description: category.description,
+                },
+            });
+            createdCategories.push(category.name);
+        }
+
+        return { market, createdCategories, skippedCategories };
+    };
 }
 
 export default new BillService();

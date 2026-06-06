@@ -10,6 +10,8 @@ import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
 import { LandlordService } from '../services/landlord.service';
 import { resolveFinancialRules, getApplicationFeeRefundInfo } from '../../utils/globalSettings.util';
+import { validateLandlordTenancyMinimumSetting } from '../../utils/tenancyHistoryRules';
+import UserService from '../../services/user.services';
 class SettingsController {
 
     createPropApartmentSetting = async (req: CustomRequest, res: Response) => {
@@ -88,6 +90,20 @@ class SettingsController {
         // If validation fails, return an error with the validation message
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
+        }
+
+        const user = req.user?.id
+            ? await UserService.getUserById(req.user.id)
+            : null;
+        const country = (user?.profile as { country?: string | null } | null)?.country;
+        if (value.minimumTenancyHistoryYears != null) {
+            const tenancyError = validateLandlordTenancyMinimumSetting(
+                value.minimumTenancyHistoryYears,
+                country
+            );
+            if (tenancyError) {
+                return res.status(400).json({ error: tenancyError });
+            }
         }
 
         try {

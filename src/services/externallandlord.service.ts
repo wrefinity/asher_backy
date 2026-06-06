@@ -8,8 +8,110 @@ import {
 } from '../validations/interfaces/references.interfaces';
 import applicantService from "../webuser/services/applicantService";
 import { ConflictError } from "./error.service";
+import { ApplicationSaveState, GuarantorNominationStatus } from ".prisma/client";
+import {
+  joinReferenceNameParts,
+  notifyReferenceDeclined,
+} from "../utils/referenceNomination.utils";
 
 class LandlordReferenceService {
+  respondToNomination = async (
+    applicationId: string,
+    response: Extract<GuarantorNominationStatus, "ACCEPTED" | "DECLINED">
+  ) => {
+    const application = await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        residentialInfo: true,
+        personalDetails: true,
+        user: true,
+        createdBy: true,
+        properties: true,
+      },
+    });
+
+    if (!application?.residentialInfo) {
+      throw new Error("No landlord reference nomination found for this application");
+    }
+
+    const residential = application.residentialInfo;
+
+    if (residential.nominationStatus === "ACCEPTED" && response === "ACCEPTED") {
+      return { application, residential, alreadyAccepted: true };
+    }
+
+    if (residential.nominationStatus === "DECLINED") {
+      throw new Error("This landlord reference nomination has already been declined");
+    }
+
+    const tenantName = joinReferenceNameParts(
+      application.personalDetails?.title,
+      application.personalDetails?.firstName,
+      application.personalDetails?.middleName,
+      application.personalDetails?.lastName
+    );
+    const refereeName = joinReferenceNameParts(residential.landlordOrAgencyName);
+    const propertyLabel =
+      joinReferenceNameParts(
+        application.properties?.address,
+        application.properties?.city,
+        application.properties?.country
+      ) || "the property";
+
+    if (response === "ACCEPTED") {
+      const updated = await prismaClient.residentialInformation.update({
+        where: { id: residential.id },
+        data: {
+          nominationStatus: "ACCEPTED",
+          nominationRespondedAt: new Date(),
+        },
+      });
+      return { application, residential: updated, alreadyAccepted: false };
+    }
+
+    await prismaClient.$transaction(async (tx) => {
+      await tx.residentialInformation.update({
+        where: { id: residential.id },
+        data: {
+          nominationStatus: "DECLINED",
+          nominationRespondedAt: new Date(),
+        },
+      });
+
+      const completedSteps = (application.completedSteps || []).filter(
+        (step) => step !== ApplicationSaveState.RESIDENTIAL_ADDRESS
+      );
+
+      await tx.application.update({
+        where: { id: applicationId },
+        data: {
+          landlordVerificationStatus: null,
+          lastStep: ApplicationSaveState.RESIDENTIAL_ADDRESS,
+          completedSteps: { set: completedSteps },
+        },
+      });
+    });
+
+    const message = `${refereeName || "The nominated landlord"} has declined to provide a landlord reference for ${tenantName}'s application (${propertyLabel}). The tenant will need to provide another previous landlord contact.`;
+
+    await notifyReferenceDeclined({
+      tenantUserId: application.userId,
+      landlordUserId: application.createdById,
+      tenantEmail: application.user?.email,
+      propertyLandlordEmail: application.createdBy?.email,
+      title: "Landlord reference declined",
+      message,
+      tenantEmailSubject: "Previous landlord declined your reference request",
+      tenantEmailBody: `<p>${message}</p><p>Please sign in to your application and update your previous landlord details if required.</p>`,
+    });
+
+    const updated = await prismaClient.residentialInformation.findUnique({
+      where: { id: residential.id },
+    });
+
+    return { application, residential: updated, declined: true };
+  };
+
   async createLandlordReferenceForm(
     data: LandlordReferenceFormCreateDTO,
     applicationId
@@ -36,6 +138,22 @@ class LandlordReferenceService {
       if (existingForm) {
         throw new ConflictError("Landlord reference already completed for this application");
       }
+
+      const application = await prisma.application.findFirst({
+        where: { id: applicationId },
+        include: { residentialInfo: true },
+      });
+
+      if (!application?.residentialInfo) {
+        throw new Error("Previous landlord information not found for this application");
+      }
+
+      if (application.residentialInfo.nominationStatus !== "ACCEPTED") {
+        throw new Error(
+          "You must accept the landlord reference nomination before completing this form"
+        );
+      }
+
       // Run these operations in parallel to save time
       const [tenancyHistory, externalLandlord, tenantConduct] = await Promise.all([
         this.createTenancyHistory(prisma, data.tenancyHistory),
@@ -89,7 +207,7 @@ class LandlordReferenceService {
       data: {
         tenantName: data.tenantName,
         currentAddress: data.currentAddress,
-        monthlyRent: data.monthlyRent,
+        monthlyRent: data.monthlyRent ?? data.rentAmount,
         rentStartDate: data.rentStartDate,
         rentEndDate: data.rentEndDate,
         reasonForLeaving: data.reasonForLeaving

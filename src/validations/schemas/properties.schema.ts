@@ -82,6 +82,17 @@ export const updatePropertySchemaNew = Joi.object({
     propertyTax: Joi.number().optional(),
     hoaFees: Joi.number().optional(),
     hoaName: Joi.string().allow('').optional(),
+    availableFrom: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null)).optional(),
+    petPolicy: Joi.string().allow('', null).optional(),
+    furnishingStatus: Joi.string()
+      .valid('FURNISHED', 'PART_FURNISHED', 'UNFURNISHED', 'FURNISHED_FLEXIBLE')
+      .optional(),
+    billsIncluded: Joi.boolean().optional(),
+    sharedBills: Joi.object().pattern(Joi.string(), Joi.boolean()).optional(),
+    isStudentLet: Joi.boolean().optional(),
+    isRetirement: Joi.boolean().optional(),
+    isShareHouse: Joi.boolean().optional(),
+    isHMO: Joi.boolean().optional(),
   }).optional(),
 
   // Commercial specification (partial PATCH; service layer merges into CommercialProperty)

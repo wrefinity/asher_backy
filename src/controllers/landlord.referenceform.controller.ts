@@ -78,6 +78,46 @@ class LandlordReferenceFormControls {
             ErrorService.handleError(error, res);
         }
     };
+
+    acceptNomination = async (req: Request, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in request parameters"],
+                });
+            }
+
+            const result = await landlordReferenceService.respondToNomination(
+                applicationId,
+                "ACCEPTED"
+            );
+            res.status(200).json(result);
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
+
+    declineNomination = async (req: Request, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in request parameters"],
+                });
+            }
+
+            const result = await landlordReferenceService.respondToNomination(
+                applicationId,
+                "DECLINED"
+            );
+            res.status(200).json(result);
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
 }
 
 export default new LandlordReferenceFormControls();

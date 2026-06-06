@@ -22,12 +22,14 @@ export async function createVerificationToken(
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() + DEFAULT_EXPIRATION_DAYS);
 
+    const normalizedEmail = identifier.email?.trim().toLowerCase() || null;
+
     // Save token in DB
     const verificationToken = await prismaClient.verificationToken.create({
       data: {
         token,
         userId: identifier.userId ?? null,
-        email: identifier.email ?? null,
+        email: normalizedEmail,
         expiresAt: expirationDate,
       },
     });
@@ -43,8 +45,22 @@ export async function createVerificationToken(
   }
 }
 
+function buildIdentifierConditions(identifier: {
+  userId?: string;
+  email?: string;
+}) {
+  const conditions = [];
+  if (identifier.userId) {
+    conditions.push({ userId: identifier.userId });
+  }
+  if (identifier.email) {
+    conditions.push({ email: identifier.email.trim().toLowerCase() });
+  }
+  return conditions;
+}
+
 /**
- * Validate a verification token by either userId or email
+ * Validate a verification token by userId and/or email
  */
 export async function validateVerificationToken(
   token: string,
@@ -52,7 +68,8 @@ export async function validateVerificationToken(
   isUsed: boolean = false
 ) {
   try {
-    if (!identifier.userId && !identifier.email) {
+    const orConditions = buildIdentifierConditions(identifier);
+    if (orConditions.length === 0) {
       throw ApiError.validationError(
         ["Either userId or email must be provided to validate a token"]
       );
@@ -60,16 +77,14 @@ export async function validateVerificationToken(
 
     const verificationToken = await prismaClient.verificationToken.findFirst({
       where: {
-        token,
-        OR: [
-          identifier.userId ? { userId: identifier.userId } : {},
-          identifier.email ? { email: identifier.email } : {},
-        ],
+        token: String(token).trim(),
+        OR: orConditions,
         expiresAt: {
-          gte: new Date(), // Ensure token is not expired
+          gte: new Date(),
         },
         isUsed,
       },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!verificationToken) {
@@ -84,6 +99,14 @@ export async function validateVerificationToken(
     loggers.error(`Error validating verification token: ${error}`);
     throw ApiError.internal("Failed to validate verification token", error);
   }
+}
+
+export async function deleteUnusedVerificationTokensForUser(
+  userId: string
+): Promise<void> {
+  await prismaClient.verificationToken.deleteMany({
+    where: { userId, isUsed: false },
+  });
 }
 
 export async function deleteVerificationToken(tokenId: number) {

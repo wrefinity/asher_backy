@@ -11,6 +11,11 @@ import PersonaldetailsServices from "../../services/personaldetails.services";
 import NextkinServices from "../../services/nextkin.services";
 import LogsServices from '../../services/logs.services';
 import {
+  buildAgreementInfoSnapshot,
+  loadApplicationForTenantCopy,
+  resolveLeaseDatesFromApplication,
+} from '../../services/tenantOnboarding.service';
+import {
   RefreeIF,
   NextOfKinIF,
   AdditionalInformationIF,
@@ -26,6 +31,11 @@ import { ApplicationInvite } from "../../landlord/validations/interfaces/applica
 import applicationServices from "../../services/application.services";
 import logsServices from "../../services/logs.services";
 import { ViewingInviteNormalizer } from "../../utils/ViewingInviteNormalizer";
+import { EngagementNormalizer } from "../../utils/EngagementNormalizer";
+import { processAgreementTemplateContent } from "../../utils/agreementTemplateProcessor";
+import {
+  buildApplicationLeaseBackfill,
+} from "../../utils/leaseAgreementContext";
 
 class ApplicantService {
 
@@ -42,6 +52,7 @@ class ApplicantService {
     videos: true,
     virtualTours: true,
     propertyDocument: true,
+    state: true,
     specification: {
       include: {
         residential: true,
@@ -98,6 +109,7 @@ class ApplicantService {
         documents: true,
       }
     },
+    propertyListing: true,
     employeeReference: true,
     referee: true,
     Log: true,
@@ -223,6 +235,7 @@ class ApplicantService {
       nextOfKin,
       nationality,
       identificationType,
+      identificationNo,
       issuingAuthority,
       expiryDate,
     } = data;
@@ -271,6 +284,7 @@ class ApplicantService {
       maritalStatus,
       nationality,
       identificationType,
+      identificationNo,
       issuingAuthority,
       expiryDate
     };
@@ -288,6 +302,44 @@ class ApplicantService {
           nextOfKin: { connect: { id: nextOfKinId } },
         },
       });
+    } else {
+      upsertedPersonalDetails = await prismaClient.applicantPersonalDetails.update({
+        where: { id: existingPersonalDetails.id },
+        data: {
+          ...personalDetailsData,
+          nextOfKin: { connect: { id: nextOfKinId } },
+        },
+      });
+    }
+
+    const personalDetailsId = upsertedPersonalDetails.id;
+
+    await prismaClient.nextOfKin.update({
+      where: { id: nextOfKinId },
+      data: { applicantPersonalDetailsId: personalDetailsId },
+    }).catch(() => {
+      // nextOfKin may already be linked via personalDetails connect
+    });
+
+    // If an application already exists for this invite, update it instead of creating a duplicate
+    if (applicationInviteId) {
+      const existingApp = await prismaClient.application.findUnique({
+        where: { applicationInviteId },
+      });
+
+      if (existingApp) {
+        await prismaClient.application.update({
+          where: { id: existingApp.id },
+          data: {
+            applicantPersonalDetailsId: personalDetailsId,
+            invited,
+            userId,
+          },
+        });
+        await this.updateLastStepStop(existingApp.id, ApplicationSaveState.PERSONAL_KIN);
+        await this.updateCompletedStep(existingApp.id, ApplicationSaveState.PERSONAL_KIN);
+        return this.getApplicationById(existingApp.id);
+      }
     }
     // Get the current date
     const currentDate = new Date();
@@ -311,6 +363,25 @@ class ApplicantService {
     //   throw new Error("You have already applied for this property in the last 3 months. Please wait before reapplying.");
     // }
 
+    let propertyListingId: string | null = null;
+    if (data.applicationInviteId) {
+      const inviteRecord = await prismaClient.applicationInvites.findFirst({
+        where: { id: data.applicationInviteId },
+        include: { enquires: true },
+      });
+      propertyListingId =
+        inviteRecord?.propertyListingId ||
+        inviteRecord?.enquires?.propertyListingId ||
+        null;
+
+      if (propertyListingId && inviteRecord && !inviteRecord.propertyListingId) {
+        await prismaClient.applicationInvites.update({
+          where: { id: data.applicationInviteId },
+          data: { propertyListingId },
+        });
+      }
+    }
+
     // Web direct application path: initiated by user through web portal, mark platform WEB.
     const app = await prismaClient.application.create({
       data: {
@@ -321,9 +392,10 @@ class ApplicantService {
         roomId: roomId || undefined,           // Only include if room exists
         unitId: unitId || undefined,           // Only include if unit exists
         applicationInviteId: applicationInviteId,
+        propertyListingId: propertyListingId ?? undefined,
         lastStep: ApplicationSaveState.PERSONAL_KIN,
         completedSteps: [ApplicationSaveState.PERSONAL_KIN],
-        applicantPersonalDetailsId: upsertedPersonalDetails?.id ?? existingPersonalDetails?.id,
+        applicantPersonalDetailsId: personalDetailsId,
         platform: Platform.WEB,
       },
     });
@@ -344,6 +416,7 @@ class ApplicantService {
       if (!logcreated) {
         await LogsServices.createLog({
           propertyId: propertiesId,
+          propertyListingId: propertyListingId ?? undefined,
           subjects: "Application Started",
           events: "Application in progress",
           createdById: userId,
@@ -375,6 +448,12 @@ class ApplicantService {
     });
     return { ...guarantorInfo, ...updatedApplication };
   }
+
+  skipGuarantorStep = async (applicationId: string) => {
+    await this.updateLastStepStop(applicationId, ApplicationSaveState.GUARANTOR_INFO);
+    await this.updateCompletedStep(applicationId, ApplicationSaveState.GUARANTOR_INFO);
+    return { skipped: true };
+  };
 
   createOrUpdateEmergencyContact = async (data: EmergencyContactIF) => {
     const { applicationId, id, userId, ...rest } = data;
@@ -540,28 +619,47 @@ class ApplicantService {
 
 
   createOrUpdateAdditionalInformation = async (data: AdditionalInformationIF) => {
-    const { id, applicationId, ...rest } = data;
+    const { id, applicationId, moveInDate, ...rest } = data;
 
-    // Check if an ID is provided
+    let savedQuestions;
     if (id) {
-      return await prismaClient.applicationQuestions.update({
+      savedQuestions = await prismaClient.applicationQuestions.update({
         where: { id },
         data: rest,
       });
     } else {
-      // Create a new record since no ID was provided
-      const newRecord = await prismaClient.applicationQuestions.create({
-        data: {
-          application: { connect: { id: applicationId } },
-          ...rest,
-        },
+      const existing = await prismaClient.applicationQuestions.findFirst({
+        where: { applicantId: applicationId },
       });
-      if (newRecord) {
-        await this.updateLastStepStop(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
-        await this.updateCompletedStep(applicationId, ApplicationSaveState.ADDITIONAL_INFO)
+
+      if (existing) {
+        savedQuestions = await prismaClient.applicationQuestions.update({
+          where: { id: existing.id },
+          data: rest,
+        });
+      } else {
+        savedQuestions = await prismaClient.applicationQuestions.create({
+          data: {
+            application: { connect: { id: applicationId } },
+            ...rest,
+          },
+        });
       }
-      return newRecord;
     }
+
+    if (moveInDate) {
+      const parsed = moveInDate instanceof Date ? moveInDate : new Date(moveInDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        await prismaClient.application.update({
+          where: { id: applicationId },
+          data: { moveInDate: parsed },
+        });
+      }
+    }
+
+    await this.updateLastStepStop(applicationId, ApplicationSaveState.ADDITIONAL_INFO);
+    await this.updateCompletedStep(applicationId, ApplicationSaveState.ADDITIONAL_INFO);
+    return savedQuestions;
   }
 
 
@@ -614,8 +712,57 @@ class ApplicantService {
 
     if (!application) return null;
 
+    await this.refreshAgreementDocumentsForTenantView(application);
+    await this.reconcileAgreementWorkflowStatus(applicationId);
+
     const normalized = await this.normalizeApplications([application]);
     return normalized[0];
+  }
+
+  /** Re-process unsigned agreement HTML so merge tags and signature zones render for tenants. */
+  private async refreshAgreementDocumentsForTenantView(application: any) {
+    if (!Array.isArray(application.agreementDocument)) return;
+
+    const property =
+      application.properties ||
+      application.applicationInvites?.properties ||
+      null;
+    const landlordUser = property?.landlord?.user || null;
+
+    await this.ensureApplicationLeaseFields(application, property);
+
+    application.agreementDocument = application.agreementDocument.map((doc: any) => {
+      if (!doc?.processedContent || doc.signedByTenantAt) return doc;
+      return {
+        ...doc,
+        processedContent: processAgreementTemplateContent(
+          doc.processedContent,
+          application,
+          property,
+          landlordUser,
+          { forTenantView: true, agreementSentAt: doc.sentAt ? new Date(doc.sentAt) : undefined }
+        ),
+      };
+    });
+  }
+
+  /** Persist missing lease/rent fields from property + tenant data before agreement rendering. */
+  private async ensureApplicationLeaseFields(
+    application: any,
+    property?: any,
+    options: { agreementSentAt?: Date; landlordLeaseStartDate?: Date } = {}
+  ) {
+    if (!application?.id) return;
+
+    const patch = buildApplicationLeaseBackfill(application, property, options);
+    if (Object.keys(patch).length === 0) return;
+
+    const updated = await prismaClient.application.update({
+      where: { id: application.id },
+      data: patch,
+    });
+
+    Object.assign(application, updated);
   }
 
   checkApplicationExistance = async (applicationId: string) => {
@@ -683,7 +830,11 @@ class ApplicantService {
 
           return {
             ...application,
-            listing: normalizedInvite.listing
+            listing: normalizedInvite.listing,
+            engagement: EngagementNormalizer.fromApplicationRecord(
+              application,
+              normalizedInvite
+            ),
           };
         } catch (error) {
           console.warn('Failed to normalize listing for application:', error);
@@ -805,11 +956,47 @@ class ApplicantService {
     });
     if (!templateExists) throw new Error('Template not found');
 
-    // Verify application exists
+    // Verify application exists (full include for tag processing)
     const application = await prismaClient.application.findUnique({
-      where: { id: value.applicationId }
+      where: { id: value.applicationId },
+      include: this.applicationInclusion,
     });
     if (!application) throw new Error(`Application ${value.applicationId} not found`);
+
+    const landlordUser = await prismaClient.users.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, profile: true, landlords: true },
+    });
+
+    const property =
+      application.properties ||
+      application.applicationInvites?.properties ||
+      null;
+
+    const agreementSentAt = new Date();
+    await this.ensureApplicationLeaseFields(application, property, {
+      agreementSentAt,
+      landlordLeaseStartDate: value.metadata?.leaseStartDate
+        ? new Date(value.metadata.leaseStartDate)
+        : undefined,
+    });
+
+    let processedContent = value.processedContent;
+    if (processedContent) {
+      processedContent = processAgreementTemplateContent(
+        processedContent,
+        application,
+        property,
+        landlordUser,
+        {
+          forTenantView: true,
+          agreementSentAt,
+          landlordLeaseStartDate: value.metadata?.leaseStartDate
+            ? new Date(value.metadata.leaseStartDate)
+            : undefined,
+        }
+      );
+    }
 
     // Get existing document URLs if updating
     const existingDoc = agreementId ? await prismaClient.agreementDocument.findUnique({
@@ -820,7 +1007,7 @@ class ApplicantService {
     const baseData: Prisma.AgreementDocumentCreateInput | Prisma.AgreementDocumentUpdateInput = {
       templateVersion: value.templateVersion,
       documentUrl: { set: documentUrls },
-      processedContent: value.processedContent,
+      processedContent,
       variables: value.variables,
       metadata: value.metadata,
       updatedAt: new Date()
@@ -882,7 +1069,7 @@ class ApplicantService {
       agreementStatus: await this.getUpdatedAgreementStatus(agreementId, 'TENANT')
     };
 
-    return await prismaClient.agreementDocument.update({
+    const updated = await prismaClient.agreementDocument.update({
       where: { id: agreementId },
       data: updateData,
       include: {
@@ -890,6 +1077,13 @@ class ApplicantService {
         documentTemplate: true
       }
     });
+
+    await this.syncApplicationStatusAfterAgreementSign(
+      updated.applicationId,
+      agreementId
+    );
+
+    return updated;
   }
   async signAgreementDocumentLandlord(
     value: {
@@ -926,13 +1120,118 @@ class ApplicantService {
       agreementStatus: await this.getUpdatedAgreementStatus(agreementId, 'LANDLORD')
     };
 
-    return await prismaClient.agreementDocument.update({
+    const updated = await prismaClient.agreementDocument.update({
       where: { id: agreementId },
       data: updateData,
       include: {
         application: true,
         documentTemplate: true
       }
+    });
+
+    await this.syncApplicationStatusAfterAgreementSign(
+      updated.applicationId,
+      agreementId
+    );
+
+    return updated;
+  }
+
+  /** Set application to AGREEMENTS_SIGNED only once both parties have signed. */
+  async syncApplicationStatusAfterAgreementSign(
+    applicationId: string,
+    agreementId: string
+  ) {
+    const agreement = await prismaClient.agreementDocument.findUnique({
+      where: { id: agreementId },
+      select: { signedByTenantAt: true, signedByLandlordAt: true },
+    });
+
+    if (!agreement?.signedByTenantAt || !agreement?.signedByLandlordAt) {
+      return;
+    }
+
+    await this.updateApplicationStatusStep(
+      applicationId,
+      ApplicationStatus.AGREEMENTS_SIGNED
+    );
+  }
+
+  async isAgreementFullySigned(agreementId: string): Promise<boolean> {
+    const agreement = await prismaClient.agreementDocument.findUnique({
+      where: { id: agreementId },
+      select: { signedByTenantAt: true, signedByLandlordAt: true },
+    });
+    return Boolean(agreement?.signedByTenantAt && agreement?.signedByLandlordAt);
+  }
+
+  /**
+   * Fix applications where tenant signed but status was prematurely set to AGREEMENTS_SIGNED.
+   */
+  async reconcileAgreementWorkflowStatus(applicationId: string): Promise<void> {
+    const application = await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      select: {
+        status: true,
+        statuesCompleted: true,
+        agreementDocument: {
+          orderBy: { createdAt: 'asc' },
+          select: { signedByTenantAt: true, signedByLandlordAt: true },
+        },
+      },
+    });
+
+    if (!application?.agreementDocument?.length) return;
+
+    const latest =
+      application.agreementDocument[application.agreementDocument.length - 1];
+    const tenantSigned = Boolean(latest.signedByTenantAt);
+    const landlordSigned = Boolean(latest.signedByLandlordAt);
+
+    if (!tenantSigned) return;
+
+    const currentStatuses = application.statuesCompleted ?? [];
+    let nextStatuses = [...currentStatuses];
+    let nextStatus = application.status;
+    let changed = false;
+
+    if (tenantSigned && !landlordSigned) {
+      if (nextStatuses.includes(ApplicationStatus.AGREEMENTS_SIGNED)) {
+        nextStatuses = nextStatuses.filter(
+          (s) => s !== ApplicationStatus.AGREEMENTS_SIGNED
+        );
+        changed = true;
+      }
+      if (nextStatus === ApplicationStatus.AGREEMENTS_SIGNED) {
+        nextStatus = ApplicationStatus.AGREEMENTS;
+        changed = true;
+      }
+      if (!nextStatuses.includes(ApplicationStatus.AGREEMENTS)) {
+        nextStatuses.push(ApplicationStatus.AGREEMENTS);
+        changed = true;
+      }
+    } else if (tenantSigned && landlordSigned) {
+      if (!nextStatuses.includes(ApplicationStatus.AGREEMENTS_SIGNED)) {
+        nextStatuses.push(ApplicationStatus.AGREEMENTS_SIGNED);
+        changed = true;
+      }
+      if (
+        nextStatus !== ApplicationStatus.TENANT_CREATED &&
+        nextStatus !== ApplicationStatus.AGREEMENTS_SIGNED
+      ) {
+        nextStatus = ApplicationStatus.AGREEMENTS_SIGNED;
+        changed = true;
+      }
+    }
+
+    if (!changed) return;
+
+    await prismaClient.application.update({
+      where: { id: applicationId },
+      data: {
+        statuesCompleted: nextStatuses,
+        status: nextStatus,
+      },
     });
   }
 
@@ -972,78 +1271,59 @@ class ApplicantService {
   }
 
   copyApplicationDataToTenant = async (applicationId: string) => {
-    const application = await prismaClient.application.findUnique({
-      where: { id: applicationId },
-      include: {
-        user: true,
-        personalDetails: {
-          include: {
-            nextOfKin: true
-          }
-        },
-        residentialInfo: {
-          include: {
-            prevAddresses: true
-          }
-        },
-        emergencyInfo: true,
-        employmentInfo: true,
-        guarantorInformation: true,
-        applicationQuestions: true,
-        declaration: true,
-        referee: true,
-        properties: true,
-        units: true,
-        rooms: true,
-        tenant: true,
-        documents: true,
-      }
-    });
+    const application = await loadApplicationForTenantCopy(applicationId);
 
     if (!application) {
       throw new Error('Application not found');
     }
-    console.log(application)
 
     if (!application.tenant) {
       throw new Error('No tenant found for this application');
     }
 
+    const agreementInfo = buildAgreementInfoSnapshot(application);
+    const { leaseStartDate, leaseEndDate, initialDeposit } =
+      resolveLeaseDatesFromApplication(application);
 
-    // Prepare JSON data
-    const applicationData = {
-      personalInfo: application.personalDetails,
-      nextOfKinInfo: application.personalDetails?.nextOfKin,
-      employmentInfo: application.employmentInfo,
-      guarantorInfo: application.guarantorInformation,
-      emergencyContactInfo: application.emergencyInfo,
-      residentialInfo: application.residentialInfo,
-      applicationQuestions: application.applicationQuestions,
-      declarationInfo: application.declaration,
-      refereeInfo: application.referee,
-      applicationMetadata: {
-        applicationId: application.id,
-        appliedAt: application.createdAt,
-        status: application.status
-      }
-    };
-
-    // Update tenant with application data
     const updatedTenant = await prismaClient.tenants.update({
       where: { id: application.tenant.id },
       data: {
-        personalInfo: applicationData.personalInfo,
-        nextOfKinInfo: applicationData.nextOfKinInfo,
-        employmentInfo: applicationData.employmentInfo,
-        guarantorInfo: applicationData.guarantorInfo,
-        emergencyContactInfo: applicationData.emergencyContactInfo,
-        residentialInfo: applicationData.residentialInfo,
-        applicationQuestions: applicationData.applicationQuestions,
-        declarationInfo: applicationData.declarationInfo
-      }
+        personalInfo: application.personalDetails,
+        nextOfKinInfo: application.personalDetails?.nextOfKin,
+        employmentInfo: application.employmentInfo,
+        guarantorInfo: application.guarantorInformation,
+        emergencyContactInfo: application.emergencyInfo,
+        residentialInfo: application.residentialInfo,
+        applicationQuestions: application.applicationQuestions,
+        declarationInfo: application.declaration,
+        refereeInfo: application.referee,
+        applicationMetadata: {
+          applicationId: application.id,
+          appliedAt: application.createdAt,
+          status: application.status,
+          completedSteps: application.completedSteps,
+          statuesCompleted: application.statuesCompleted,
+        },
+        agreementInfo,
+        ...(leaseStartDate && { leaseStartDate }),
+        ...(leaseEndDate && { leaseEndDate }),
+        ...(initialDeposit != null && !Number.isNaN(initialDeposit) && { initialDeposit }),
+      },
     });
 
     return updatedTenant;
+  }
+
+  getTenantProfileBundle = async (tenantId: string) => {
+    const tenant = await this.getTenantWithApplicationData(tenantId);
+    if (!tenant) return null;
+
+    let application = null;
+    if (tenant.applicationId) {
+      application = await this.getApplicationById(tenant.applicationId);
+    }
+
+    return { tenant, application };
   }
 
   // Get tenant with application data
@@ -1062,7 +1342,9 @@ class ApplicantService {
         emergencyContactInfo: true,
         residentialInfo: true,
         applicationQuestions: true,
-        declarationInfo: true,
+        refereeInfo: true,
+        applicationMetadata: true,
+        agreementInfo: true,
         leaseStartDate: true,
         leaseEndDate: true,
         user: {
@@ -1284,6 +1566,7 @@ class ApplicantService {
           country: lastApplication.residentialInfo.country,
           zipCode: lastApplication.residentialInfo.zipCode,
           lengthOfResidence: lastApplication.residentialInfo.lengthOfResidence,
+          monthlyRentPaid: lastApplication.residentialInfo.monthlyRentPaid,
           reasonForLeaving: lastApplication.residentialInfo.reasonForLeaving,
           landlordOrAgencyPhoneNumber: lastApplication.residentialInfo.landlordOrAgencyPhoneNumber,
           landlordOrAgencyEmail: lastApplication.residentialInfo.landlordOrAgencyEmail,
@@ -1488,31 +1771,65 @@ class ApplicantService {
   attachLastApplicationDataToTenant = async (tenantId: string) => {
     const tenant = await prismaClient.tenants.findUnique({
       where: { id: tenantId },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!tenant) {
       throw new Error('Tenant not found');
     }
 
-    const lastApplicationData = await this.getLastApplicationDataForUser(tenant.userId);
+    if (tenant.applicationId) {
+      return this.copyApplicationDataToTenant(tenant.applicationId);
+    }
 
-    if (!lastApplicationData) {
+    const lastApplication = await prismaClient.application.findFirst({
+      where: {
+        userId: tenant.userId,
+        status: {
+          in: [ApplicationStatus.COMPLETED, ApplicationStatus.TENANT_CREATED, ApplicationStatus.APPROVED],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!lastApplication) {
       throw new Error('No approved application found for this user');
     }
 
-    return await prismaClient.tenants.update({
+    const application = await loadApplicationForTenantCopy(lastApplication.id);
+    if (!application) {
+      throw new Error('Application not found');
+    }
+
+    const agreementInfo = buildAgreementInfoSnapshot(application);
+    const { leaseStartDate, leaseEndDate, initialDeposit } =
+      resolveLeaseDatesFromApplication(application);
+
+    return prismaClient.tenants.update({
       where: { id: tenantId },
       data: {
-        personalInfo: lastApplicationData.personalInfo,
-        nextOfKinInfo: lastApplicationData.nextOfKinInfo,
-        employmentInfo: lastApplicationData.employmentInfo,
-        guarantorInfo: lastApplicationData.guarantorInfo,
-        emergencyContactInfo: lastApplicationData.emergencyContactInfo,
-        residentialInfo: lastApplicationData.residentialInfo,
-        applicationQuestions: lastApplicationData.applicationQuestions,
-        declarationInfo: lastApplicationData.declarationInfo
-      }
+        applicationId: application.id,
+        personalInfo: application.personalDetails,
+        nextOfKinInfo: application.personalDetails?.nextOfKin,
+        employmentInfo: application.employmentInfo,
+        guarantorInfo: application.guarantorInformation,
+        emergencyContactInfo: application.emergencyInfo,
+        residentialInfo: application.residentialInfo,
+        applicationQuestions: application.applicationQuestions,
+        declarationInfo: application.declaration,
+        refereeInfo: application.referee,
+        applicationMetadata: {
+          applicationId: application.id,
+          appliedAt: application.createdAt,
+          status: application.status,
+          completedSteps: application.completedSteps,
+          statuesCompleted: application.statuesCompleted,
+        },
+        agreementInfo,
+        ...(leaseStartDate && { leaseStartDate }),
+        ...(leaseEndDate && { leaseEndDate }),
+        ...(initialDeposit != null && !Number.isNaN(initialDeposit) && { initialDeposit }),
+      },
     });
   }
 }

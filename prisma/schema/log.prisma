@@ -8,6 +8,7 @@ model Log {
   subjects           String?
   viewAgain          YesNo?
   considerRenting    YesNo?
+  proposedViewingDate DateTime?
   enquireStatus      EnquireStatus?
   events             String
   type               LogType?

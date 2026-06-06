@@ -11,7 +11,8 @@ enum EmploymentType {
 }
 // Base schemas with common configurations
 const requiredString = (label: string) => Joi.string().required().label(label);
-const optionalString = (label: string) => Joi.string().optional().label(label);
+const optionalString = (label: string) => Joi.string().allow('', null).optional().label(label);
+const optionalText = (label: string) => Joi.string().allow('', null).optional().label(label);
 const requiredDate = (label: string) => Joi.date().required().label(label);
 const optionalDate = (label: string) => Joi.date().optional().label(label);
 
@@ -233,11 +234,11 @@ export const GuarantorAgreementCreateSchema = Joi.object({
     title: Joi.string().required(),
     firstName: Joi.string().required(),
     lastName: Joi.string().required(),
-    middleName: Joi.string().required(),
+    middleName: Joi.string().allow("").optional().default(""),
     dateOfBirth: Joi.string().required(),
     contactNumber: Joi.string().required(),
     emailAddress: Joi.string().required(),
-    nationalInsuranceNumber: Joi.string().required(),
+    nationalInsuranceNumber: Joi.string().allow("").optional().default("N/A"),
     signedByGuarantor: Joi.boolean().required(),
     guarantorSignature: Joi.string().required(),
     guarantorSignedAt: Joi.date().required(),
@@ -249,28 +250,35 @@ export const GuarantorAgreementCreateSchema = Joi.object({
 
 export const employeeReferenceSchema = Joi.object({
     employeeName: Joi.string().required(),
-    jobTitle: Joi.string().optional(),
-    department: Joi.string().optional(),
-    employmentStartDate: Joi.date().optional(),
-    employmentEndDate: Joi.date().optional(),
-    reasonForLeaving: Joi.string().optional(),
-    companyName: Joi.string().optional(),
-    refereeName: Joi.string().optional(),
-    refereePosition: Joi.string().optional(),
-    contactNumber: Joi.string().optional(),
-    emailAddress: Joi.string().email().optional(),
-    employmentType: Joi.string().optional(),
-    mainResponsibilities: Joi.string().optional(),
+    jobTitle: optionalText('Job Title'),
+    department: optionalText('Department'),
+    employmentStartDate: optionalDate('Employment Start Date'),
+    employmentEndDate: optionalDate('Employment End Date'),
+    reasonForLeaving: optionalText('Reason for Leaving'),
+    companyName: optionalText('Company Name'),
+    refereeName: optionalText('Referee Name'),
+    refereePosition: optionalText('Referee Position'),
+    contactNumber: optionalText('Contact Number'),
+    emailAddress: Joi.string().email().allow('', null).optional(),
+    employmentType: optionalText('Employment Type'),
+    mainResponsibilities: optionalText('Main Responsibilities'),
     workPerformance: Joi.number().integer().min(0).max(5).optional(),
     punctualityAttendance: Joi.number().integer().min(0).max(5).optional(),
     reliabilityProfessionalism: Joi.number().integer().min(0).max(5).optional(),
     teamworkInterpersonal: Joi.number().integer().min(0).max(5).optional(),
     wouldReemploy: Joi.boolean().optional(),
-    reemployDetails: Joi.string().optional(),
-    additionalComments: Joi.string().optional(),
+    reemployDetails: Joi.when('wouldReemploy', {
+        is: false,
+        then: Joi.string().trim().min(1).required().messages({
+            'string.empty': 'Please explain why you would not re-employ this person',
+            'any.required': 'Please explain why you would not re-employ this person',
+        }),
+        otherwise: optionalText('Re-employment details'),
+    }),
+    additionalComments: optionalText('Additional Comments'),
     declarationConfirmed: Joi.boolean().default(true),
-    signerName: Joi.string().optional(),
-    signature: Joi.string().optional(),
+    signerName: optionalText('Signer Name'),
+    signature: optionalText('Signature'),
     date: Joi.date().required()
 }).options({ abortEarly: false });
 

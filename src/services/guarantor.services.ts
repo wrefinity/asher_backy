@@ -5,7 +5,18 @@ import {
   GuarantorAgreement,
 } from '../validations/interfaces/references.interfaces';
 import applicantService from "../webuser/services/applicantService";
-import { ApplicationSaveState, ApplicationStatus } from ".prisma/client";
+import { ApplicationSaveState, ApplicationStatus, GuarantorNominationStatus, NotificationCategory } from ".prisma/client";
+import NotificationService from "./notification.service";
+import { sendMail } from "../utils/emailer";
+
+function joinNameParts(...parts: Array<string | null | undefined>): string {
+  return parts
+    .map((p) => (p == null ? "" : String(p).trim()))
+    .filter((p) => p && p.toLowerCase() !== "null" && p.toLowerCase() !== "undefined")
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 class GuarantorService {
   // Upsert Guarantor Information
@@ -24,6 +35,12 @@ class GuarantorService {
         where: { id },
         data: {
           ...rest,
+          ...(rest.fullName || rest.email || rest.phoneNumber
+            ? {
+                nominationStatus: 'PENDING',
+                nominationRespondedAt: null,
+              }
+            : {}),
           user: {
             connect: { id: userId },
           },
@@ -34,6 +51,8 @@ class GuarantorService {
       const guarantorInfo = await prismaClient.guarantorInformation.create({
         data: {
           ...rest,
+          nominationStatus: 'PENDING',
+          nominationRespondedAt: null,
           user: {
             connect: { id: userId },
           },
@@ -102,6 +121,12 @@ class GuarantorService {
 
       if (!apx?.guarantorInformation) {
         throw new Error("Guarantor not found");
+      }
+
+      if (apx.guarantorInformation.nominationStatus !== "ACCEPTED") {
+        throw new Error(
+          "You must accept the guarantor nomination before completing this form"
+        );
       }
 
       const created = await prisma.guarantorAgreement.create({
@@ -215,6 +240,134 @@ class GuarantorService {
   //       throw new Error(`Invalid employment type: ${data.employmentType}`);
   //   }
   // }
+
+  respondToNomination = async (
+    applicationId: string,
+    response: Extract<GuarantorNominationStatus, "ACCEPTED" | "DECLINED">
+  ) => {
+    const application = await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        guarantorInformation: true,
+        personalDetails: true,
+        user: true,
+        createdBy: true,
+        properties: true,
+      },
+    });
+
+    if (!application?.guarantorInformation) {
+      throw new Error("No guarantor nomination found for this application");
+    }
+
+    const guarantor = application.guarantorInformation;
+
+    if (guarantor.nominationStatus === "ACCEPTED" && response === "ACCEPTED") {
+      return { application, guarantor, alreadyAccepted: true };
+    }
+
+    if (guarantor.nominationStatus === "DECLINED") {
+      throw new Error("This guarantor nomination has already been declined");
+    }
+
+    const tenantName = joinNameParts(
+      application.personalDetails?.title,
+      application.personalDetails?.firstName,
+      application.personalDetails?.middleName,
+      application.personalDetails?.lastName
+    );
+    const guarantorName = joinNameParts(guarantor.fullName);
+    const propertyLabel =
+      joinNameParts(
+        application.properties?.address,
+        application.properties?.city,
+        application.properties?.country
+      ) || "the property";
+
+    if (response === "ACCEPTED") {
+      const updatedGuarantor = await prismaClient.guarantorInformation.update({
+        where: { id: guarantor.id },
+        data: {
+          nominationStatus: "ACCEPTED",
+          nominationRespondedAt: new Date(),
+        },
+      });
+      return { application, guarantor: updatedGuarantor, alreadyAccepted: false };
+    }
+
+    await prismaClient.$transaction(async (tx) => {
+      await tx.guarantorInformation.update({
+        where: { id: guarantor.id },
+        data: {
+          nominationStatus: "DECLINED",
+          nominationRespondedAt: new Date(),
+        },
+      });
+
+      const completedSteps = (application.completedSteps || []).filter(
+        (step) => step !== ApplicationSaveState.GUARANTOR_INFO
+      );
+
+      await tx.application.update({
+        where: { id: applicationId },
+        data: {
+          guarantorInformationId: null,
+          guarantorVerificationStatus: null,
+          lastStep: ApplicationSaveState.GUARANTOR_INFO,
+          completedSteps: { set: completedSteps },
+        },
+      });
+    });
+
+    const tenantUserId = application.userId;
+    const landlordUserId = application.createdById;
+    const message = `${guarantorName} has declined to act as guarantor for ${tenantName}'s application (${propertyLabel}). The tenant will need to nominate another guarantor.`;
+
+    if (tenantUserId) {
+      await NotificationService.createNotification(
+        {
+          destId: tenantUserId,
+          title: "Guarantor declined nomination",
+          message,
+          category: NotificationCategory.COMMUNICATION,
+        },
+        NotificationCategory.COMMUNICATION
+      );
+      if (application.user?.email) {
+        await sendMail(
+          application.user.email,
+          "Guarantor declined your nomination",
+          `<p>${message}</p><p>Please sign in to your application and nominate another guarantor if required.</p>`
+        );
+      }
+    }
+
+    if (landlordUserId) {
+      await NotificationService.createNotification(
+        {
+          sourceId: tenantUserId || undefined,
+          destId: landlordUserId,
+          title: "Guarantor declined nomination",
+          message,
+          category: NotificationCategory.COMMUNICATION,
+        },
+        NotificationCategory.COMMUNICATION
+      );
+      if (application.createdBy?.email) {
+        await sendMail(
+          application.createdBy.email,
+          "Guarantor declined tenant nomination",
+          `<p>${message}</p>`
+        );
+      }
+    }
+
+    const updatedGuarantor = await prismaClient.guarantorInformation.findUnique({
+      where: { id: guarantor.id },
+    });
+
+    return { application, guarantor: updatedGuarantor, declined: true };
+  };
 }
 
 export default new GuarantorService();

@@ -21,6 +21,14 @@ upsertResidentialInformation = async (data: ResidentialInformationIF, applicatio
       where: { id },
       data: {
         ...rest,
+        ...(rest.landlordOrAgencyName ||
+        rest.landlordOrAgencyEmail ||
+        rest.landlordOrAgencyPhoneNumber
+          ? {
+              nominationStatus: "PENDING",
+              nominationRespondedAt: null,
+            }
+          : {}),
         prevAddresses: prevAddresses
           ? {
               update: prevAddresses
@@ -44,6 +52,8 @@ upsertResidentialInformation = async (data: ResidentialInformationIF, applicatio
     const residential = await prismaClient.residentialInformation.create({
       data: {
         ...rest,
+        nominationStatus: "PENDING",
+        nominationRespondedAt: null,
         prevAddresses: prevAddresses
           ? {
               create: prevAddresses.map((address) => ({

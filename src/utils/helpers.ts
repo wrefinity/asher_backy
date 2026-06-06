@@ -118,6 +118,30 @@ export const normalizeCurrencyCode = (currency?: string | null) => {
 
 export const SUPPORTED_CURRENCY_CODES = SUPPORTED_CURRENCIES;
 
+export const ISO_COUNTRY_NAMES: Record<string, string> = {
+  GB: 'United Kingdom',
+  NG: 'Nigeria',
+  US: 'United States',
+  IE: 'Ireland',
+};
+
+export const CURRENCY_HOME_COUNTRY: Record<string, string> = {
+  GBP: 'United Kingdom',
+  NGN: 'Nigeria',
+  USD: 'United States',
+  EUR: 'Ireland',
+};
+
+export function getCountryNameFromCode(code?: string | null): string | null {
+  if (!code?.trim()) return null;
+  return ISO_COUNTRY_NAMES[code.trim().toUpperCase()] || null;
+}
+
+export function getHomeCountryForCurrency(currency?: string | null): string | null {
+  const normalized = normalizeCurrencyCode(currency);
+  return normalized ? CURRENCY_HOME_COUNTRY[normalized] || null : null;
+}
+
 export const getCurrencyForCountry = (country?: string | null) => {
   if (!country) return null;
 
@@ -152,34 +176,44 @@ export const resolveCurrencyFromRegion = async (input: {
 
   if (input.ipAddress) {
     const ipAddress = input.ipAddress.trim();
-    const cachedLocation = ipCurrencyCache.get(ipAddress);
-    if (cachedLocation && cachedLocation.expiresAt > Date.now()) {
-      return {
-        country_code: cachedLocation.country_code,
-        locationCurrency: cachedLocation.locationCurrency,
-      };
-    }
+    const isLocalIp =
+      ipAddress === '127.0.0.1' ||
+      ipAddress === '::1' ||
+      ipAddress === 'localhost' ||
+      ipAddress.startsWith('192.168.') ||
+      ipAddress.startsWith('10.') ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ipAddress);
 
-    try {
-      const response = await axios.get(`https://ipapi.co/${ipAddress}/json/`);
-      const resolvedLocation = {
-        country_code: response.data.country_code || null,
-        locationCurrency: normalizeCurrencyCode(response.data.currency) || null,
-      };
+    if (!isLocalIp) {
+      const cachedLocation = ipCurrencyCache.get(ipAddress);
+      if (cachedLocation && cachedLocation.expiresAt > Date.now()) {
+        return {
+          country_code: cachedLocation.country_code,
+          locationCurrency: cachedLocation.locationCurrency,
+        };
+      }
 
-      ipCurrencyCache.set(ipAddress, {
-        ...resolvedLocation,
-        expiresAt: Date.now() + ONE_DAY,
-      });
+      try {
+        const response = await axios.get(`https://ipapi.co/${ipAddress}/json/`);
+        const resolvedLocation = {
+          country_code: response.data.country_code || null,
+          locationCurrency: normalizeCurrencyCode(response.data.currency) || null,
+        };
 
-      return resolvedLocation;
-    } catch (error) {
-      console.error('Error resolving currency from IP:', error);
-      ipCurrencyCache.set(ipAddress, {
-        country_code: null,
-        locationCurrency: null,
-        expiresAt: Date.now() + IP_LOOKUP_ERROR_TTL,
-      });
+        ipCurrencyCache.set(ipAddress, {
+          ...resolvedLocation,
+          expiresAt: Date.now() + ONE_DAY,
+        });
+
+        return resolvedLocation;
+      } catch (error) {
+        console.error('Error resolving currency from IP:', error);
+        ipCurrencyCache.set(ipAddress, {
+          country_code: null,
+          locationCurrency: null,
+          expiresAt: Date.now() + IP_LOOKUP_ERROR_TTL,
+        });
+      }
     }
   }
 

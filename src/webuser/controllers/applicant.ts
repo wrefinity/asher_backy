@@ -26,10 +26,21 @@ import logsServices from '../../services/logs.services';
 import emailService from '../../services/emailService';
 import { LandlordService } from '../../landlord/services/landlord.service';
 import LandlordSettingsService from '../../landlord/services/propertySetting.service';
+import { getApplicationFormConfig } from '../../utils/applicationFormConfig';
+import {
+  getMissingApplicationFields,
+  resolveApplicationMarketFromRecord,
+} from '../../utils/applicationCompletionRules';
+import { validateTenancyHistoryCoverage, resolveMinimumTenancyHistoryYears } from '../../utils/tenancyHistoryRules';
 import { resolveFinancialRules, getApplicationFeeRefundInfo } from '../../utils/globalSettings.util';
 import userServices from '../../services/user.services';
 import logger from '../../utils/loggers';
 import { ViewingInviteNormalizer } from '../../utils/ViewingInviteNormalizer';
+import { EngagementNormalizer } from '../../utils/EngagementNormalizer';
+import {
+    validateTenantApplicationStart,
+    validateTenantInviteUpdate,
+} from '../../utils/InviteStateMachine';
 
 class ApplicantControls {
 
@@ -109,8 +120,13 @@ class ApplicantControls {
         return hasFullFlow;
       });
       
-      // Normalize invites to include listing with hierarchy
-      const invites = await ViewingInviteNormalizer.normalizeMany(filteredInvites);
+      // Normalize invites to include listing with hierarchy + engagement DTO
+      const invites = (await ViewingInviteNormalizer.normalizeMany(filteredInvites)).map(
+        (invite) => ({
+          ...invite,
+          engagement: EngagementNormalizer.fromNormalizedInvite(invite),
+        })
+      );
       // Define status groups
       const activeStatuses = [
         ApplicationStatus.PENDING,
@@ -133,6 +149,19 @@ class ApplicantControls {
         ApplicantService.getApplicationBasedOnStatus(userId, completedStatuses)
       ]);
 
+      const inviteEngagements = EngagementNormalizer.fromNormalizedInvitesMany(invites);
+      const applicationEngagements = EngagementNormalizer.fromApplicationRecordsMany([
+        ...pendingApplications,
+        ...completedApplications,
+        ...declinedApplications,
+        ...makePaymentApplications,
+        ...acceptedApplications,
+        ...submittedApplications,
+        ...activeApps,
+        ...completedApps,
+        ...approvedApplications,
+      ]);
+
       res.status(200).json({
         applications: {
           pendingApplications,
@@ -144,7 +173,10 @@ class ApplicantControls {
           activeApps,
           completedApps,
           invites,
-          approvedApplications
+          approvedApplications,
+          inviteEngagements,
+          applicationEngagements,
+          engagements: [...inviteEngagements, ...applicationEngagements],
         }
       });
     } catch (error) {
@@ -260,15 +292,7 @@ class ApplicantControls {
       const applicationExist = await ApplicantService.getApplicationById(applicationId);
       if (!applicationExist) return res.status(500).json({ message: "Application Doesn't Exist" });
 
-      const requiredFields = [
-        { field: applicationExist.guarantorInformationId, name: 'guarantorInformationId' },
-        { field: applicationExist.residentialId, name: 'residentialId' },
-        { field: applicationExist.employmentInformationId, name: 'employmentInformationId' },
-        { field: applicationExist.applicantPersonalDetailsId, name: 'applicantPersonalDetailsId' },
-        { field: applicationExist.refereeId, name: 'refereeId' }
-      ];
-
-      const missingFields = requiredFields.filter(item => !item.field).map(item => item.name);
+      const missingFields = getMissingApplicationFields(applicationExist);
 
       if (missingFields.length > 0) {
         return res.status(400).json({
@@ -313,35 +337,11 @@ class ApplicantControls {
       const invitation = await ApplicantService.getInvitedById(value.applicationInviteId);
       if (!invitation) return res.status(400).json({ error: "Invalid application invitation" });
 
-      // Check response steps history
-      const hasForbiddenHistory = invitation.responseStepsCompleted?.some(step =>
-        ([InvitedResponse.DECLINED, InvitedResponse.REJECTED] as InvitedResponse[]).includes(step)
-      );
-
-      if (hasForbiddenHistory) {
-        return res.status(400).json({
-          error: "This invitation is declined or rejected"
-        });
+      const startCheck = validateTenantApplicationStart(invitation);
+      if (!startCheck.valid) {
+        return res.status(400).json({ error: startCheck.error });
       }
 
-      // Check if APPLY, AWAITING_FEEDBACK, FEEDBACK, and PENDING steps are completed
-      const requiredSteps: InvitedResponse[] = [
-        InvitedResponse.APPLY,
-        InvitedResponse.AWAITING_FEEDBACK,
-        InvitedResponse.FEEDBACK,
-        InvitedResponse.PENDING
-      ];
-
-      // Verify that all required steps are included in responseStepsCompleted
-      const hasAllRequiredSteps = requiredSteps.every(step =>
-        invitation.responseStepsCompleted?.includes(step)
-      );
-
-      if (!hasAllRequiredSteps) {
-        return res.status(400).json({
-          error: "Application requires completion of APPLY, FEEDBACK, and PENDING steps"
-        });
-      }
       const { type, data } = propertyExist;
       // Only one of these will be assigned, others remain undefined
       const id = data.id;
@@ -377,11 +377,6 @@ class ApplicantControls {
       const userId = req.user.id;
       const applicationId = req.params.applicationId;
 
-      const { error } = guarantorInformationSchema.validate(req.body);
-      if (error) {
-        return res.status(400).json({ error: error.details[0].message });
-      }
-
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
 
       if (!existingApplication) {
@@ -392,7 +387,31 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
-      const application = await ApplicantService.createOrUpdateGuarantor({ ...req.body, applicationId, userId });
+      if (req.body?.skip === true) {
+        const marketCountry = resolveApplicationMarketFromRecord(existingApplication);
+        const formConfig = getApplicationFormConfig(marketCountry);
+        if (!formConfig.guarantor.optional) {
+          return res.status(400).json({ error: "Guarantor is required for this application" });
+        }
+        await ApplicantService.skipGuarantorStep(applicationId);
+        return res.status(200).json({ skipped: true });
+      }
+
+      const { error } = guarantorInformationSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
+      }
+
+      const body = {
+        ...req.body,
+        address: req.body.address?.trim?.() || "",
+      };
+
+      const application = await ApplicantService.createOrUpdateGuarantor({
+        ...body,
+        applicationId,
+        userId,
+      });
       return res.status(201).json({ application });
     } catch (error: unknown) {
       ErrorService.handleError(error, res)
@@ -575,33 +594,18 @@ class ApplicantControls {
         return res.status(400).json({ error: error.details[0].message });
       }
       const applicationId = req.params.applicationId;
-      const { cloudinaryUrls } = value;
-      // Check if all three URLs are empty
-      if (!cloudinaryUrls) {
+      const signature = value.signature?.trim();
+      if (!signature) {
         return res.status(400).json({
-          message: "kindly sign the document"
+          message: "Digital signature is required. Type your full legal name.",
         });
       }
-      const signature = cloudinaryUrls[0];
-
-      delete value['cloudinaryUrls']
-      delete value['cloudinaryVideoUrls']
-      delete value['cloudinaryDocumentUrls']
-      delete value['cloudinaryAudioUrls']
 
       const existingApplication = await ApplicantService.checkApplicationExistance(applicationId);
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" });
       }
-      const requiredFields = [
-        { field: existingApplication.guarantorInformationId, name: 'guarantorInformationId' },
-        { field: existingApplication.residentialId, name: 'residentialId' },
-        { field: existingApplication.employmentInformationId, name: 'employmentInformationId' },
-        { field: existingApplication.applicantPersonalDetailsId, name: 'applicantPersonalDetailsId' },
-        { field: existingApplication.refereeId, name: 'refereeId' }
-      ];
-
-      const missingFields = requiredFields.filter(item => !item.field).map(item => item.name);
+      const missingFields = getMissingApplicationFields(existingApplication);
 
       if (missingFields.length > 0) {
         return res.status(400).json({
@@ -644,6 +648,26 @@ class ApplicantControls {
         return res.status(400).json({ error: "application completed" });
       }
 
+      const marketCountry = resolveApplicationMarketFromRecord(existingApplication);
+      const landlordId = existingApplication.properties?.landlordId;
+      const globalSettings = landlordId
+        ? await LandlordSettingsService.getAllGlobalSettings(landlordId)
+        : null;
+      const minimumYears = resolveMinimumTenancyHistoryYears(
+        globalSettings?.minimumTenancyHistoryYears,
+        marketCountry
+      );
+      const coverage = validateTenancyHistoryCoverage(
+        {
+          lengthOfResidence: data.lengthOfResidence,
+          prevAddresses: data.prevAddresses,
+        },
+        minimumYears
+      );
+      if (!coverage.valid) {
+        return res.status(400).json({ error: coverage.message });
+      }
+
       const result = await ApplicantService.createOrUpdateResidentialInformation({ ...data, applicationId, userId });
       res.status(200).json(result);
     } catch (error) {
@@ -680,7 +704,19 @@ class ApplicantControls {
       if (!application) {
         return res.status(404).json({ error: 'Application not found' });
       }
-      return res.status(200).json({ application });
+      const marketCountry = resolveApplicationMarketFromRecord(application);
+      const landlordId = (application as { properties?: { landlordId?: string } })
+        .properties?.landlordId;
+      const globalSettings = landlordId
+        ? await LandlordSettingsService.getAllGlobalSettings(landlordId)
+        : null;
+      return res.status(200).json({
+        application,
+        formConfig: getApplicationFormConfig(
+          marketCountry,
+          globalSettings?.minimumTenancyHistoryYears
+        ),
+      });
     } catch (err) {
       ErrorService.handleError(err, res);
     }
@@ -707,7 +743,10 @@ class ApplicantControls {
       // Normalize the invite to include listing with hierarchy
       const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
       
-      return res.status(200).json({ invite: normalizedInvite });
+      return res.status(200).json({
+        invite: normalizedInvite,
+        engagement: EngagementNormalizer.fromNormalizedInvite(normalizedInvite),
+      });
     } catch (error) {
       ErrorService.handleError(error, res);
     }
@@ -753,7 +792,12 @@ class ApplicantControls {
         pendingInvites,
         acceptInvites,
         otherInvites,
-        awaitingFeedbackInvites
+        awaitingFeedbackInvites,
+        engagements: EngagementNormalizer.fromNormalizedInvitesMany([
+          ...pendingInvites,
+          ...acceptInvites,
+          ...awaitingFeedbackInvites,
+        ]),
       });
 
     } catch (error) {
@@ -770,6 +814,16 @@ class ApplicantControls {
 
       const { error, value } = updateApplicationInviteSchema.validate(req.body);
       if (error) return res.status(400).json({ error: error.details[0].message });
+
+      if (value.response) {
+        const transitionCheck = validateTenantInviteUpdate(
+          inviteExist,
+          value.response
+        );
+        if (!transitionCheck.valid) {
+          return res.status(400).json({ error: transitionCheck.error });
+        }
+      }
 
       const invite = await ApplicantService.updateInvites(id, value);
       return res.status(200).json({ invite });
@@ -907,7 +961,7 @@ class ApplicantControls {
         logger.error('Failed to send agreement signed email:', emailError);
       });
 
-      // Create audit log
+      // Agreement fully signed only after landlord counter-signs (see syncApplicationStatusAfterAgreementSign)
       await logsServices.createLog({
         applicationId: agreement.applicationId,
         subjects: "Asher Agreement Letter SignUp",
@@ -916,16 +970,10 @@ class ApplicantControls {
         type: LogType.EMAIL,
       });
 
-      // Update application status
-      await ApplicantService.updateApplicationStatusStep(
-        agreement.applicationId,
-        ApplicationStatus.AGREEMENTS_SIGNED
-      );
-
       return res.status(200).json({
-        message: "Agreement letter signed and sent successfully",
+        message: "Agreement signed by tenant. Awaiting landlord counter-signature.",
         recipient: landlord.user.email,
-        agreementDocument: documentUrls
+        agreementDocument: created,
       });
     } catch (error) {
       ErrorService.handleError(error, res);

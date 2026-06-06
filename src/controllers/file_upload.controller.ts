@@ -2,7 +2,7 @@ import { CustomRequest } from "../utils/types"
 import { Response } from "express"
 import ErrorService from "../services/error.service";
 import { uploadSchema } from "../validations/schemas/upload.schema";
-import { uploadDocsCloudinary } from '../middlewares/multerCloudinary';
+import { uploadDocsCloudinary, uploadImageToCloudinary } from '../middlewares/multerCloudinary';
 
 class FileUpload {
 
@@ -61,19 +61,20 @@ class FileUpload {
             // Upload files and save metadata
             const uploadedFiles = await Promise.all(
                 files.map(async (file) => {
-                    const uploadResult: any = await uploadDocsCloudinary(file);
-                    // Ensure `documentUrl` is always available
+                    const isImage = file.mimetype.startsWith("image/");
+                    const uploadResult: any = isImage
+                        ? await uploadImageToCloudinary(file)
+                        : await uploadDocsCloudinary(file);
                     if (!uploadResult.secure_url) {
                         throw new Error("Failed to upload document");
                     }
-                    // Remove file extension (e.g., ".jpg", ".pdf")
                     const documentName = file.originalname.replace(/\.[^/.]+$/, "");
-                    return await {
-                        documentName, // File name
-                        type: file.mimetype, // MIME type (e.g., image/jpeg, application/pdf)
+                    return {
+                        documentName,
+                        type: file.mimetype,
                         size: String(file.size),
                         documentUrl: uploadResult.secure_url
-                    }
+                    };
                 })
             );
 

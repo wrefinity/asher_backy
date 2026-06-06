@@ -1481,7 +1481,7 @@ class AdminController {
                 type: documentData.type,
                 size: documentData.size,
                 docType: documentData.docType as any,
-                // systemId: systemIds[index] || null,
+                systemId: systemIds[index] || "4",
                 isPublished: isPublished,
                 users: {
                   connect: {

@@ -38,7 +38,6 @@ class GuarantorController {
         });
       }
 
-      // Create agreement with nested employment info
       const result = await guarantorService.createGuarantorAgreement({
         ...value,
         documents: value.documents.map((doc: any) => ({
@@ -53,6 +52,46 @@ class GuarantorController {
       }, applicationId);
 
       res.status(201).json(result);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  }
+
+  async acceptNomination(req: Request, res: Response) {
+    try {
+      const applicationId = req.params.id;
+      if (!applicationId) {
+        return res.status(400).json({
+          error: "Application ID is required",
+          details: ["Missing application ID in URL parameters"],
+        });
+      }
+
+      const result = await guarantorService.respondToNomination(
+        applicationId,
+        "ACCEPTED"
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  }
+
+  async declineNomination(req: Request, res: Response) {
+    try {
+      const applicationId = req.params.id;
+      if (!applicationId) {
+        return res.status(400).json({
+          error: "Application ID is required",
+          details: ["Missing application ID in URL parameters"],
+        });
+      }
+
+      const result = await guarantorService.respondToNomination(
+        applicationId,
+        "DECLINED"
+      );
+      res.status(200).json(result);
     } catch (error) {
       ErrorService.handleError(error, res);
     }

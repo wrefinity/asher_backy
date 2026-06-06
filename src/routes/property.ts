@@ -29,7 +29,9 @@ class PropertyRouter {
         this.router.get('/property/landlord/:landlordId', PropertyController.getPropertyListedByLandlord)
         this.router.post('/property/likes/:propertyId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.createLikeProperty)
         this.router.get('/property/user/likes', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.getLikePropertyHistories)
-        this.router.get('/property/listing/:id', PropertyController.getPropertyListingById)
+        this.router.get('/property/user/enquiries', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.getUserEnquiries)
+        this.router.get('/property/listing/:id/engagement', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.getListingEngagement)
+        this.router.get('/property/listing/:id', this.authenticateService.optionalAuthorize, PropertyController.getPropertyListingById)
         // Specific routes must come before parameterized routes to avoid route conflicts
         this.router.get('/property/:propertyId/related-listings', PropertyController.getRelatedListings)
         this.router.get('/property/:id', PropertyController.getPropertyById)

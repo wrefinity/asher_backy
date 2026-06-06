@@ -10,40 +10,42 @@ import propertyUnitService from "../services/property.unit.service";
 import propertyRoomService from "../services/property.room.service";
 import {
     buildCurrencyDisplayOptions,
-    getClientIpFromRequest,
-    resolveViewerCurrency,
 } from "../utils/currencyContext";
 import {
     buildListedPropertySearchFiltersFromQuery,
 } from "../utils/buildListedPropertySearchFilters";
+import {
+    applyListingMarketGateToFilters,
+    propertyCountryMatchesMarket,
+    resolveViewerMarketFromRequest,
+} from "../utils/listingMarketGate";
+import ListingEngagementService from "../services/listingEngagement.service";
+import { EngagementNormalizer } from "../utils/EngagementNormalizer";
+import { isActivePipelineInvite } from "../utils/InviteStateMachine";
 
 class PropertyController {
     constructor() { }
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
-            const { currency, displayCurrency, countryCode, page = 1, limit = 10 } = req.query;
+            const { page = 1, limit = 10 } = req.query;
 
-            const filters = buildListedPropertySearchFiltersFromQuery(
+            const baseFilters = buildListedPropertySearchFiltersFromQuery(
                 req.query as Record<string, unknown>
             );
+
+            const { viewerContext, marketCountry, ipAddress } =
+                await resolveViewerMarketFromRequest(req);
+
+            const filters = applyListingMarketGateToFilters(baseFilters, marketCountry);
 
             const pageNumber = parseInt(page as string, 10) || 1;
             const pageSize = parseInt(limit as string, 10) || 10;
             const skip = (pageNumber - 1) * pageSize;
 
-            const totalProperties = await PropertyServices.countListedProperties(filters);
-            const ipAddress = getClientIpFromRequest(req);
-            const viewerContext = await resolveViewerCurrency({
-                userId: req.user?.id,
-                currency: currency as string | undefined,
-                displayCurrency: displayCurrency as string | undefined,
-                country: filters.property?.country,
-                countryCode: countryCode as string | undefined,
-                ipAddress,
-            });
             const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
 
+            const totalProperties = await PropertyServices.countListedProperties(filters);
             const properties = await PropertyServices.getAllListedProperties(
                 filters,
                 skip,
@@ -54,7 +56,10 @@ class PropertyController {
 
             return res.status(200).json({
                 properties: properties ?? [],
-                viewerContext,
+                viewerContext: {
+                    ...viewerContext,
+                    marketCountry,
+                },
                 pagination: {
                     total: totalProperties,
                     page: pageNumber,
@@ -71,17 +76,22 @@ class PropertyController {
         try {
 
             const landlordId = req.params.landlordId;
+            const { marketCountry } = await resolveViewerMarketFromRequest(req);
             // check landlord existence
             const landlord = await new LandlordService().getLandlordById(landlordId);
             if (!landlord) {
                 return res.status(404).json({ message: "Landlord not found" });
             }
 
-            // Fetch the filtered prop  erties
+            // Fetch the filtered properties
             const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId), true, AvailabilityStatus.VACANT);
+            const gated = (properties || []).filter((item: { country?: string | null; property?: { country?: string | null } }) => {
+                const country = item?.country || item?.property?.country;
+                return propertyCountryMatchesMarket(country, marketCountry);
+            });
 
             // Return the filtered properties
-            return res.status(200).json({ properties });
+            return res.status(200).json({ properties: gated });
         } catch (err) {
             // Handle any errors
             ErrorService.handleError(err, res);
@@ -117,8 +127,15 @@ class PropertyController {
         try {
 
             const userId = req.user?.id;
-            const likedProps = await PropertyServices.getLikeHistories(userId)
-            return res.status(200).json(likedProps)
+            const { marketCountry } = await resolveViewerMarketFromRequest(req);
+            const likedRecords = await PropertyServices.getLikeHistories(userId)
+            const properties = likedRecords
+                .map((record: { property?: { country?: string | null } & Record<string, unknown> }) => record.property)
+                .filter((property) => {
+                    if (!property) return false;
+                    return propertyCountryMatchesMarket(property.country as string, marketCountry);
+                });
+            return res.status(200).json({ properties: properties })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -162,6 +179,12 @@ class PropertyController {
             const propertyListing = await PropertyServices.getPropertyListingByListingId(propertyListingId);
             if(!propertyListing) return res.status(400).json({ message: "propertylisting is not found" });
 
+            const { marketCountry } = await resolveViewerMarketFromRequest(req);
+            const listingCountry = propertyListing.property?.country;
+            if (!propertyCountryMatchesMarket(listingCountry, marketCountry)) {
+                return res.status(404).json({ message: "This property is not available in your region." });
+            }
+
             const propsId = propertyListing.propertyId || undefined;
             const unitId = propertyListing.unitId || undefined;
             const roomId = propertyListing.roomId  || undefined;
@@ -180,6 +203,63 @@ class PropertyController {
             ErrorService.handleError(error, res)
         }
     }
+    getListingEngagement = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            const listingId = req.params.id;
+
+            if (!userId) {
+                return res.status(401).json({ message: "Authentication required" });
+            }
+            if (!listingId) {
+                return res.status(400).json({ message: "Listing id is required" });
+            }
+
+            const engagement = await ListingEngagementService.getForUserAndListing(
+                userId,
+                listingId
+            );
+            return res.status(200).json({ engagement });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
+    getUserEnquiries = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ message: "Authentication required" });
+            }
+            const rawEnquiries = await LogsServices.getUserEnquiries(userId);
+            const engagements =
+                await EngagementNormalizer.fromEnquiriesMany(rawEnquiries);
+
+            const openEnquiries = engagements.filter(
+                (row) =>
+                    !row.invite &&
+                    row.enquiry?.status === logTypeStatus.PENDING
+            );
+            const pipeline = engagements.filter(
+                (row) =>
+                    !!row.invite &&
+                    isActivePipelineInvite(row.invite.response)
+            );
+            const closed = engagements.filter(
+                (row) =>
+                    !!row.invite &&
+                    !isActivePipelineInvite(row.invite.response)
+            );
+
+            return res.status(200).json({
+                enquiries: openEnquiries,
+                pipeline,
+                closed,
+                engagements,
+            });
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
     getPropertyById = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.id;
@@ -196,7 +276,31 @@ class PropertyController {
     getPropertyListingById = async (req: CustomRequest, res: Response) => {
         try {
             const listingId = req.params.id;
+            const userId = req.user?.id;
+            const { marketCountry } = await resolveViewerMarketFromRequest(req);
             const property = await PropertyServices.getPropertyListingByListingIdNew(listingId)
+            if (!property) {
+                return res.status(404).json({ message: "Property listing not found" });
+            }
+
+            const listingCountry =
+                (property as { property?: { country?: string | null } }).property?.country ||
+                (property as { country?: string | null }).country;
+
+            const inViewerMarket = propertyCountryMatchesMarket(listingCountry, marketCountry);
+
+            if (!inViewerMarket) {
+                const hasEngagement =
+                    userId != null &&
+                    (await ListingEngagementService.userCanAccessListing(userId, listingId));
+
+                if (!hasEngagement) {
+                    return res.status(404).json({
+                        message: "This property is not available in your region.",
+                    });
+                }
+            }
+
             return res.status(200).json({ property })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -212,24 +316,21 @@ class PropertyController {
     }
     getListedProperties = async (req: CustomRequest, res: Response) => {
         try {
-            const ipAddress = getClientIpFromRequest(req);
-            const viewerContext = await resolveViewerCurrency({
-                userId: req.user?.id,
-                currency: req.query.currency as string | undefined,
-                displayCurrency: req.query.displayCurrency as string | undefined,
-                country: req.query.country as string | undefined,
-                countryCode: req.query.countryCode as string | undefined,
-                ipAddress,
-            });
+            const { viewerContext, marketCountry, ipAddress } =
+                await resolveViewerMarketFromRequest(req);
+            const filters = applyListingMarketGateToFilters({}, marketCountry);
             const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
             const properties = await PropertyServices.getAllListedProperties(
-                {},
+                filters,
                 0,
                 1000,
                 true,
                 currencyOptions
             );
-            return res.status(200).json({ properties, viewerContext });
+            return res.status(200).json({
+                properties,
+                viewerContext: { ...viewerContext, marketCountry },
+            });
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -380,8 +481,17 @@ class PropertyController {
         try {
             const propertyId = req.params.propertyId;
             const excludeListingId = req.query.excludeListingId as string;
-            
+            const { marketCountry } = await resolveViewerMarketFromRequest(req);
+
             const relatedListings = await PropertyServices.getRelatedListings(propertyId, excludeListingId);
+
+            const parentProperty = await PropertyServices.getPropertyById(propertyId);
+            if (!propertyCountryMatchesMarket(parentProperty?.country, marketCountry)) {
+                return res.status(404).json({
+                    success: false,
+                    message: "This property is not available in your region.",
+                });
+            }
             
             return res.status(200).json({
                 success: true,

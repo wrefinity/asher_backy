@@ -123,6 +123,15 @@ export interface NormalizedListing {
             houseRule: string | null;
             utilities: string[];
             receiptionRooms: number | null;
+            availableFrom?: string | Date | null;
+            petPolicy?: string | null;
+            furnishingStatus?: string | null;
+            billsIncluded?: boolean | null;
+            sharedBills?: Record<string, boolean> | null;
+            isStudentLet?: boolean | null;
+            isRetirement?: boolean | null;
+            isShareHouse?: boolean | null;
+            isHMO?: boolean | null;
             sharedFacilities?: {
                 kitchen: boolean;
                 bathroom: boolean;
@@ -207,7 +216,10 @@ export class ListingNormalizer {
             securityDeposit: this.convertDecimalToString(listing.securityDeposit) || '0',
             applicationFeeAmount: this.convertDecimalToString(listing.applicationFeeAmount),
             payApplicationFee: listing.payApplicationFee ?? false,
-            availableFrom: listing.availableFrom,
+            availableFrom:
+                listing.availableFrom ??
+                specification.residential?.availableFrom ??
+                null,
             availableTo: listing.availableTo,
             listingEntity,
             property,
@@ -362,7 +374,16 @@ export class ListingNormalizer {
                 utilities: residential.utilities || [],
                 receiptionRooms:
                     residential.receiptionRooms ?? residential.receptionRooms ?? null,
-                sharedFacilities: residential.sharedFacilities || null
+                sharedFacilities: residential.sharedFacilities || null,
+                availableFrom: residential.availableFrom ?? null,
+                petPolicy: residential.petPolicy ?? null,
+                furnishingStatus: residential.furnishingStatus ?? null,
+                billsIncluded: residential.billsIncluded ?? null,
+                sharedBills: this.normalizeSharedBills(residential.sharedBills),
+                isStudentLet: residential.isStudentLet ?? null,
+                isRetirement: residential.isRetirement ?? null,
+                isShareHouse: residential.isShareHouse ?? null,
+                isHMO: residential.isHMO ?? null,
             } : undefined,
             commercial: spec?.commercial || property.commercial || undefined
         };
@@ -599,6 +620,23 @@ export class ListingNormalizer {
         }
 
         return property.residential?.bathrooms;
+    }
+
+    private static normalizeSharedBills(
+        value: unknown
+    ): Record<string, boolean> | null {
+        if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+            return null;
+        }
+
+        const out: Record<string, boolean> = {};
+        for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+            if (typeof entry === 'boolean') {
+                out[key] = entry;
+            }
+        }
+
+        return Object.keys(out).length > 0 ? out : null;
     }
 
     /**

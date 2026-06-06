@@ -28,12 +28,10 @@ class TenantBillController {
       throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    // get property linked to tenant
     const tenant = await tenantsServices.getTenantById(tenantId);
+    const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
+    const landlordId = tenant?.landlordId || null;
 
-    const propertyId = tenant?.propertyId || req.query.propertyId || null;
-    console.log("propertyId", propertyId);
-    console.log("tenant", tenant);
     const {
       page = "1",
       limit = "10",
@@ -53,30 +51,24 @@ class TenantBillController {
           }
         : undefined;
 
-    // Prepare transaction filter if status is provided
-    const transactionFilter = status
-      ? status === "paid"
-        ? { transactions: { some: {} } } // At least one transaction exists
-        : { transactions: { none: {} } } // No transactions exist
-      : {};
-
-    const result = await landlordBillsService.getBills(
+    const result = await landlordBillsService.getBillsForTenant(
+      tenantId,
+      propertyId ? String(propertyId) : null,
+      landlordId ? String(landlordId) : null,
       {
-        // tenantId,
-        propertyId: String(propertyId),
-        billId,
-        payableBy: payableBy as PayableBy,
+        pagination: {
+          page: parseInt(page, 10),
+          pageSize: parseInt(limit, 10),
+        },
+        includeOptions: {
+          includeProperty: true,
+          includeTransactions: true,
+          includeBillCategory: true,
+        },
+        payableBy: (payableBy as PayableBy) || PayableBy.TENANT,
+        status,
         dateRange,
-        ...transactionFilter,
-      },
-      {
-        page: parseInt(page, 10),
-        pageSize: parseInt(limit, 10),
-      },
-      {
-        includeProperty: true,
-        includeLandlord: true,
-        includeTransactions: true,
+        billId: billId as string | undefined,
       }
     );
 
@@ -91,17 +83,21 @@ class TenantBillController {
       throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    const { days } = req.body;
+    const days = req.query.days ? Number(req.query.days) : 30;
+    const tenant = await tenantsServices.getTenantById(tenantId);
+    const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
+    const landlordId = tenant?.landlordId || null;
 
-    const tenantBills = await tenantBillsService.getUpcomingBills(tenantId, days);
+    const tenantBills = await landlordBillsService.getUpcomingBillsForTenant(
+      tenantId,
+      propertyId ? String(propertyId) : null,
+      landlordId ? String(landlordId) : null,
+      days
+    );
 
-    if (!tenantBills || tenantBills.length < 1) {
-      throw ApiError.notFound("No upcoming bills found");
-    }
-
-    return res
-      .status(200)
-      .json(ApiResponse.success(tenantBills, "Upcoming bills retrieved successfully"));
+    return res.status(200).json(
+      ApiResponse.success(tenantBills ?? [], "Upcoming bills retrieved successfully")
+    );
   });
 
   getOverdueBills = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -110,15 +106,22 @@ class TenantBillController {
       throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    const tenantBills = await tenantBillsService.getOverdueBills(tenantId);
+    const tenant = await tenantsServices.getTenantById(tenantId);
+    const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
+    const landlordId = tenant?.landlordId || null;
 
-    if (!tenantBills || tenantBills.length < 1) {
-      throw ApiError.notFound("No overdue bills found");
-    }
+    const tenantBills = await landlordBillsService.getOverdueBillsForTenant(
+      tenantId,
+      propertyId ? String(propertyId) : null,
+      landlordId ? String(landlordId) : null
+    );
     const analysis = await tenantBillsService.getTenantOverdueAnalysis(tenantId);
-    return res
-      .status(200)
-      .json(ApiResponse.success({ analysis, tenantBills}, "Overdue bills retrieved successfully"));
+    return res.status(200).json(
+      ApiResponse.success(
+        { analysis, tenantBills: tenantBills ?? [] },
+        "Overdue bills retrieved successfully"
+      )
+    );
   });
 }
 

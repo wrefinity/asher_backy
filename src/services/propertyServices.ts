@@ -26,6 +26,10 @@ import {
     buildListedPropertyWhereClause,
     ListedPropertySearchFilters,
 } from '../utils/listedPropertySearch';
+import {
+    enrichListedPropertySearchFilters,
+    syncPropertyLocationFromCoordinates,
+} from '../utils/geoLocation';
 
 type PropertyFilters = ListedPropertySearchFilters;
 
@@ -45,6 +49,7 @@ class PropertyService {
 
     landlordInclusion: any
     propsInclusion: any
+    likedPropertyInclude: any
     specificationInclusion: any
 
     constructor() {
@@ -113,6 +118,34 @@ class PropertyService {
             UserLikedProperty: true,
             landlord: this.landlordInclusion,
             specification: this.specificationInclusion
+        }
+        /** Lighter include for saved/liked properties — avoids stale Prisma relation issues. */
+        this.likedPropertyInclude = {
+            state: true,
+            images: true,
+            landlord: {
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullname: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    profileUrl: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            specification: {
+                where: { isActive: true },
+                take: 1,
+                include: { residential: true },
+            },
         }
     }
 
@@ -319,6 +352,13 @@ class PropertyService {
           }
         }
       });
+
+      await syncPropertyLocationFromCoordinates(
+        tx,
+        propertyId,
+        updatedProperty.latitude,
+        updatedProperty.longitude
+      );
 
       // Handle specification update if provided
       if (specificationType || propertySubType || otherTypeSpecific || commercial || shortlet || residential) {
@@ -1848,16 +1888,24 @@ class PropertyService {
     }
 
     countListedProperties = async (filters: PropertyFilters = {}, availability: boolean = true) => {
+        const resolvedFilters = await enrichListedPropertySearchFilters(
+            filters,
+            prismaClient
+        );
         return await prismaClient.propertyListingHistory.count({
-            where: buildListedPropertyWhereClause(filters, availability),
+            where: buildListedPropertyWhereClause(resolvedFilters, availability),
         });
     };
 
 
     getAllListedProperties = async (filters: PropertyFilters = {}, skip: number = 0, take: number = 10, availability: boolean = true, currencyOptions?: CurrencyDisplayOptions) => {
+        const resolvedFilters = await enrichListedPropertySearchFilters(
+            filters,
+            prismaClient
+        );
         const properties = await prismaClient.propertyListingHistory.findMany({
-            where: buildListedPropertyWhereClause(filters, availability),
-            orderBy: buildListedPropertyOrderBy(filters.sort),
+            where: buildListedPropertyWhereClause(resolvedFilters, availability),
+            orderBy: buildListedPropertyOrderBy(resolvedFilters.sort),
             include: {
                 property: {
                     include: {
@@ -2274,6 +2322,20 @@ class PropertyService {
             createdById,
             ...baseData
         } = data;
+
+        if (!baseData.availableFrom) {
+            const residentialSpec = await prismaClient.propertySpecification.findFirst({
+                where: {
+                    propertyId,
+                    isActive: true,
+                    specificationType: PropertySpecificationType.RESIDENTIAL,
+                },
+                include: { residential: true },
+            });
+            if (residentialSpec?.residential?.availableFrom) {
+                baseData.availableFrom = residentialSpec.residential.availableFrom;
+            }
+        }
 
         const response = await prismaClient.$transaction(async (tx) => {
             const response: {
@@ -3103,24 +3165,31 @@ class PropertyService {
                 userId,
             },
             include: {
-                user: {
-                    select: {
-                        email: true,
-                        id: true,
-                        profile: {
-                            select: {
-                                id: true,
-                                fullname: true,
-                                firstName: true,
-                                lastName: true,
-                                middleName: true,
-                                profileUrl: true,
+                property: {
+                    include: {
+                        images: true,
+                        landlord: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        email: true,
+                                        profile: {
+                                            select: {
+                                                fullname: true,
+                                                firstName: true,
+                                                lastName: true,
+                                                profileUrl: true,
+                                            },
+                                        },
+                                    },
+                                },
                             },
                         },
                     },
                 },
-                property: this.propsInclusion
             },
+            orderBy: { likedAt: "desc" },
         });
     }
     getLikeHistory = async (userId: string, propertyId: string) => {
@@ -3308,6 +3377,13 @@ class PropertyService {
             if (!property) {
                 throw new Error(`Failed to create property`);
             }
+
+            await syncPropertyLocationFromCoordinates(
+                tx,
+                property.id,
+                property.latitude,
+                property.longitude
+            );
 
             // Step 2: Create associated specification
             switch (specificationType) {

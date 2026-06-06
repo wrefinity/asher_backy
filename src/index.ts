@@ -367,6 +367,17 @@ class Server {
                 loggers.error('Error in scheduled overdue bills check:', error);
             }
         }, 6 * 60 * 60 * 1000);
+
+        // Generate next-period recurring bills once per day
+        setInterval(async () => {
+            try {
+                const recurringBillService = (await import('./services/recurringBill.service')).default;
+                await recurringBillService.generateDueRecurringBills();
+            } catch (error) {
+                loggers.error('Error in scheduled recurring bill generation:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
+
         loggers.info('Scheduled bill checks initialized');
     }
 

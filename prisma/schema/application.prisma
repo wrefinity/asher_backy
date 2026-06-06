@@ -122,6 +122,7 @@ model application {
   createdById                  String?
   updatedById                  String?
   applicationInviteId          String?                  @unique
+  propertyListingId            String?
   employmentVerificationStatus YesNo?
   incomeVerificationStatus     YesNo?
   creditCheckStatus            YesNo?
@@ -137,6 +138,7 @@ model application {
   Log                          Log[]                    @relation("apply")
   personalDetails              applicantPersonalDetails @relation(fields: [applicantPersonalDetailsId], references: [id])
   applicationInvites           applicationInvites?      @relation(fields: [applicationInviteId], references: [id])
+  propertyListing              propertyListingHistory?  @relation(fields: [propertyListingId], references: [id])
   createdBy                    users?                   @relation("createdBy", fields: [createdById], references: [id])
   emergencyInfo                emergencyContact?        @relation(fields: [emergencyContactId], references: [id])
   employmentInfo               EmploymentInformation?   @relation(fields: [employmentInformationId], references: [id])
@@ -158,6 +160,7 @@ model application {
   // Critical indexes for application reuse and common queries
   @@index([userId, status, isDeleted])
   @@index([propertiesId, status, isDeleted])
+  @@index([propertyListingId])
   @@index([status, createdAt])
   @@index([userId, createdAt])
   @@index([isDeleted, status])
@@ -236,10 +239,13 @@ model residentialInformation {
   country                     String?
   zipCode                     String?
   lengthOfResidence           String
+  monthlyRentPaid             String?
   reasonForLeaving            String?
   landlordOrAgencyPhoneNumber String
   landlordOrAgencyEmail       String
   landlordOrAgencyName        String
+  nominationStatus            GuarantorNominationStatus @default(PENDING)
+  nominationRespondedAt       DateTime?
   userId                      String?
   prevAddresses               PrevAddress[]
   application                 application[]
@@ -265,6 +271,8 @@ model guarantorInformation {
   dateOfBirth             DateTime?
   nationalInsuranceNumber String?
   title                   String?
+  nominationStatus        GuarantorNominationStatus @default(PENDING)
+  nominationRespondedAt   DateTime?
   guarantorAgreement      GuarantorAgreement?
   application             application[]
   user                    users?              @relation(fields: [userId], references: [id])
@@ -335,6 +343,8 @@ model EmploymentInformation {
   employerEmail        String?
   employerPhone        String?
   positionTitle        String?
+  nominationStatus     GuarantorNominationStatus @default(PENDING)
+  nominationRespondedAt DateTime?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
   userId               String?
@@ -381,6 +391,12 @@ model declaration {
 }
 
 // Enums remain the same...
+enum GuarantorNominationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 enum ApplicationStatus {
   PENDING
   DECLINED

@@ -16,6 +16,7 @@ model tenants {
   userId                String
   agentId               String?
   propertyId            String
+  propertyListingId     String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   applicationId         String?                @unique
@@ -47,6 +48,7 @@ model tenants {
   application           application?           @relation("ApplicationTenant", fields: [applicationId], references: [id])
   landlord              landlords              @relation(fields: [landlordId], references: [id])
   property              properties             @relation(fields: [propertyId], references: [id])
+  propertyListing       propertyListingHistory? @relation(fields: [propertyListingId], references: [id])
   room                  RoomDetail?            @relation(fields: [roomId], references: [id])
   unit                  UnitConfiguration?     @relation(fields: [unitId], references: [id])
   user                  users                  @relation(fields: [userId], references: [id])

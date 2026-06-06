@@ -41,6 +41,7 @@ export interface IGlobalSetting {
   notificationEnabled: boolean;
   notificationFrequency?: number;
   reminderMethods: ReminderMethodType[];
+  minimumTenancyHistoryYears?: number;
   landlordId?: string;
   isDeleted: boolean;
   createdAt: Date;

@@ -6,6 +6,7 @@ import {
     PropertySpecificationType,
     PropertyType,
 } from '@prisma/client';
+import { LISTING_MARKET_COUNTRY_ALIASES, canonicalizeListingMarketCountry } from './listingMarketGate';
 
 export type ListedPropertySort = 'newest' | 'price-asc' | 'price-desc' | 'popular';
 
@@ -23,10 +24,14 @@ export interface ListedPropertySearchFilters {
     latitude?: number;
     longitude?: number;
     radiusMiles?: number;
+    /** Resolved by enrichListedPropertySearchFilters when radius search is active. */
+    geoPropertyIds?: string[];
     furnishingStatus?: FurnishingStatus | FurnishingStatus[];
     availableFrom?: Date;
     availableNow?: boolean;
     hasBillsIncluded?: boolean;
+    /** Viewer market gate — only listings in this country are visible on tenant web. */
+    marketCountry?: string;
     property?: {
         state?: string;
         city?: string;
@@ -260,31 +265,54 @@ function buildKeywordsWhere(keywords?: string): Prisma.propertiesWhereInput | un
     };
 }
 
-function buildGeoRadiusWhere(
-    latitude?: number,
-    longitude?: number,
-    radiusMiles?: number
-): Prisma.propertiesWhereInput | undefined {
-    if (
-        latitude == null ||
-        longitude == null ||
-        radiusMiles == null ||
-        radiusMiles <= 0
-    ) {
-        return undefined;
-    }
-
-    const latDelta = radiusMiles / 69;
-    const lngDelta = radiusMiles / (69 * Math.cos((latitude * Math.PI) / 180));
+function buildMarketCountryWhere(marketCountry: string): Prisma.propertiesWhereInput {
+    const canonical = canonicalizeListingMarketCountry(marketCountry);
+    const aliases = LISTING_MARKET_COUNTRY_ALIASES[canonical] || [canonical];
 
     return {
-        latitude: {
-            gte: new Prisma.Decimal(latitude - latDelta),
-            lte: new Prisma.Decimal(latitude + latDelta),
-        },
-        longitude: {
-            gte: new Prisma.Decimal(longitude - lngDelta),
-            lte: new Prisma.Decimal(longitude + lngDelta),
+        OR: aliases.map((name) => ({
+            country: {
+                equals: name,
+                mode: 'insensitive',
+            },
+        })),
+    };
+}
+
+function buildRentalFeeWhere(
+    minRentalFee?: number,
+    maxRentalFee?: number
+): Prisma.propertyListingHistoryWhereInput | undefined {
+    if (minRentalFee == null && maxRentalFee == null) return undefined;
+
+    const bounds: Prisma.DecimalFilter = {
+        ...(minRentalFee != null ? { gte: minRentalFee } : {}),
+        ...(maxRentalFee != null ? { lte: maxRentalFee } : {}),
+    };
+
+    return {
+        OR: [
+            { price: bounds },
+            {
+                AND: [
+                    {
+                        OR: [{ price: { equals: 0 } }, { price: null }],
+                    },
+                    { property: { price: bounds } },
+                ],
+            },
+        ],
+    };
+}
+
+function buildGeoPropertyIdsWhere(
+    geoPropertyIds?: string[]
+): Prisma.propertiesWhereInput | undefined {
+    if (!geoPropertyIds) return undefined;
+
+    return {
+        id: {
+            in: geoPropertyIds.length ? geoPropertyIds : ['__no_geo_match__'],
         },
     };
 }
@@ -351,9 +379,8 @@ export function buildListedPropertyWhereClause(
         mustHaves,
         keywords,
         addedSinceDays,
-        latitude,
-        longitude,
-        radiusMiles,
+        geoPropertyIds,
+        marketCountry,
         furnishingStatus,
         availableFrom,
         availableNow,
@@ -413,15 +440,25 @@ export function buildListedPropertyWhereClause(
     }
 
     if (state?.trim()) {
+        const location = state.trim();
+        // FE location bar sends `state`; match city, address, zip, or region name
         propertyAndConditions.push({
-            state: {
-                is: {
-                    name: {
-                        contains: state.trim(),
-                        mode: 'insensitive',
+            OR: [
+                { city: { contains: location, mode: 'insensitive' } },
+                { address: { contains: location, mode: 'insensitive' } },
+                { zipcode: { contains: location, mode: 'insensitive' } },
+                { name: { contains: location, mode: 'insensitive' } },
+                {
+                    state: {
+                        is: {
+                            name: {
+                                contains: location,
+                                mode: 'insensitive',
+                            },
+                        },
                     },
                 },
-            },
+            ],
         });
     }
 
@@ -434,7 +471,9 @@ export function buildListedPropertyWhereClause(
         });
     }
 
-    if (country?.trim()) {
+    if (marketCountry?.trim()) {
+        propertyAndConditions.push(buildMarketCountryWhere(marketCountry));
+    } else if (country?.trim()) {
         propertyAndConditions.push({
             country: {
                 equals: country.trim(),
@@ -473,7 +512,7 @@ export function buildListedPropertyWhereClause(
         buildBillsIncludedWhere(hasBillsIncluded),
         buildMustHavesWhere(mustHaves),
         buildKeywordsWhere(keywords),
-        buildGeoRadiusWhere(latitude, longitude, radiusMiles),
+        buildGeoPropertyIdsWhere(geoPropertyIds),
         buildResidentialFlagWhere('isShareHouse', isShareHouse),
         buildResidentialFlagWhere('isHMO', isHMO),
         buildResidentialFlagWhere('isStudentLet', isStudentLet),
@@ -520,14 +559,7 @@ export function buildListedPropertyWhereClause(
                   },
               }
             : {}),
-        ...(minRentalFee != null || maxRentalFee != null
-            ? {
-                  price: {
-                      ...(minRentalFee != null ? { gte: minRentalFee } : {}),
-                      ...(maxRentalFee != null ? { lte: maxRentalFee } : {}),
-                  },
-              }
-            : {}),
+        ...(buildRentalFeeWhere(minRentalFee, maxRentalFee) ?? {}),
         ...(propertyAndConditions.length
             ? {
                   property: {

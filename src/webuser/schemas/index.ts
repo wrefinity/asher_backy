@@ -8,7 +8,7 @@ const nextOfKinSchema = Joi.object({
     relationship: Joi.string().required(),
     email: Joi.string().email().required(),
     phoneNumber: Joi.string().required(),
-    middleName: Joi.string().allow(null).optional(),
+    middleName: Joi.string().allow(null, '').optional(),
 });
 
 const applicantPersonalDetailsSchema = Joi.object({
@@ -16,7 +16,7 @@ const applicantPersonalDetailsSchema = Joi.object({
     applicationInviteId: Joi.string().required(),
     title: Joi.string().required(),
     firstName: Joi.string().required(),
-    middleName: Joi.string().allow(null).optional(),
+    middleName: Joi.string().allow(null, '').optional(),
     lastName: Joi.string().required(),
     dob: Joi.date().iso().required(),
     invited: Joi.string().valid(
@@ -34,19 +34,21 @@ const applicantPersonalDetailsSchema = Joi.object({
     nextOfKin: nextOfKinSchema.allow(null).optional(), // Validate nextOfKin using the previous schema
 });
 
-// Guarantor Information Schema
+// Guarantor Information Schema — tenant supplies contact details only; guarantor completes the reference form
+const optionalGuarantorString = Joi.string().optional().allow(null, '');
+
 const guarantorInformationSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     fullName: Joi.string().required(),
     phoneNumber: Joi.string().required(),
     email: Joi.string().email().required(),
-    address: Joi.string().required(),
-    applicationId: Joi.string().optional(),
     relationship: Joi.string().required(),
-    identificationType: Joi.string().optional(),
-    identificationNo: Joi.string().optional(),
-    monthlyIncome: Joi.string().optional(),
-    employerName: Joi.string().required(),
+    address: optionalGuarantorString,
+    applicationId: Joi.string().optional(),
+    identificationType: optionalGuarantorString,
+    identificationNo: optionalGuarantorString,
+    monthlyIncome: optionalGuarantorString,
+    employerName: optionalGuarantorString,
 });
 
 // Emergency Contact Schema
@@ -76,13 +78,9 @@ const refreeSchema = Joi.object({
 const declarationSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     declaration: Joi.string().required(),
-    // signature: Joi.string().required(),
-    additionalNotes: Joi.string().optional(),
+    signature: Joi.string().trim().min(2).required(),
+    additionalNotes: Joi.string().optional().allow(null, ''),
     date: Joi.date().iso().required(),
-    cloudinaryUrls: Joi.any().optional(),
-    cloudinaryVideoUrls: Joi.any().optional(),
-    cloudinaryAudioUrls: Joi.any().optional(),
-    cloudinaryDocumentUrls: Joi.any().optional(),
     createdAt: Joi.date().iso().optional(),
     updatedAt: Joi.date().iso().optional(),
     applicantId: Joi.string().optional(),
@@ -132,13 +130,16 @@ const additionalInfoSchema = Joi.object({
     ).default('NO'),
     additionalOccupants: Joi.string().optional(),
     additionalInformation: Joi.string().optional().allow(''),
+    moveInDate: Joi.date().iso().optional(),
 });
 
 
 const prevAddressSchema = Joi.object({
     id: Joi.string().allow(null).optional(),
     address: Joi.string().required(),
-    lengthOfResidence: Joi.string().required(),
+    lengthOfResidence: Joi.string()
+      .pattern(/^\d+\s+(Years|Months)$/i)
+      .required(),
 });
 
 const residentialInformationSchema = Joi.object({
@@ -149,17 +150,26 @@ const residentialInformationSchema = Joi.object({
     state: Joi.string().required(),
     country: Joi.string().required(),
     zipCode: Joi.string().required(),
-    lengthOfResidence: Joi.string().valid("Years", "Months").required(),
+    lengthOfResidence: Joi.string()
+      .pattern(/^\d+\s+(Years|Months)$/i)
+      .required()
+      .messages({
+        'string.pattern.base':
+          'Length of residence must include a number and unit (e.g. "3 Years")',
+      }),
     landlordOrAgencyPhoneNumber: Joi.string().required(),
     landlordOrAgencyEmail: Joi.string().email().required(),
     landlordOrAgencyName: Joi.string().required(),
     reasonForLeaving: Joi.string().optional(),
+    monthlyRentPaid: Joi.string().optional().allow(null, ''),
     userId: Joi.string().allow(null).optional(),
     prevAddresses: Joi.array().items(prevAddressSchema).required(),
     applicationId: Joi.string().allow(null).optional(),
 });
 
 
+
+const optionalEmploymentString = Joi.string().optional().allow(null, '');
 
 const employmentInformationSchema = Joi.object({
     id: Joi.string().optional().allow(null),
@@ -171,20 +181,22 @@ const employmentInformationSchema = Joi.object({
     state: Joi.string().required(),
     country: Joi.string().required(),
     monthlyOrAnualIncome: Joi.string().required(),
-    taxCredit: Joi.string().optional().allow(null),
-    childBenefit: Joi.string().optional().allow(null),
-    childMaintenance: Joi.string().optional().allow(null),
-    disabilityBenefit: Joi.string().optional().allow(null),
-    housingBenefit: Joi.string().optional().allow(null),
-    others: Joi.string().optional().allow(null),
-    pension: Joi.string().optional().allow(null),
-    moreDetails: Joi.string().optional().allow(null),
+    taxCredit: optionalEmploymentString,
+    childBenefit: optionalEmploymentString,
+    childMaintenance: optionalEmploymentString,
+    disabilityBenefit: optionalEmploymentString,
+    housingBenefit: optionalEmploymentString,
+    others: optionalEmploymentString,
+    pension: optionalEmploymentString,
+    moreDetails: optionalEmploymentString,
     applicantId: Joi.string().optional(),
-    employerCompany: Joi.string().optional().allow(""),
-    businessName: Joi.string().optional().allow(""),
-    employerEmail: Joi.string().optional().allow(""),
-    employerPhone: Joi.string().optional().allow(""),
-    positionTitle: Joi.string().optional().allow(""),
+    employerCompany: optionalEmploymentString,
+    businessName: optionalEmploymentString,
+    businessEmail: optionalEmploymentString,
+    businessPhone: optionalEmploymentString,
+    employerEmail: optionalEmploymentString,
+    employerPhone: optionalEmploymentString,
+    positionTitle: optionalEmploymentString,
 });
 // Schema for creating tenant with required personalInfo
 export const tenantCreateSchema = Joi.object({

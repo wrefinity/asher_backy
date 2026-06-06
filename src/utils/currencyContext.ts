@@ -3,6 +3,8 @@ import PreferenceService from '../services/preferences.service';
 import { PLATFORM_DEFAULT_CURRENCY } from '../secrets';
 import {
   getCurrencyForCountry,
+  getCountryNameFromCode,
+  getHomeCountryForCurrency,
   normalizeCurrencyCode,
   resolveCurrencyFromRegion,
 } from './helpers';
@@ -52,10 +54,17 @@ export async function resolveViewerCurrency(params: {
     normalizeCurrencyCode(params.currency);
 
   if (explicit) {
+    const countryCode = params.countryCode?.trim().toUpperCase() || null;
+    const country =
+      params.country?.trim() ||
+      getCountryNameFromCode(countryCode) ||
+      getHomeCountryForCurrency(explicit) ||
+      null;
+
     return {
       currency: explicit,
-      country: params.country?.trim() || null,
-      countryCode: params.countryCode?.trim().toUpperCase() || null,
+      country,
+      countryCode,
       source: 'query',
     };
   }
@@ -92,10 +101,17 @@ export async function resolveViewerCurrency(params: {
     getCurrencyForCountry(params.country);
 
   if (fromCountry) {
+    const countryCode = params.countryCode?.trim().toUpperCase() || null;
+    const country =
+      params.country?.trim() ||
+      getCountryNameFromCode(countryCode) ||
+      getHomeCountryForCurrency(fromCountry) ||
+      null;
+
     return {
       currency: fromCountry,
-      country: params.country?.trim() || null,
-      countryCode: params.countryCode?.trim().toUpperCase() || null,
+      country,
+      countryCode,
       source: 'country',
     };
   }
@@ -107,18 +123,27 @@ export async function resolveViewerCurrency(params: {
   });
 
   if (ipResolved.locationCurrency) {
+    const countryCode = ipResolved.country_code || params.countryCode?.trim().toUpperCase() || null;
+    const country =
+      params.country?.trim() ||
+      getCountryNameFromCode(countryCode) ||
+      getHomeCountryForCurrency(ipResolved.locationCurrency) ||
+      null;
+
     return {
       currency: ipResolved.locationCurrency,
-      country: params.country?.trim() || null,
-      countryCode: ipResolved.country_code,
+      country,
+      countryCode,
       source: 'ip',
     };
   }
 
+  const fallbackCountry = getHomeCountryForCurrency(fallback);
+
   return {
     currency: fallback,
-    country: null,
-    countryCode: null,
+    country: fallbackCountry,
+    countryCode: fallbackCountry === 'United Kingdom' ? 'GB' : fallbackCountry === 'Nigeria' ? 'NG' : null,
     source: 'default',
   };
 }

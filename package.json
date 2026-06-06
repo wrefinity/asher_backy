@@ -15,7 +15,11 @@
     "migrate-dev": "prisma migrate dev --name init",
     "generate": "prisma generate",
     "db:pull": "npx prisma db pull",
-    "seed:admin": "tsx scripts/seed-admin.ts"
+    "seed:admin": "tsx scripts/seed-admin.ts",
+    "seed:library": "tsx scripts/seed-asher-library-templates.ts",
+    "db:postgis": "prisma db execute --file prisma/sql/enable_postgis_location.sql",
+    "db:backfill-letting": "tsx scripts/backfill-letting-fields.ts",
+    "db:backfill-letting:dry": "tsx scripts/backfill-letting-fields.ts --dry-run"
   },
   "pre-commit": [
     "ts.check",

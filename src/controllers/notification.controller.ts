@@ -67,6 +67,22 @@ class NotificationController {
         }
     };
 
+    public registerPushToken = async (req: CustomRequest, res: Response) => {
+        try {
+            const userId = req.user.id;
+            const { token, platform } = req.body ?? {};
+            if (!token || typeof token !== 'string') {
+                return res.status(400).json({ error: 'Push token is required' });
+            }
+
+            const expoPushService = (await import('../services/expoPush.service')).default;
+            const record = await expoPushService.registerToken(userId, token, platform);
+            return res.status(200).json({ success: true, record });
+        } catch (err: any) {
+            return res.status(500).json({ error: err.message || 'Failed to register push token' });
+        }
+    };
+
     public deleteNotification = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;

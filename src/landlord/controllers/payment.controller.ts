@@ -3,7 +3,7 @@ import { CustomRequest } from "../../utils/types";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
-import { prismaClient } from '../..';
+import { prismaClient, serverInstance } from '../..';
 import { TransactionReference, TransactionStatus } from "@prisma/client";
 
 class LandlordPaymentController {
@@ -124,8 +124,8 @@ class LandlordPaymentController {
       where: {
         id: billId,
         landlordId: landlordId,
-        tenantId: tenantId,
-        isDeleted: false
+        isDeleted: false,
+        ...(tenantId ? { tenantId } : {}),
       },
       include: {
         tenants: {
@@ -150,6 +150,14 @@ class LandlordPaymentController {
       throw ApiError.notFound("Bill or tenant not found");
     }
 
+    if (tenantId && bill.tenantId && bill.tenantId !== tenantId) {
+      throw ApiError.badRequest("Tenant does not match this bill");
+    }
+
+    if (!bill.tenants?.user) {
+      throw ApiError.badRequest("This bill is not assigned to a tenant");
+    }
+
     // Check if bill is already paid
     const isPaid = await prismaClient.transaction.findFirst({
       where: {
@@ -169,11 +177,14 @@ class LandlordPaymentController {
     }
 
     try {
-      // TODO: Implement actual email/SMS sending service
-      // For now, we'll just log the reminder
-      console.log(`Payment reminder sent for bill ${billId} to tenant ${bill.tenants.user.email}`);
-      
-      // Create a log entry for the reminder
+      if (serverInstance.paymentNotificationService) {
+        await serverInstance.paymentNotificationService.sendPaymentReminderNotification(
+          billId,
+          undefined,
+          req.user?.id
+        );
+      }
+
       await prismaClient.log.create({
         data: {
           events: `Payment reminder sent for bill: ${bill.billName}`,

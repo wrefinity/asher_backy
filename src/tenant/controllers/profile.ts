@@ -27,15 +27,15 @@ class ProfileController {
     getProfileData = asyncHandler(async (req: CustomRequest, res: Response) => {
 
         const { tenantId } = req.params;
-        const tenant = await applicantService.getTenantWithApplicationData(tenantId);
+        const bundle = await applicantService.getTenantProfileBundle(tenantId);
 
-        if (!tenant) {
+        if (!bundle?.tenant) {
             return res.status(404).json(
                 ApiError.notFound('Tenant not found')
             );
         }
         return res.json(
-            ApiResponse.success(tenant)
+            ApiResponse.success(bundle)
         )
 
     })

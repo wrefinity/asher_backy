@@ -6,7 +6,8 @@ import { BaseModel } from './base.interface';
 export interface TenancyReferenceHistoryCreateDTO {
   tenantName: string;
   currentAddress: string;
-  monthlyRent: string;
+  monthlyRent?: string;
+  rentAmount?: string;
   rentStartDate?: Date;
   rentEndDate?: Date;
   reasonForLeaving?: string;

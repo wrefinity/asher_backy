@@ -15,6 +15,8 @@ model Settings {
   refundPolicy             RefundPolicyType?
   refundTimeframe          FrequencyType?
   reminderMethods          ReminderMethodType[]
+  // Minimum years of address history required on tenant applications (current + previous).
+  minimumTenancyHistoryYears Int?
   landlord                 landlords?           @relation(fields: [landlordId], references: [id])
 }
 

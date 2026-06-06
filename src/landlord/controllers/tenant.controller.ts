@@ -4,7 +4,7 @@ import { CustomRequest } from "../../utils/types"
 import TenantService from "../../tenant/services/tenants.services"
 import TenantServiceMain from "../../services/tenant.service"
 import UserServices from '../../services/user.services';
-import { EnquireStatus, userRoles, YesNo, LogType } from '@prisma/client';
+import { EnquireStatus, userRoles, YesNo, LogType, DocumentType } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantArraySchema } from '../validations/schema/tenancy.schema';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
@@ -517,28 +517,30 @@ class TenantControls {
 
             const application = tenantWithApplication.application;
 
-            // Serialize agreement documents from application.agreementDocumentUrl
-            //   const agreementDocuments = application.agreementDocumentUrl.map((url, index) => ({
-            //     id: `agreement-${application.id}-${index}`,
-            //     documentName: `Tenant Agreement v${application.agreementVersion - index}`,
-            //     documentUrl: [url], // Wrap in array to match propertyDocument structure
-            //     docType: DocumentType.AGREEMENT_DOC,
-            //     createdAt: application.lastAgreementUpdate || application.createdAt,
-            //     updatedAt: application.lastAgreementUpdate || application.updatedAt,
-            //     type: getMimeTypeFromUrl(url), // Adjust based on actual file type
-            //     size: null, // Add actual size if available
-            //   }));
+            const agreementDocuments = (application.agreementDocument || []).flatMap(
+                (agreement: any, index: number) =>
+                    (agreement.documentUrl || []).map((url: string, urlIndex: number) => ({
+                        id: agreement.id ? `${agreement.id}-${urlIndex}` : `agreement-${application.id}-${index}-${urlIndex}`,
+                        documentName: `Signed lease agreement${agreement.templateVersion ? ` (v${agreement.templateVersion})` : ''}`,
+                        documentUrl: [url],
+                        docType: DocumentType.AGREEMENT_DOC,
+                        createdAt: agreement.completedAt || agreement.signedByLandlordAt || agreement.createdAt,
+                        updatedAt: agreement.updatedAt || agreement.createdAt,
+                        type: 'application/pdf',
+                        size: null,
+                        applicationId: application.id,
+                    }))
+            );
 
-            // Combine with other application documents
             const allDocuments = [
-                // ...agreementDocuments,
-                ...application.documents.map(doc => ({
+                ...agreementDocuments,
+                ...application.documents.map((doc: any) => ({
                     ...doc,
                     documentUrl: doc.documentUrl,
                     docType: doc.docType,
                     createdAt: doc.createdAt,
-                    updatedAt: doc.updatedAt
-                }))
+                    updatedAt: doc.updatedAt,
+                })),
             ];
             // Response structure
             return res.status(201).json({
@@ -562,7 +564,7 @@ class TenantControls {
                 return res.status(401).json({ error: 'Please login as landlord' });
             }
 
-            const { scheduledRent, startDate, dueDate, gracePeriod, lateFeeType, lateFeeAmount } = req.body;
+            const { scheduledRent, startDate, dueDate, gracePeriod, lateFeeType, lateFeeAmount, createBill } = req.body;
 
             // Validate required fields
             if (!scheduledRent || scheduledRent <= 0) {
@@ -635,6 +637,28 @@ class TenantControls {
                 subjects: `Rent Adjustment: ${oldRent} → ${scheduledRent}`,
             });
 
+            let rentIncreaseBill = null;
+            const shouldCreateBill = createBill !== false;
+            if (shouldCreateBill && Number(scheduledRent) > oldRent) {
+                try {
+                    const billTemplateService = (await import('../../services/billTemplate.service')).default;
+                    const { serverInstance } = await import('../..');
+                    rentIncreaseBill = await billTemplateService.createRentIncreaseBill({
+                        landlordId,
+                        propertyId: tenant.propertyId,
+                        tenantId,
+                        oldRent,
+                        newRent: Number(scheduledRent),
+                        dueDate: new Date(dueDate),
+                    });
+                    if (rentIncreaseBill && serverInstance.paymentNotificationService) {
+                        await serverInstance.paymentNotificationService.sendNewBillNotification(rentIncreaseBill.id);
+                    }
+                } catch (billError) {
+                    console.error('Failed to create rent increase bill:', billError);
+                }
+            }
+
             return res.status(200).json({
                 success: true,
                 message: 'Rent adjusted successfully',
@@ -644,6 +668,7 @@ class TenantControls {
                     oldRent,
                     newRent: scheduledRent,
                     property: updatedProperty,
+                    rentIncreaseBill,
                     lateFeeSettings: {
                         gracePeriodDays: graceDays,
                         lateFeeType,

@@ -13,6 +13,37 @@ export class Authorize {
     constructor() {
         this.tokenService = new Jtoken(JWT_SECRET);
         this.authorize = this.authorize.bind(this);
+        this.optionalAuthorize = this.optionalAuthorize.bind(this);
+    }
+
+    /**
+     * Optional auth: attaches req.user when a valid Bearer token is present;
+     * continues as guest when token is missing or invalid (for public routes
+     * that need engagement-aware behaviour for logged-in users).
+     */
+    async optionalAuthorize(req: CustomRequest, res: Response, next: NextFunction) {
+        const token = this.extractToken(req);
+        if (!token) {
+            return next();
+        }
+
+        try {
+            const decoded = await this.tokenService.decodeToken(token);
+            if (!decoded) {
+                return next();
+            }
+
+            const user = await UserService.findAUserById(String(decoded.id));
+            if (!user) {
+                return next();
+            }
+
+            req.user = this.buildUserWithContext(user, decoded);
+        } catch {
+            // Ignore invalid/expired tokens — treat as guest
+        }
+
+        return next();
     }
 
     /**
