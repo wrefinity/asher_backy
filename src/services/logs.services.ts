@@ -204,7 +204,8 @@ class LogService {
         },
         createdById: userId
       },
-      include: this.inclusion
+      include: this.inclusion,
+      orderBy: { createdAt: "asc" },
     });
   }
   getCommunicationLog = async (propertyId: string, userId: string, landlordId: string, types?: LogType[]) => {

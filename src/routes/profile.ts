@@ -13,10 +13,8 @@ class ProfileRoutes {
     constructor() {
         this.router = Router();
         this.authenticateService = new Authorize()
-        this.router.use(
-            this.authenticateService.authorize,
-            this.authenticateService.requireWebUserPortalRole()
-        );
+        // Profile is shared by landlord app, web user, and tenant — not tenant-portal-only.
+        this.router.use(this.authenticateService.authorize);
         this.initializeRoutes();
     }
 

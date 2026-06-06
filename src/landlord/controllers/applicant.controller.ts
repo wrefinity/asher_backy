@@ -142,6 +142,16 @@ class ApplicationControls {
               });
             }
 
+            const existingTenant = await prismaClient.tenants.findFirst({
+                where: { applicationId },
+            });
+            if (existingTenant) {
+                return res.status(200).json({
+                    message: "Tenant already created for this application",
+                    tenant: existingTenant,
+                });
+            }
+
             // Approve invite
             await ApplicationInvitesService.updateInvite(
                 application.applicationInviteId,

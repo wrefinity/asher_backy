@@ -183,6 +183,9 @@ export async function loadApplicationForTenantCopy(applicationId: string) {
       documents: true,
       agreementDocument: true,
       applicationInvites: true,
+      referenceForm: true,
+      employeeReference: true,
+      guarantorAgreement: true,
     },
   });
 }

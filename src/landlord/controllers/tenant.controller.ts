@@ -21,6 +21,7 @@ import {
   parseGracePeriodDays,
   resolveFinancialRules,
 } from '../../utils/globalSettings.util';
+import { resolveTenantMilestoneTimeline } from '../../utils/tenantMilestoneTimeline';
 
 
 
@@ -356,11 +357,13 @@ class TenantControls {
             if (!tenant?.propertyId)
                 return res.status(404).json({ error: `tenant with the id :  ${tenantId} is not connected to a property` });
 
-            const milestones = await LogsServices.getLandlordTenantsLogsByProperty(
-                tenant.propertyId,
-                tenant.userId,
-                landlordId
-            );
+            const milestones = await resolveTenantMilestoneTimeline({
+                propertyId: tenant.propertyId,
+                userId: tenant.userId,
+                landlordId,
+                tenantId: tenant.id,
+                applicationId: tenant.applicationId,
+            });
             return res.status(200).json({ milestones });
         } catch (error) {
             errorService.handleError(error, res)
