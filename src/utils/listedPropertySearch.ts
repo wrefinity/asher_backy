@@ -1,5 +1,6 @@
 import {
     AvailabilityStatus,
+    FurnishingStatus,
     ListingType,
     Prisma,
     PropertySpecificationType,
@@ -8,6 +9,8 @@ import {
 
 export type ListedPropertySort = 'newest' | 'price-asc' | 'price-desc' | 'popular';
 
+export type IncludeExcludeMode = 'include' | 'exclude' | 'only';
+
 export interface ListedPropertySearchFilters {
     landlordId?: string;
     sort?: ListedPropertySort;
@@ -15,6 +18,15 @@ export interface ListedPropertySearchFilters {
     maxRentalFee?: number;
     zipcode?: string;
     mustHaves?: string[];
+    keywords?: string;
+    addedSinceDays?: number;
+    latitude?: number;
+    longitude?: number;
+    radiusMiles?: number;
+    furnishingStatus?: FurnishingStatus | FurnishingStatus[];
+    availableFrom?: Date;
+    availableNow?: boolean;
+    hasBillsIncluded?: boolean;
     property?: {
         state?: string;
         city?: string;
@@ -40,18 +52,39 @@ export interface ListedPropertySearchFilters {
     hasSecurity?: boolean;
     hasAirConditioning?: boolean;
     hasBalcony?: boolean;
+    isShareHouse?: IncludeExcludeMode;
+    isHMO?: IncludeExcludeMode;
+    isStudentLet?: IncludeExcludeMode;
+    isRetirement?: IncludeExcludeMode;
 }
 
+/** Slugs stored by landlord form + human-readable labels for fuzzy key-feature matching. */
 const FEATURE_TOKENS: Record<string, string[]> = {
-    garden: ['Garden', 'garden', 'Private Garden', 'Private garden'],
-    garage: ['Garage', 'garage'],
-    parking: ['Parking', 'parking', 'Off-street parking', 'Off street parking'],
-    pet: ['Pet friendly', 'Pets allowed', 'Pet Friendly', 'pets allowed'],
-    pool: ['Swimming pool', 'Swimming Pool', 'Pool'],
-    gym: ['Gym', 'gym', 'Fitness center', 'Fitness Centre'],
-    security: ['Security', 'security', 'CCTV', 'Alarm'],
-    aircon: ['Air conditioning', 'Air Conditioning', 'A/C', 'AC'],
-    balcony: ['Balcony', 'balcony', 'Terrace', 'terrace'],
+    garden: ['garden', 'Garden', 'Private Garden', 'Private garden'],
+    garage: ['garage', 'Garage'],
+    parking: ['parking', 'Parking', 'Off-street parking', 'Off street parking'],
+    pet: [
+        'pets-allowed',
+        'pet friendly',
+        'Pet friendly',
+        'Pets allowed',
+        'Pet Friendly',
+        'pets allowed',
+    ],
+    pool: ['swimming-pool', 'Swimming pool', 'Swimming Pool', 'Pool', 'pool'],
+    gym: ['gym', 'Gym', 'Fitness center', 'Fitness Centre'],
+    security: ['security-system', 'Security', 'security', 'CCTV', 'Alarm'],
+    aircon: ['air-conditioning', 'Air conditioning', 'Air Conditioning', 'A/C', 'AC'],
+    balcony: ['balcony', 'Balcony', 'terrace', 'Terrace'],
+    bills: ['bills-included', 'Bills included', 'bills included'],
+    conservatory: ['conservatory', 'Conservatory'],
+    bathtub: ['bathtub', 'Bathtub', 'Bath'],
+    kitchenIsland: ['kitchen-island', 'Kitchen island', 'Kitchen Island'],
+    periodProperty: ['period-property', 'Period property', 'Period Property'],
+    evCharging: ['ev-charging', 'EV charging', 'Electric vehicle charging'],
+    disabledAccess: ['wheelchair-access', 'Wheelchair access', 'Disabled access'],
+    fireplace: ['fireplace', 'Fireplace'],
+    ensuite: ['ensuite', 'Ensuite', 'En-suite'],
 };
 
 function keyFeatureOr(tokens: string[]): Prisma.propertiesWhereInput {
@@ -131,20 +164,56 @@ function buildFeatureWhere(
     return { OR: conditions };
 }
 
-function buildFurnishedWhere(isFurnished?: boolean): Prisma.propertyListingHistoryWhereInput | undefined {
-    if (!isFurnished) return undefined;
+function buildResidentialFlagWhere(
+    field: 'isShareHouse' | 'isHMO' | 'isStudentLet' | 'isRetirement',
+    mode?: IncludeExcludeMode
+): Prisma.propertiesWhereInput | undefined {
+    if (!mode || mode === 'include') return undefined;
 
-    return {
-        OR: [
-            {
-                property: residentialSpecWhere({
-                    furnished: true,
-                }),
-            },
-            { unit: { furnished: true } },
-            { room: { furnished: true } },
-        ],
-    };
+    if (mode === 'only') {
+        return residentialSpecWhere({ [field]: true });
+    }
+
+    return residentialSpecWhere({
+        OR: [{ [field]: false }, { [field]: null }],
+    });
+}
+
+function buildFurnishingWhere(
+    isFurnished?: boolean,
+    furnishingStatus?: FurnishingStatus | FurnishingStatus[]
+): Prisma.propertyListingHistoryWhereInput | undefined {
+    const statuses = furnishingStatus
+        ? Array.isArray(furnishingStatus)
+            ? furnishingStatus
+            : [furnishingStatus]
+        : undefined;
+
+    if (!isFurnished && !statuses?.length) return undefined;
+
+    const conditions: Prisma.propertyListingHistoryWhereInput[] = [];
+
+    if (isFurnished) {
+        conditions.push({
+            OR: [
+                { property: residentialSpecWhere({ furnished: true }) },
+                { unit: { furnished: true } },
+                { room: { furnished: true } },
+            ],
+        });
+    }
+
+    if (statuses?.length) {
+        conditions.push({
+            property: residentialSpecWhere({
+                furnishingStatus: { in: statuses },
+            }),
+        });
+    }
+
+    if (!conditions.length) return undefined;
+    if (conditions.length === 1) return conditions[0];
+    return { OR: conditions };
 }
 
 function buildMustHavesWhere(mustHaves?: string[]): Prisma.propertiesWhereInput | undefined {
@@ -163,8 +232,108 @@ function buildMustHavesWhere(mustHaves?: string[]): Prisma.propertiesWhereInput 
                     },
                 },
             },
+            {
+                specification: {
+                    some: {
+                        residential: {
+                            outdoorsSpacesFeatures: { has: token },
+                        },
+                    },
+                },
+            },
         ]),
     };
+}
+
+function buildKeywordsWhere(keywords?: string): Prisma.propertiesWhereInput | undefined {
+    const text = keywords?.trim();
+    if (!text) return undefined;
+
+    return {
+        OR: [
+            { name: { contains: text, mode: 'insensitive' } },
+            { description: { contains: text, mode: 'insensitive' } },
+            { address: { contains: text, mode: 'insensitive' } },
+            { city: { contains: text, mode: 'insensitive' } },
+            { zipcode: { contains: text, mode: 'insensitive' } },
+        ],
+    };
+}
+
+function buildGeoRadiusWhere(
+    latitude?: number,
+    longitude?: number,
+    radiusMiles?: number
+): Prisma.propertiesWhereInput | undefined {
+    if (
+        latitude == null ||
+        longitude == null ||
+        radiusMiles == null ||
+        radiusMiles <= 0
+    ) {
+        return undefined;
+    }
+
+    const latDelta = radiusMiles / 69;
+    const lngDelta = radiusMiles / (69 * Math.cos((latitude * Math.PI) / 180));
+
+    return {
+        latitude: {
+            gte: new Prisma.Decimal(latitude - latDelta),
+            lte: new Prisma.Decimal(latitude + latDelta),
+        },
+        longitude: {
+            gte: new Prisma.Decimal(longitude - lngDelta),
+            lte: new Prisma.Decimal(longitude + lngDelta),
+        },
+    };
+}
+
+function buildBillsIncludedWhere(hasBillsIncluded?: boolean): Prisma.propertiesWhereInput | undefined {
+    if (!hasBillsIncluded) return undefined;
+
+    return {
+        OR: [
+            keyFeatureOr(FEATURE_TOKENS.bills),
+            residentialSpecWhere({ billsIncluded: true }),
+        ],
+    };
+}
+
+function buildAvailabilityWhere(
+    availableFrom?: Date,
+    availableNow?: boolean
+): Prisma.propertyListingHistoryWhereInput | undefined {
+    const now = new Date();
+
+    if (availableNow) {
+        return {
+            OR: [
+                { availableFrom: null },
+                { availableFrom: { lte: now } },
+                {
+                    property: residentialSpecWhere({
+                        OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+                    }),
+                },
+            ],
+        };
+    }
+
+    if (availableFrom) {
+        return {
+            OR: [
+                { availableFrom: { lte: availableFrom } },
+                {
+                    property: residentialSpecWhere({
+                        availableFrom: { lte: availableFrom },
+                    }),
+                },
+            ],
+        };
+    }
+
+    return undefined;
 }
 
 /**
@@ -180,6 +349,15 @@ export function buildListedPropertyWhereClause(
         maxRentalFee,
         zipcode,
         mustHaves,
+        keywords,
+        addedSinceDays,
+        latitude,
+        longitude,
+        radiusMiles,
+        furnishingStatus,
+        availableFrom,
+        availableNow,
+        hasBillsIncluded,
         property = {},
         listingType,
         isFurnished,
@@ -192,6 +370,10 @@ export function buildListedPropertyWhereClause(
         hasSecurity,
         hasAirConditioning,
         hasBalcony,
+        isShareHouse,
+        isHMO,
+        isStudentLet,
+        isRetirement,
     } = filters;
 
     const {
@@ -288,7 +470,14 @@ export function buildListedPropertyWhereClause(
         buildFeatureWhere(hasSecurity, FEATURE_TOKENS.security),
         buildFeatureWhere(hasAirConditioning, FEATURE_TOKENS.aircon),
         buildFeatureWhere(hasBalcony, FEATURE_TOKENS.balcony),
+        buildBillsIncludedWhere(hasBillsIncluded),
         buildMustHavesWhere(mustHaves),
+        buildKeywordsWhere(keywords),
+        buildGeoRadiusWhere(latitude, longitude, radiusMiles),
+        buildResidentialFlagWhere('isShareHouse', isShareHouse),
+        buildResidentialFlagWhere('isHMO', isHMO),
+        buildResidentialFlagWhere('isStudentLet', isStudentLet),
+        buildResidentialFlagWhere('isRetirement', isRetirement),
     ].filter(Boolean) as Prisma.propertiesWhereInput[];
 
     propertyAndConditions.push(...featureConditions);
@@ -305,11 +494,18 @@ export function buildListedPropertyWhereClause(
             : [listingType]
         : undefined;
 
-    const furnishedWhere = buildFurnishedWhere(isFurnished);
+    const furnishedWhere = buildFurnishingWhere(isFurnished, furnishingStatus);
+    const availabilityWhere = buildAvailabilityWhere(availableFrom, availableNow);
+
+    const addedSinceDate =
+        addedSinceDays != null && addedSinceDays > 0
+            ? new Date(Date.now() - addedSinceDays * 24 * 60 * 60 * 1000)
+            : undefined;
 
     const baseWhere: Prisma.propertyListingHistoryWhereInput = {
         isActive: activeOnly,
         onListing: activeOnly,
+        ...(addedSinceDate ? { createdAt: { gte: addedSinceDate } } : {}),
         ...(listingTypes?.length
             ? {
                   type: {
@@ -347,9 +543,13 @@ export function buildListedPropertyWhereClause(
               }),
     };
 
-    if (furnishedWhere) {
+    const extraConditions = [furnishedWhere, availabilityWhere].filter(
+        Boolean
+    ) as Prisma.propertyListingHistoryWhereInput[];
+
+    if (extraConditions.length) {
         return {
-            AND: [baseWhere, furnishedWhere],
+            AND: [baseWhere, ...extraConditions],
         };
     }
 
@@ -391,4 +591,26 @@ export function parseTruthyQueryFlag(value: unknown): boolean {
         return value === 'true' || value === '1';
     }
     return false;
+}
+
+export function parseIncludeExcludeMode(value: unknown): IncludeExcludeMode | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'include' || normalized === 'exclude' || normalized === 'only') {
+        return normalized;
+    }
+    return undefined;
+}
+
+export function parseFurnishingStatus(
+    value: unknown
+): FurnishingStatus | FurnishingStatus[] | undefined {
+    if (!value) return undefined;
+    const values = Array.isArray(value) ? value : String(value).split(',');
+    const valid = values
+        .map((entry) => String(entry).trim().toUpperCase())
+        .filter((entry): entry is FurnishingStatus =>
+            Object.values(FurnishingStatus).includes(entry as FurnishingStatus)
+        );
+    return valid.length === 1 ? valid[0] : valid.length ? valid : undefined;
 }

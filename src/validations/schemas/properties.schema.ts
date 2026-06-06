@@ -745,6 +745,15 @@ export const residentialPropertySchema = Joi.object({
 
   additionalNotes: Joi.string().optional(),
   bills: Joi.array().items(Joi.string().uuid()).optional(),
+  availableFrom: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null)).optional(),
+  petPolicy: Joi.string().allow('', null).optional(),
+  sharedBills: Joi.object().pattern(Joi.string(), Joi.boolean()).optional(),
+  billsIncluded: Joi.boolean().optional(),
+  furnishingStatus: Joi.string()
+    .valid('FURNISHED', 'PART_FURNISHED', 'UNFURNISHED', 'FURNISHED_FLEXIBLE')
+    .optional(),
+  isStudentLet: Joi.boolean().optional(),
+  isRetirement: Joi.boolean().optional(),
 
   // UK Leasehold fields
   leaseYearsRemaining: Joi.string().optional(),

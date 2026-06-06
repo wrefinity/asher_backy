@@ -1,6 +1,8 @@
-import { ListingType, PropertySpecificationType, PropertyType } from '@prisma/client';
+import { FurnishingStatus, ListingType, PropertySpecificationType, PropertyType } from '@prisma/client';
 import {
     ListedPropertySearchFilters,
+    parseFurnishingStatus,
+    parseIncludeExcludeMode,
     parseListedPropertySort,
     parseTruthyQueryFlag,
 } from './listedPropertySearch';
@@ -17,21 +19,30 @@ function parseString(value: unknown): string | undefined {
     return text.length ? text : undefined;
 }
 
+function parseDate(value: unknown): Date | undefined {
+    const text = parseString(value);
+    if (!text) return undefined;
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 function parseListingTypes(value: unknown): ListingType[] | undefined {
     if (!value) return undefined;
-    const values = Array.isArray(value) ? value : [value];
+    const values = Array.isArray(value) ? value : String(value).split(',');
     const valid = values.filter((entry): entry is ListingType =>
-        Object.values(ListingType).includes(String(entry) as ListingType)
+        Object.values(ListingType).includes(String(entry).trim() as ListingType)
     );
     return valid.length ? valid : undefined;
 }
 
 function parsePropertySubTypes(value: unknown): PropertyType[] | undefined {
     if (!value) return undefined;
-    const values = Array.isArray(value) ? value : [value];
-    const valid = values.filter((entry): entry is PropertyType =>
-        Object.values(PropertyType).includes(String(entry) as PropertyType)
-    );
+    const values = Array.isArray(value) ? value : String(value).split(',');
+    const valid = values
+        .map((entry) => String(entry).trim())
+        .filter((entry): entry is PropertyType =>
+            Object.values(PropertyType).includes(entry as PropertyType)
+        );
     return valid.length ? valid : undefined;
 }
 
@@ -59,6 +70,19 @@ export function buildListedPropertySearchFiltersFromQuery(
         zipcode,
         mustHaves,
         sort,
+        keywords,
+        addedSinceDays,
+        latitude,
+        longitude,
+        radiusMiles,
+        furnishingStatus,
+        availableFrom,
+        availableNow,
+        hasBillsIncluded,
+        isShareHouse,
+        isHMO,
+        isStudentLet,
+        isRetirement,
     } = query;
 
     const filters: ListedPropertySearchFilters = {
@@ -66,6 +90,19 @@ export function buildListedPropertySearchFiltersFromQuery(
         minRentalFee: parseNumber(minRentalFee),
         maxRentalFee: parseNumber(maxRentalFee),
         zipcode: parseString(zipcode),
+        keywords: parseString(keywords),
+        addedSinceDays: parseNumber(addedSinceDays),
+        latitude: parseNumber(latitude),
+        longitude: parseNumber(longitude),
+        radiusMiles: parseNumber(radiusMiles),
+        furnishingStatus: parseFurnishingStatus(furnishingStatus),
+        availableFrom: parseDate(availableFrom),
+        availableNow: parseTruthyQueryFlag(availableNow) ? true : undefined,
+        hasBillsIncluded: parseTruthyQueryFlag(hasBillsIncluded) ? true : undefined,
+        isShareHouse: parseIncludeExcludeMode(isShareHouse),
+        isHMO: parseIncludeExcludeMode(isHMO),
+        isStudentLet: parseIncludeExcludeMode(isStudentLet),
+        isRetirement: parseIncludeExcludeMode(isRetirement),
     };
 
     const property: ListedPropertySearchFilters['property'] = {};
@@ -114,7 +151,6 @@ export function buildListedPropertySearchFiltersFromQuery(
     if (listingTypes?.length) {
         filters.listingType = listingTypes;
     } else {
-        // Back-compat: `type` previously sent PropertyType; try ListingType first, then propertySubType
         const legacyTypes = Array.isArray(type) ? type : type ? [type] : [];
         const asListingTypes = legacyTypes.filter((entry) =>
             Object.values(ListingType).includes(String(entry) as ListingType)
@@ -144,7 +180,7 @@ export function buildListedPropertySearchFiltersFromQuery(
     if (mustHaves) {
         filters.mustHaves = Array.isArray(mustHaves)
             ? mustHaves.map(String)
-            : [String(mustHaves)];
+            : String(mustHaves).split(',').map((entry) => entry.trim()).filter(Boolean);
     }
 
     const booleanFlags: Array<[keyof ListedPropertySearchFilters, unknown]> = [

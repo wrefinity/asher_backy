@@ -373,6 +373,12 @@ model ResidentialProperty {
   glazingTypes              GlazingType?
   additionalNotes           String?
   availableFrom             DateTime?
+  petPolicy                 String?
+  sharedBills               Json?
+  billsIncluded             Boolean?
+  furnishingStatus          FurnishingStatus?
+  isStudentLet              Boolean?
+  isRetirement              Boolean?
   PropertySpecification     PropertySpecification[]
   roomDetails               RoomDetail[]
   sharedFacilities          SharedFacilities?
@@ -400,6 +406,9 @@ model ResidentialProperty {
   // Composite indexes
   @@index([status, bedrooms, bathrooms, furnished])
   @@index([yearBuilt, totalArea, status])
+  @@index([furnishingStatus])
+  @@index([isStudentLet, isRetirement])
+  @@index([isShareHouse, isHMO])
 }
 
 model CommercialProperty {
@@ -854,6 +863,13 @@ enum ListingType {
   SHARED_ROOM
   BED_SPACE
   CO_TENANCY
+}
+
+enum FurnishingStatus {
+  FURNISHED
+  PART_FURNISHED
+  UNFURNISHED
+  FURNISHED_FLEXIBLE
 }
 
 enum PropertyFeatureType {

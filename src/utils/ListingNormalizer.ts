@@ -113,11 +113,14 @@ export interface NormalizedListing {
             safetyFeatures: string[];
             outdoorsSpacesFeatures: string[];
             epcRating: string | null;
+            energyEfficiencyRating: number | null;
+            environmentalImpactRating: number | null;
             councilTaxBand: string | null;
             heatingTypes: string[];
             coolingTypes: string[];
             glazingTypes: string | null;
             rentalTerms: string | null;
+            houseRule: string | null;
             utilities: string[];
             receiptionRooms: number | null;
             sharedFacilities?: {
@@ -348,11 +351,14 @@ export class ListingNormalizer {
                 safetyFeatures: residential.safetyFeatures || [],
                 outdoorsSpacesFeatures: residential.outdoorsSpacesFeatures || [],
                 epcRating: residential.epcRating || null,
+                energyEfficiencyRating: residential.energyEfficiencyRating ?? null,
+                environmentalImpactRating: residential.environmentalImpactRating ?? null,
                 councilTaxBand: residential.councilTaxBand || null,
                 heatingTypes: residential.heatingTypes || [],
                 coolingTypes: residential.coolingTypes || [],
                 glazingTypes: residential.glazingTypes || null,
                 rentalTerms: residential.rentalTerms || null,
+                houseRule: residential.houseRule || null,
                 utilities: residential.utilities || [],
                 receiptionRooms:
                     residential.receiptionRooms ?? residential.receptionRooms ?? null,

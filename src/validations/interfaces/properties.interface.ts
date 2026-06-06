@@ -2,6 +2,7 @@ import {
     PropertyType, PropertyStatus, TensureType, AvailabilityStatus, Currency, VatStatus, RoomDetail, GarageType, GlazingType, PriceFrequency, OfficeLayout, LeaseTermUnit, BuildingClass, CancellationPolicy, AreaUnit, DocumentType, IdType, PropertySpecificationType,
     MediaType, BookingStatus, ShortletProperty, ResidentialProperty, CommercialProperty, bills
 } from "@prisma/client"
+import { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export interface IPropertyDocument {
@@ -290,6 +291,13 @@ export interface IResidentialDTO {
 
     bills?: string[];
     additionalNotes?: string;
+    availableFrom?: Date;
+    petPolicy?: string;
+    sharedBills?: Prisma.JsonValue | Record<string, boolean>;
+    billsIncluded?: boolean;
+    furnishingStatus?: 'FURNISHED' | 'PART_FURNISHED' | 'UNFURNISHED' | 'FURNISHED_FLEXIBLE';
+    isStudentLet?: boolean;
+    isRetirement?: boolean;
 
     // UK Leasehold fields
     leaseYearsRemaining?: string;
