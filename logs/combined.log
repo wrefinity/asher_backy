@@ -1518,3 +1518,17 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 16:27:04"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 16:57:27"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 16:59:00"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 17:11:11"}
+{"level":"info","message":"Email sent successfully. ID: ea7e4f54-2c54-4015-98e9-d012a7473023","service":"api-service","timestamp":"2026-06-08 17:11:15"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 17:12:25"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 17:16:13"}
+{"level":"info","message":"Email sent successfully. ID: 7bb11ddd-4383-45b1-9a47-30f0b010de1c","service":"api-service","timestamp":"2026-06-08 17:16:18"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 17:19:50"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 17:21:09"}
+{"level":"info","message":"Email sent successfully. ID: 09800a73-c911-4022-b005-c6f98b8f63cb","service":"api-service","timestamp":"2026-06-08 17:21:13"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 17:21:31"}
+{"level":"info","message":"Email sent successfully. ID: fdc31311-0e3f-439f-affe-1fb330765abe","service":"api-service","timestamp":"2026-06-08 17:21:36"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 17:21:40"}
+{"level":"info","message":"Email sent successfully. ID: 636708cc-c045-4706-a5e5-7642512204cf","service":"api-service","timestamp":"2026-06-08 17:21:45"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 17:23:04"}
+{"level":"info","message":"Email sent successfully. ID: e736e6ef-79a8-4cf5-890e-3c72e0fb6033","service":"api-service","timestamp":"2026-06-08 17:23:09"}

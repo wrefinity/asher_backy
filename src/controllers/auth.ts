@@ -13,6 +13,8 @@ import {
     validateVerificationToken,
 } from "../services/verification_token.service";
 import generateEmailTemplate from "../templates/email";
+import generatePasswordResetEmailTemplate from "../templates/passwordResetEmail";
+import { FRONTEND_URL } from "../secrets";
 import sendEmail from "../utils/emailer";
 import { LogType, userRoles } from "@prisma/client";
 import { generateOtp } from "../utils/helpers";
@@ -45,6 +47,26 @@ class AuthControls {
                 identifier.email,
                 "EMAIL VERIFICATION",
                 generateEmailTemplate(token)
+            );
+        }
+    };
+
+    private passwordResetTokenCreator = async (identifier: {
+        userId: string;
+        email: string;
+    }) => {
+        const token = await createVerificationToken(identifier, generateOtp);
+        const resetUrl = `${FRONTEND_URL}/reset-password?email=${encodeURIComponent(identifier.email)}`;
+        try {
+            await sendEmail(
+                identifier.email,
+                "Reset your Asher password",
+                generatePasswordResetEmailTemplate(token, resetUrl)
+            );
+        } catch (error) {
+            logger.error("Failed to send password reset email:", error);
+            throw ApiError.internal(
+                "Could not send password reset email. Please try again shortly."
             );
         }
     };
@@ -195,7 +217,7 @@ class AuthControls {
         if (!user) throw ApiError.notFound("User does not exist");
 
         await deleteUnusedVerificationTokensForUser(user.id);
-        await this.verificationTokenCreator({
+        await this.passwordResetTokenCreator({
             userId: user.id,
             email: normalizedEmail,
         });
@@ -236,8 +258,14 @@ class AuthControls {
         if (!user) throw ApiError.notFound("User does not exist");
 
         if (email) {
-            isValidToken = await validateVerificationToken(token, { email }, true);
-            if (!isValidToken) throw ApiError.validationError(["Invalid or expired token"]);
+            isValidToken = await validateVerificationToken(
+                token,
+                { userId: user.id, email },
+                false
+            );
+            if (!isValidToken) {
+                throw ApiError.validationError(["Invalid or expired reset code"]);
+            }
         }
 
         await UserServices.updateUserPassword(user.id, newPassword);
@@ -246,7 +274,9 @@ class AuthControls {
             type: LogType.ACTIVITY,
             createdById: user.id,
         });
-        await deleteVerificationToken(isValidToken.id);
+        if (isValidToken) {
+            await deleteVerificationToken(isValidToken.id);
+        }
         return res
             .status(200)
             .json(ApiResponse.success({}, "Password updated successfully"));

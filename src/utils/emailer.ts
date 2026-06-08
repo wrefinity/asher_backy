@@ -44,8 +44,12 @@ export const sendMail = async (
     // Add 4-second delay
     await new Promise(resolve => setTimeout(resolve, 4000));
 
+    const fromAddress = FROM_EMAIL.includes('<')
+      ? FROM_EMAIL
+      : `Asher <${FROM_EMAIL}>`;
+
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromAddress,
       to,
       subject,
       html,
