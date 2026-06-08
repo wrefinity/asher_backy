@@ -58,7 +58,7 @@ class PreferenceService {
     createOrUpdatePreferences = async (userId: string, data: any) => {
         const convertedData: PreferencesInput = normalizePreferencesPayload(data);
 
-        return prismaClient.userPreferences.upsert({
+        const preferences = await prismaClient.userPreferences.upsert({
             where: { userId },
             update: convertedData,
             create: {
@@ -66,6 +66,21 @@ class PreferenceService {
                 userId
             }
         });
+
+        if (convertedData.region) {
+            const user = await prismaClient.users.findUnique({
+                where: { id: userId },
+                select: { profileId: true },
+            });
+            if (user?.profileId) {
+                await prismaClient.profile.update({
+                    where: { id: user.profileId },
+                    data: { country: convertedData.region },
+                });
+            }
+        }
+
+        return preferences;
     }
 
     updatePrivacySettings = async (userId: string, settings: {
@@ -169,7 +184,14 @@ class PreferenceService {
                             landlordId,
                             isDeleted: false,
                         },
-                        select: { id: true },
+                        select: {
+                            id: true,
+                            depositPercentage: true,
+                            applicationFeePercentage: true,
+                            lateFeeEnabled: true,
+                            notificationEnabled: true,
+                            minimumTenancyHistoryYears: true,
+                        },
                     }),
                     prismaClient.landlords.findUnique({
                         where: { id: landlordId },
@@ -209,7 +231,16 @@ class PreferenceService {
             preferences?.dateFormat &&
             preferences?.region
         );
-        const globalSettingsCompleted = !!globalSettings;
+        const globalSettingsCompleted = !!(
+            globalSettings &&
+            (
+                globalSettings.depositPercentage != null ||
+                globalSettings.applicationFeePercentage != null ||
+                globalSettings.lateFeeEnabled === true ||
+                globalSettings.notificationEnabled === true ||
+                globalSettings.minimumTenancyHistoryYears != null
+            )
+        );
         const financeCompleted =
             financeRecordsCount > 0 || !!landlordOnboarding?.onboardingFinanceSkippedAt;
 

@@ -224,6 +224,44 @@ class BillTemplateService {
     );
   }
 
+  async createInitialRentBill(params: {
+    landlordId: string;
+    propertyId: string;
+    tenantId: string;
+    rent: number;
+    dueDate: Date;
+  }) {
+    if (!params.rent || params.rent <= 0) return null;
+
+    const property = await prismaClient.properties.findUnique({
+      where: { id: params.propertyId },
+      select: { country: true, priceFrequency: true },
+    });
+    const market = marketCodeFromCountry(property?.country) ?? 'UK';
+    let categoryId = await this.resolveCategoryForTag('rent', market);
+    if (!categoryId) {
+      categoryId = await this.resolveCategoryId(['Rent & occupancy', 'Rent & deposits', 'General']);
+    }
+    if (!categoryId) {
+      categoryId = await billServices.ensureDefaultBillCategory();
+    }
+
+    return billServices.createSubBills(
+      {
+        billName: 'Rent',
+        billCategoryId: categoryId,
+        description: 'Recurring rent charge',
+        amount: params.rent,
+        billFrequency: priceFrequencyToPayment(property?.priceFrequency),
+        dueDate: params.dueDate,
+        payableBy: 'TENANT',
+        propertyId: params.propertyId,
+        tenantId: params.tenantId,
+      },
+      params.landlordId
+    );
+  }
+
   async createRentIncreaseBill(params: {
     landlordId: string;
     propertyId: string;

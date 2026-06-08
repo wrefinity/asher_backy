@@ -74,8 +74,15 @@ class StateController {
   public deleteState = async (req: CustomRequest, res: Response) => {
     try {
       const id = req.params.id;
-      const deleted = await StateService.deleteState(id);
-      res.status(200).json({ deleted, message: "state deleted" });
+      const landlordId = req.user?.landlords?.id;
+      if (!landlordId) {
+        return res.status(403).json({ message: "Landlord access required" });
+      }
+      const result = await StateService.deleteLocationForLandlord(id, landlordId);
+      res.status(200).json({
+        ...result,
+        message: "Location and associated properties removed successfully",
+      });
     } catch (error) {
       ErrorService.handleError(error, res)
     }

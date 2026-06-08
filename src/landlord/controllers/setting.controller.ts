@@ -10,6 +10,7 @@ import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
 import { LandlordService } from '../services/landlord.service';
 import { resolveFinancialRules, getApplicationFeeRefundInfo } from '../../utils/globalSettings.util';
+import { validateGlobalSettingsForMarket } from '../../utils/globalSettingsMarketRules';
 import { validateLandlordTenancyMinimumSetting } from '../../utils/tenancyHistoryRules';
 import UserService from '../../services/user.services';
 class SettingsController {
@@ -82,7 +83,7 @@ class SettingsController {
         }
     }
 
-    // Create a new global setting for the landlord
+    /** Canonical global settings upsert — landlord FE uses POST /settings-global. */
     createGlobalSetting = async (req: CustomRequest, res: Response) => {
         // Validate request body against the schema
         const { error, value } = GlobalSettingsSchema.validate(req.body);
@@ -104,6 +105,11 @@ class SettingsController {
             if (tenancyError) {
                 return res.status(400).json({ error: tenancyError });
             }
+        }
+
+        const marketError = validateGlobalSettingsForMarket(value, country);
+        if (marketError) {
+            return res.status(400).json({ error: marketError });
         }
 
         try {
@@ -132,7 +138,7 @@ class SettingsController {
         }
     }
 
-    // Update a specific landlord's global setting
+  /** @deprecated Use POST /settings-global (upsert). Kept for internal/admin tooling only. */
     updateLandlordGlobalSetting = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;

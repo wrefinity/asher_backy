@@ -18,6 +18,9 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:library": "tsx scripts/seed-asher-library-templates.ts",
     "db:postgis": "prisma db execute --file prisma/sql/enable_postgis_location.sql",
+    "db:login-sessions": "prisma db execute --file prisma/sql/add_user_login_sessions.sql",
+    "db:category-icon": "prisma db execute --file prisma/sql/add_category_icon.sql",
+    "db:global-settings-extended": "prisma db execute --schema prisma/schema --file prisma/sql/add_global_settings_extended.sql",
     "db:backfill-letting": "tsx scripts/backfill-letting-fields.ts",
     "db:backfill-letting:dry": "tsx scripts/backfill-letting-fields.ts --dry-run"
   },

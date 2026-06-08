@@ -18,18 +18,32 @@ export type ViewerCurrencyContext = {
   source: ViewerCurrencySource;
 };
 
+export function normalizeClientIp(ip?: string | null): string | undefined {
+  if (!ip) return undefined;
+  const trimmed = String(ip).trim();
+  if (!trimmed) return undefined;
+  if (
+    trimmed === '::1' ||
+    trimmed === '127.0.0.1' ||
+    trimmed === '::ffff:127.0.0.1'
+  ) {
+    return '127.0.0.1';
+  }
+  return trimmed.replace(/^::ffff:/, '');
+}
+
 export function getClientIpFromRequest(req: {
   headers: Record<string, unknown>;
   ip?: string;
   socket?: { remoteAddress?: string };
 }): string | undefined {
   const forwardedFor = req.headers['x-forwarded-for'];
-  const ip = Array.isArray(forwardedFor)
+  const raw = Array.isArray(forwardedFor)
     ? forwardedFor[0]
     : typeof forwardedFor === 'string'
       ? forwardedFor.split(',')[0]?.trim()
       : req.ip || req.socket?.remoteAddress;
-  return ip ? String(ip) : undefined;
+  return normalizeClientIp(raw);
 }
 
 /**
@@ -160,17 +174,27 @@ export function buildCurrencyDisplayOptions(
   };
 }
 
+/** Web listing browse — keep each listing in its property currency (no FX conversion). */
+export function buildListingBrowseCurrencyOptions() {
+  return {
+    currency: null as string | null,
+    country: null as string | null,
+    countryCode: null as string | null,
+    ipAddress: null as string | null,
+  };
+}
+
 /** Currency stored on a new property when the client omits it. */
 export async function resolvePropertyCreateCurrency(params: {
   currency?: string | null;
   country?: string | null;
   userId?: string | null;
 }): Promise<Currency> {
-  const fromBody = normalizeCurrencyCode(params.currency);
-  if (fromBody) return fromBody as Currency;
-
   const fromCountry = getCurrencyForCountry(params.country);
   if (fromCountry) return fromCountry as Currency;
+
+  const fromBody = normalizeCurrencyCode(params.currency);
+  if (fromBody) return fromBody as Currency;
 
   if (params.userId) {
     const viewer = await resolveViewerCurrency({ userId: params.userId });

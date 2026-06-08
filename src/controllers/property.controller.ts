@@ -9,7 +9,7 @@ import { LandlordService } from "../landlord/services/landlord.service";
 import propertyUnitService from "../services/property.unit.service";
 import propertyRoomService from "../services/property.room.service";
 import {
-    buildCurrencyDisplayOptions,
+    buildListingBrowseCurrencyOptions,
 } from "../utils/currencyContext";
 import {
     buildListedPropertySearchFiltersFromQuery,
@@ -22,9 +22,21 @@ import {
 import ListingEngagementService from "../services/listingEngagement.service";
 import { EngagementNormalizer } from "../utils/EngagementNormalizer";
 import { isActivePipelineInvite } from "../utils/InviteStateMachine";
+import { sanitizeListingLandlordsForPublicView } from "../utils/publicProfilePrivacy";
 
 class PropertyController {
     constructor() { }
+
+    /** Public SOT for AsherWebUser listing market (guest + logged-in tenant). */
+    getListingViewerContext = async (req: CustomRequest, res: Response) => {
+        try {
+            const { viewerContext } = await resolveViewerMarketFromRequest(req);
+            return res.status(200).json({ viewerContext });
+        } catch (err) {
+            ErrorService.handleError(err, res);
+        }
+    };
+
     // using filters base on property size, type and location
     getProperty = async (req: CustomRequest, res: Response) => {
         try {
@@ -34,7 +46,7 @@ class PropertyController {
                 req.query as Record<string, unknown>
             );
 
-            const { viewerContext, marketCountry, ipAddress } =
+            const { viewerContext, marketCountry } =
                 await resolveViewerMarketFromRequest(req);
 
             const filters = applyListingMarketGateToFilters(baseFilters, marketCountry);
@@ -43,7 +55,7 @@ class PropertyController {
             const pageSize = parseInt(limit as string, 10) || 10;
             const skip = (pageNumber - 1) * pageSize;
 
-            const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
+            const currencyOptions = buildListingBrowseCurrencyOptions();
 
             const totalProperties = await PropertyServices.countListedProperties(filters);
             const properties = await PropertyServices.getAllListedProperties(
@@ -56,10 +68,7 @@ class PropertyController {
 
             return res.status(200).json({
                 properties: properties ?? [],
-                viewerContext: {
-                    ...viewerContext,
-                    marketCountry,
-                },
+                viewerContext,
                 pagination: {
                     total: totalProperties,
                     page: pageNumber,
@@ -301,7 +310,10 @@ class PropertyController {
                 }
             }
 
-            return res.status(200).json({ property })
+            const { viewerContext } = await resolveViewerMarketFromRequest(req);
+            const [sanitizedProperty] = await sanitizeListingLandlordsForPublicView([property]);
+
+            return res.status(200).json({ property: sanitizedProperty, viewerContext })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -316,10 +328,10 @@ class PropertyController {
     }
     getListedProperties = async (req: CustomRequest, res: Response) => {
         try {
-            const { viewerContext, marketCountry, ipAddress } =
+            const { viewerContext, marketCountry } =
                 await resolveViewerMarketFromRequest(req);
             const filters = applyListingMarketGateToFilters({}, marketCountry);
-            const currencyOptions = buildCurrencyDisplayOptions(viewerContext, ipAddress);
+            const currencyOptions = buildListingBrowseCurrencyOptions();
             const properties = await PropertyServices.getAllListedProperties(
                 filters,
                 0,
@@ -327,9 +339,12 @@ class PropertyController {
                 true,
                 currencyOptions
             );
+            const sanitizedProperties = await sanitizeListingLandlordsForPublicView(
+                Array.isArray(properties) ? properties : []
+            );
             return res.status(200).json({
-                properties,
-                viewerContext: { ...viewerContext, marketCountry },
+                properties: sanitizedProperties,
+                viewerContext,
             });
         } catch (error) {
             ErrorService.handleError(error, res)

@@ -56,8 +56,7 @@ class ApartmentLandlordRouter {
         // Route to get all global settings
         this.router.get('/settings-global', SettingController.getAllGlobalSettings);
         this.router.get('/settings/global/application-fee/:id', SettingController.getApplicationFee);
-        // Route to update a specific global setting
-        this.router.put('/settings/global/:id', SettingController.updateLandlordGlobalSetting);
+        // Global settings upsert: use POST /settings-global (canonical).
         // Route to delete a specific global setting
         this.router.delete('/settings/global/:id', SettingController.deleteLandlordGlobalSetting);
     }

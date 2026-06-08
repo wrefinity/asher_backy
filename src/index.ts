@@ -98,6 +98,8 @@ class Server {
     }
 
     private configureMiddlewares(secret: string) {
+        // Required for accurate client IP behind reverse proxies (login sessions, geo, etc.)
+        this.app.set('trust proxy', 1);
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
         this.app.use(cookieParser());
@@ -241,24 +243,36 @@ class Server {
         res.status(200).json(wsHealth);
     }
 
-    // Socket.IO – Real-time chat messages
+    // Socket.IO – chat, notifications, and payment rooms (single connection handler)
     private configureSocketIO() {
+        const socketDebug = process.env.SOCKET_DEBUG === 'true';
+
         this.io.on("connection", (socket) => {
-            console.log("🔌 Chat client connected");
+            if (socketDebug) {
+                console.log(`🔌 Socket connected: ${socket.id}`);
+            }
 
             socket.on("join", ({ senderId }) => {
                 socket.join(senderId);
-                console.log(`User ${senderId} joined their personal chat room`);
             });
 
             socket.on("privateMessage", ({ senderId, receiverId, message }) => {
                 const payload = { senderId, message, timestamp: new Date() };
                 this.io.to(receiverId).emit("privateMessage", payload);
-                console.log(`📩 Message from ${senderId} to ${receiverId}`);
+            });
+
+            socket.on('join_user_room', (userId: string) => {
+                socket.join(`user:${userId}`);
+            });
+
+            socket.on('leave_user_room', (userId: string) => {
+                socket.leave(`user:${userId}`);
             });
 
             socket.on("disconnect", () => {
-                console.log("❌ Chat client disconnected");
+                if (socketDebug) {
+                    console.log(`🔌 Socket disconnected: ${socket.id}`);
+                }
             });
         });
     }
@@ -319,33 +333,8 @@ class Server {
     }
 
     private initializePaymentNotifications() {
-        // Initialize payment notification service
         this.paymentNotificationService = new PaymentNotificationService(this.io);
-
-        // Set up user room joining for Socket.IO
-        this.io.on('connection', (socket) => {
-            console.log('🔌 User connected for payment notifications:', socket.id);
-
-            // Join user to their personal room
-            socket.on('join_user_room', (userId: string) => {
-                socket.join(`user:${userId}`);
-                console.log(`User ${userId} joined payment notification room`);
-            });
-
-            // Leave user room
-            socket.on('leave_user_room', (userId: string) => {
-                socket.leave(`user:${userId}`);
-                console.log(`👋 User ${userId} left payment notification room`);
-            });
-
-            socket.on('disconnect', () => {
-                console.log('🔌 User disconnected from payment notifications:', socket.id);
-            });
-        });
-
-        // Schedule periodic checks for due and overdue bills
         this.scheduleBillChecks();
-
         console.log('🔔 Payment notification service initialized');
     }
 
@@ -367,6 +356,16 @@ class Server {
                 loggers.error('Error in scheduled overdue bills check:', error);
             }
         }, 6 * 60 * 60 * 1000);
+
+        // Lease renewal reminders — daily
+        setInterval(async () => {
+            try {
+                const LeaseRenewalService = (await import('./services/leaseRenewal.service')).default;
+                await LeaseRenewalService.checkRenewalReminders();
+            } catch (error) {
+                loggers.error('Error in scheduled lease renewal check:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
 
         // Generate next-period recurring bills once per day
         setInterval(async () => {

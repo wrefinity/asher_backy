@@ -4,11 +4,13 @@ import { CustomRequest } from "../utils/types";
 import errorService from "../services/error.service";
 import categoryService from "../services/category.service";
 import { CategoryType } from "@prisma/client";
+import { ensureStringArray, normalizeCategoryMultipartBody } from "../utils/normalizeMultipartFields";
 class SubCategoryControls {
 
 
     createSubCategory = async (req: CustomRequest, res) => {
-        const { error } = subCategorySchema.validate(req.body);
+        const body = normalizeCategoryMultipartBody(req.body);
+        const { error, value } = subCategorySchema.validate(body);
         if (error) return res.status(400).send(error.details[0].message);
 
         try {
@@ -17,14 +19,19 @@ class SubCategoryControls {
             const categoryExist = await categoryService.getCategoryById(categoryId)
             if (!categoryExist) return res.status(400).json({ message: "category doesnt exist" })
 
-            const data = req.body;
-            const image = data.cloudinaryUrls;
-            delete data.cloudinaryUrls;
-            delete data.cloudinaryVideoUrls;
-            delete data.cloudinaryDocumentUrls;
-            delete data.cloudinaryAudioUrls;
+            const {
+                cloudinaryUrls,
+                cloudinaryVideoUrls,
+                cloudinaryDocumentUrls,
+                cloudinaryAudioUrls,
+                ...subCategoryData
+            } = value;
 
-            const subCategory = await SubCategoryService.createSubCategory({ ...data, categoryId, image });
+            const subCategory = await SubCategoryService.createSubCategory({
+                ...subCategoryData,
+                categoryId,
+                image: ensureStringArray(cloudinaryUrls ?? body.cloudinaryUrls),
+            } as Parameters<typeof SubCategoryService.createSubCategory>[0]);
             res.status(201).json(subCategory);
         } catch (err) {
             errorService.handleError(err, res);

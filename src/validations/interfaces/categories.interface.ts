@@ -3,6 +3,7 @@ export interface CategoryIF {
     id: string;
     name: string;
     description?: string;
+    icon?: string | null;
     image: Prisma.categoryCreateimageInput | string[];
     labels: string[];
     isDeleted: boolean;

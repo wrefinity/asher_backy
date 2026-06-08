@@ -2,6 +2,7 @@ model category {
   id                   String                 @id @default(cuid())
   name                 String
   description          String?
+  icon                 String?
   image                String[]
   labels               String[]
   isDeleted            Boolean                @default(false)

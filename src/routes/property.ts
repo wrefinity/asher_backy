@@ -20,6 +20,7 @@ class PropertyRouter {
         this.router.post("/property/enquire", this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), PropertyController.enquireProperty);
         this.router.use("/docs", PropertDocumentRouter);
         this.router.use("/bookings", BookingRouter);
+        this.router.get('/viewer-context', PropertyController.getListingViewerContext)
         this.router.get('/property', PropertyController.getProperty)
         this.router.get('/property/unit/:id', PropertyController.getPropsUnit)
         this.router.get('/property/unit/:unitId/rooms', PropertyController.getPropsRoomsByUnitId)

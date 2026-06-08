@@ -1,4 +1,8 @@
 import { prismaClient, serverInstance } from "..";
+import {
+    getUserPrivacyPrefs,
+    sanitizeUserForViewer,
+} from "../utils/publicProfilePrivacy";
 
 interface UserSelection {
     id: boolean;
@@ -131,8 +135,17 @@ class ChatServices {
         });
     };
 
+    private async sanitizeChatParticipant<T extends { id: string }>(
+        participant: T | null,
+        viewerId: string
+    ): Promise<T | null> {
+        if (!participant) return participant;
+        const prefs = await getUserPrivacyPrefs(participant.id);
+        return sanitizeUserForViewer(participant, viewerId, prefs) as T;
+    }
+
     getChatRoomsForUser = async (userId: string) => {
-        return await prismaClient.chatRoom.findMany({
+        const rooms = await prismaClient.chatRoom.findMany({
             where: {
                 OR: [
                     { user1Id: userId },
@@ -199,6 +212,14 @@ class ChatServices {
                 },
             },
         });
+
+        return Promise.all(
+            rooms.map(async (room) => ({
+                ...room,
+                user1: await this.sanitizeChatParticipant(room.user1, userId),
+                user2: await this.sanitizeChatParticipant(room.user2, userId),
+            }))
+        );
     };
 
 

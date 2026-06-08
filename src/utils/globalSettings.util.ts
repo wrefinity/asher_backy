@@ -3,8 +3,33 @@ import {
   LatePaymentFeeType,
   PriceFrequency,
   RefundPolicyType,
+  ReminderMethodType,
 } from '@prisma/client';
 import type { IGlobalSetting } from '../landlord/validations/interfaces/propsSettings';
+
+/** One rent period is always included in the deposit (e.g. one month's rent). */
+export const DEPOSIT_BASE_PERCENT = 100;
+
+/** Max extra % on top of one rent period (stored total cap is base + increase). */
+export const MAX_DEPOSIT_INCREASE_PERCENT = 500;
+
+/** Stored total % of rent → extra % above one rent period. */
+export function depositTotalToIncreasePercent(
+  total?: number | null
+): number | undefined {
+  if (total == null || total <= 0) return undefined;
+  return Math.max(0, total - DEPOSIT_BASE_PERCENT);
+}
+
+/** Extra % above one rent period → stored total % of rent. */
+export function depositIncreaseToTotalPercent(
+  increase?: number | string | null
+): number | undefined {
+  if (increase == null || increase === '') return undefined;
+  const n = Number(increase);
+  if (Number.isNaN(n) || n < 0) return undefined;
+  return DEPOSIT_BASE_PERCENT + n;
+}
 
 /** Days in one billing cycle — single source for period-based % calculations. */
 export const PERIOD_DAYS: Record<PriceFrequency, number> = {
@@ -48,10 +73,39 @@ export function daysFromPeriodPercent(
   return Math.round(periodDaysForFrequency(freq) * (periodPercent / 100));
 }
 
+/** SMS is deprecated — map to EMAIL (no SMS provider). */
+export function normalizeReminderMethods(
+  methods?: (ReminderMethodType | string)[] | null
+): ReminderMethodType[] {
+  if (!methods?.length) return [];
+
+  const normalized = new Set<ReminderMethodType>();
+  for (const method of methods) {
+    const upper = String(method).toUpperCase() as ReminderMethodType;
+    if (upper === ReminderMethodType.SMS) {
+      normalized.add(ReminderMethodType.EMAIL);
+      continue;
+    }
+    if (Object.values(ReminderMethodType).includes(upper)) {
+      normalized.add(upper);
+    }
+  }
+  return Array.from(normalized);
+}
+
+export function reminderMethodsNeedMigration(
+  methods?: (ReminderMethodType | string)[] | null
+): boolean {
+  return (methods ?? []).some(
+    (method) => String(method).toUpperCase() === ReminderMethodType.SMS
+  );
+}
+
 export type ResolvedFinancialRules = {
   lateFeeEnabled: boolean;
   lateFeeAmount: number;
   lateFeePercent: number;
+  lateFeeMaxPercent: number | null;
   lateFeeFixed: number;
   lateFeeFrequency: FrequencyType | null;
   graceDays: number;
@@ -60,11 +114,19 @@ export type ResolvedFinancialRules = {
   applicationFeeAmount: number;
   applicationFeePercent: number;
   refundPolicy: RefundPolicyType | null;
+  refundPartialPercentage: number;
   refundTimeframe: FrequencyType | null;
   refundTimeframeDays: number;
+  depositReturnTimeframeDays: number;
   notificationEnabled: boolean;
+  rentReminderIntervalDays: number;
+  billReminderIntervalDays: number;
   reminderIntervalDays: number;
   reminderMethods: string[];
+  rentIncreaseNoticeDays: number | null;
+  defaultRentDueDay: number | null;
+  inspectionNoticeHours: number | null;
+  autoCreateRentBill: boolean;
 };
 
 export type PropertyFinancialOverride = {
@@ -104,15 +166,30 @@ export function resolveFinancialRules(
   rent: number,
   frequency?: PriceFrequency | null
 ): ResolvedFinancialRules {
-  const lateFeePercent = settings?.lateFeePercentage ?? 0;
+  const rawLateFeePercent = settings?.lateFeePercentage ?? 0;
+  const lateFeeMaxPercent = settings?.lateFeeMaxPercent ?? null;
+  const lateFeePercent =
+    lateFeeMaxPercent != null
+      ? Math.min(rawLateFeePercent, lateFeeMaxPercent)
+      : rawLateFeePercent;
   const depositPercent = settings?.depositPercentage ?? 0;
   const applicationFeePercent = settings?.applicationFeePercentage ?? 0;
   const refundTimeframe = settings?.refundTimeframe ?? null;
+  const depositReturnTimeframe = settings?.depositReturnTimeframe ?? null;
+  const rentReminderIntervalDays = daysFromPeriodPercent(
+    settings?.notificationFrequency,
+    frequency
+  );
+  const billReminderIntervalDays = daysFromPeriodPercent(
+    settings?.billReminderLeadPercent ?? settings?.notificationFrequency,
+    frequency
+  );
 
   return {
     lateFeeEnabled: settings?.lateFeeEnabled ?? false,
     lateFeeAmount: amountFromRentPercent(rent, lateFeePercent),
     lateFeePercent,
+    lateFeeMaxPercent,
     lateFeeFixed: 0,
     lateFeeFrequency: settings?.lateFeeFrequency ?? null,
     graceDays: daysFromPeriodPercent(settings?.lateFeeGracePeriod, frequency),
@@ -121,11 +198,19 @@ export function resolveFinancialRules(
     applicationFeeAmount: amountFromRentPercent(rent, applicationFeePercent),
     applicationFeePercent,
     refundPolicy: settings?.refundPolicy ?? null,
+    refundPartialPercentage: settings?.refundPartialPercentage ?? 50,
     refundTimeframe,
     refundTimeframeDays: daysForFrequencyType(refundTimeframe),
+    depositReturnTimeframeDays: daysForFrequencyType(depositReturnTimeframe),
     notificationEnabled: settings?.notificationEnabled ?? false,
-    reminderIntervalDays: daysFromPeriodPercent(settings?.notificationFrequency, frequency),
-    reminderMethods: settings?.reminderMethods ?? [],
+    rentReminderIntervalDays,
+    billReminderIntervalDays,
+    reminderIntervalDays: rentReminderIntervalDays,
+    reminderMethods: normalizeReminderMethods(settings?.reminderMethods),
+    rentIncreaseNoticeDays: settings?.rentIncreaseNoticeDays ?? null,
+    defaultRentDueDay: settings?.defaultRentDueDay ?? null,
+    inspectionNoticeHours: settings?.inspectionNoticeHours ?? null,
+    autoCreateRentBill: settings?.autoCreateRentBill ?? false,
   };
 }
 
@@ -251,14 +336,39 @@ export function getApplicationFeeRefundInfo(
     };
   }
 
+  const partialPct = rules.refundPartialPercentage ?? 50;
   return {
     refundPolicy: policy,
     refundTimeframe: rules.refundTimeframe,
     refundTimeframeDays: days,
     isRefundable: true,
-    refundPercent: 50,
-    refundSummary: `Partial refund (50%) within ${days} day${days === 1 ? '' : 's'} if the application is declined.`,
+    refundPercent: partialPct,
+    refundSummary: `Partial refund (${partialPct}%) within ${days} day${days === 1 ? '' : 's'} if the application is declined.`,
   };
+}
+
+/** Next rent due date using landlord default due day (1–28). */
+export function resolveDefaultRentDueDate(
+  rules: Pick<ResolvedFinancialRules, 'defaultRentDueDay'>,
+  from: Date = new Date()
+): Date {
+  const due = new Date(from);
+  const day = rules.defaultRentDueDay;
+  if (day != null && day >= 1 && day <= 28) {
+    due.setDate(day);
+    if (due <= from) {
+      due.setMonth(due.getMonth() + 1);
+    }
+  } else {
+    due.setMonth(due.getMonth() + 1);
+  }
+  due.setHours(12, 0, 0, 0);
+  return due;
+}
+
+export function isRentBillRecord(bill: { billName?: string | null; bills?: { name?: string | null } | null }): boolean {
+  const name = `${bill.billName ?? ''} ${bill.bills?.name ?? ''}`.toLowerCase();
+  return name.includes('rent');
 }
 
 export function calculateApplicationFeeRefundAmount(

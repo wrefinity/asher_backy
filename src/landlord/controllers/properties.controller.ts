@@ -29,6 +29,11 @@ import {
     resolveViewerCurrency,
 } from '../../utils/currencyContext';
 import { duplicatePropertyForLandlord } from '../../services/propertyDuplicate.service';
+import {
+    alignPropertyListingMarketFields,
+    assertPropertyEligibleForTenantListing,
+    validateListingMarketFields,
+} from '../../utils/listingMarketGuardrails';
 
 
 class PropertyController {
@@ -89,11 +94,30 @@ class PropertyController {
                         ...data
                     } = value;
 
-                    const resolvedCurrency = await resolvePropertyCreateCurrency({
-                        currency: data.currency,
-                        country: data.country,
-                        userId: req.user?.id,
-                    });
+                    let alignedCountry = data.country;
+                    let alignedCurrency: string;
+                    try {
+                        const aligned = alignPropertyListingMarketFields(
+                            data.country,
+                            data.currency ??
+                                (await resolvePropertyCreateCurrency({
+                                    currency: data.currency,
+                                    country: data.country,
+                                    userId: req.user?.id,
+                                }))
+                        );
+                        alignedCountry = aligned.country;
+                        alignedCurrency = aligned.currency;
+                    } catch (guardError) {
+                        results.failed.push({
+                            name: numberedName,
+                            error:
+                                guardError instanceof Error
+                                    ? guardError.message
+                                    : 'Invalid property country or currency',
+                        });
+                        continue;
+                    }
 
                     const specification: IPropertySpecificationDTO = {
                         propertySubType,
@@ -105,7 +129,14 @@ class PropertyController {
                     };
 
                     const property = await PropertyServices.createProperties(
-                        { ...data, name: numberedName, stateId: state.id, landlordId, currency: resolvedCurrency },
+                        {
+                            ...data,
+                            name: numberedName,
+                            stateId: state.id,
+                            landlordId,
+                            country: alignedCountry,
+                            currency: alignedCurrency,
+                        },
                         specification,
                         uploadedFiles,
                         req.user?.id
@@ -161,11 +192,30 @@ class PropertyController {
                     residential
                 };
 
-                const resolvedCurrency = await resolvePropertyCreateCurrency({
-                    currency: data.currency,
-                    country: data.country,
-                    userId: req.user?.id,
-                });
+                let alignedCountry = data.country;
+                let alignedCurrency: string;
+                try {
+                    const aligned = alignPropertyListingMarketFields(
+                        data.country,
+                        data.currency ??
+                            (await resolvePropertyCreateCurrency({
+                                currency: data.currency,
+                                country: data.country,
+                                userId: req.user?.id,
+                            }))
+                    );
+                    alignedCountry = aligned.country;
+                    alignedCurrency = aligned.currency;
+                } catch (guardError) {
+                    results.failed.push({
+                        name: prop?.name || 'Unknown',
+                        error:
+                            guardError instanceof Error
+                                ? guardError.message
+                                : 'Invalid property country or currency',
+                    });
+                    continue;
+                }
 
                 for (let i = 1; i <= count; i++) {
                     const numberedName = count > 1
@@ -189,7 +239,8 @@ class PropertyController {
                             name: numberedName,
                             stateId: state.id,
                             landlordId,
-                            currency: resolvedCurrency,
+                            country: alignedCountry,
+                            currency: alignedCurrency,
                         },
                         specification,
                         uploadedFiles,
@@ -307,7 +358,24 @@ class PropertyController {
         );
       }
 
-      const updateData = req.body;
+      const updateData = { ...req.body };
+
+      if (updateData.country !== undefined || updateData.currency !== undefined) {
+        const nextCountry = updateData.country ?? existingProperty.country;
+        const nextCurrency = updateData.currency ?? existingProperty.currency;
+        const validation = validateListingMarketFields(nextCountry, nextCurrency);
+        if (!validation.ok) {
+          return res.status(400).json(
+            ApiError.badRequest(validation.errors.join(' '))
+          );
+        }
+        if (validation.canonicalCountry) {
+          updateData.country = validation.canonicalCountry;
+        }
+        if (validation.expectedCurrency) {
+          updateData.currency = validation.expectedCurrency;
+        }
+      }
       
       // Handle state update if provided
       let stateId = existingProperty.stateId;
@@ -357,9 +425,9 @@ class PropertyController {
                 countryCode: req.query.countryCode as string | undefined,
                 ipAddress,
             });
-            const { propertiesGrouped, stateCountryByKey } = await PropertyServices.aggregatePropertiesByState(landlordId);
+            const { propertiesGrouped, stateCountryByKey, stateIdByKey } = await PropertyServices.aggregatePropertiesByState(landlordId);
             const propertiesUnGrouped = await PropertyServices.getPropertiesByLandlord(landlordId);
-            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped, stateCountryByKey, viewerContext })
+            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped, stateCountryByKey, stateIdByKey, viewerContext })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -537,6 +605,20 @@ class PropertyController {
 
             if (!checkOwnership)
                 return res.status(400).json({ message: 'property does not exist under landlord' });
+
+            try {
+                assertPropertyEligibleForTenantListing({
+                    country: checkOwnership.country,
+                    currency: checkOwnership.currency,
+                });
+            } catch (guardError) {
+                return res.status(400).json({
+                    message:
+                        guardError instanceof Error
+                            ? guardError.message
+                            : 'Property cannot be listed for tenants',
+                });
+            }
 
             // Validate array of unitIds
             if (Array.isArray(data.unitId) && data.unitId.length > 0) {

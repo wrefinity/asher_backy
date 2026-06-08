@@ -97,6 +97,8 @@ model users {
   // NEW RELATION (Added for enhanced inspection system)
   inspectionCertificatesGenerated inspectionCertificate[]
 
+  loginSessions UserLoginSession[]
+
   @@index([email])
   @@index([googleId])
   @@index([profileId])

@@ -16,62 +16,47 @@ class MaintenanceControls {
  public createMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const value = req.body;
     const tenantId = req.user.tenant?.id;
-  
+    const landlordId = req.user.tenant?.landlordId;
 
     if (!tenantId) {
       throw ApiError.badRequest("Please log in as either a tenant or a landlord");
     }
 
-     const property = await MaintenanceService.searchPropertyUnitRoomForMaintenace(value?.propertyId);
+    const property = await MaintenanceService.searchPropertyUnitRoomForMaintenace(value?.propertyId);
     if (!property) {
       throw ApiError.notFound("Property not found");
     }
-    // // Check if the maintenance category is whitelisted by the landlord
-    // const isWhitelisted = await MaintenanceService.checkWhitelist(
-    //   landlordId,
-    //   value.categoryId,
-    //   value.subcategoryId,
-    //   value.propertyId,
-    // );
 
-    // // Determine if maintenance should be handled by the landlord
-    // const handleByLandlord = landlordId || isWhitelisted;
+    const subcategoryId =
+      value.subcategoryIds?.[0] ?? value.subcategoryId ?? undefined;
 
-   
+    const isWhitelisted = landlordId
+      ? !!(await MaintenanceService.checkWhitelist(
+          landlordId,
+          value.categoryId,
+          subcategoryId,
+          value.propertyId
+        ))
+      : false;
 
-    // const maintenance = await MaintenanceService.createMaintenance({
-    //   ...value,
-    //   handleByLandlord: handleByLandlord || false,
-    //   landlordDecision: handleByLandlord ? maintenanceDecisionStatus.PENDING : undefined,
-    //   tenantId: tenantId || undefined
-    // });
+    const requiresLandlordApproval = !isWhitelisted;
+
     const maintenance = await MaintenanceService.createMaintenance({
       ...value,
-      handleByLandlord: false,
-      landlordDecision:  undefined,
-      tenantId: tenantId || undefined
+      landlordId: landlordId || undefined,
+      handleByLandlord: requiresLandlordApproval,
+      landlordDecision: requiresLandlordApproval
+        ? maintenanceDecisionStatus.PENDING
+        : undefined,
+      tenantId,
     });
-
-    // await logsServices.createLog({
-    //   events: `${req.user.email} initiated a maintenance request for the property named ${property?.name}`,
-    //   type: "MAINTENANCE", // Use string literal or import LogType enum
-    //   // propertyId: property?.id,
-    //   createdById: req.user.id,
-    // });
-
-    // if (isWhitelisted && !landlordId) {
-    //   return res.status(200).json(
-    //     ApiResponse.success(
-    //       { maintenance },
-    //       "Request created and will be handled by landlord"
-    //     )
-    //   );
-    // }
 
     return res.status(201).json(
       ApiResponse.success(
-        { maintenance },
-        "Maintenance request created successfully"
+        { maintenance, requiresLandlordApproval, isWhitelisted },
+        requiresLandlordApproval
+          ? "Maintenance request created and is pending landlord approval"
+          : "Maintenance request created successfully"
       )
     );
   });

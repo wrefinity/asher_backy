@@ -3,21 +3,35 @@ import categoryService from "../services/category.service";
 import ErrorService from "../services/error.service";
 import { Request, Response } from "express";
 import { CategoryType } from "@prisma/client";
+import { ensureStringArray, normalizeCategoryMultipartBody } from "../utils/normalizeMultipartFields";
 
 class CategoryControls {
 
     createCategory = async (req, res) => {
-        const { error } = categorySchema.validate(req.body);
+        const body = normalizeCategoryMultipartBody(req.body);
+        const { error, value } = categorySchema.validate(body);
         if (error) return res.status(400).send(error.details[0].message);
-        const data = req.body;
-        const image = data.cloudinaryUrls;
-        delete data.cloudinaryUrls;
-        delete data.cloudinaryVideoUrls;
-        delete data.cloudinaryDocumentUrls;
-        delete data.cloudinaryAudioUrls;
+
+        const {
+            cloudinaryUrls,
+            cloudinaryVideoUrls,
+            cloudinaryDocumentUrls,
+            cloudinaryAudioUrls,
+            icon: rawIcon,
+            ...categoryData
+        } = value;
 
         try {
-            const category = await categoryService.createCategory({ ...data, image });
+            const icon =
+                typeof rawIcon === 'string' && rawIcon.trim()
+                    ? rawIcon.trim()
+                    : null;
+
+            const category = await categoryService.createCategory({
+                ...categoryData,
+                image: ensureStringArray(cloudinaryUrls ?? body.cloudinaryUrls),
+                icon,
+            } as Parameters<typeof categoryService.createCategory>[0]);
             res.status(201).json(category);
         } catch (err) {
             ErrorService.handleError(err, res);
@@ -67,11 +81,19 @@ class CategoryControls {
     };
 
     updateCategory = async (req, res) => {
-        const { error } = categorySchema.validate(req.body);
+        const body = normalizeCategoryMultipartBody(req.body);
+        const { error } = categorySchema.validate(body);
         if (error) return res.status(400).send(error.details[0].message);
 
         try {
-            const category = await categoryService.updateCategory(req.params.id, req.body);
+            const data = { ...body };
+            if (data.icon !== undefined) {
+                data.icon =
+                    typeof data.icon === 'string' && data.icon.trim()
+                        ? data.icon.trim()
+                        : null;
+            }
+            const category = await categoryService.updateCategory(req.params.id, data);
             if (!category) return res.status(404).json({ error: 'Category not found' });
             res.status(200).json(category);
         } catch (err) {

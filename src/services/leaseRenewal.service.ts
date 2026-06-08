@@ -7,6 +7,8 @@ import {
   canUserRespondToRenewal,
   resolveEffectiveRenewalTerms,
 } from "../utils/leaseRenewalHelpers";
+import LandlordSettingsService from "../landlord/services/propertySetting.service";
+import { getLeaseRenewalThresholds } from "../utils/globalSettingsMarketRules";
 
 export interface LeaseRenewalData {
   tenantId: string;
@@ -56,32 +58,11 @@ class LeaseRenewalService {
     return reminderDates;
   }
 
-  /**
-   * Get percentage-based reminder configuration based on lease frequency
-   */
-  private getReminderConfig(frequency: 'WEEKLY' | 'MONTHLY' | 'ANNUAL'): RenewalReminderConfig {
-    switch (frequency) {
-      case 'WEEKLY':
-        return {
-          thresholds: { first: 50, second: 25, final: 10 }, // 3.5 days, 1.75 days, 0.7 days
-          frequency: 'WEEKLY'
-        };
-      case 'MONTHLY':
-        return {
-          thresholds: { first: 50, second: 25, final: 10 }, // 15 days, 7.5 days, 3 days
-          frequency: 'MONTHLY'
-        };
-      case 'ANNUAL':
-        return {
-          thresholds: { first: 50, second: 25, final: 10 }, // 6 months, 3 months, 1 month
-          frequency: 'ANNUAL'
-        };
-      default:
-        return {
-          thresholds: { first: 50, second: 25, final: 10 },
-          frequency: 'MONTHLY'
-        };
-    }
+  private getReminderConfig(
+    frequency: 'WEEKLY' | 'MONTHLY' | 'ANNUAL',
+    thresholds: { first: number; second: number; final: number }
+  ): RenewalReminderConfig {
+    return { thresholds, frequency };
   }
 
   /**
@@ -110,8 +91,25 @@ class LeaseRenewalService {
       }
     });
 
+    const settingsCache = new Map<string, Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>>();
+
     for (const lease of activeLeases) {
       if (!lease.leaseStartDate || !lease.leaseEndDate) continue;
+
+      const landlordId = lease.property?.landlordId;
+      if (!landlordId) continue;
+
+      if (!settingsCache.has(landlordId)) {
+        settingsCache.set(
+          landlordId,
+          await LandlordSettingsService.getAllGlobalSettings(landlordId)
+        );
+      }
+      const landlordSettings = settingsCache.get(landlordId);
+      if (!landlordSettings?.leaseRenewalRemindersEnabled) continue;
+
+      const country = lease.property?.country;
+      const thresholds = getLeaseRenewalThresholds(landlordSettings, country);
 
       // Determine lease frequency based on duration
       const leaseDuration = lease.leaseEndDate.getTime() - lease.leaseStartDate.getTime();
@@ -126,12 +124,12 @@ class LeaseRenewalService {
         frequency = 'ANNUAL';
       }
 
-      const config = this.getReminderConfig(frequency);
+      const config = this.getReminderConfig(frequency, thresholds);
       const reminderDates = this.calculateReminderDates(
         lease.leaseStartDate,
         lease.leaseEndDate,
         frequency,
-        config.thresholds
+        thresholds
       );
 
       // Check if current date matches any reminder threshold

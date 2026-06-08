@@ -1,8 +1,7 @@
 
-import { ApplicationStatus, maintenanceStatus, TransactionType } from "@prisma/client";
+import { ApplicationStatus, maintenanceStatus, TransactionType, TransactionReference } from "@prisma/client";
 import { prismaClient } from "../..";
 import todosService from "../../services/todos.service";
-import LandlordSettingsService from '../services/propertySetting.service';
 class LandlordDashboardService {
 
   async getDashboardData(landlordId: string, filters: any, accountUserId: string) {
@@ -26,8 +25,24 @@ class LandlordDashboardService {
       },
     });
 
-    const income = transactions.filter(t => t.type === TransactionType.CREDIT).reduce((sum, t) => sum + Number(t.amount), 0);
+    const creditTransactions = transactions.filter(t => t.type === TransactionType.CREDIT);
+    const income = creditTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
     const expenses = transactions.filter(t => t.type === TransactionType.DEBIT).reduce((sum, t) => sum + Number(t.amount), 0);
+    const rentIncome = creditTransactions
+      .filter(t => t.reference === TransactionReference.RENT_PAYMENT)
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const otherCharges = creditTransactions
+      .filter(t => t.reference === TransactionReference.CHARGES)
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const tenantCharges = creditTransactions
+      .filter(t =>
+        t.reference === TransactionReference.MAINTENANCE_FEE ||
+        t.reference === TransactionReference.BILL_PAYMENT
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const latePaymentFees = creditTransactions
+      .filter(t => t.reference === TransactionReference.LATE_FEE)
+      .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const maintenance = await prismaClient.maintenance.findMany({
       where: { property: { landlordId } },
@@ -72,12 +87,10 @@ class LandlordDashboardService {
         existingApplicants: applications.filter(a => a.status === ApplicationStatus.COMPLETED).length,
       },
       incomeBreakdown: {
-        rent: income,
-        otherCharges: 0,
-        tenantCharges: 0,
-
-
-        latePayment: await LandlordSettingsService.getAllGlobalSettings(landlordId),
+        rent: rentIncome || income,
+        otherCharges,
+        tenantCharges,
+        latePayment: latePaymentFees,
       },
       toDoList: todosService.getLandlordTodo(landlordId),
     };

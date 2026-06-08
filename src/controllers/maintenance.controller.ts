@@ -138,25 +138,34 @@ class MaintenanceController {
       // check for property existance
       const propertyExist = await propertyService.searchPropertyUnitRoom(propertyId);
       if (!propertyExist) return res.status(404).json({ message: `property with the id : ${value?.propertyId} doesn't exist` });
-      // checking if the maitenance category is whitelisted by the landlord
-      const isWhitelisted = await maintenanceService.checkWhitelist(
-        landlordId,
-        value.categoryId,
-        value.subcategoryId,
-        propertyId,
-      );
-      // Determine if maintenance should be handled by the landlord
-      const handleByLandlord = !!landlordId || !!isWhitelisted;
+      const propertyLandlordId =
+        propertyExist.type === 'property' && 'landlordId' in propertyExist.data
+          ? propertyExist.data.landlordId
+          : landlordId;
 
+      const subcategoryId =
+        value.subcategoryIds?.[0] ?? value.subcategoryId ?? undefined;
+
+      const isWhitelisted = propertyLandlordId
+        ? !!(await maintenanceService.checkWhitelist(
+            propertyLandlordId,
+            value.categoryId,
+            subcategoryId,
+            propertyId
+          ))
+        : false;
+
+      const requiresLandlordApproval = !!tenantId && !isWhitelisted;
 
       const maintenance = await maintenanceService.createMaintenance({
         ...value,
         propertyId,
-        handleByLandlord: handleByLandlord || false,
-        landlordDecision: handleByLandlord ? maintenanceDecisionStatus.PENDING : '',
-        // attachments: cloudinaryUrls,
+        handleByLandlord: requiresLandlordApproval,
+        landlordDecision: requiresLandlordApproval
+          ? maintenanceDecisionStatus.PENDING
+          : undefined,
         tenantId: tenantId || undefined,
-        landlordId: landlordId || undefined
+        landlordId: landlordId || propertyLandlordId || undefined,
       });
 
       await logsServices.createLog({
@@ -168,12 +177,17 @@ class MaintenanceController {
         createdById: req?.user?.id,
       });
 
-      if (isWhitelisted && !landlordId) return res.status(200).json({
-        message: "request created and will be handled by landlord",
-        maintenance
-      })
+      if (requiresLandlordApproval) {
+        return res.status(201).json({
+          maintenance,
+          message: "Maintenance request created and is pending landlord approval",
+        });
+      }
 
-      return res.status(201).json({ maintenance, message: " maintenance request created" });
+      return res.status(201).json({
+        maintenance,
+        message: "Maintenance request created successfully",
+      });
     } catch (error) {
       ErrorService.handleError(error, res)
     }

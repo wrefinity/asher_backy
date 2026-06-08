@@ -9,8 +9,17 @@ import {
     resolveViewerCurrency,
 } from "../utils/currencyContext";
 import { SUPPORTED_CURRENCY_CODES } from "../utils/helpers";
+import { getPreferenceOptions } from "../utils/preferenceOptions";
 
 class PreferencesController {
+
+    getPreferenceOptions = async (_req: CustomRequest, res: Response) => {
+        try {
+            res.json(getPreferenceOptions());
+        } catch (error) {
+            ErrorService.handleError(error, res);
+        }
+    };
 
     getPreferences = async (req: CustomRequest, res: Response) => {
         try {

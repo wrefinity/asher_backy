@@ -23,6 +23,7 @@ export const CategoryQuerySchema = Joi.object({
 export const categorySchema = Joi.object({
   name: Joi.string().required(),
   description: stringJoiOptional,
+  icon: Joi.string().trim().max(64).optional().allow('', null),
   categoryType: Joi.string().valid(...catType).default(CategoryType.MAINTENANCE).required(),
   labels: Joi.array().items(Joi.string()).required()
 }).concat(uploadSchema);

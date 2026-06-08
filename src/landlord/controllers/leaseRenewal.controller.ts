@@ -6,6 +6,8 @@ import { ApiError } from '../../utils/ApiError';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { prismaClient } from '../..';
 import { enrichLeaseRenewal } from '../../utils/leaseRenewalHelpers';
+import LandlordSettingsService from '../services/propertySetting.service';
+import { getLeaseRenewalThresholds } from '../../utils/globalSettingsMarketRules';
 
 class LandlordLeaseRenewalController {
   constructor() {}
@@ -182,6 +184,13 @@ class LandlordLeaseRenewalController {
     const userId = req.user.id;
     const currentDate = new Date();
 
+    const landlord = await prismaClient.landlords.findFirst({
+      where: { userId },
+    });
+    const landlordSettings = landlord
+      ? await LandlordSettingsService.getAllGlobalSettings(landlord.id)
+      : null;
+
     // Get all active leases for landlord's properties
     const activeLeases = await prismaClient.tenants.findMany({
       where: {
@@ -219,16 +228,18 @@ class LandlordLeaseRenewalController {
         frequency = 'ANNUAL';
       }
 
-      const config = {
-        thresholds: { first: 50, second: 25, final: 10 }
-      };
+      const thresholds = getLeaseRenewalThresholds(
+        landlordSettings,
+        lease.property?.country
+      );
+      const config = { thresholds };
 
       const totalDays = Math.ceil((lease.leaseEndDate.getTime() - lease.leaseStartDate.getTime()) / (1000 * 60 * 60 * 24));
       
       const reminderDates = {
-        first: new Date(lease.leaseEndDate.getTime() - (totalDays * 0.5) * 24 * 60 * 60 * 1000),
-        second: new Date(lease.leaseEndDate.getTime() - (totalDays * 0.25) * 24 * 60 * 60 * 1000),
-        final: new Date(lease.leaseEndDate.getTime() - (totalDays * 0.1) * 24 * 60 * 60 * 1000),
+        first: new Date(lease.leaseEndDate.getTime() - (totalDays * (thresholds.first / 100)) * 24 * 60 * 60 * 1000),
+        second: new Date(lease.leaseEndDate.getTime() - (totalDays * (thresholds.second / 100)) * 24 * 60 * 60 * 1000),
+        final: new Date(lease.leaseEndDate.getTime() - (totalDays * (thresholds.final / 100)) * 24 * 60 * 60 * 1000),
       };
 
       const daysUntilExpiry = Math.ceil((lease.leaseEndDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));

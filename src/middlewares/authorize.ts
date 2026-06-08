@@ -6,6 +6,7 @@ import { Jtoken } from "./Jtoken";
 import UserService from "../services/user.services";
 import { userRoles } from "@prisma/client";
 import { requireWebUserPortalRole as requireWebUserPortalRoleMiddleware } from "./requireWebUserPortalRole";
+import LoginSessionService from "../services/loginSession.service";
 
 export class Authorize {
     private tokenService: Jtoken;
@@ -14,6 +15,13 @@ export class Authorize {
         this.tokenService = new Jtoken(JWT_SECRET);
         this.authorize = this.authorize.bind(this);
         this.optionalAuthorize = this.optionalAuthorize.bind(this);
+    }
+
+    /** Backfill session row for tokens issued before login-session tracking shipped. */
+    private backfillLoginSession(req: CustomRequest) {
+        void LoginSessionService.ensureSessionFromRequest(req, {
+            touchActivity: true,
+        }).catch(() => undefined);
     }
 
     /**
@@ -72,6 +80,7 @@ export class Authorize {
 
             // Build the user object with proper tenant context
             req.user = this.buildUserWithContext(user, decoded);
+            this.backfillLoginSession(req);
             return next();
         } catch (error) {
 
@@ -239,6 +248,9 @@ export class Authorize {
         // Send new tokens in response headers
         res.setHeader("x-access-token", newTokens.accessToken);
         res.setHeader("x-refresh-token", newTokens.refreshToken);
+
+        req.headers.authorization = `Bearer ${newTokens.accessToken}`;
+        this.backfillLoginSession(req);
 
         return next();
     }

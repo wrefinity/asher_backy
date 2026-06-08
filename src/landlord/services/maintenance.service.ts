@@ -825,16 +825,31 @@ class LandlordMaintenanceService {
 
   createWhitelist = async (data: MaintenanceWhitelistInput, landlordId: string) => {
     try {
-      const whitelistEntry = await prismaClient.maintenanceWhitelist.create({
+      const existing = data.subcategoryId
+        ? await prismaClient.maintenanceWhitelist.findFirst({
+            where: { landlordId, subcategoryId: data.subcategoryId },
+          })
+        : null;
+
+      if (existing) {
+        return prismaClient.maintenanceWhitelist.update({
+          where: { id: existing.id },
+          data: {
+            isActive: true,
+            categoryId: data.categoryId,
+            propertyId: data.propertyId ?? existing.propertyId,
+          },
+        });
+      }
+
+      return prismaClient.maintenanceWhitelist.create({
         data: {
           categoryId: data.categoryId,
           subcategoryId: data.subcategoryId,
           propertyId: data.propertyId || null,
-          landlordId: landlordId,
+          landlordId,
         },
       });
-
-      return whitelistEntry;
     } catch (error) {
       throw new Error(`Error creating whitelist entry: ${error.message}`);
     }

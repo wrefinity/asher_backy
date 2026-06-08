@@ -164,7 +164,9 @@ class BillService {
     }
     getBillsCategories = async () => {
         return await prismaClient.bills.findMany({
-        })
+            where: { isDeleted: false },
+            orderBy: { name: 'asc' },
+        });
     }
 
 
@@ -186,11 +188,22 @@ class BillService {
             includeTransactions = false
         } = includeOptions;
 
-        const where: any = {};
+        const where: any = {
+            // Exclude soft-deleted bills unless caller explicitly requests them
+            isDeleted: filterOptions.isDeleted ?? false,
+        };
 
         // Apply filters
         if (filterOptions.tenantId) where.tenantId = filterOptions.tenantId;
-        if (filterOptions.landlordId) where.landlordId = filterOptions.landlordId;
+        if (filterOptions.landlordId) {
+            where.OR = [
+                { landlordId: filterOptions.landlordId },
+                {
+                    landlordId: null,
+                    property: { landlordId: filterOptions.landlordId },
+                },
+            ];
+        }
         if (filterOptions.propertyId) where.propertyId = filterOptions.propertyId;
         if (filterOptions.billId) where.billId = filterOptions.billId;
         if (filterOptions.billCategoryId) where.billCategoryId = filterOptions.billCategoryId;
@@ -212,7 +225,6 @@ class BillService {
             ];
         }
 
-        console.log(where)
         const include: any = {};
         
         // Always include minimal tenant, property, and landlord data for scope computation
@@ -248,7 +260,7 @@ class BillService {
                 name: true 
             } 
         };
-        
+
         include.landlord = includeLandlord ? {
             include: {
                 user: {
@@ -379,12 +391,26 @@ class BillService {
     }
 
     deleteBill = async (billId: string, landlordId: string) => {
+        if (!landlordId) {
+            throw new Error('Landlord ID is required to delete a bill');
+        }
+
+        const bill = await prismaClient.billsSubCategory.findFirst({
+            where: {
+                id: billId,
+                landlordId,
+                isDeleted: false,
+            },
+        });
+
+        if (!bill) {
+            throw new Error('Bill not found or you do not have permission to delete it');
+        }
+
         return await prismaClient.billsSubCategory.update({
-            where: { id: billId, landlordId },
-            data: {
-                isDeleted: true
-            }
-        })
+            where: { id: billId },
+            data: { isDeleted: true },
+        });
     }
 
     getBillByPropertyId = async (propertyId: string, landlordId: string) => {
@@ -555,6 +581,7 @@ class BillService {
         return BillNormalizer.normalizeMany(bills);
     };
 
+    /** Seeds shared bill categories from the in-memory market catalog (no bill line items). */
     seedMarketBillCategories = async (market: string) => {
         const { getBillCatalogForMarket } = await import('../../utils/billCatalog');
         const catalog = getBillCatalogForMarket(market);
@@ -565,12 +592,15 @@ class BillService {
             const existing = await prismaClient.bills.findFirst({
                 where: {
                     name: { equals: category.name, mode: 'insensitive' },
+                    isDeleted: false,
                 },
             });
+
             if (existing) {
                 skippedCategories.push(category.name);
                 continue;
             }
+
             await prismaClient.bills.create({
                 data: {
                     name: category.name,

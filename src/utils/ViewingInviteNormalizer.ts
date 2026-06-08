@@ -8,6 +8,7 @@
 
 import { ListingNormalizer, NormalizedListing } from './ListingNormalizer';
 import propertyServices from '../services/propertyServices';
+import { sanitizeLandlordInProperty } from './publicProfilePrivacy';
 
 export interface NormalizedViewingInvite {
   // Original invite data
@@ -56,7 +57,7 @@ export class ViewingInviteNormalizer {
    * @param invite - Raw invite data from API
    * @returns Normalized viewing invite with listing
    */
-  static async normalize(invite: any): Promise<NormalizedViewingInvite> {
+  static async normalize(invite: any, viewerId?: string | null): Promise<NormalizedViewingInvite> {
     // Get propertyListingId from enquiry (it's stored there)
     const propertyListingId = invite?.enquires?.propertyListingId || invite?.enquiry?.propertyListingId || invite?.propertyListingId;
     const propertyId = invite?.propertiesId || invite?.properties?.id;
@@ -120,6 +121,16 @@ export class ViewingInviteNormalizer {
       }
     }
     
+    if (listing?.property) {
+      listing = {
+        ...listing,
+        property: (await sanitizeLandlordInProperty(listing.property, viewerId))!,
+      };
+    }
+    if (property) {
+      property = await sanitizeLandlordInProperty(property, viewerId);
+    }
+
     return {
       // Original invite fields
       id: invite.id,
@@ -160,7 +171,10 @@ export class ViewingInviteNormalizer {
    * Normalize multiple viewing invites
    * Batches the operations to prevent connection pool exhaustion
    */
-  static async normalizeMany(invites: any[]): Promise<NormalizedViewingInvite[]> {
+  static async normalizeMany(
+    invites: any[],
+    viewerId?: string | null
+  ): Promise<NormalizedViewingInvite[]> {
     if (!invites || invites.length === 0) {
       return [];
     }
@@ -173,7 +187,7 @@ export class ViewingInviteNormalizer {
     for (let i = 0; i < invites.length; i += BATCH_SIZE) {
       const batch = invites.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.all(
-        batch.map(invite => this.normalize(invite).catch(error => {
+        batch.map(invite => this.normalize(invite, viewerId).catch(error => {
           console.error('Failed to normalize viewing invite:', error);
           // Return a partial normalized invite with error info
           return {

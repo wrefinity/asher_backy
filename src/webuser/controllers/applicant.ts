@@ -22,6 +22,8 @@ import { ApplicationStatus, InvitedResponse, LogType } from '@prisma/client';
 import LogsServices from '../../services/logs.services';
 import { updateApplicationInviteSchema } from '../../landlord/validations/schema/applicationInvitesSchema';
 import sendMail, { sendApplicationCompletionEmails } from "../../utils/emailer"
+import { sendPreferenceAwareMail } from "../../utils/sendPreferenceAwareMail";
+import { NotificationCategory } from "@prisma/client";
 import logsServices from '../../services/logs.services';
 import emailService from '../../services/emailService';
 import { LandlordService } from '../../landlord/services/landlord.service';
@@ -30,6 +32,7 @@ import { getApplicationFormConfig } from '../../utils/applicationFormConfig';
 import {
   getMissingApplicationFields,
   resolveApplicationMarketFromRecord,
+  resolveLandlordTenancyMinimum,
 } from '../../utils/applicationCompletionRules';
 import { validateTenancyHistoryCoverage, resolveMinimumTenancyHistoryYears } from '../../utils/tenancyHistoryRules';
 import { resolveFinancialRules, getApplicationFeeRefundInfo } from '../../utils/globalSettings.util';
@@ -121,7 +124,7 @@ class ApplicantControls {
       });
       
       // Normalize invites to include listing with hierarchy + engagement DTO
-      const invites = (await ViewingInviteNormalizer.normalizeMany(filteredInvites)).map(
+      const invites = (await ViewingInviteNormalizer.normalizeMany(filteredInvites, req.user?.id)).map(
         (invite) => ({
           ...invite,
           engagement: EngagementNormalizer.fromNormalizedInvite(invite),
@@ -292,7 +295,11 @@ class ApplicantControls {
       const applicationExist = await ApplicantService.getApplicationById(applicationId);
       if (!applicationExist) return res.status(500).json({ message: "Application Doesn't Exist" });
 
-      const missingFields = getMissingApplicationFields(applicationExist);
+      const landlordMinimum = await resolveLandlordTenancyMinimum(applicationExist);
+      const missingFields = getMissingApplicationFields(
+        applicationExist,
+        landlordMinimum
+      );
 
       if (missingFields.length > 0) {
         return res.status(400).json({
@@ -605,7 +612,11 @@ class ApplicantControls {
       if (!existingApplication) {
         return res.status(400).json({ error: "wrong application id supplied" });
       }
-      const missingFields = getMissingApplicationFields(existingApplication);
+      const landlordMinimum = await resolveLandlordTenancyMinimum(existingApplication);
+      const missingFields = getMissingApplicationFields(
+        existingApplication,
+        landlordMinimum
+      );
 
       if (missingFields.length > 0) {
         return res.status(400).json({
@@ -741,7 +752,7 @@ class ApplicantControls {
       }
       
       // Normalize the invite to include listing with hierarchy
-      const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
+      const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite, req.user?.id);
       
       return res.status(200).json({
         invite: normalizedInvite,
@@ -782,10 +793,10 @@ class ApplicantControls {
 
       // Normalize all invites to include listing with hierarchy
       const [pendingInvites, acceptInvites, otherInvites, awaitingFeedbackInvites] = await Promise.all([
-        ViewingInviteNormalizer.normalizeMany(rawPendingInvites || []),
-        ViewingInviteNormalizer.normalizeMany(rawAcceptInvites || []),
-        ViewingInviteNormalizer.normalizeMany(rawOtherInvites || []),
-        ViewingInviteNormalizer.normalizeMany(rawAwaitingFeedbackInvites || [])
+        ViewingInviteNormalizer.normalizeMany(rawPendingInvites || [], req.user?.id),
+        ViewingInviteNormalizer.normalizeMany(rawAcceptInvites || [], req.user?.id),
+        ViewingInviteNormalizer.normalizeMany(rawOtherInvites || [], req.user?.id),
+        ViewingInviteNormalizer.normalizeMany(rawAwaitingFeedbackInvites || [], req.user?.id)
       ]);
 
       return res.status(200).json({
@@ -953,11 +964,14 @@ class ApplicantControls {
       }
 
       // Send email notification in background - don't fail the request if email fails
-      sendMail(
-        landlord.user.email,
-        `Asher - ${agreement.application?.properties?.name} Agreement Form`,
-        htmlContent
-      ).catch((emailError) => {
+      sendPreferenceAwareMail({
+        userId: landlord.user?.id,
+        category: NotificationCategory.WEBSITE_INQUIRY,
+        notificationType: 'agreement_signed',
+        to: landlord.user.email,
+        subject: `Asher - ${agreement.application?.properties?.name} Agreement Form`,
+        html: htmlContent,
+      }).catch((emailError) => {
         logger.error('Failed to send agreement signed email:', emailError);
       });
 

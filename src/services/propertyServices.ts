@@ -1293,13 +1293,14 @@ class PropertyService {
 
         const propertiesByState: { [key: string]: any[] } = {};
         const stateCountryByKey: { [key: string]: string | null } = {};
+        const stateIdByKey: { [key: string]: string } = {};
 
         for (const group of groupedProperties) {
             const stateId = group.stateId;
             if (!stateId) continue;
 
             const state = await prismaClient.state.findUnique({ where: { id: stateId } });
-            if (!state) continue;
+            if (!state || state.isDeleted) continue;
 
             const rawProperties = await prismaClient.properties.findMany({
                 where: { stateId, landlordId, isDeleted: false },
@@ -1314,6 +1315,7 @@ class PropertyService {
             if (!key) continue;
             propertiesByState[key] = flattened;
             stateCountryByKey[key] = state.country ?? null;
+            stateIdByKey[key] = stateId;
         }
 
         // Also include states the landlord explicitly created but that have no
@@ -1333,10 +1335,11 @@ class PropertyService {
             if (!(key in propertiesByState)) {
                 propertiesByState[key] = [];
                 stateCountryByKey[key] = state.country ?? null;
+                stateIdByKey[key] = state.id;
             }
         }
 
-        return { propertiesGrouped: propertiesByState, stateCountryByKey };
+        return { propertiesGrouped: propertiesByState, stateCountryByKey, stateIdByKey };
     };
 
 

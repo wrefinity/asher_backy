@@ -1,9 +1,12 @@
-export const ALLOWED_COUNTRIES = ['United Kingdom', 'Nigeria', 'United States'];
+export const ALLOWED_COUNTRIES = ['United Kingdom', 'Ireland', 'Nigeria', 'United States'];
 
 const NORMALIZE_MAP: Record<string, string> = {
   uk: 'United Kingdom',
   'united kingdom': 'United Kingdom',
   'great britain': 'United Kingdom',
+  ireland: 'Ireland',
+  ie: 'Ireland',
+  'republic of ireland': 'Ireland',
   nigeria: 'Nigeria',
   'nigerian': 'Nigeria',
   'united states': 'United States',

@@ -1,4 +1,5 @@
 import { ApplicationSaveState } from '@prisma/client';
+import LandlordSettingsService from '../landlord/services/propertySetting.service';
 import { getApplicationFormConfig } from './applicationFormConfig';
 import { resolveApplicationMarket } from './applicationAddressFields';
 
@@ -10,7 +11,7 @@ type ApplicationForCompletion = {
   refereeId?: string | null;
   completedSteps?: ApplicationSaveState[];
   residentialInfo?: { country?: string | null } | null;
-  properties?: { country?: string | null } | null;
+  properties?: { country?: string | null; landlordId?: string | null } | null;
   user?: { profile?: { country?: string | null } } | null;
 };
 
@@ -25,10 +26,12 @@ export function resolveApplicationMarketFromRecord(
 }
 
 export function getMissingApplicationFields(
-  application: ApplicationForCompletion
+  application: ApplicationForCompletion,
+  landlordMinimumYears?: number | null
 ): string[] {
   const formConfig = getApplicationFormConfig(
-    resolveApplicationMarketFromRecord(application)
+    resolveApplicationMarketFromRecord(application),
+    landlordMinimumYears
   );
 
   const guarantorStepComplete = application.completedSteps?.includes(
@@ -46,4 +49,13 @@ export function getMissingApplicationFields(
   if (!application.refereeId) missing.push('refereeId');
 
   return missing;
+}
+
+export async function resolveLandlordTenancyMinimum(
+  application: ApplicationForCompletion
+): Promise<number | null | undefined> {
+  const landlordId = application.properties?.landlordId;
+  if (!landlordId) return undefined;
+  const settings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+  return settings?.minimumTenancyHistoryYears ?? undefined;
 }

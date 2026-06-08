@@ -294,80 +294,117 @@ class NotificationService {
         });
     }
 
-public async updateNotificationPreferences(
-    userId: string,
-    data: UpdateNotificationPreferencesInput
-) {
-    return prismaClient.$transaction(async (tx) => {
-        // Delete existing preferences
-        await tx.notificationPreference.deleteMany({
-            where: { userId },
-        });
+    private buildNotificationPreferenceData(
+        userId: string,
+        pref: UpdateNotificationPreferencesInput['preferences'][number]
+    ): Prisma.NotificationPreferenceCreateInput {
+        return {
+            category: pref.category as NotificationCategory,
+            channels: {
+                set: pref.channels as NotificationChannel[],
+            },
+            users: { connect: { id: userId } },
+            ...(pref.notifyOnLoginActivity !== undefined && {
+                notifyOnLoginActivity: pref.notifyOnLoginActivity,
+            }),
+            ...(pref.notifyOnNewMessages !== undefined && {
+                notifyOnNewMessages: pref.notifyOnNewMessages,
+            }),
+            ...(pref.notifyPaymentInitiated !== undefined && {
+                notifyPaymentInitiated: pref.notifyPaymentInitiated,
+            }),
+            ...(pref.notifyPaymentSuccess !== undefined && {
+                notifyPaymentSuccess: pref.notifyPaymentSuccess,
+            }),
+            ...(pref.notifyPaymentFailed !== undefined && {
+                notifyPaymentFailed: pref.notifyPaymentFailed,
+            }),
+            ...(pref.notifyNewMaintenanceRequest !== undefined && {
+                notifyNewMaintenanceRequest: pref.notifyNewMaintenanceRequest,
+            }),
+            ...(pref.notifyRequestStatusChange !== undefined && {
+                notifyRequestStatusChange: pref.notifyRequestStatusChange,
+            }),
+            ...(pref.notifyRequestMessage !== undefined && {
+                notifyRequestMessage: pref.notifyRequestMessage,
+            }),
+            ...(pref.notifyRequestResolved !== undefined && {
+                notifyRequestResolved: pref.notifyRequestResolved,
+            }),
+            ...(pref.notifyNewInvoice !== undefined && {
+                notifyNewInvoice: pref.notifyNewInvoice,
+            }),
+            ...(pref.notifyTenantMoveOut !== undefined && {
+                notifyTenantMoveOut: pref.notifyTenantMoveOut,
+            }),
+            ...(pref.notifyPropertyMatch !== undefined && {
+                notifyPropertyMatch: pref.notifyPropertyMatch,
+            }),
+            ...(pref.notifyNewInquiry !== undefined && {
+                notifyNewInquiry: pref.notifyNewInquiry,
+            }),
+            ...(pref.notifyNewSupportTicket !== undefined && {
+                notifyNewSupportTicket: pref.notifyNewSupportTicket,
+            }),
+            ...(pref.receiveMarketingEmails !== undefined && {
+                receiveMarketingEmails: pref.receiveMarketingEmails,
+            }),
+        };
+    }
 
-        // Create new preferences with proper typing
-        return Promise.all(
-            data.preferences.map((pref) => {
-                const createData: Prisma.NotificationPreferenceCreateInput = {
-                    category: pref.category as NotificationCategory,
-                    channels: {
-                        set: pref.channels as NotificationChannel[]
-                    },
-                    users: { connect: { id: userId } },
-                    // Category-specific fields with proper optional handling
-                    ...(pref.notifyOnLoginActivity !== undefined && { 
-                        notifyOnLoginActivity: pref.notifyOnLoginActivity 
-                    }),
-                    ...(pref.notifyOnNewMessages !== undefined && { 
-                        notifyOnNewMessages: pref.notifyOnNewMessages 
-                    }),
-                    ...(pref.notifyPaymentInitiated !== undefined && { 
-                        notifyPaymentInitiated: pref.notifyPaymentInitiated 
-                    }),
-                    ...(pref.notifyPaymentSuccess !== undefined && { 
-                        notifyPaymentSuccess: pref.notifyPaymentSuccess 
-                    }),
-                    ...(pref.notifyPaymentFailed !== undefined && { 
-                        notifyPaymentFailed: pref.notifyPaymentFailed 
-                    }),
-                    ...(pref.notifyNewMaintenanceRequest !== undefined && { 
-                        notifyNewMaintenanceRequest: pref.notifyNewMaintenanceRequest 
-                    }),
-                    ...(pref.notifyRequestStatusChange !== undefined && { 
-                        notifyRequestStatusChange: pref.notifyRequestStatusChange 
-                    }),
-                    ...(pref.notifyRequestMessage !== undefined && { 
-                        notifyRequestMessage: pref.notifyRequestMessage 
-                    }),
-                    ...(pref.notifyRequestResolved !== undefined && { 
-                        notifyRequestResolved: pref.notifyRequestResolved 
-                    }),
-                    ...(pref.notifyNewInvoice !== undefined && { 
-                        notifyNewInvoice: pref.notifyNewInvoice 
-                    }),
-                    ...(pref.notifyTenantMoveOut !== undefined && { 
-                        notifyTenantMoveOut: pref.notifyTenantMoveOut 
-                    }),
-                    ...(pref.notifyPropertyMatch !== undefined && { 
-                        notifyPropertyMatch: pref.notifyPropertyMatch 
-                    }),
-                    ...(pref.notifyNewInquiry !== undefined && { 
-                        notifyNewInquiry: pref.notifyNewInquiry 
-                    }),
-                    ...(pref.notifyNewSupportTicket !== undefined && { 
-                        notifyNewSupportTicket: pref.notifyNewSupportTicket 
-                    }),
-                    ...(pref.receiveMarketingEmails !== undefined && { 
-                        receiveMarketingEmails: pref.receiveMarketingEmails 
-                    })
+    public async updateNotificationPreferences(
+        userId: string,
+        data: UpdateNotificationPreferencesInput
+    ) {
+        return prismaClient.$transaction(async (tx) => {
+            const results = [];
+
+            for (const pref of data.preferences) {
+                const category = pref.category as NotificationCategory;
+                const preferenceData = this.buildNotificationPreferenceData(userId, pref);
+
+                const updateData: Prisma.NotificationPreferenceUpdateInput = {
+                    channels: preferenceData.channels,
                 };
+                const booleanFields = [
+                    'notifyOnLoginActivity',
+                    'notifyOnNewMessages',
+                    'notifyPaymentInitiated',
+                    'notifyPaymentSuccess',
+                    'notifyPaymentFailed',
+                    'notifyNewMaintenanceRequest',
+                    'notifyRequestStatusChange',
+                    'notifyRequestMessage',
+                    'notifyRequestResolved',
+                    'notifyNewInvoice',
+                    'notifyTenantMoveOut',
+                    'notifyPropertyMatch',
+                    'notifyNewInquiry',
+                    'notifyNewSupportTicket',
+                    'receiveMarketingEmails',
+                ] as const;
 
-                return tx.notificationPreference.create({
-                    data: createData
+                for (const field of booleanFields) {
+                    const value = preferenceData[field];
+                    if (value !== undefined) {
+                        updateData[field] = value;
+                    }
+                }
+
+                const updated = await tx.notificationPreference.upsert({
+                    where: {
+                        userId_category: { userId, category },
+                    },
+                    update: updateData,
+                    create: preferenceData,
                 });
-            })
-        );
-    });
-}
+
+                results.push(updated);
+            }
+
+            return results;
+        });
+    }
 
     public async getNotificationPreferenceByCategory(userId: string, category: string) {
         return prismaClient.notificationPreference.findUnique({

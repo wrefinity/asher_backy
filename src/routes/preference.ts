@@ -16,6 +16,7 @@ class PreferenceRoutes {
 
     private initializeRoutes(): void {
         this.router.get('/viewer-context', this.authenticateService.authorize, PreferencesController.getViewerContext);
+        this.router.get('/options', PreferencesController.getPreferenceOptions);
         this.router.get('/', this.authenticateService.authorize, PreferencesController.getPreferences);
         this.router.patch('/', this.authenticateService.authorize, PreferencesController.updatePreferences);
         this.router.patch('/privacy', this.authenticateService.authorize, PreferencesController.updatePrivacySettings);

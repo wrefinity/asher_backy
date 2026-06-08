@@ -179,19 +179,6 @@ class BillController {
         }
     }
 
-    getBillCatalog = async (req: CustomRequest, res: Response) => {
-        try {
-            const market = (req.query.market as string) || 'UK';
-            const { getBillCatalogForMarket } = await import('../../utils/billCatalog');
-            return res.status(200).json({
-                market: market.toUpperCase(),
-                categories: getBillCatalogForMarket(market),
-            });
-        } catch (error) {
-            errorService.handleError(error, res);
-        }
-    };
-
     seedBillCatalog = async (req: CustomRequest, res: Response) => {
         try {
             const market = (req.body?.market as string) || 'UK';

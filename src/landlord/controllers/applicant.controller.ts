@@ -1,5 +1,5 @@
 import { Response } from "express"
-import { logTypeStatus, InvitedResponse, YesNo, DocumentType, userRoles, application } from "@prisma/client"
+import { logTypeStatus, InvitedResponse, YesNo, DocumentType, userRoles, application, NotificationCategory } from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -13,6 +13,7 @@ import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
 import sendMail from "../../utils/emailer"
+import { sendPreferenceAwareMail } from "../../utils/sendPreferenceAwareMail";
 import {
     loadApplicationForTenantCopy,
     resolveLeaseDatesFromApplication,
@@ -228,6 +229,47 @@ class ApplicationControls {
                 });
             }
 
+            if (landlordId) {
+                try {
+                    const globalSettings =
+                        await LandlordSettingsService.getAllGlobalSettings(landlordId);
+                    if (globalSettings?.autoCreateRentBill) {
+                        const property = await prismaClient.properties.findUnique({
+                            where: { id: propertyId },
+                            select: { price: true, priceFrequency: true },
+                        });
+                        const rent = Number(property?.price ?? 0);
+                        if (rent > 0) {
+                            const { resolveFinancialRules, resolveDefaultRentDueDate } =
+                                await import('../../utils/globalSettings.util');
+                            const rules = resolveFinancialRules(
+                                globalSettings,
+                                rent,
+                                property?.priceFrequency
+                            );
+                            const billTemplateService = (
+                                await import('../../services/billTemplate.service')
+                            ).default;
+                            const rentBill = await billTemplateService.createInitialRentBill({
+                                landlordId,
+                                propertyId,
+                                tenantId: tenant.id,
+                                rent,
+                                dueDate: resolveDefaultRentDueDate(rules, leaseStartDate ?? new Date()),
+                            });
+                            const { serverInstance } = await import('../..');
+                            if (rentBill && serverInstance.paymentNotificationService) {
+                                await serverInstance.paymentNotificationService.sendNewBillNotification(
+                                    rentBill.id
+                                );
+                            }
+                        }
+                    }
+                } catch (billError) {
+                    console.error('Auto-create rent bill failed:', billError);
+                }
+            }
+
             return res.status(200).json({
                 message: "Tenant created successfully",
                 tenant,
@@ -389,7 +431,7 @@ class ApplicationControls {
             if (!rawInvite) return res.status(404).json({ message: 'Invite not found' });
 
             // Normalize the invite to include listing with hierarchy
-            const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite);
+            const normalizedInvite = await ViewingInviteNormalizer.normalize(rawInvite, req.user?.id);
 
             const landlordId = req.user?.landlords?.id;
             if (normalizedInvite?.application?.id) {
@@ -399,7 +441,7 @@ class ApplicationControls {
               const refreshedInvite = await ApplicationInvitesService.getInviteById(id);
               if (refreshedInvite) {
                 const refreshedNormalized =
-                  await ViewingInviteNormalizer.normalize(refreshedInvite);
+                  await ViewingInviteNormalizer.normalize(refreshedInvite, req.user?.id);
                 Object.assign(normalizedInvite, refreshedNormalized);
               }
             }
@@ -437,7 +479,7 @@ class ApplicationControls {
             }
 
             // Normalize all invites to include listing with hierarchy
-            const normalizedInvites = await ViewingInviteNormalizer.normalizeMany(rawInvites);
+            const normalizedInvites = await ViewingInviteNormalizer.normalizeMany(rawInvites, req.user?.id);
 
             return res.status(200).json({ invite: normalizedInvites });
         } catch (error) {
@@ -591,7 +633,7 @@ class ApplicationControls {
 
                         if (fullInvite) {
                             // Normalize the invite to get listing with hierarchy
-                            const normalizedInvite = await ViewingInviteNormalizer.normalize(fullInvite);
+                            const normalizedInvite = await ViewingInviteNormalizer.normalize(fullInvite, req.user?.id);
 
                             // Add the normalized listing to the feedback
                             return {
@@ -1099,11 +1141,14 @@ class ApplicationControls {
                 receiverId: tenantUser.id,
               }).catch(() => undefined);
 
-              sendMail(
-                tenantUser.email,
-                `Asher - ${agreement.application?.properties?.name} Agreement Counter-Signed`,
-                htmlContent
-              ).catch((emailError) => {
+              sendPreferenceAwareMail({
+                userId: tenantUser.id,
+                category: NotificationCategory.COMMUNICATION,
+                notificationType: 'agreement_counter_signed',
+                to: tenantUser.email,
+                subject: `Asher - ${agreement.application?.properties?.name} Agreement Counter-Signed`,
+                html: htmlContent,
+              }).catch((emailError) => {
                 logger.error('Failed to send landlord counter-sign email:', emailError);
               });
             }

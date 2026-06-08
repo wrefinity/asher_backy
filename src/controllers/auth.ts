@@ -26,6 +26,7 @@ import userServices from "../services/user.services";
 import logger from "../utils/loggers";
 import oauth2Client from "../configs/oauth.config";
 import { calculateAgeFromDob } from "../services/tenantOnboarding.service";
+import LoginSessionService from "../services/loginSession.service";
 
 class AuthControls {
     protected tokenService: Jtoken;
@@ -263,7 +264,24 @@ class AuthControls {
         return res.status(200).json(ApiResponse.success(tokens, "Token refreshed successfully"));
     });
 
-    private buildTenantLoginPayload = async (user: any, tenantCode: string) => {
+    private recordLoginSession = async (
+        user: { id: string; email?: string | null },
+        accessToken: string,
+        req: Request
+    ) => {
+        try {
+            await LoginSessionService.recordLogin({
+                userId: user.id,
+                accessToken,
+                req,
+                userEmail: user.email,
+            });
+        } catch (error) {
+            logger.error('Failed to record login session:', error);
+        }
+    };
+
+    private buildTenantLoginPayload = async (user: any, tenantCode: string, req?: Request) => {
         const activeTenant = await prismaClient.tenants.findUnique({
             where: { tenantCode },
             include: { property: { select: { id: true, name: true, address: true } } },
@@ -281,6 +299,10 @@ class AuthControls {
 
         const { password, ...userDetails } = user;
         const tenantsArray = Array.isArray(user.tenants) ? user.tenants : [];
+
+        if (req) {
+            await this.recordLoginSession(user, tokens.accessToken, req);
+        }
 
         return {
             token: tokens.accessToken,
@@ -333,7 +355,7 @@ class AuthControls {
 
         await UserServices.updateUserInfo(user.id, { password, isVerified: true });
         const refreshedUser = await UserServices.findUserByTenantCode(tenantCode);
-        const payload = await this.buildTenantLoginPayload(refreshedUser, tenantCode);
+        const payload = await this.buildTenantLoginPayload(refreshedUser, tenantCode, req);
 
         await logsServices.createLog({
             events: `Tenant ${tenantCode} completed mobile password setup`,
@@ -370,7 +392,7 @@ class AuthControls {
         }
 
         if (tenantCode && !email) {
-            const payload = await this.buildTenantLoginPayload(user, tenantCode);
+            const payload = await this.buildTenantLoginPayload(user, tenantCode, req);
             return res.status(200).json(
                 ApiResponse.success(payload, "Tenant logged in successfully")
             );
@@ -382,6 +404,8 @@ class AuthControls {
             role: String(user.role),
             email: String(user.email),
         });
+
+        await this.recordLoginSession(user, tokens.accessToken, req);
 
         await logsServices.createLog({
             events: `User ${user.email} logged in`,
@@ -476,6 +500,8 @@ class AuthControls {
                 email: String(user.email),
             });
 
+            await this.recordLoginSession(user, JWtokens.accessToken, req);
+
             const { password, ...userDetails } = user;
             return res.status(200).json(
                 ApiResponse.success(
@@ -499,6 +525,8 @@ class AuthControls {
         const userId = req.user?.id;
 
         if (userId) {
+            await LoginSessionService.revokeCurrentSession(req);
+
             // Update user's online status to offline
             await UserServices.updateOnlineStatus(userId, onlineStatus.offline);
 
@@ -513,6 +541,50 @@ class AuthControls {
         return res.status(200).json(
             ApiResponse.success({}, "User logged out successfully")
         );
+    });
+
+    listLoginSessions = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const userId = req.user?.id;
+        if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+        const authHeader = req.headers.authorization;
+        const token =
+            typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+                ? authHeader.slice(7).trim()
+                : null;
+
+        await LoginSessionService.ensureSessionFromRequest(req, {
+            touchActivity: true,
+        });
+
+        const sessions = await LoginSessionService.listSessions(userId, token);
+        return res.status(200).json(ApiResponse.success({ sessions }, 'Login sessions retrieved'));
+    });
+
+    revokeLoginSession = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const userId = req.user?.id;
+        const { sessionId } = req.params;
+        if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+        const revoked = await LoginSessionService.revokeSession(userId, sessionId);
+        if (!revoked) throw ApiError.notFound('Session not found');
+
+        return res.status(200).json(ApiResponse.success({}, 'Session revoked'));
+    });
+
+    revokeOtherLoginSessions = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const userId = req.user?.id;
+        if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+        const authHeader = req.headers.authorization;
+        const token =
+            typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+                ? authHeader.slice(7).trim()
+                : null;
+        if (!token) throw ApiError.validationError(['Missing bearer token']);
+
+        await LoginSessionService.revokeOtherSessions(userId, token);
+        return res.status(200).json(ApiResponse.success({}, 'Other sessions revoked'));
     });
 }
 

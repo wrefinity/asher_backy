@@ -1,7 +1,8 @@
 import { LandlordIdentityVerificationStatus } from '@prisma/client';
 import { prismaClient } from '..';
 import NotificationService from './notification.service';
-import sendMail from '../utils/emailer';
+import { sendPreferenceAwareMail } from '../utils/sendPreferenceAwareMail';
+import { NotificationCategory } from '@prisma/client';
 import logger from '../utils/loggers';
 import { isIdentityVerificationEnabled } from '../config/featureFlags';
 
@@ -272,7 +273,14 @@ async function notifyLandlordIdentityRejected(landlordId: string): Promise<void>
       <p>Leasing and application features remain locked until your identity is verified.</p>
     `;
 
-    await sendMail(user.email, title, html).catch(err => {
+    await sendPreferenceAwareMail({
+      userId: user.id,
+      category: NotificationCategory.COMMUNICATION,
+      notificationType: 'identity_rejected',
+      to: user.email,
+      subject: title,
+      html,
+    }).catch(err => {
       logger.warn('Identity rejection email failed', err);
     });
   } catch (error) {

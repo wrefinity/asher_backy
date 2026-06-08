@@ -325,9 +325,9 @@ class ApplicationInvitesService {
             normalizedRecentInvites,
             normalizedScheduledInvite,
         ] = await Promise.all([
-            ViewingInviteNormalizer.normalizeMany(recentInvites),
+            ViewingInviteNormalizer.normalizeMany(recentInvites, userId),
             scheduledInvite
-                ? ViewingInviteNormalizer.normalize(scheduledInvite)
+                ? ViewingInviteNormalizer.normalize(scheduledInvite, userId)
                 : Promise.resolve(null),
         ]);
 

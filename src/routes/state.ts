@@ -17,7 +17,7 @@ class StateRoutes {
         this.router.get('/:id', StateControls.getStateById);
         this.router.post('/', this.authenticateService.authorize, StateControls.createState);
         this.router.patch('/:id', StateControls.updateState);
-        this.router.delete('/:id', StateControls.deleteState);
+        this.router.delete('/:id', this.authenticateService.authorize, StateControls.deleteState);
     }
 
 }

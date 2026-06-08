@@ -10,6 +10,7 @@ export type JWTPayload = {
     tenantId?: string;
     tenant?: {
         id?: string;
+        landlordId?: string;
     };
     landlords?: {
         id?: string;

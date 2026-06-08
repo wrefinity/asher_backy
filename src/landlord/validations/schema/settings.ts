@@ -31,23 +31,40 @@ export const GlobalSettingsSchema = Joi.object({
   lateFeeGracePeriod: Joi.number().min(0).max(100).optional(),
   lateFeeFrequency: Joi.string().valid(...Object.values(FrequencyType)).optional(),
   
-  // Deposit Settings
-  depositPercentage: Joi.number().min(0).max(100).precision(2).optional(),
+  // Total deposit as % of one rent period: 100 + increase (e.g. 20% increase → 120).
+  depositPercentage: Joi.number().min(100).max(600).precision(2).optional(),
   
   // Refund Settings
   refundTimeframe: Joi.string().valid(...Object.values(FrequencyType)).optional(),
   refundPolicy: Joi.string().valid(...Object.values(RefundPolicyType)).optional(),
+  refundPartialPercentage: Joi.number().min(1).max(100).precision(2).optional(),
   
   // Application Fee Settings
   applicationFeePercentage: Joi.number().min(0).max(100).precision(2).optional(),
   
   // Notification Settings
   notificationEnabled: Joi.boolean().default(false),
-  /** % of billing period between rent/bill reminders. */
+  /** % of billing period before rent is due. */
   notificationFrequency: Joi.number().min(0).max(100).optional(),
+  billReminderLeadPercent: Joi.number().min(0).max(100).optional(),
   reminderMethods: Joi.array().items(
     Joi.string().valid(...Object.values(ReminderMethodType))
   ).default([]),
+
+  leaseRenewalRemindersEnabled: Joi.boolean().default(false),
+  leaseRenewalReminderFirst: Joi.number().min(1).max(100).optional(),
+  leaseRenewalReminderSecond: Joi.number().min(1).max(100).optional(),
+  leaseRenewalReminderFinal: Joi.number().min(1).max(100).optional(),
+
+  holdingDepositMaxWeeks: Joi.number().min(0).max(52).precision(2).optional(),
+  rentIncreaseNoticeDays: Joi.number().integer().min(0).max(365).optional(),
+  defaultRentCollectionFrequency: Joi.string().valid(...Object.values(FrequencyType)).optional(),
+  lateFeeMaxPercent: Joi.number().min(0).max(100).precision(2).optional(),
+
+  autoCreateRentBill: Joi.boolean().default(false),
+  defaultRentDueDay: Joi.number().integer().min(1).max(28).optional(),
+  depositReturnTimeframe: Joi.string().valid(...Object.values(FrequencyType)).optional(),
+  inspectionNoticeHours: Joi.number().integer().min(1).max(168).optional(),
 
   /** Minimum years of address history on tenant applications (current + previous). */
   minimumTenancyHistoryYears: Joi.number().integer().min(0).max(20).optional(),

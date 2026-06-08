@@ -8,6 +8,7 @@ import applicantService from "../webuser/services/applicantService";
 import { ApplicationSaveState, ApplicationStatus, GuarantorNominationStatus, NotificationCategory } from ".prisma/client";
 import NotificationService from "./notification.service";
 import { sendMail } from "../utils/emailer";
+import { sendPreferenceAwareMail } from "../utils/sendPreferenceAwareMail";
 
 function joinNameParts(...parts: Array<string | null | undefined>): string {
   return parts
@@ -354,11 +355,14 @@ class GuarantorService {
         NotificationCategory.COMMUNICATION
       );
       if (application.createdBy?.email) {
-        await sendMail(
-          application.createdBy.email,
-          "Guarantor declined tenant nomination",
-          `<p>${message}</p>`
-        );
+        await sendPreferenceAwareMail({
+          userId: landlordUserId,
+          category: NotificationCategory.COMMUNICATION,
+          notificationType: 'guarantor_declined',
+          to: application.createdBy.email,
+          subject: 'Guarantor declined tenant nomination',
+          html: `<p>${message}</p>`,
+        });
       }
     }
 

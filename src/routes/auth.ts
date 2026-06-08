@@ -23,6 +23,9 @@ class AuthRoutes {
         this.router.post("/validate-tenant", validateBody(validateTenantSchema), AuthController.validateTenant.bind(AuthController));
         this.router.post("/set-password", validateBody(setTenantPasswordSchema), AuthController.setTenantPassword.bind(AuthController));
         this.router.post("/logout", this.authenticateService.authorize, AuthController.logout.bind(AuthController));
+        this.router.get("/sessions", this.authenticateService.authorize, AuthController.listLoginSessions.bind(AuthController));
+        this.router.delete("/sessions/others", this.authenticateService.authorize, AuthController.revokeOtherLoginSessions.bind(AuthController));
+        this.router.delete("/sessions/:sessionId", this.authenticateService.authorize, AuthController.revokeLoginSession.bind(AuthController));
         this.router.post("/send-token", AuthController.sendToken.bind(AuthController));
         this.router.post("/verify-otp/token", AuthController.genericConfirmation.bind(AuthController));
         this.router.post("/verify", validateBody(ConfirmationSchema), AuthController.confirmation.bind(AuthController));

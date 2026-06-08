@@ -1,5 +1,4 @@
 import type { CustomRequest } from './types';
-import type { ViewerCurrencyContext } from './currencyContext';
 import {
   getClientIpFromRequest,
   resolveViewerCurrency,
@@ -7,8 +6,20 @@ import {
 import type { ListedPropertySearchFilters } from './listedPropertySearch';
 import {
   getCountryNameFromCode,
+  getCurrencyForCountry,
   getHomeCountryForCurrency,
 } from './helpers';
+import { PLATFORM_DEFAULT_CURRENCY } from '../secrets';
+
+/** Resolved context for AsherWebUser listing browse (guest + tenant). Not landlord dashboard prefs. */
+export type ListingViewerContext = {
+  marketCountry: string;
+  /** Native currency for the active market (metadata for UI — listing prices stay in property currency). */
+  displayCurrency: string;
+  country: string;
+  countryCode: string | null;
+  source: string;
+};
 
 /** Canonical market → DB `properties.country` values we accept. */
 export const LISTING_MARKET_COUNTRY_ALIASES: Record<string, string[]> = {
@@ -41,7 +52,31 @@ export function canonicalizeListingMarketCountry(raw: string): string {
   return normalized;
 }
 
-export function resolveViewerMarketCountry(viewer: ViewerCurrencyContext): string {
+export function displayCurrencyForListingMarket(marketCountry: string): string {
+  const canonical = canonicalizeListingMarketCountry(marketCountry);
+  return (
+    getCurrencyForCountry(canonical) ||
+    PLATFORM_DEFAULT_CURRENCY ||
+    'NGN'
+  );
+}
+
+function countryCodeForMarket(marketCountry: string): string | null {
+  const canonical = canonicalizeListingMarketCountry(marketCountry);
+  const map: Record<string, string> = {
+    'United Kingdom': 'GB',
+    Nigeria: 'NG',
+    'United States': 'US',
+    Ireland: 'IE',
+  };
+  return map[canonical] || null;
+}
+
+export function resolveViewerMarketCountry(viewer: {
+  country?: string | null;
+  countryCode?: string | null;
+  currency?: string | null;
+}): string {
   if (viewer.country?.trim()) {
     return canonicalizeListingMarketCountry(viewer.country);
   }
@@ -93,28 +128,56 @@ export function applyListingMarketGateToFilters(
   return next;
 }
 
+/**
+ * Web listing browse SOT — geo / explicit market query only.
+ * Does not read landlord account preferences (AsherLandlordFE settings).
+ * Listing prices are returned in each property's native currency (no FX on browse).
+ */
 export async function resolveViewerMarketFromRequest(
   req: CustomRequest,
   query: Record<string, unknown> = req.query as Record<string, unknown>
 ) {
   const ipAddress = getClientIpFromRequest(req);
-  const viewerContext = await resolveViewerCurrency({
-    userId: req.user?.id,
-    currency: query.currency as string | undefined,
-    displayCurrency: query.displayCurrency as string | undefined,
-    countryCode: query.countryCode as string | undefined,
-    country: query.country as string | undefined,
+
+  const marketHint =
+    (typeof query.marketCountry === 'string' && query.marketCountry.trim()) ||
+    (typeof query.market === 'string' && query.market.trim()) ||
+    (typeof query.country === 'string' && query.country.trim()) ||
+    undefined;
+
+  const countryCodeHint =
+    typeof query.countryCode === 'string' ? query.countryCode : undefined;
+
+  // Never pass userId, currency, or displayCurrency — those are landlord/dashboard concerns.
+  const geoContext = await resolveViewerCurrency({
+    country: marketHint,
+    countryCode: countryCodeHint,
     ipAddress,
   });
 
-  const marketCountry = resolveViewerMarketCountry(viewerContext);
+  const marketCountry = resolveViewerMarketCountry({
+    country: marketHint || geoContext.country,
+    countryCode: countryCodeHint || geoContext.countryCode,
+    currency: geoContext.currency,
+  });
+
+  const displayCurrency = displayCurrencyForListingMarket(marketCountry);
+  const countryCode =
+    countryCodeHint?.trim().toUpperCase() ||
+    geoContext.countryCode ||
+    countryCodeForMarket(marketCountry);
+
+  const viewerContext: ListingViewerContext = {
+    marketCountry,
+    displayCurrency,
+    country: marketCountry,
+    countryCode,
+    source: marketHint ? 'query' : geoContext.source,
+  };
 
   return {
     ipAddress,
-    viewerContext: {
-      ...viewerContext,
-      country: viewerContext.country || marketCountry,
-    },
+    viewerContext,
     marketCountry,
   };
 }

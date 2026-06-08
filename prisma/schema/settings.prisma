@@ -11,12 +11,32 @@ model Settings {
   lateFeeGracePeriod       Int?
   lateFeePercentage        Float?
   notificationEnabled      Boolean              @default(false)
+  // % of billing period before rent is due — reminder lead time.
   notificationFrequency    Int?
+  // % of billing period before non-rent bills are due; falls back to notificationFrequency.
+  billReminderLeadPercent  Int?
   refundPolicy             RefundPolicyType?
   refundTimeframe          FrequencyType?
+  // When refundPolicy is PARTIAL — % of application fee returned (0–100).
+  refundPartialPercentage  Float?
   reminderMethods          ReminderMethodType[]
   // Minimum years of address history required on tenant applications (current + previous).
   minimumTenancyHistoryYears Int?
+  // Lease renewal reminders (% of lease term remaining at each stage)
+  leaseRenewalRemindersEnabled Boolean          @default(false)
+  leaseRenewalReminderFirst    Int?
+  leaseRenewalReminderSecond   Int?
+  leaseRenewalReminderFinal    Int?
+  // Market / compliance (P1)
+  holdingDepositMaxWeeks       Float?
+  rentIncreaseNoticeDays       Int?
+  defaultRentCollectionFrequency FrequencyType?
+  lateFeeMaxPercent            Float?
+  // Operational defaults (P2)
+  autoCreateRentBill           Boolean          @default(false)
+  defaultRentDueDay            Int?
+  depositReturnTimeframe       FrequencyType?
+  inspectionNoticeHours      Int?
   landlord                 landlords?           @relation(fields: [landlordId], references: [id])
 }
 

@@ -1,6 +1,7 @@
 import { NotificationCategory } from ".prisma/client";
 import NotificationService from "../services/notification.service";
 import { sendMail } from "./emailer";
+import { sendPreferenceAwareMail } from "./sendPreferenceAwareMail";
 
 export function joinReferenceNameParts(
   ...parts: Array<string | null | undefined>
@@ -61,7 +62,14 @@ export async function notifyReferenceDeclined(params: {
       NotificationCategory.COMMUNICATION
     );
     if (propertyLandlordEmail) {
-      await sendMail(propertyLandlordEmail, title, `<p>${message}</p>`);
+      await sendPreferenceAwareMail({
+        userId: landlordUserId,
+        category: NotificationCategory.COMMUNICATION,
+        notificationType: 'reference_declined',
+        to: propertyLandlordEmail,
+        subject: title,
+        html: `<p>${message}</p>`,
+      });
     }
   }
 }

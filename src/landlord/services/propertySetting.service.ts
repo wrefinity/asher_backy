@@ -3,6 +3,8 @@ import { prismaClient } from "../..";
 import { IPropApartmentSettings, IGlobalSetting } from '../validations/interfaces/propsSettings';
 import {
   mapToPropertyLateFeeFrequency,
+  normalizeReminderMethods,
+  reminderMethodsNeedMigration,
   resolveFinancialRules,
 } from '../../utils/globalSettings.util';
 
@@ -51,10 +53,7 @@ class LandlordSettingsService {
         const data = { ...updateData };
 
         if (data.reminderMethods) {
-            const validMethods = Object.values(ReminderMethodType);
-            data.reminderMethods = data.reminderMethods
-                .filter((method: string) => validMethods.includes(method as ReminderMethodType))
-                .map(method => method.toUpperCase() as ReminderMethodType);
+            data.reminderMethods = normalizeReminderMethods(data.reminderMethods);
         }
 
         const existingSettings = await prismaClient.settings.findFirst({
@@ -88,15 +87,33 @@ class LandlordSettingsService {
         return await prismaClient.settings.create({ data });
     }
 
+    private async migrateReminderMethodsIfNeeded(
+        settings: IGlobalSetting
+    ): Promise<IGlobalSetting> {
+        if (!reminderMethodsNeedMigration(settings.reminderMethods)) {
+            return settings;
+        }
+
+        const reminderMethods = normalizeReminderMethods(settings.reminderMethods);
+        return prismaClient.settings.update({
+            where: { id: settings.id },
+            data: { reminderMethods },
+        });
+    }
+
     getGlobalSettingById = async (id: string): Promise<IGlobalSetting | null> => {
-        return prismaClient.settings.findUnique({ where: { id } });
+        const settings = await prismaClient.settings.findUnique({ where: { id } });
+        if (!settings) return null;
+        return this.migrateReminderMethodsIfNeeded(settings);
     }
 
     getAllGlobalSettings = async (landlordId: string): Promise<IGlobalSetting | null> => {
         if (!landlordId) return null;
-        return prismaClient.settings.findFirst({
+        const settings = await prismaClient.settings.findFirst({
             where: { landlordId, isDeleted: false },
         });
+        if (!settings) return null;
+        return this.migrateReminderMethodsIfNeeded(settings);
     }
 
     updateGlobalSetting = async (id: string, data: Partial<IGlobalSetting>): Promise<IGlobalSetting | null> => {

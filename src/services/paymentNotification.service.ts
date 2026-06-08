@@ -1,9 +1,14 @@
 import { Server as IOServer } from "socket.io";
 import { prismaClient } from "..";
-import { PriceFrequency, TransactionType } from "@prisma/client";
+import { Currency, PriceFrequency, ReminderMethodType, TransactionType } from "@prisma/client";
 import loggers from "../utils/loggers";
 import LandlordSettingsService from "../landlord/services/propertySetting.service";
-import { resolveFinancialRules } from "../utils/globalSettings.util";
+import {
+  normalizeReminderMethods,
+  resolveFinancialRules,
+} from "../utils/globalSettings.util";
+import sendMail from "../utils/emailer";
+import type { IGlobalSetting } from "../landlord/validations/interfaces/propsSettings";
 
 export interface PaymentNotification {
   type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder' | 'bill_created';
@@ -13,11 +18,131 @@ export interface PaymentNotification {
   timestamp: Date;
 }
 
+type BillWithRelations = {
+  id: string;
+  billName: string;
+  amount: { toNumber?: () => number } | number;
+  dueDate: Date;
+  landlordId?: string | null;
+  tenantId?: string | null;
+  property?: { name?: string | null; currency?: Currency | null } | null;
+  tenants?: { user?: { id: string; email?: string | null } | null } | null;
+  landlord?: { user?: { id: string } | null } | null;
+};
+
 export class PaymentNotificationService {
   private io: IOServer;
 
   constructor(io: IOServer) {
     this.io = io;
+  }
+
+  private formatAmount(
+    amount: number | { toNumber?: () => number },
+    currency?: Currency | string | null
+  ): string {
+    const value = typeof amount === "number" ? amount : Number(amount);
+    const code = currency ? String(currency) : "NGN";
+    return `${code} ${value.toLocaleString("en-GB", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  private resolveBillCurrency(bill: BillWithRelations): string {
+    return bill.property?.currency ? String(bill.property.currency) : "NGN";
+  }
+
+  private resolveReminderMethods(
+    settings?: Pick<IGlobalSetting, "reminderMethods"> | null
+  ): ReminderMethodType[] {
+    const normalized = normalizeReminderMethods(settings?.reminderMethods);
+    if (normalized.length > 0) {
+      return normalized;
+    }
+
+    return [
+      ReminderMethodType.IN_APP,
+      ReminderMethodType.PUSH,
+      ReminderMethodType.EMAIL,
+    ];
+  }
+
+  private shouldUseMethod(
+    methods: ReminderMethodType[],
+    method: ReminderMethodType
+  ): boolean {
+    return methods.includes(method);
+  }
+
+  private wantsEmail(methods: ReminderMethodType[]): boolean {
+    return (
+      this.shouldUseMethod(methods, ReminderMethodType.EMAIL) ||
+      this.shouldUseMethod(methods, ReminderMethodType.SMS)
+    );
+  }
+
+  private async deliverBillNotification(
+    bill: BillWithRelations,
+    notification: PaymentNotification,
+    settings?: Pick<IGlobalSetting, "reminderMethods"> | null,
+    recipient?: { id: string; email?: string | null }
+  ): Promise<void> {
+    const tenantUser = recipient ?? bill.tenants?.user;
+    if (!tenantUser?.id) return;
+
+    const methods = this.resolveReminderMethods(settings);
+    const landlordUserId = bill.landlord?.user?.id ?? null;
+    const pushRoute =
+      (notification.data?.route as string | undefined) ?? "/bills/viewAllBills";
+
+    if (this.shouldUseMethod(methods, ReminderMethodType.IN_APP)) {
+      this.io.to(`user:${tenantUser.id}`).emit("payment_notification", notification);
+
+      try {
+        const NotificationService = (await import("./notification.service")).default;
+        await NotificationService.createNotification(
+          {
+            sourceId: landlordUserId,
+            destId: tenantUser.id,
+            title: notification.title,
+            message: notification.message,
+          },
+          "ONLINE_PAYMENTS"
+        );
+      } catch (persistError) {
+        loggers.error("Failed to persist bill notification:", persistError);
+      }
+    }
+
+    if (this.shouldUseMethod(methods, ReminderMethodType.PUSH)) {
+      try {
+        const expoPushService = (await import("./expoPush.service")).default;
+        await expoPushService.sendToUser(tenantUser.id, {
+          title: notification.title,
+          body: notification.message,
+          data: {
+            type: notification.type,
+            billId: bill.id,
+            route: pushRoute,
+          },
+        });
+      } catch (pushError) {
+        loggers.error("Failed to send bill push notification:", pushError);
+      }
+    }
+
+    if (this.wantsEmail(methods) && tenantUser.email) {
+      try {
+        await sendMail(
+          tenantUser.email,
+          notification.title,
+          `<p>${notification.message}</p>`
+        );
+      } catch (emailError) {
+        loggers.error("Failed to send bill email notification:", emailError);
+      }
+    }
   }
 
   /**
@@ -27,13 +152,23 @@ export class PaymentNotificationService {
     userId: string, 
     billId: string, 
     amount: number, 
-    billName: string
+    billName: string,
+    currency?: string | null
   ): Promise<void> {
     try {
+      const bill = await prismaClient.billsSubCategory.findUnique({
+        where: { id: billId },
+        include: {
+          property: { select: { currency: true } },
+          landlord: { include: { user: true } },
+        },
+      });
+      const amountLabel = this.formatAmount(amount, currency ?? bill?.property?.currency);
+
       const notification: PaymentNotification = {
         type: 'payment_success',
         title: 'Payment Successful',
-        message: `Your payment of ${amount} NGN for ${billName} has been processed successfully.`,
+        message: `Your payment of ${amountLabel} for ${billName} has been processed successfully.`,
         data: {
           billId,
           amount,
@@ -46,17 +181,11 @@ export class PaymentNotificationService {
       // Send to tenant's socket
       this.io.to(`user:${userId}`).emit('payment_notification', notification);
       
-      // Also send to landlord if they're online
-      const bill = await prismaClient.billsSubCategory.findUnique({
-        where: { id: billId },
-        include: { landlord: { include: { user: true } } }
-      });
-
       if (bill?.landlord?.user) {
         const landlordNotification: PaymentNotification = {
           type: 'payment_success',
           title: 'Payment Received',
-          message: `Payment of ${amount} NGN received for ${billName} from tenant.`,
+          message: `Payment of ${amountLabel} received for ${billName} from tenant.`,
           data: {
             billId,
             amount,
@@ -84,13 +213,20 @@ export class PaymentNotificationService {
     billId: string, 
     amount: number, 
     billName: string, 
-    reason: string
+    reason: string,
+    currency?: string | null
   ): Promise<void> {
     try {
+      const bill = await prismaClient.billsSubCategory.findUnique({
+        where: { id: billId },
+        include: { property: { select: { currency: true } } },
+      });
+      const amountLabel = this.formatAmount(amount, currency ?? bill?.property?.currency);
+
       const notification: PaymentNotification = {
         type: 'payment_failed',
         title: 'Payment Failed',
-        message: `Your payment of ${amount} NGN for ${billName} failed. Reason: ${reason}`,
+        message: `Your payment of ${amountLabel} for ${billName} failed. Reason: ${reason}`,
         data: {
           billId,
           amount,
@@ -111,27 +247,46 @@ export class PaymentNotificationService {
   /**
    * Send bill due reminder notification
    */
-  async sendBillDueReminder(billId: string): Promise<void> {
+  async sendBillDueReminder(
+    billId: string,
+    settings?: Pick<IGlobalSetting, "reminderMethods"> | null
+  ): Promise<void> {
     try {
       const bill = await prismaClient.billsSubCategory.findUnique({
         where: { id: billId },
-        include: { 
-          tenants: { include: { user: true } },
-          property: true 
-        }
+        include: {
+          tenants: {
+            include: {
+              user: { select: { id: true, email: true } },
+            },
+          },
+          property: { select: { name: true, currency: true } },
+          landlord: { include: { user: true } },
+        },
       });
 
       if (!bill || !bill.tenants?.user) {
-        console.log('❌ Bill or tenant not found for reminder');
+        loggers.warn(`Bill or tenant not found for reminder: ${billId}`);
         return;
       }
 
-      const daysUntilDue = Math.ceil((new Date(bill.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      
+      const resolvedSettings =
+        settings ??
+        (bill.landlordId
+          ? await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
+          : null);
+
+      const daysUntilDue = Math.ceil(
+        (new Date(bill.dueDate).getTime() - new Date().getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+      const currency = this.resolveBillCurrency(bill);
+      const amountLabel = this.formatAmount(bill.amount, currency);
+
       const notification: PaymentNotification = {
         type: 'bill_due',
         title: 'Bill Due Soon',
-        message: `Your ${bill.billName} bill of ${bill.amount} NGN is due in ${daysUntilDue} days.`,
+        message: `Your ${bill.billName} bill of ${amountLabel} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`,
         data: {
           billId,
           billName: bill.billName,
@@ -139,15 +294,17 @@ export class PaymentNotificationService {
           dueDate: bill.dueDate,
           daysUntilDue,
           propertyName: bill.property?.name,
-          timestamp: new Date()
+          currency,
+          timestamp: new Date(),
+          route: '/bills/viewAllBills',
         },
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
-      this.io.to(`user:${bill.tenants.user.id}`).emit('payment_notification', notification);
-      console.log(`📅 Bill due reminder sent to user ${bill.tenants.user.id}`);
+      await this.deliverBillNotification(bill, notification, resolvedSettings);
+      loggers.info(`Bill due reminder sent to user ${bill.tenants.user.id}`);
     } catch (error) {
-      console.error('❌ Error sending bill due reminder:', error);
+      loggers.error('Error sending bill due reminder:', error);
     }
   }
 
@@ -159,24 +316,33 @@ export class PaymentNotificationService {
       const bill = await prismaClient.billsSubCategory.findUnique({
         where: { id: billId },
         include: { 
-          tenants: { include: { user: true } },
+          tenants: {
+            include: {
+              user: { select: { id: true, email: true } },
+            },
+          },
           landlord: { include: { user: true } },
-          property: true 
+          property: { select: { name: true, currency: true } },
         }
       });
 
       if (!bill || !bill.tenants?.user) {
-        console.log('❌ Bill or tenant not found for overdue notification');
+        loggers.warn(`Bill or tenant not found for overdue notification: ${billId}`);
         return;
       }
 
+      const settings = bill.landlordId
+        ? await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
+        : null;
+      const currency = this.resolveBillCurrency(bill);
+      const amountLabel = this.formatAmount(bill.amount, currency);
       const daysOverdue = Math.ceil((new Date().getTime() - new Date(bill.dueDate).getTime()) / (1000 * 60 * 60 * 24));
 
       // Notify tenant
       const tenantNotification: PaymentNotification = {
         type: 'bill_overdue',
         title: 'Bill Overdue',
-        message: `Your ${bill.billName} bill of ${bill.amount} NGN is overdue by ${daysOverdue} days.`,
+        message: `Your ${bill.billName} bill of ${amountLabel} is overdue by ${daysOverdue} day${daysOverdue === 1 ? '' : 's'}.`,
         data: {
           billId,
           billName: bill.billName,
@@ -189,14 +355,14 @@ export class PaymentNotificationService {
         timestamp: new Date()
       };
 
-      this.io.to(`user:${bill.tenants.user.id}`).emit('payment_notification', tenantNotification);
+      await this.deliverBillNotification(bill, tenantNotification, settings);
 
       // Notify landlord
       if (bill.landlord?.user) {
         const landlordNotification: PaymentNotification = {
           type: 'bill_overdue',
           title: 'Tenant Bill Overdue',
-          message: `Tenant's ${bill.billName} bill of ${bill.amount} NGN is overdue by ${daysOverdue} days.`,
+          message: `Tenant's ${bill.billName} bill of ${amountLabel} is overdue by ${daysOverdue} day${daysOverdue === 1 ? '' : 's'}.`,
           data: {
             billId,
             billName: bill.billName,
@@ -213,9 +379,9 @@ export class PaymentNotificationService {
         this.io.to(`user:${bill.landlord.user.id}`).emit('payment_notification', landlordNotification);
       }
 
-      console.log(`🚨 Bill overdue notification sent to tenant ${bill.tenants.user.id} and landlord`);
+      loggers.info(`Bill overdue notification sent to tenant ${bill.tenants.user.id} and landlord`);
     } catch (error) {
-      console.error('❌ Error sending bill overdue notification:', error);
+      loggers.error('Error sending bill overdue notification:', error);
     }
   }
 
@@ -227,8 +393,12 @@ export class PaymentNotificationService {
       const bill = await prismaClient.billsSubCategory.findUnique({
         where: { id: billId },
         include: {
-          tenants: { include: { user: true } },
-          property: true,
+          tenants: {
+            include: {
+              user: { select: { id: true, email: true } },
+            },
+          },
+          property: { select: { name: true, currency: true } },
           landlord: { include: { user: true } },
         },
       });
@@ -255,59 +425,52 @@ export class PaymentNotificationService {
         landlordTenants.forEach((t) => userIds.add(t.userId));
       }
 
+      if (userIds.size === 0) {
+        return;
+      }
+
+      const settings = bill.landlordId
+        ? await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
+        : null;
+      const currency = this.resolveBillCurrency(bill);
+      const amountLabel = this.formatAmount(bill.amount, currency);
       const dueLabel = new Date(bill.dueDate).toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
       });
 
+      const users = await prismaClient.users.findMany({
+        where: { id: { in: Array.from(userIds) } },
+        select: { id: true, email: true },
+      });
+      const userById = new Map(users.map((user) => [user.id, user]));
+
       for (const userId of userIds) {
+        const user = userById.get(userId);
         const notification: PaymentNotification = {
           type: 'bill_created',
           title: 'New Bill Added',
-          message: `A new bill "${bill.billName}" of ${bill.amount} is due on ${dueLabel}.`,
+          message: `A new bill "${bill.billName}" of ${amountLabel} is due on ${dueLabel}.`,
           data: {
             billId: bill.id,
             billName: bill.billName,
             amount: bill.amount,
             dueDate: bill.dueDate,
             propertyName: bill.property?.name,
+            currency,
             timestamp: new Date(),
+            route: '/bills/viewAllBills',
           },
           timestamp: new Date(),
         };
 
-        this.io.to(`user:${userId}`).emit('payment_notification', notification);
-
-        try {
-          const NotificationService = (await import('./notification.service')).default;
-          await NotificationService.createNotification(
-            {
-              sourceId: bill.landlord?.user?.id ?? null,
-              destId: userId,
-              title: notification.title,
-              message: notification.message,
-            },
-            'ONLINE_PAYMENTS'
-          );
-        } catch (persistError) {
-          loggers.error('Failed to persist bill_created notification:', persistError);
-        }
-
-        try {
-          const expoPushService = (await import('./expoPush.service')).default;
-          await expoPushService.sendToUser(userId, {
-            title: notification.title,
-            body: notification.message,
-            data: {
-              type: 'bill_created',
-              billId: bill.id,
-              route: '/bills/viewAllBills',
-            },
-          });
-        } catch (pushError) {
-          loggers.error('Failed to send bill_created push notification:', pushError);
-        }
+        await this.deliverBillNotification(
+          bill,
+          notification,
+          settings,
+          user ?? { id: userId }
+        );
       }
 
       loggers.info(`New bill notification sent for bill ${billId} to ${userIds.size} tenant(s)`);
@@ -328,8 +491,12 @@ export class PaymentNotificationService {
       const bill = await prismaClient.billsSubCategory.findUnique({
         where: { id: billId },
         include: {
-          tenants: { include: { user: true } },
-          property: true,
+          tenants: {
+            include: {
+              user: { select: { id: true, email: true } },
+            },
+          },
+          property: { select: { name: true, currency: true } },
           landlord: { include: { user: true } },
         },
       });
@@ -345,58 +512,34 @@ export class PaymentNotificationService {
         year: 'numeric',
       });
 
-      const userId = bill.tenants.user.id;
+      const currency = this.resolveBillCurrency(bill);
+      const amountLabel = this.formatAmount(bill.amount, currency);
+      const settings = bill.landlordId
+        ? await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
+        : null;
+
       const notification: PaymentNotification = {
         type: 'payment_reminder',
         title: 'Payment Reminder',
         message:
           reminderMessage ||
-          `Please pay your "${bill.billName}" bill of ${bill.amount} due on ${dueLabel}.`,
+          `Please pay your "${bill.billName}" bill of ${amountLabel} due on ${dueLabel}.`,
         data: {
           billId,
           billName: bill.billName,
           amount: bill.amount,
           dueDate: bill.dueDate,
           propertyName: bill.property?.name,
+          currency,
           timestamp: new Date(),
           route: '/bills/viewAllBills',
         },
         timestamp: new Date(),
       };
 
-      this.io.to(`user:${userId}`).emit('payment_notification', notification);
+      await this.deliverBillNotification(bill, notification, settings);
 
-      try {
-        const NotificationService = (await import('./notification.service')).default;
-        await NotificationService.createNotification(
-          {
-            sourceId: landlordUserId ?? bill.landlord?.user?.id ?? null,
-            destId: userId,
-            title: notification.title,
-            message: notification.message,
-          },
-          'ONLINE_PAYMENTS'
-        );
-      } catch (persistError) {
-        loggers.error('Failed to persist payment_reminder notification:', persistError);
-      }
-
-      try {
-        const expoPushService = (await import('./expoPush.service')).default;
-        await expoPushService.sendToUser(userId, {
-          title: notification.title,
-          body: notification.message,
-          data: {
-            type: 'payment_reminder',
-            billId: bill.id,
-            route: '/bills/viewAllBills',
-          },
-        });
-      } catch (pushError) {
-        loggers.error('Failed to send payment_reminder push notification:', pushError);
-      }
-
-      loggers.info(`Payment reminder sent to user ${userId} for bill ${billId}`);
+      loggers.info(`Payment reminder sent to user ${bill.tenants.user.id} for bill ${billId}`);
     } catch (error) {
       loggers.error('Error sending payment reminder notification:', error);
     }
@@ -440,14 +583,19 @@ export class PaymentNotificationService {
         const rentBase = Number(bill.property?.price ?? bill.amount);
         const rules = resolveFinancialRules(settings, rentBase, frequency);
 
-        if (rules.reminderIntervalDays <= 0) continue;
+        const { isRentBillRecord } = await import('../utils/globalSettings.util');
+        const isRent = isRentBillRecord(bill);
+        const leadDays = isRent
+          ? rules.rentReminderIntervalDays
+          : rules.billReminderIntervalDays;
+        if (leadDays <= 0) continue;
 
         const daysUntilDue = Math.ceil(
           (new Date(bill.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        if (daysUntilDue >= 0 && daysUntilDue <= rules.reminderIntervalDays) {
-          await this.sendBillDueReminder(bill.id);
+        if (daysUntilDue >= 0 && daysUntilDue <= leadDays) {
+          await this.sendBillDueReminder(bill.id, settings ?? undefined);
           sent += 1;
         }
       }
@@ -493,12 +641,18 @@ export class PaymentNotificationService {
   /**
    * Send wallet balance update notification
    */
-  async sendWalletBalanceUpdate(userId: string, newBalance: number, transactionType: TransactionType): Promise<void> {
+  async sendWalletBalanceUpdate(
+    userId: string,
+    newBalance: number,
+    transactionType: TransactionType,
+    currency?: string | null
+  ): Promise<void> {
     try {
+      const balanceLabel = this.formatAmount(newBalance, currency);
       const notification: PaymentNotification = {
         type: 'payment_success',
         title: 'Wallet Updated',
-        message: `Your wallet balance has been updated to ${newBalance} NGN.`,
+        message: `Your wallet balance has been updated to ${balanceLabel}.`,
         data: {
           newBalance,
           transactionType,
