@@ -1515,3 +1515,4 @@
 {"level":"info","message":"Email sent successfully. ID: 699ea725-12a6-4c7b-99de-8a2e1b7324ac","service":"api-service","timestamp":"2026-06-08 15:46:04"}
 {"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 15:46:04"}
 {"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 15:46:04"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 16:27:04"}

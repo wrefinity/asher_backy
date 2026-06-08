@@ -198,8 +198,8 @@ class MaintenanceControls {
         try {
             const { maintenanceId } = req.params;
             const maintenance = await MaintenanceService.deleteMaintenance(maintenanceId);
-            if (!maintenance) return res.status(500).json({ message: "Ooop try again, maintenance not deleted" })
-            return res.status(500).json({ message: "maintenance  deleted", maintenance })
+            if (!maintenance) return res.status(404).json({ message: "Maintenance request not found" })
+            return res.status(200).json({ message: "Maintenance request deleted", maintenance })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
