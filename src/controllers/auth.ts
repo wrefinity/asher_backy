@@ -323,7 +323,12 @@ class AuthControls {
         const user = await UserServices.findUserByTenantCode(tenantCode);
         if (!user) throw ApiError.notFound("Invalid tenant code");
 
-        const tenant = user.tenants?.find((t: any) => t.tenantCode === tenantCode);
+        const normalizedCode = tenantCode.trim();
+        const tenant = user.tenants?.find(
+            (t: any) =>
+                t.tenantCode?.toLowerCase() === normalizedCode.toLowerCase() ||
+                t.tenantId === normalizedCode
+        );
         if (!tenant) throw ApiError.notFound("Tenant record not found");
 
         const property = tenant.property;

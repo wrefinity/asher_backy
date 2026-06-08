@@ -85,10 +85,18 @@ class UserService {
     }
 
     findUserByTenantCode = async (tenantCode: string) => {
+        const normalized = tenantCode?.trim();
+        if (!normalized) return null;
+
         return await prismaClient.users.findFirst({
             where: {
                 tenants: {
-                    some: { tenantCode },
+                    some: {
+                        OR: [
+                            { tenantCode: { equals: normalized, mode: "insensitive" } },
+                            { tenantId: normalized },
+                        ],
+                    },
                 },
             },
             include: {
