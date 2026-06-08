@@ -1501,3 +1501,17 @@
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 14:45:20"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 14:45:56"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 14:45:58"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 15:39:44"}
+{"level":"info","message":"Email sent successfully. ID: b9d722cd-32c4-4473-8919-ddec41480c23","service":"api-service","timestamp":"2026-06-08 15:39:49"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 15:39:53"}
+{"level":"info","message":"Email sent successfully. ID: ce69ed9d-c80a-4b27-96e2-a39f05c58a6a","service":"api-service","timestamp":"2026-06-08 15:39:57"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 15:40:06"}
+{"level":"info","message":"Email sent successfully. ID: d72c5bc0-c3f0-4cb5-839e-583a71d10891","service":"api-service","timestamp":"2026-06-08 15:40:10"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 15:40:23"}
+{"level":"info","message":"Email sent successfully. ID: 3284d626-68db-4287-b21c-415b9adf593a","service":"api-service","timestamp":"2026-06-08 15:40:27"}
+{"level":"info","message":"Sending mail to - oluwadunni11@gmail.com","service":"api-service","timestamp":"2026-06-08 15:40:48"}
+{"level":"info","message":"Email sent successfully. ID: 3a338b3f-8043-495b-832f-486396c09cf2","service":"api-service","timestamp":"2026-06-08 15:40:52"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-08 15:45:59"}
+{"level":"info","message":"Email sent successfully. ID: 699ea725-12a6-4c7b-99de-8a2e1b7324ac","service":"api-service","timestamp":"2026-06-08 15:46:04"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 15:46:04"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 15:46:04"}
