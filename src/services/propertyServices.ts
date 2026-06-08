@@ -21,6 +21,7 @@ type PropertyWithSpecification = Prisma.propertiesGetPayload<{
 
 type FlattenedProperty = Record<string, any>;
 
+import { buildLocationGroupKey } from '../utils/locationGroupKey';
 import {
     buildListedPropertyOrderBy,
     buildListedPropertyWhereClause,
@@ -1293,6 +1294,7 @@ class PropertyService {
 
         const propertiesByState: { [key: string]: any[] } = {};
         const stateCountryByKey: { [key: string]: string | null } = {};
+        const stateNameByKey: { [key: string]: string } = {};
         const stateIdByKey: { [key: string]: string } = {};
 
         for (const group of groupedProperties) {
@@ -1311,12 +1313,11 @@ class PropertyService {
                 this.flatten(p)
             );
 
-            const key = state.name?.toLowerCase() ?? '';
+            const key = buildLocationGroupKey(state.name ?? '', state.country);
             if (!key) continue;
 
             if (key in propertiesByState) {
                 propertiesByState[key] = [...propertiesByState[key], ...flattened];
-                // Prefer the landlord-created state row for delete/update APIs when names collide.
                 const existingStateId = stateIdByKey[key];
                 const existingState = existingStateId
                     ? await prismaClient.state.findUnique({ where: { id: existingStateId } })
@@ -1327,10 +1328,12 @@ class PropertyService {
                 if (preferCurrent) {
                     stateIdByKey[key] = stateId;
                     stateCountryByKey[key] = state.country ?? null;
+                    stateNameByKey[key] = state.name ?? '';
                 }
             } else {
                 propertiesByState[key] = flattened;
                 stateCountryByKey[key] = state.country ?? null;
+                stateNameByKey[key] = state.name ?? '';
                 stateIdByKey[key] = stateId;
             }
         }
@@ -1346,17 +1349,22 @@ class PropertyService {
         });
 
         for (const state of emptyLandlordStates) {
-            const key = state.name?.toLowerCase() ?? '';
+            const key = buildLocationGroupKey(state.name ?? '', state.country);
             if (!key) continue;
-            // Only add if not already present from the groupBy pass above
             if (!(key in propertiesByState)) {
                 propertiesByState[key] = [];
                 stateCountryByKey[key] = state.country ?? null;
+                stateNameByKey[key] = state.name ?? '';
                 stateIdByKey[key] = state.id;
             }
         }
 
-        return { propertiesGrouped: propertiesByState, stateCountryByKey, stateIdByKey };
+        return {
+            propertiesGrouped: propertiesByState,
+            stateCountryByKey,
+            stateNameByKey,
+            stateIdByKey,
+        };
     };
 
 

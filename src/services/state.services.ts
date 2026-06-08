@@ -100,14 +100,11 @@ class StateService {
     if (!landlordId) return null;
     const trimmedName = name?.trim();
     if (!trimmedName) return null;
-    const hasCountry = country != null && String(country).trim() !== '';
-    return prismaClient.state.findFirst({
+
+    const landlordStates = await prismaClient.state.findMany({
       where: {
         name: { equals: trimmedName, mode: 'insensitive' },
         isDeleted: false,
-        ...(hasCountry
-          ? { country: { equals: String(country).trim(), mode: 'insensitive' } }
-          : { OR: [{ country: null }, { country: '' }] }),
         OR: [
           { createdByLandlordId: landlordId },
           {
@@ -118,6 +115,20 @@ class StateService {
         ],
       },
     });
+
+    if (landlordStates.length === 0) return null;
+
+    const hasCountry = country != null && String(country).trim() !== '';
+    const targetCountry = hasCountry ? String(country).trim().toLowerCase() : '';
+
+    const exactMatch = landlordStates.find((state) => {
+      const existingCountry = (state.country ?? '').trim().toLowerCase();
+      return existingCountry === targetCountry;
+    });
+    if (exactMatch) return exactMatch;
+
+    // Same region name already exists for this landlord under a different country.
+    return landlordStates[0];
   }
 
   public async createState(name: string, country?: string | null, landlordId?: string | null) {

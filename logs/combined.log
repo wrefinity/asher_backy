@@ -1583,3 +1583,7 @@
 {"level":"info","message":"Email sent successfully. ID: 28307864-a111-4462-8f14-54ad6cf070de","service":"api-service","timestamp":"2026-06-08 20:17:48"}
 {"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 20:17:48"}
 {"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 20:17:48"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-08 21:17:44"}
+{"level":"info","message":"Email sent successfully. ID: 0af5d75e-31f9-419f-9df1-045f8f0ef82a","service":"api-service","timestamp":"2026-06-08 21:17:48"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 21:17:48"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 21:17:48"}

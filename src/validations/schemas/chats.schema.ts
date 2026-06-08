@@ -5,6 +5,7 @@ import { uploadSchema } from './upload.schema';
 export const chatSchema = Joi.object({
     content: stringJoiOptional,
     receiverId: stringJoiRequired,
+    propertyListingId: stringJoiOptional,
 }).concat(uploadSchema);
 
 export const EmailSchema = Joi.object({

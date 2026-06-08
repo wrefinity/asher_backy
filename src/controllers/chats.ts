@@ -6,6 +6,7 @@ import UserServices from '../services/user.services';
 import ErrorService from '../services/error.service';
 import { chatSchema } from '../validations/schemas/chats.schema';
 import MessagingCircleService from "../services/messagingCircle.service";
+import EnquiryChatService from "../services/enquiryChat.service";
 
 
 class ChatMessageAuth {
@@ -51,6 +52,7 @@ class ChatMessageAuth {
             const {
                 receiverId,
                 content,
+                propertyListingId,
                 cloudinaryUrls = [],      // Images
                 cloudinaryVideoUrls = [],  // Videos
                 cloudinaryDocumentUrls = [], // Documents
@@ -58,6 +60,14 @@ class ChatMessageAuth {
             } = value;
     
             await UserServices.findAUserById(receiverId);
+
+            if (propertyListingId) {
+                await EnquiryChatService.ensureEnquiryForMessaging({
+                    senderId,
+                    propertyListingId,
+                    messageContent: content,
+                });
+            }
 
             const allowed = await MessagingCircleService.canCommunicate(senderId, receiverId);
             if (!allowed) {
@@ -81,11 +91,23 @@ class ChatMessageAuth {
                 cloudinaryDocumentUrls, 
                 cloudinaryAudioUrls
             );
+
+            let enquirySnapshot = null;
+            if (propertyListingId) {
+                enquirySnapshot = await EnquiryChatService.ensureEnquirySnapshotMessage({
+                    senderId,
+                    receiverId,
+                    chatRoomId: chatRoom.id,
+                    propertyListingId,
+                    messageContent: content,
+                });
+            }
     
             // Step 3: Return the chat room ID and the created message
             return res.status(201).json({
                 chatRoomId: chatRoom.id,
                 message: chat,
+                enquirySnapshot,
             });
     
         } catch (error) {

@@ -43,9 +43,16 @@ class StateController {
         country ?? null
       );
       if (existing) {
+        const requestedCountry = (country ?? '').trim();
+        const existingCountry = (existing.country ?? '').trim();
+        const sameCountry =
+          requestedCountry.toLowerCase() === existingCountry.toLowerCase() ||
+          (!requestedCountry && !existingCountry);
+
         return res.status(409).json({
-          message:
-            'You already have a location with this name and country. Open it from the list instead of creating it again.',
+          message: sameCountry
+            ? 'You already have a location with this name and country. Open it from the list instead of creating it again.'
+            : `You already have "${name}" under ${existingCountry || 'another country'}. Open that location instead of creating the same region under ${requestedCountry || 'a different country'}.`,
           code: 'DUPLICATE_LOCATION',
         });
       }

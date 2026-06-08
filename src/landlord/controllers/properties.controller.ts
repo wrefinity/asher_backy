@@ -172,7 +172,11 @@ class PropertyController {
             try {
                 const stateName = prop?.state?.trim();
                 if (!stateName) throw new Error('State is required');
-                const state = await stateServices.getStateByName(stateName, landlordId);
+                const state = await stateServices.getStateByName(
+                    stateName,
+                    landlordId,
+                    prop.country
+                );
                 if (!state) throw new Error('State not found');
 
                 const {
@@ -433,9 +437,21 @@ class PropertyController {
                 countryCode: req.query.countryCode as string | undefined,
                 ipAddress,
             });
-            const { propertiesGrouped, stateCountryByKey, stateIdByKey } = await PropertyServices.aggregatePropertiesByState(landlordId);
+            const {
+                propertiesGrouped,
+                stateCountryByKey,
+                stateNameByKey,
+                stateIdByKey,
+            } = await PropertyServices.aggregatePropertiesByState(landlordId);
             const propertiesUnGrouped = await PropertyServices.getPropertiesByLandlord(landlordId);
-            return res.status(200).json({ propertiesGrouped, propertiesUnGrouped, stateCountryByKey, stateIdByKey, viewerContext })
+            return res.status(200).json({
+                propertiesGrouped,
+                propertiesUnGrouped,
+                stateCountryByKey,
+                stateNameByKey,
+                stateIdByKey,
+                viewerContext,
+            })
         } catch (error) {
             ErrorService.handleError(error, res)
         }

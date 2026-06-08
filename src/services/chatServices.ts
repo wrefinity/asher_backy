@@ -1,3 +1,4 @@
+import { chatType } from "@prisma/client";
 import { prismaClient, serverInstance } from "..";
 import {
     getUserPrivacyPrefs,
@@ -79,7 +80,8 @@ class ChatServices {
         images: string[],
         videos: string[],
         files: string[],
-        audios: string[]
+        audios: string[],
+        messageChatType: chatType | null = null
     ) => {
         // Save the message in DB
         const message = await prismaClient.message.create({
@@ -91,7 +93,8 @@ class ChatServices {
                 images,
                 videos,
                 files,
-                audios
+                audios,
+                chatType: messageChatType ?? undefined,
             },
         });
 
@@ -106,7 +109,8 @@ class ChatServices {
             images: message?.images,
             videos: message?.videos,
             files: message?.files,
-            audios: message?.audios
+            audios: message?.audios,
+            chatType: message.chatType,
         };
         // Emit message to both sender and receiver personal rooms
         serverInstance.io.to(senderId).emit("privateMessage", payload);
