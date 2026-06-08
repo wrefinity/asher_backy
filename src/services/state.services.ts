@@ -11,23 +11,63 @@ class StateService {
     return await prismaClient.state.findUnique({ where: { id } });
   }
 
-  public async getStateByName(name: string, landlordId?: string) {
-    // Try to find the state by name (case-insensitive)
-    let state = await prismaClient.state.findFirst({
-      where: {
-        name: {
-          equals: name,
-          mode: 'insensitive',
+  public async getStateByName(
+    name: string,
+    landlordId?: string,
+    country?: string | null
+  ) {
+    const trimmedName = name?.trim();
+    if (!trimmedName) return null;
+
+    const baseWhere = {
+      name: { equals: trimmedName, mode: 'insensitive' as const },
+      isDeleted: false,
+    };
+
+    const hasCountry = country != null && String(country).trim() !== '';
+
+    // Prefer a state this landlord already uses or created (optionally matching country).
+    if (landlordId) {
+      const landlordState = await prismaClient.state.findFirst({
+        where: {
+          ...baseWhere,
+          ...(hasCountry
+            ? { country: { equals: String(country).trim(), mode: 'insensitive' } }
+            : {}),
+          OR: [
+            { createdByLandlordId: landlordId },
+            {
+              properties: {
+                some: { landlordId, isDeleted: false },
+              },
+            },
+          ],
         },
-        isDeleted: false,
-      },
-    });
+        orderBy: [{ createdByLandlordId: 'desc' }],
+      });
+      if (landlordState) return landlordState;
+    }
+
+    // Fall back to any non-deleted state with this name (country match first when provided).
+    let state = hasCountry
+      ? await prismaClient.state.findFirst({
+          where: {
+            ...baseWhere,
+            country: { equals: String(country).trim(), mode: 'insensitive' },
+          },
+        })
+      : await prismaClient.state.findFirst({ where: baseWhere });
+
+    if (!state && hasCountry) {
+      state = await prismaClient.state.findFirst({ where: baseWhere });
+    }
 
     // If the state doesn't exist, create it (optionally tied to the requesting landlord)
     if (!state) {
       state = await prismaClient.state.create({
         data: {
-          name: name,
+          name: trimmedName,
+          ...(hasCountry ? { country: String(country).trim() } : {}),
           ...(landlordId ? { createdByLandlordId: landlordId } : {}),
         },
       });

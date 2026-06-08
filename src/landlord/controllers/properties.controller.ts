@@ -48,7 +48,11 @@ class PropertyController {
             }
 
             const value = req.body;
-            const state = await stateServices.getStateByName(value?.state);
+            const state = await stateServices.getStateByName(
+                value?.state,
+                landlordId,
+                value?.country
+            );
             if (!state) {
                 return res.status(400).json({ error: 'State not found' });
             }
@@ -380,7 +384,11 @@ class PropertyController {
       // Handle state update if provided
       let stateId = existingProperty.stateId;
       if (updateData.state) {
-        const state = await stateServices.getStateByName(updateData.state);
+        const state = await stateServices.getStateByName(
+          updateData.state,
+          landlordId,
+          updateData.country ?? existingProperty.country
+        );
         if (!state) {
           return res.status(400).json(
             ApiError.badRequest('State not found')

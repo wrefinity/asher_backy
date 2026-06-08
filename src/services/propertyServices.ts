@@ -1313,9 +1313,26 @@ class PropertyService {
 
             const key = state.name?.toLowerCase() ?? '';
             if (!key) continue;
-            propertiesByState[key] = flattened;
-            stateCountryByKey[key] = state.country ?? null;
-            stateIdByKey[key] = stateId;
+
+            if (key in propertiesByState) {
+                propertiesByState[key] = [...propertiesByState[key], ...flattened];
+                // Prefer the landlord-created state row for delete/update APIs when names collide.
+                const existingStateId = stateIdByKey[key];
+                const existingState = existingStateId
+                    ? await prismaClient.state.findUnique({ where: { id: existingStateId } })
+                    : null;
+                const preferCurrent =
+                    state.createdByLandlordId === landlordId &&
+                    existingState?.createdByLandlordId !== landlordId;
+                if (preferCurrent) {
+                    stateIdByKey[key] = stateId;
+                    stateCountryByKey[key] = state.country ?? null;
+                }
+            } else {
+                propertiesByState[key] = flattened;
+                stateCountryByKey[key] = state.country ?? null;
+                stateIdByKey[key] = stateId;
+            }
         }
 
         // Also include states the landlord explicitly created but that have no
