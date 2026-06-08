@@ -5,7 +5,7 @@ import transactionServices from "./transaction.services";
 import errorService from "./error.service";
 import { PaystackResponseType, WebhookEventResponse } from "../utils/types";
 import { PAYSTACK_SECRET_KEY } from "../secrets"
-import { Currency, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
+import { Currency, PaymentGateway, TransactionReference, TransactionStatus, TransactionType } from "@prisma/client";
 import { prismaClient } from "..";
 import walletService from "./wallet.service";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -54,6 +54,8 @@ class PayStackService {
                 walletId,
                 propertyId,
                 type,
+                fundAmount: String(amount),
+                fundCurrency: currency,
             };
             const response = await axios.post<PaystackResponseType>(
                 `${this.payStackBaseUrl}/transaction/initialize`,
@@ -127,37 +129,41 @@ class PayStackService {
             where: { referenceId: data.reference }
         });
 
-        if (!transactions) {
-            console.error(`Transaction not found for reference: ${data.reference}`);
-            return;
-        }       
-        // Prevent re-processing
-        if (transactions.status === TransactionStatus.COMPLETED) {
+        if (transactions?.status === TransactionStatus.COMPLETED) {
             return transactions;
         }
-        if (transactions.reference === TransactionReference.FUND_WALLET) {
-            await this.handleWalletTopUp(data);
-        } else if (transactions.reference === TransactionReference.RECEIVE_PAYMENT) {
+
+        const metadata = data.metadata || {};
+        const userId = metadata.userId || transactions?.userId;
+        const walletId = metadata.walletId || transactions?.walletId;
+        const actualAmount = data.amount / 100;
+        const currency = (data.currency || metadata.fundCurrency || 'NGN').toUpperCase();
+        const purpose = metadata.type || transactions?.reference;
+
+        if (purpose === TransactionReference.FUND_WALLET || transactions?.reference === TransactionReference.FUND_WALLET) {
+            if (!userId || !walletId) {
+                console.error(`Cannot complete Paystack wallet funding — missing metadata for ${data.reference}`);
+                return;
+            }
+            return transactionServices.completeWalletFunding({
+                userId,
+                walletId,
+                amount: actualAmount,
+                currency,
+                referenceId: data.reference,
+                paymentGateway: PaymentGateway.PAYSTACK,
+                description: `Wallet funding of ${actualAmount} ${currency} via PAYSTACK`,
+                metadata: data,
+            });
+        }
+
+        if (transactions?.reference === TransactionReference.RECEIVE_PAYMENT) {
             await this.handlePayeeCreatorPayment([transactions]);
         }
-        
     }
 
     async handleWalletTopUp(data: any) {
-        const { reference, amount, metadata } = data
-        const actualAmount = amount / 100;
-
-        await prismaClient.$transaction(async (prisma) => {
-            await prisma.transaction.update({
-                where: { referenceId: reference },
-                data: { status: TransactionStatus.COMPLETED, metadata: metadata ? { ...metadata } : undefined }
-            });
-            await prisma.wallet.update({
-                where: { id: metadata.walletId },
-                data: { balance: { increment: new Decimal(actualAmount) } }
-                
-            });
-        });
+        return this.handleSuccessfulPayment(data);
     }
 
     async handlePayeeCreatorPayment(transactions: any[]) {

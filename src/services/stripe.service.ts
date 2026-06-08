@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { prismaClient } from '..';
-import { TransactionStatus, TransactionType } from '@prisma/client';
+import { PaymentGateway, TransactionStatus, TransactionType } from '@prisma/client';
 import walletService from './wallet.service';
 import transactionServices from './transaction.services';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -68,7 +68,14 @@ class StripeService {
         }
     }
 
-    async createPaymentIntent(userId: string, amount: number, currency: string, customerId: string, walletId?: string): Promise<StripePaymentIntent> {
+    async createPaymentIntent(
+        userId: string,
+        amount: number,
+        currency: string,
+        customerId: string,
+        walletId?: string,
+        extraMetadata?: Record<string, string>
+    ): Promise<StripePaymentIntent> {
         try {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Math.round(amount * 100),
@@ -77,7 +84,8 @@ class StripeService {
                 payment_method_types: ['card'],
                 metadata: {
                     userId,
-                    walletId: walletId,
+                    walletId: walletId || '',
+                    ...extraMetadata,
                 },
             });
             return {
@@ -109,6 +117,21 @@ class StripeService {
         } catch (error) {
             console.error('Error creating Stripe subscription:', error);
             throw new Error('Failed to create Stripe subscription');
+        }
+    }
+
+    async cancelPaymentIntent(paymentIntentId: string): Promise<void> {
+        try {
+            const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+            if (
+                intent.status === 'requires_payment_method' ||
+                intent.status === 'requires_confirmation' ||
+                intent.status === 'requires_action'
+            ) {
+                await stripe.paymentIntents.cancel(paymentIntentId);
+            }
+        } catch (error) {
+            console.warn('Unable to cancel payment intent:', paymentIntentId, error);
         }
     }
 
@@ -198,42 +221,58 @@ class StripeService {
             console.log(`Checkout session ${session.id} was not paid`);
         }
     }
-    async handleSuccessfulPayment(paymentIntent: StripePaymentIntent) {
+    async handleSuccessfulPayment(paymentIntent: StripePaymentIntent & { metadata?: Record<string, string> }) {
 
-        const transaction = await prismaClient.transaction.findUnique({
-            where: { referenceId: paymentIntent.id },
+        const existing = await prismaClient.transaction.findFirst({
+            where: {
+                OR: [
+                    { referenceId: paymentIntent.id },
+                    { stripePaymentIntentId: paymentIntent.id },
+                ],
+            },
         });
 
-        if (!transaction) {
-            console.error(`Transaction not found for PaymentIntent: ${paymentIntent.id}`);
-            return;
+        if (existing?.status === TransactionStatus.COMPLETED) {
+            return existing;
         }
-        if (transaction.status === 'COMPLETED') {
-            return transaction; // Already processed
+
+        const amount = paymentIntent.amount / 100;
+        const metadata = paymentIntent.metadata || {};
+        const userId = metadata.userId || existing?.userId;
+        const walletId = metadata.walletId || existing?.walletId;
+        const currency = (
+            metadata.fundCurrency ||
+            paymentIntent.currency ||
+            existing?.currency ||
+            'GBP'
+        ).toUpperCase();
+
+        if (!userId || !walletId) {
+            console.error(`Cannot complete wallet funding — missing user/wallet on PI: ${paymentIntent.id}`);
+            return null;
         }
-        const amount = paymentIntent.amount / 100; // Convert to major units
 
-
-        await prismaClient.$transaction(async (prisma) => {
-            const updatedTransaction = await prisma.transaction.update({
-                where: { id: transaction.id },
-                data: {
-                    status: TransactionStatus.COMPLETED,
-                    metadata: { ...(transaction.metadata as object), paymentIntent }
-                },
-            });
-
-            await prisma.wallet.update({
-                where: { id: transaction.walletId },
-                data: { balance: { increment: new Decimal(amount) } },
-            });
-            return updatedTransaction;
+        return transactionServices.completeWalletFunding({
+            userId,
+            walletId,
+            amount,
+            currency,
+            referenceId: paymentIntent.id,
+            paymentGateway: PaymentGateway.STRIPE,
+            stripePaymentIntentId: paymentIntent.id,
+            description: `Wallet funding of ${amount} ${currency} via STRIPE`,
+            metadata: { paymentIntent },
         });
     }
 
     private async handleFailedPayment(paymentIntent: StripePaymentIntent): Promise<void> {
-        const transaction = await prismaClient.transaction.findUnique({
-            where: { stripePaymentIntentId: paymentIntent.id },
+        const transaction = await prismaClient.transaction.findFirst({
+            where: {
+                OR: [
+                    { referenceId: paymentIntent.id },
+                    { stripePaymentIntentId: paymentIntent.id },
+                ],
+            },
         });
 
         if (!transaction) {

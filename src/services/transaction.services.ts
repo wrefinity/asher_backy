@@ -16,6 +16,9 @@ import {
     startOfYear,
     endOfYear
 } from 'date-fns';
+
+/** Pending fund attempts older than this are marked failed (never completed checkout). */
+const STALE_FUND_WALLET_MS = 2 * 60 * 60 * 1000; // 2 hours
 export interface TransactionIF {
     id?: string;
     description?: string | null;
@@ -119,7 +122,143 @@ class TransactionService {
         return prismaClient.transaction.create({
             data: transactionData,
         });
-    }
+    };
+
+    /**
+     * Mark abandoned wallet-funding attempts as FAILED so they don't clutter tenant history.
+     */
+    expireStalePendingFundTransactions = async (
+        userId: string,
+        walletId?: string | null
+    ): Promise<number> => {
+        const cutoff = new Date(Date.now() - STALE_FUND_WALLET_MS);
+        const result = await prismaClient.transaction.updateMany({
+            where: {
+                userId,
+                reference: TransactionReference.FUND_WALLET,
+                status: TransactionStatus.PENDING,
+                createdAt: { lt: cutoff },
+                ...(walletId ? { walletId } : {}),
+            },
+            data: { status: TransactionStatus.FAILED },
+        });
+        return result.count;
+    };
+
+    cancelPendingFundTransactions = async (
+        userId: string,
+        walletId: string,
+        excludeReferenceId?: string
+    ): Promise<number> => {
+        const result = await prismaClient.transaction.updateMany({
+            where: {
+                userId,
+                walletId,
+                reference: TransactionReference.FUND_WALLET,
+                status: TransactionStatus.PENDING,
+                ...(excludeReferenceId
+                    ? { referenceId: { not: excludeReferenceId } }
+                    : {}),
+            },
+            data: { status: TransactionStatus.FAILED },
+        });
+        return result.count;
+    };
+
+    /**
+     * Credit wallet ONLY after payment provider confirms success.
+     * Idempotent — safe for webhooks and client verify calls.
+     */
+    completeWalletFunding = async (params: {
+        userId: string;
+        walletId: string;
+        amount: number;
+        currency: string;
+        referenceId: string;
+        paymentGateway: PaymentGateway;
+        stripePaymentIntentId?: string;
+        description?: string;
+        metadata?: object;
+    }) => {
+        const existing = await prismaClient.transaction.findFirst({
+            where: {
+                OR: [
+                    { referenceId: params.referenceId },
+                    ...(params.stripePaymentIntentId
+                        ? [{ stripePaymentIntentId: params.stripePaymentIntentId }]
+                        : []),
+                ],
+            },
+        });
+
+        if (existing?.status === TransactionStatus.COMPLETED) {
+            return existing;
+        }
+
+        const description =
+            params.description ||
+            `Wallet funding via ${params.paymentGateway}`;
+
+        return prismaClient.$transaction(async (prisma) => {
+            let transaction;
+            if (existing) {
+                transaction = await prisma.transaction.update({
+                    where: { id: existing.id },
+                    data: {
+                        status: TransactionStatus.COMPLETED,
+                        amount: params.amount,
+                        currency: params.currency,
+                        metadata: params.metadata
+                            ? { ...(existing.metadata as object), ...params.metadata }
+                            : existing.metadata,
+                    },
+                });
+            } else {
+                transaction = await prisma.transaction.create({
+                    data: {
+                        userId: params.userId,
+                        walletId: params.walletId,
+                        amount: params.amount,
+                        currency: params.currency,
+                        description,
+                        type: TransactionType.CREDIT,
+                        reference: TransactionReference.FUND_WALLET,
+                        status: TransactionStatus.COMPLETED,
+                        referenceId: params.referenceId,
+                        paymentGateway: params.paymentGateway,
+                        stripePaymentIntentId: params.stripePaymentIntentId,
+                        metadata: params.metadata,
+                    },
+                });
+            }
+
+            await prisma.wallet.update({
+                where: { id: params.walletId },
+                data: { balance: { increment: new Decimal(params.amount) } },
+            });
+
+            return transaction;
+        });
+    };
+
+    failPendingFundByReference = async (
+        userId: string,
+        referenceId: string
+    ): Promise<number> => {
+        const result = await prismaClient.transaction.updateMany({
+            where: {
+                userId,
+                reference: TransactionReference.FUND_WALLET,
+                status: TransactionStatus.PENDING,
+                OR: [
+                    { referenceId },
+                    { stripePaymentIntentId: referenceId },
+                ],
+            },
+            data: { status: TransactionStatus.FAILED },
+        });
+        return result.count;
+    };
 
     async getTransactionStats(
         filter: 'today' | 'week' | 'month' | 'year' | 'total', // Added 'year'
@@ -271,6 +410,8 @@ class TransactionService {
         value: any
     ) {
 
+        await this.expireStalePendingFundTransactions(userId);
+
         const {
             page,
             limit,
@@ -297,6 +438,14 @@ class TransactionService {
         // Base where clause
         const where: Prisma.TransactionWhereInput = {
             userId
+        };
+
+        // Tenant history: only show completed wallet top-ups (never ghost pending/failed attempts)
+        where.NOT = {
+            AND: [
+                { reference: TransactionReference.FUND_WALLET },
+                { status: { not: TransactionStatus.COMPLETED } },
+            ],
         };
 
         // Add filters (same as before but without landlord/property checks)

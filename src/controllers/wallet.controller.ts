@@ -7,6 +7,8 @@ import { Currency, PaymentGateway } from '@prisma/client';
 import { getClientIpFromRequest, resolveViewerCurrency } from "../utils/currencyContext";
 import paystackServices from "../services/paystack.services";
 import stripeService from "../services/stripe.service";
+import { validateFundAmount, isSupportedFundCurrency } from "../utils/moneyAmount";
+import transactionServices from "../services/transaction.services";
 
 class WalletController {
     getUserWallet = async (req: CustomRequest, res: Response) => {
@@ -76,6 +78,18 @@ class WalletController {
         if (!currency) {
             return res.status(400).json({ message: 'Currency is required' });
         }
+        if (!isSupportedFundCurrency(currency)) {
+            return res.status(400).json({
+                error: `Unsupported currency: ${currency}. Supported: ${supportedCurrencies.join(', ')}`,
+            });
+        }
+
+        let validAmount: number;
+        try {
+            validAmount = validateFundAmount(amount, currency);
+        } catch (validationError: any) {
+            return res.status(400).json({ message: validationError.message || 'Invalid amount' });
+        }
 
         // if (!payment_method) {
         //     return res.status(400).json({ message: 'Payment method is required' });
@@ -83,9 +97,43 @@ class WalletController {
         const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const countryCode = await getCountryCodeFromIp(userIpAddress);
         try {
-            const validAmount = Number(amount)
-            const fundWallet = await walletService.fundWalletGeneral(userId, validAmount, currency.toString().toUpperCase(), countryCode, paymentGateway, payment_method)
+            const fundWallet = await walletService.fundWalletGeneral(
+                userId,
+                validAmount,
+                currency.toString().toUpperCase() as Currency,
+                countryCode,
+                paymentGateway,
+                payment_method
+            )
             res.status(200).json(fundWallet)
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    cancelFundAttempt = async (req: CustomRequest, res: Response) => {
+        const userId = String(req.user.id);
+        const { paymentIntentId, referenceId } = req.body as {
+            paymentIntentId?: string;
+            referenceId?: string;
+        };
+
+        const intentRef = paymentIntentId || referenceId;
+        if (!intentRef) {
+            return res.status(400).json({ message: 'paymentIntentId or referenceId is required' });
+        }
+
+        try {
+            await stripeService.cancelPaymentIntent(intentRef);
+            const cancelled = await transactionServices.failPendingFundByReference(
+                userId,
+                intentRef
+            );
+
+            return res.status(200).json({
+                success: true,
+                cancelled,
+            });
         } catch (error) {
             errorService.handleError(error, res);
         }

@@ -16,7 +16,7 @@ class PropertyRouter {
     private initializeRoutes() {
         this.router.post("/search", validateBody(propertySearchSchema), propertyController.searchProperties);
         this.router.post("/enquire", validateBody(createPropertyEnquirySchema), propertyController.createPropertyEnquiry);
-
+        this.router.get("/:propertyId/application-fees", propertyController.getApplicationFees);
     }
 }
 

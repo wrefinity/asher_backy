@@ -18,6 +18,7 @@ import CategoryRouter from "./routes/category";
 import TodoRouter from "./routes/todo";
 import ChatRoomRouter from "./routes/chats";
 import EmailRouter from "./routes/email";
+import ContactsRouter from "./routes/contacts";
 import MaintenanceRouter from "./routes/maintenance";
 import NotificationRouter from "./routes/notification";
 import ProfileRouter from "./routes/profile";
@@ -134,6 +135,7 @@ class Server {
         this.app.use("/api/application", ApplicationRouter);
         this.app.use("/api/emails", EmailRouter);
         this.app.use("/api/chats", ChatRoomRouter);
+        this.app.use("/api/contacts", ContactsRouter);
         this.app.use("/api/users", UserRouter);
         this.app.use("/api/preferences", PreferenceRoute);
         this.app.use("/api/properties", PropertyRouter);

@@ -10,11 +10,11 @@ import { generateIDs } from "../utils/helpers";
 import { Decimal } from "@prisma/client/runtime/library";
 import { convertCurrency } from "../utils/helpers"
 import paystackServices from "./paystack.services";
-
-
+import {
+    validateFundAmount,
+} from "../utils/moneyAmount";
 
 class WalletService {
-
 
     ensureSufficientBalance = async (walletId: string | null, userId: string | null, amount: Decimal) => {
         if (!walletId && !userId) {
@@ -213,7 +213,10 @@ class WalletService {
     }
 
     fundWalletGeneral = async (userId: string, amount: number, currency: Currency = Currency.USD, countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) => {
+        const normalizedAmount = validateFundAmount(amount, currency);
         const wallet = await this.getOrCreateWallet(userId, currency);
+
+        await transactionService.expireStalePendingFundTransactions(userId, wallet.id);
         const user = await prismaClient.users.findUnique({
             where: { id: userId },
             include: {
@@ -240,10 +243,15 @@ class WalletService {
                 const stripeCustomer = await stripeService.createOrGetStripeCustomer(userId);
                 const paymentIntent = await stripeService.createPaymentIntent(
                     userId,
-                    amount, // Stripe expects amounts in cents
+                    normalizedAmount,
                     currency,
                     stripeCustomer.id,
-                    wallet.id
+                    wallet.id,
+                    {
+                        purpose: TransactionReference.FUND_WALLET,
+                        fundAmount: String(normalizedAmount),
+                        fundCurrency: currency,
+                    }
                 );
                 paymentResponse = paymentIntent;
                 referenceId = paymentIntent.id;
@@ -266,7 +274,7 @@ class WalletService {
 
                 const paystackPayment = await paystackServices.initializePayment(
                     userId,
-                    amount,
+                    normalizedAmount,
                     currency,
                     user.email,
                     TransactionReference.FUND_WALLET,
@@ -282,23 +290,9 @@ class WalletService {
                 throw new Error("Unsupported payment gateway");
         }
 
-        // Create a transaction record
-        const transaction = await transactionService.createTransaction({
-            userId,
-            amount: amount,
-            description: `Wallet funding of ${amount} ${currency.toUpperCase()} via ${gateway}`,
-            type: TransactionType.CREDIT,
-            status: TransactionStatus.PENDING,
-            reference: TransactionReference.FUND_WALLET,
-            walletId: wallet.id,
-            referenceId: referenceId,
-            paymentGateway: gateway,
-            ...(gateway === PaymentGateway.STRIPE && { stripePaymentIntentId: referenceId }),
-        });
-
+        // Security: no wallet credit and no transaction row until payment provider confirms success.
         return {
             paymentDetails: paymentResponse,
-            transactionDetails: transaction,
             paymentUrl: paymentUrl,
         };
     }

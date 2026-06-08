@@ -9,6 +9,7 @@ export const chatSchema = Joi.object({
 
 export const EmailSchema = Joi.object({
   receiverEmail: Joi.string().email().optional(),
+  receiverId: Joi.string().optional(),
   subject: stringJoiRequired,
   body: stringJoiRequired,
   isRead: booleanJoiOptional,

@@ -6,6 +6,7 @@ import walletService from "../services/wallet.service";
 import { CustomRequest } from "../utils/types";
 import transactionScheam, { TransactionQuerySchema } from "../validations/schemas/transaction.schema";
 import { getClientIpFromRequest, getCurrentCountryCurrency } from "../utils/currencyContext";
+import { validateFundAmount } from "../utils/moneyAmount";
 import PropertyServices from "../services/propertyServices";
 
 
@@ -55,13 +56,14 @@ class TransactionController {
         }
 
         try {
-            const amount = Number(value.amount);
-            // const authorizationUrl = await walletService.fundWallet(userId, amount)
-            // const authorizationUrl = await walletService.fundWalletUsingFlutter(userId, amount)
             const ipAddress = getClientIpFromRequest(req);
             const locationData = await getCurrentCountryCurrency(
                 ipAddress,
                 userId
+            );
+            const amount = validateFundAmount(
+                Number(value.amount),
+                value.currency || locationData?.locationCurrency || 'NGN'
             );
             const authorizationUrl = await walletService.fundWalletGeneral(
                 userId,

@@ -5,6 +5,7 @@ import { String } from "../utils/helpers";
 import UserServices from '../services/user.services';
 import ErrorService from '../services/error.service';
 import { chatSchema } from '../validations/schemas/chats.schema';
+import MessagingCircleService from "../services/messagingCircle.service";
 
 
 class ChatMessageAuth {
@@ -15,14 +16,23 @@ class ChatMessageAuth {
 
             // Step 1: Find all chat rooms where the user is either user1 or user2
             const chatRooms = await ChatServices.getChatRoomsForUser(userId);
+            const circle = await MessagingCircleService.getCircleUserIds(userId);
+            const isAdmin = await MessagingCircleService.isAdmin(userId);
 
-            if (chatRooms.length === 0) {
-                return res.status(404).json({ message: 'No chat rooms found for this user.' });
+            const visibleRooms = isAdmin
+                ? chatRooms
+                : chatRooms.filter((room) => {
+                    const otherId =
+                        room.user1Id === userId ? room.user2Id : room.user1Id;
+                    return circle.has(otherId);
+                });
+
+            if (visibleRooms.length === 0) {
+                return res.status(200).json({ chatRooms: [] });
             }
 
-            // Step 2: Return the list of chat rooms
             return res.status(200).json({
-                chatRooms,
+                chatRooms: visibleRooms,
             });
 
         } catch (error) {
@@ -47,8 +57,12 @@ class ChatMessageAuth {
                 cloudinaryAudioUrls = []   // Audios
             } = value;
     
-            // Check if the receiver exists
             await UserServices.findAUserById(receiverId);
+
+            const allowed = await MessagingCircleService.canCommunicate(senderId, receiverId);
+            if (!allowed) {
+                return res.status(404).json({ message: 'Recipient not found' });
+            }
     
             // Step 1: Retrieve or create a chat room between sender and receiver
             let chatRoom = await ChatServices.getChatRooms(senderId, receiverId);
@@ -94,15 +108,17 @@ class ChatMessageAuth {
             const senderId = String(req.user.id); // Current logged-in user
             const { receiverId } = req.params; // Receiver ID from the request params
 
-            // check for user existance
-            await UserServices.findAUserById(receiverId)
+            await UserServices.findAUserById(receiverId);
 
-            // Step 1: Find the chat room between the two users
+            const allowed = await MessagingCircleService.canCommunicate(senderId, receiverId);
+            if (!allowed) {
+                return res.status(200).json({ chatRoomId: null, messages: [] });
+            }
+
             const chatRoom = await ChatServices.getChatRooms(senderId, receiverId);
 
             if (!chatRoom) {
-                // return res.status(200).json({ message: 'Chat room not found' });
-                return res.status(200);
+                return res.status(200).json({ chatRoomId: null, messages: [] });
             }
 
             // Step 2: Retrieve all messages in the chat room, sorted by createdAt

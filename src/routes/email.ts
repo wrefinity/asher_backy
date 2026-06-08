@@ -3,6 +3,7 @@ import { Authorize } from "../middlewares/authorize";
 import EmailController from '../controllers/email';
 import upload from "../configs/multer";
 import { uploadToCloudinary } from "../middlewares/multerCloudinary";
+import { requireMessagingAccess } from "../middlewares/requireMessagingAccess";
 
 class EmailRouter {
     public router: Router
@@ -17,7 +18,7 @@ class EmailRouter {
     private initializeRoutes() {
         this.router.use(
             this.authenticateService.authorize,
-            this.authenticateService.requireWebUserPortalRole()
+            requireMessagingAccess()
         );
         this.router.get('/', EmailController.getUserInbox)
         this.router.post('/', upload.array('files'), uploadToCloudinary, EmailController.createEmail);

@@ -1,4 +1,4 @@
-import { compareSync } from "bcrypt";
+import { compareSync, hashSync } from "bcrypt";
 import { Request, Response } from "express";
 import { prismaClient } from "..";
 
@@ -209,12 +209,22 @@ class AuthControls {
     });
 
     sendPasswordResetCode = asyncHandler(async (req: CustomRequest, res: Response) => {
-        const { email } = req.body;
-        if (!email) throw ApiError.validationError(["Email is required"]);
+        const { email, tenantCode } = req.body;
+        let user = null;
+        let normalizedEmail: string | null = null;
 
-        const normalizedEmail = email.trim().toLowerCase();
-        const user = await UserServices.findUserByEmail(normalizedEmail);
-        if (!user) throw ApiError.notFound("User does not exist");
+        if (tenantCode) {
+            user = await UserServices.findUserByTenantCode(String(tenantCode).trim());
+            if (!user) throw ApiError.notFound("Invalid tenant code");
+            normalizedEmail = user.email?.trim().toLowerCase() || null;
+        } else if (email) {
+            normalizedEmail = String(email).trim().toLowerCase();
+            user = await UserServices.findUserByEmail(normalizedEmail);
+        } else {
+            throw ApiError.validationError(["Email or tenant code is required"]);
+        }
+
+        if (!user || !normalizedEmail) throw ApiError.notFound("User does not exist");
 
         await deleteUnusedVerificationTokensForUser(user.id);
         await this.passwordResetTokenCreator({
@@ -222,9 +232,17 @@ class AuthControls {
             email: normalizedEmail,
         });
 
-        return res
-            .status(201)
-            .json(ApiResponse.success({}, "Password reset code sent to email"));
+        const maskedEmail = normalizedEmail.replace(
+            /^(.{1,2})[^@]*(@.+)$/,
+            (_, start: string, domain: string) => `${start}***${domain}`
+        );
+
+        return res.status(201).json(
+            ApiResponse.success(
+                { maskedEmail },
+                "Password reset code sent to email"
+            )
+        );
     });
 
     resendVerificationCode = asyncHandler(async (req: Request, res: Response) => {
@@ -260,7 +278,20 @@ class AuthControls {
         if (email) {
             isValidToken = await validateVerificationToken(
                 token,
-                { userId: user.id, email },
+                { userId: user.id, email: email.trim().toLowerCase() },
+                false
+            );
+            if (!isValidToken) {
+                throw ApiError.validationError(["Invalid or expired reset code"]);
+            }
+        } else if (tenantCode) {
+            const normalizedEmail = user.email?.trim().toLowerCase();
+            if (!normalizedEmail) {
+                throw ApiError.validationError(["Account email is required to verify reset code"]);
+            }
+            isValidToken = await validateVerificationToken(
+                token,
+                { userId: user.id, email: normalizedEmail },
                 false
             );
             if (!isValidToken) {
@@ -269,6 +300,16 @@ class AuthControls {
         }
 
         await UserServices.updateUserPassword(user.id, newPassword);
+
+        if (tenantCode) {
+            const tenant = this.resolveTenantForCode(user, tenantCode);
+            if (tenant) {
+                await prismaClient.tenants.update({
+                    where: { id: tenant.id },
+                    data: { password: hashSync(newPassword, 10) },
+                });
+            }
+        }
         await logsServices.createLog({
             events: "Password Reset",
             type: LogType.ACTIVITY,
@@ -294,6 +335,15 @@ class AuthControls {
         return res.status(200).json(ApiResponse.success(tokens, "Token refreshed successfully"));
     });
 
+    private resolveTenantForCode(user: any, tenantCode: string) {
+        const normalizedCode = tenantCode.trim();
+        return user.tenants?.find(
+            (t: any) =>
+                t.tenantCode?.toLowerCase() === normalizedCode.toLowerCase() ||
+                t.tenantId === normalizedCode
+        );
+    }
+
     private recordLoginSession = async (
         user: { id: string; email?: string | null },
         accessToken: string,
@@ -314,7 +364,7 @@ class AuthControls {
     private buildTenantLoginPayload = async (user: any, tenantCode: string, req?: Request) => {
         const activeTenant = await prismaClient.tenants.findUnique({
             where: { tenantCode },
-            include: { property: { select: { id: true, name: true, address: true } } },
+            include: { property: { select: { id: true, name: true, address: true, currency: true, country: true } } },
         });
         if (!activeTenant) throw ApiError.notFound("Tenant record not found");
 
@@ -353,12 +403,7 @@ class AuthControls {
         const user = await UserServices.findUserByTenantCode(tenantCode);
         if (!user) throw ApiError.notFound("Invalid tenant code");
 
-        const normalizedCode = tenantCode.trim();
-        const tenant = user.tenants?.find(
-            (t: any) =>
-                t.tenantCode?.toLowerCase() === normalizedCode.toLowerCase() ||
-                t.tenantId === normalizedCode
-        );
+        const tenant = this.resolveTenantForCode(user, tenantCode);
         if (!tenant) throw ApiError.notFound("Tenant record not found");
 
         const property = tenant.property;
@@ -372,7 +417,8 @@ class AuthControls {
                         [user.profile?.firstName, user.profile?.lastName].filter(Boolean).join(" "),
                     age: calculateAgeFromDob(dob),
                     property: property?.name || property?.address || "Your property",
-                    hasPassword: Boolean(user.password),
+                    // Mobile app password is stored on the tenant record, not the user account.
+                    hasPassword: Boolean(tenant.password),
                 },
                 "Tenant validated successfully"
             )
@@ -384,11 +430,23 @@ class AuthControls {
         const user = await UserServices.findUserByTenantCode(tenantCode);
         if (!user) throw ApiError.notFound("Invalid tenant code");
 
-        if (user.password) {
+        const tenant = this.resolveTenantForCode(user, tenantCode);
+        if (!tenant) throw ApiError.notFound("Tenant record not found");
+
+        if (tenant.password) {
             throw ApiError.validationError(["Password already set. Please log in with your tenant ID and password."]);
         }
 
-        await UserServices.updateUserInfo(user.id, { password, isVerified: true });
+        await prismaClient.tenants.update({
+            where: { id: tenant.id },
+            data: { password: hashSync(password, 10) },
+        });
+
+        if (!user.password) {
+            await UserServices.updateUserInfo(user.id, { password, isVerified: true });
+        } else if (!user.isVerified) {
+            await UserServices.updateUserInfo(user.id, { isVerified: true });
+        }
         const refreshedUser = await UserServices.findUserByTenantCode(tenantCode);
         const payload = await this.buildTenantLoginPayload(refreshedUser, tenantCode, req);
 
@@ -417,7 +475,14 @@ class AuthControls {
         if (!user && tenantCode) user = await UserServices.findUserByTenantCode(tenantCode);
         if (!user) throw ApiError.notFound("User does not exist");
 
-        if (!user.password || !compareSync(userPassword, user.password)) {
+        let storedPassword: string | null | undefined = user.password;
+        if (tenantCode && !email) {
+            const tenant = this.resolveTenantForCode(user, tenantCode);
+            if (!tenant) throw ApiError.notFound("Tenant record not found");
+            storedPassword = tenant.password || user.password;
+        }
+
+        if (!storedPassword || !compareSync(userPassword, storedPassword)) {
             throw ApiError.validationError(["Invalid login credentials"]);
         }
 

@@ -12,6 +12,8 @@ import {
     getClientIpFromRequest,
     resolveViewerCurrency,
 } from "../../utils/currencyContext";
+import LandlordSettingsService from "../../landlord/services/propertySetting.service";
+import { resolveFinancialRules, getApplicationFeeRefundInfo } from "../../utils/globalSettings.util";
 
 class ProperyController {
 
@@ -69,6 +71,39 @@ class ProperyController {
         });
         res.status(201).json(
             ApiResponse.success(newEnquiry)
+        );
+    })
+
+    getApplicationFees = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const { propertyId } = req.params;
+        if (!propertyId) {
+            throw ApiError.badRequest('Property ID is required');
+        }
+
+        const property = await propertyServices.getPropertiesById(propertyId);
+        if (!property) {
+            throw ApiError.notFound('Property does not exist');
+        }
+
+        const { landlordId, price } = property;
+        if (!landlordId || price == null) {
+            throw ApiError.badRequest('Invalid property data');
+        }
+
+        const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+        const rent = Number(price);
+        const rules = resolveFinancialRules(globalSettings, rent, property.priceFrequency);
+
+        if (!globalSettings || rules.applicationFeePercent <= 0) {
+            throw ApiError.badRequest('Application fee settings not found');
+        }
+
+        return res.status(200).json(
+            ApiResponse.success({
+                applicationFee: rules.applicationFeeAmount,
+                applicationFeePercent: rules.applicationFeePercent,
+                ...getApplicationFeeRefundInfo(rules),
+            }, 'Application fee retrieved')
         );
     })
 

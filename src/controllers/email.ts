@@ -1,10 +1,52 @@
 import { Request, Response } from "express";
-import EmailService, { EmailQueryOptions } from "../services/emailService";
+import EmailService, { EmailListContext, EmailQueryOptions } from "../services/emailService";
 import { CustomRequest, EmailDataType } from "../utils/types";
 import { EmailSchema, updateEmailStateSchema, updateEmailSchema } from "../validations/schemas/chats.schema";
-import tenantService from "../services/tenant.service";
 import { serverInstance } from '../index';
 import ErrorService from "../services/error.service";
+import MessagingCircleService from "../services/messagingCircle.service";
+
+async function buildEmailListContext(req: CustomRequest): Promise<EmailListContext> {
+    const skipCircle = await MessagingCircleService.isAdmin(req.user.id);
+    const circle = await MessagingCircleService.getCircleUserIds(req.user.id);
+    const mailbox = await MessagingCircleService.resolveMailboxEmail(
+        req.user.id,
+        req.user?.tenant?.id
+    );
+    return {
+        mailboxEmail: mailbox,
+        circleUserIds: Array.from(circle),
+        skipCircleFilter: skipCircle,
+    };
+}
+
+async function resolveSenderMailbox(req: CustomRequest): Promise<string> {
+    return MessagingCircleService.resolveMailboxEmail(req.user.id, req.user?.tenant?.id);
+}
+
+async function userOwnsEmail(email: any, req: CustomRequest, mailbox: string): Promise<boolean> {
+    const userId = req.user.id;
+    return (
+        email.senderId === userId ||
+        email.receiverId === userId ||
+        email.senderEmail === mailbox ||
+        email.receiverEmail === mailbox
+    );
+}
+
+async function userCanAccessEmail(email: any, req: CustomRequest): Promise<boolean> {
+    const mailbox = await resolveSenderMailbox(req);
+    if (!(await userOwnsEmail(email, req, mailbox))) return false;
+
+    const userId = req.user.id;
+    if (await MessagingCircleService.isAdmin(userId)) return true;
+
+    const otherUserId =
+        email.senderId === userId ? email.receiverId : email.senderId;
+    if (!otherUserId) return true;
+
+    return MessagingCircleService.canCommunicate(userId, otherUserId);
+}
 
 
 interface EmailQueryParams {
@@ -38,12 +80,7 @@ class EmailController {
             // Handle optional attachment
             const attachment = value.cloudinaryUrls ?? null;
 
-            // Determine sender email
-            let senderEmail: string | null = req.user?.email ?? null;
-            if (req.user?.tenant?.id) {
-                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
-                senderEmail = tenant?.tenantWebUserEmail ?? senderEmail;
-            }
+            const senderEmail = await resolveSenderMailbox(req);
 
             // Prepare email data
             const {
@@ -52,21 +89,36 @@ class EmailController {
                 cloudinaryDocumentUrls,
                 cloudinaryAudioUrls,
                 receiverEmail,
+                receiverId: receiverUserId,
                 ...emailData
             } = value;
 
             let receiverId: string | null = null;
             let validatedReceiverEmail: string | null = null;
 
-            // Only process receiver for non-draft emails
-            if (!isDraft && receiverEmail) {
-                // Fetch receiver details
-                const receiver = await EmailService.checkUserEmailExists(receiverEmail);
-                if (!receiver) {
-                    throw new Error('Receiver email not found');
+            if (!isDraft) {
+                if (receiverUserId) {
+                    const allowed = await MessagingCircleService.canCommunicate(
+                        req.user.id,
+                        receiverUserId
+                    );
+                    if (!allowed) {
+                        return res.status(404).json({ message: 'Recipient not found' });
+                    }
+                    receiverId = receiverUserId;
+                    validatedReceiverEmail =
+                        await MessagingCircleService.resolveMailboxEmailForUser(receiverUserId);
+                } else if (receiverEmail) {
+                    const receiver = await MessagingCircleService.resolveContactInCircle(
+                        req.user.id,
+                        receiverEmail
+                    );
+                    if (!receiver) {
+                        return res.status(404).json({ message: 'Recipient not found' });
+                    }
+                    receiverId = receiver.userId;
+                    validatedReceiverEmail = receiver.mailboxEmail;
                 }
-                receiverId = receiver.userId;
-                validatedReceiverEmail = receiverEmail;
             }
 
             // Create email
@@ -103,19 +155,24 @@ class EmailController {
             if (!receiverEmail) {
                 return res.status(400).json({ message: "Receiver email is required" });
             }
-            const receiver = await EmailService.checkUserEmailExists(receiverEmail);
+            const receiver = await MessagingCircleService.resolveContactInCircle(
+                req.user.id,
+                receiverEmail
+            );
             if (!receiver) {
-                throw new Error('Receiver email not found');
+                return res.status(404).json({ message: 'Recipient not found' });
             }
-            // Determine sender email
-            let senderEmail: string | null = req.user?.email ?? null;
-            if (req.user?.tenant?.id) {
-                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
-                senderEmail = tenant?.tenantWebUserEmail ?? senderEmail;
-            }
+            const senderEmail = await resolveSenderMailbox(req);
 
             // Create email
-            const email = await EmailService.forwardEmail(emailId, senderId, receiver.userId, senderEmail, receiverEmail, additionalMessage);
+            const email = await EmailService.forwardEmail(
+                emailId,
+                senderId,
+                receiver.userId,
+                senderEmail,
+                receiver.mailboxEmail,
+                additionalMessage
+            );
 
             if (!email) {
                 return res.status(500).json({ message: "Failed to forward email" });
@@ -140,11 +197,13 @@ class EmailController {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
 
+            const listContext = await buildEmailListContext(req);
             const result = await EmailService.getInbox(
                 req.user.id,
                 page,
                 limit,
-                search ? String(search) : undefined
+                search ? String(search) : undefined,
+                listContext
             );
             console.log("Completed fetching inbox:");
             console.log(result);
@@ -175,6 +234,7 @@ class EmailController {
             else if (query.isThrash) category = 'trash';
 
             // Call the service
+            const listContext = await buildEmailListContext(req);
             const result = await EmailService.getEmailsForUser(userId, {
                 category,
                 search: query.search || '',
@@ -186,7 +246,7 @@ class EmailController {
                     isSpam: query.isSpam,
                     isDeleted: query.isThrash
                 }
-            });
+            }, listContext);
 
             res.json(result);
         } catch (error) {
@@ -238,6 +298,9 @@ class EmailController {
             const emailId = String(req.params.emailId);
             const email = await EmailService.getEmailById(emailId)
             if (!email) return res.status(404).json({ message: "Email not found" })
+            if (!(await userCanAccessEmail(email, req))) {
+                return res.status(404).json({ message: "Email not found" })
+            }
             return res.status(200).json(email)
         } catch (error) {
             return res.status(500).json({ message: "Failed to get email" })
@@ -252,9 +315,9 @@ class EmailController {
             const email = await EmailService.getEmailById(emailId);
             if (!email) return res.status(404).json({ message: 'Email not found' })
 
-            //check userId if he owns the email
-            if (email.senderEmail !== String(req.user.email)) {
-                return res.status(403).json({ message: 'Forbbiden' })
+            const mailbox = await resolveSenderMailbox(req);
+            if (email.senderId !== req.user.id && email.senderEmail !== mailbox) {
+                return res.status(404).json({ message: 'Email not found' })
             }
             // Validate request body
             const { error, value } = updateEmailSchema.validate(req.body);
@@ -281,11 +344,8 @@ class EmailController {
             const email = await EmailService.getEmailById(emailId);
             if (!email) return res.status(404).json({ message: 'Email not found' })
 
-            //check userId if he owns the email
-            if (email.senderEmail !== String(req.user.email) && email.receiverEmail !== String(req.user.email)) {
-                return res.status(403).json({
-                    message: 'Forbidden: You are neither the sender nor the receiver of this email'
-                });
+            if (!(await userCanAccessEmail(email, req))) {
+                return res.status(404).json({ message: 'Email not found' });
             }
             // Validate request body
             const { error, value } = updateEmailStateSchema.validate(req.body);
@@ -309,9 +369,9 @@ class EmailController {
             const email = await EmailService.getEmailById(emailId);
             if (!email) return res.status(404).json({ message: 'Email not found' })
 
-            //check userId if he owns the email
-            if (email.senderEmail !== String(req.user.email)) {
-                return res.status(403).json({ message: 'Forbbiden' })
+            const mailbox = await resolveSenderMailbox(req);
+            if (email.senderId !== req.user.id && email.senderEmail !== mailbox) {
+                return res.status(404).json({ message: 'Email not found' })
             }
             await EmailService.deleteEmail(emailId)
             return res.status(200).json({ message: "Email deleted successfully" })
@@ -322,14 +382,12 @@ class EmailController {
 
     async getUserSentEmails(req: CustomRequest, res: Response) {
         try {
-            let email = null;
-            if (req.user?.tenant?.id) {
-                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
-                email = tenant?.tenantWebUserEmail;
-            } else {
-                email = String(req.user.email);
-            }
-            const emails = await EmailService.getEmailsForUser(req.user.id, { category: "sent" })
+            const listContext = await buildEmailListContext(req);
+            const emails = await EmailService.getEmailsForUser(
+                req.user.id,
+                { category: "sent" },
+                listContext
+            )
 
             if (!emails) return res.status(200).json({ message: "No sent emails" })
             return res.status(200).json(emails)
@@ -341,7 +399,12 @@ class EmailController {
 
     async getUserDraftEmails(req: CustomRequest, res: Response) {
         try {
-            const emails = await EmailService.getEmailsForUser(req.user.id, { category: "drafts" })
+            const listContext = await buildEmailListContext(req);
+            const emails = await EmailService.getEmailsForUser(
+                req.user.id,
+                { category: "drafts" },
+                listContext
+            )
             return res.status(200).json(emails)
         } catch (error) {
             return res.status(500).json({ message: "Couldnt get Draft emails" })
@@ -350,19 +413,12 @@ class EmailController {
 
     async getUserUnreadEmails(req: CustomRequest, res: Response) {
         try {
-            let email = null;
-            if (req.user?.tenant?.id) {
-                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
-                email = tenant?.tenantWebUserEmail;
-            } else {
-                email = String(req.user.email);
-            }
-
+            const listContext = await buildEmailListContext(req);
             const emails = await EmailService.getEmailsForUser(req.user.id, {
                 unread: true,
                 received: true,    // only messages where user is receiver
                 category: 'inbox',
-            });
+            }, listContext);
             if (!emails) return res.status(200).json({ message: "No Unread Emails" })
             return res.status(200).json(emails)
         } catch (error) {
@@ -374,12 +430,25 @@ class EmailController {
     replyToEmail = async (req: CustomRequest, res: Response) => {
         try {
             const { originalEmailId, additionalMessage } = req.body;
-            const senderId = req.user.id; // From authentication
+            const senderId = req.user.id;
 
+            const original = await EmailService.getEmailById(originalEmailId);
+            if (!original || !(await userCanAccessEmail(original, req))) {
+                return res.status(404).json({ message: 'Email not found' });
+            }
+
+            const replyTargetId =
+                original.senderId === senderId ? original.receiverId : original.senderId;
+            if (replyTargetId && !(await MessagingCircleService.canCommunicate(senderId, replyTargetId))) {
+                return res.status(404).json({ message: 'Recipient not found' });
+            }
+
+            const senderMailbox = await resolveSenderMailbox(req);
             const email = await EmailService.replyToEmail(
                 originalEmailId,
                 senderId,
-                additionalMessage
+                additionalMessage,
+                senderMailbox
             );
 
             res.status(201).json(email);
@@ -395,19 +464,12 @@ class EmailController {
             const email = await EmailService.getEmailById(emailId)
             if (!email) return res.status(404).json({ message: 'Email not found' })
 
-            let receiverEmail = null;
-
-            if (req.user?.tenant?.id) {
-                const tenant = await tenantService.getTenantById(req.user?.tenant?.id);
-                receiverEmail = tenant?.tenantWebUserEmail;
-            } else {
-                receiverEmail = String(req.user.email);
+            if (!(await userCanAccessEmail(email, req))) {
+                return res.status(404).json({ message: 'Email not found' });
             }
-            const isReciever = email.receiverEmail === receiverEmail;
-
-            if (email.senderEmail !== receiverEmail && !isReciever) {
-                return res.status(403).json({ message: 'Forbbiden' })
-            }
+            const mailbox = await resolveSenderMailbox(req);
+            const isReciever =
+                email.receiverId === req.user.id || email.receiverEmail === mailbox;
             const updatedEmail = await EmailService.markEmailAsRead(emailId, isReciever)
             return res.status(200).json(updatedEmail)
         } catch (error) {
@@ -422,8 +484,9 @@ class EmailController {
             const email = await EmailService.getEmailById(emailId)
             if (!email) return res.status(404).json({ message: 'Email not found' })
 
-            if (email.senderEmail !== String(req.user.email)) {
-                return res.status(403).json({ message: 'Forbbiden' })
+            const mailbox = await resolveSenderMailbox(req);
+            if (email.senderId !== req.user.id && email.senderEmail !== mailbox) {
+                return res.status(404).json({ message: 'Email not found' })
             }
             const sentEmail = await EmailService.sendDraftEmail(emailId)
             return res.status(200).json(sentEmail)

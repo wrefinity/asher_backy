@@ -49,6 +49,12 @@ const userSelect = {
     },
 };
 
+export interface EmailListContext {
+    mailboxEmail: string;
+    circleUserIds: string[];
+    skipCircleFilter?: boolean;
+}
+
 export interface EmailIF {
     id?: string;
     senderEmail: string;
@@ -154,7 +160,20 @@ class EmailService {
      * Get paginated user emails
      */
 
-    async getInbox(userId: string, page = 1, limit = 10, search = '') {
+    private circleFilter(field: 'senderId' | 'receiverId', circleUserIds: string[]) {
+        if (!circleUserIds.length) {
+            return { [field]: '__none__' };
+        }
+        return { [field]: { in: circleUserIds } };
+    }
+
+    async getInbox(
+        userId: string,
+        page = 1,
+        limit = 10,
+        search = '',
+        listContext?: EmailListContext
+    ) {
         // Validate pagination values
         const currentPage = Math.max(1, Math.floor(page));
         const itemsPerPage = Math.max(1, Math.min(limit, 100));
@@ -165,14 +184,22 @@ class EmailService {
         });
         if (!user) throw new Error('User not found');
 
+        const mailboxEmail = listContext?.mailboxEmail ?? user.email;
+        const circleIds = listContext?.circleUserIds ?? [];
+        const applyCircle = !listContext?.skipCircleFilter;
+
         const baseWhere: any = {
             AND: [
                 {
-                    receiverEmail: user.email,
+                    OR: [
+                        { receiverEmail: mailboxEmail },
+                        { receiverId: userId },
+                    ],
                     isDraft: false,
                     isSent: true,
                     isDeleted: false,
                     isReply: false,
+                    ...(applyCircle ? this.circleFilter('senderId', circleIds) : {}),
                     states: {
                         none: {
                             userId: userId,
@@ -257,7 +284,11 @@ class EmailService {
         };
     }
 
-    async getEmailsForUser(userId: string, options: EmailQueryOptions = {}): Promise<PaginatedEmails> {
+    async getEmailsForUser(
+        userId: string,
+        options: EmailQueryOptions = {},
+        listContext?: EmailListContext
+    ): Promise<PaginatedEmails> {
         const {
             category,
             state = {},
@@ -276,31 +307,67 @@ class EmailService {
         const user = await prismaClient.users.findUnique({ where: { id: userId } });
         if (!user) throw new Error('User not found');
 
+        const mailboxEmail = listContext?.mailboxEmail ?? user.email;
+        const circleIds = listContext?.circleUserIds ?? [];
+        const applyCircle = !listContext?.skipCircleFilter;
+
         const baseConditions: any = {
             isReply: false,
         };
 
         switch (category) {
             case 'inbox':
-                baseConditions.receiverEmail = user.email;
+                baseConditions.OR = [
+                    { receiverEmail: mailboxEmail },
+                    { receiverId: userId },
+                ];
+                if (applyCircle) {
+                    baseConditions.senderId = { in: circleIds.length ? circleIds : ['__none__'] };
+                }
                 break;
             case 'sent':
-                baseConditions.senderEmail = user.email;
+                baseConditions.OR = [
+                    { senderEmail: mailboxEmail },
+                    { senderId: userId },
+                ];
                 baseConditions.NOT = { receiverEmail: null };
                 baseConditions.isDraft = false;
+                if (applyCircle) {
+                    baseConditions.receiverId = { in: circleIds.length ? circleIds : ['__none__'] };
+                }
                 break;
             case 'drafts':
-                baseConditions.senderEmail = user.email;
+                baseConditions.OR = [
+                    { senderEmail: mailboxEmail },
+                    { senderId: userId },
+                ];
                 baseConditions.isDraft = category === 'drafts';
                 break;
             case 'starred':
             case 'spam':
             case 'archived':
             case 'trash':
-                baseConditions.OR = [
-                    { senderEmail: user.email },
-                    { receiverEmail: user.email },
-                ];
+                if (applyCircle && circleIds.length) {
+                    baseConditions.OR = [
+                        {
+                            OR: [{ senderEmail: mailboxEmail }, { senderId: userId }],
+                            receiverId: { in: circleIds },
+                        },
+                        {
+                            OR: [{ receiverEmail: mailboxEmail }, { receiverId: userId }],
+                            senderId: { in: circleIds },
+                        },
+                    ];
+                } else if (applyCircle) {
+                    baseConditions.id = '__none__';
+                } else {
+                    baseConditions.OR = [
+                        { senderEmail: mailboxEmail },
+                        { receiverEmail: mailboxEmail },
+                        { senderId: userId },
+                        { receiverId: userId },
+                    ];
+                }
                 break;
         }
 
@@ -348,14 +415,26 @@ class EmailService {
         if (unread) {
             if (sent) {
                 where.isReadBySender = false;
-                where.senderEmail = user.email;
+                where.OR = [
+                    { senderEmail: mailboxEmail },
+                    { senderId: userId },
+                ];
             } else if (received) {
                 where.isReadByReceiver = false;
-                where.receiverEmail = user.email;
+                where.OR = [
+                    { receiverEmail: mailboxEmail },
+                    { receiverId: userId },
+                ];
             } else {
                 where.OR = [
-                    { senderEmail: user.email, isReadBySender: false },
-                    { receiverEmail: user.email, isReadByReceiver: false },
+                    {
+                        OR: [{ senderEmail: mailboxEmail }, { senderId: userId }],
+                        isReadBySender: false,
+                    },
+                    {
+                        OR: [{ receiverEmail: mailboxEmail }, { receiverId: userId }],
+                        isReadByReceiver: false,
+                    },
                 ];
             }
         }
@@ -472,12 +551,22 @@ class EmailService {
         originalEmailId: string,
         senderId: string,
         additionalMessage: string = "",
+        senderMailboxEmail?: string,
         replyAll: boolean = false
     ) {
         const originalEmail = await this.getEmailById(originalEmailId);
         if (!originalEmail) {
             throw new Error("Original email not found");
         }
+
+        const replyToUserId =
+            originalEmail.senderId === senderId
+                ? originalEmail.receiverId
+                : originalEmail.senderId;
+        const replyToEmail =
+            originalEmail.senderId === senderId
+                ? originalEmail.receiverEmail
+                : originalEmail.senderEmail;
 
         const replySubject = originalEmail.subject?.startsWith("Re:")
             ? originalEmail.subject
@@ -492,9 +581,9 @@ class EmailService {
 
         return this.createEmail({
             senderId,
-            receiverId: originalEmail.senderId, // Reply to sender
-            senderEmail: originalEmail.receiverEmail, // Current user's email
-            receiverEmail: originalEmail.senderEmail,
+            receiverId: replyToUserId,
+            senderEmail: senderMailboxEmail || originalEmail.receiverEmail,
+            receiverEmail: replyToEmail,
             subject: replySubject,
             body: quotedBody,
             attachment: [],

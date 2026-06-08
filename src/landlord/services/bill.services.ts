@@ -481,7 +481,7 @@ class BillService {
 
         const include: any = {
             tenants: { select: { id: true, tenantCode: true } },
-            property: { select: { id: true, name: true } },
+            property: { select: { id: true, name: true, currency: true, country: true } },
             landlord: { select: { id: true, landlordCode: true } },
         };
         if (includeOptions.includeTransactions) include.transactions = true;
@@ -546,7 +546,7 @@ class BillService {
                 transactions: { none: {} },
             },
             include: {
-                property: { select: { id: true, name: true } },
+                property: { select: { id: true, name: true, currency: true, country: true } },
                 bills: true,
                 transactions: true,
             },
@@ -571,7 +571,7 @@ class BillService {
                 transactions: { none: {} },
             },
             include: {
-                property: { select: { id: true, name: true } },
+                property: { select: { id: true, name: true, currency: true, country: true } },
                 bills: true,
                 transactions: true,
             },
