@@ -375,6 +375,28 @@ class MessagingCircleService {
   }
 
   /**
+   * Resolve a recipient user id within the sender's messaging circle.
+   */
+  async resolveReceiverById(
+    senderId: string,
+    receiverId: string
+  ): Promise<{ userId: string; mailboxEmail: string } | null> {
+    const trimmedId = receiverId.trim();
+    if (!trimmedId) return null;
+
+    const user = await prismaClient.users.findUnique({
+      where: { id: trimmedId },
+      select: { id: true },
+    });
+    if (!user) return null;
+
+    if (!(await this.canCommunicate(senderId, user.id))) return null;
+
+    const mailboxEmail = await this.resolveMailboxEmail(user.id);
+    return { userId: user.id, mailboxEmail };
+  }
+
+  /**
    * Resolve contact by mailbox/login email within sender's circle only.
    */
   async resolveContactInCircle(
@@ -382,14 +404,29 @@ class MessagingCircleService {
     email: string
   ): Promise<{ userId: string; mailboxEmail: string } | null> {
     const normalized = email.trim().toLowerCase();
-    const contacts = await this.getContacts(senderId);
-    const match = contacts.find(
-      (c) =>
-        c.mailboxEmail.toLowerCase() === normalized ||
-        c.email.toLowerCase() === normalized
-    );
-    if (!match) return null;
-    return { userId: match.userId, mailboxEmail: match.mailboxEmail };
+    if (!normalized) return null;
+
+    const user = await prismaClient.users.findFirst({
+      where: { email: { equals: normalized, mode: "insensitive" } },
+      select: { id: true },
+    });
+
+    if (user) {
+      if (!(await this.canCommunicate(senderId, user.id))) return null;
+      const mailboxEmail = await this.resolveMailboxEmail(user.id);
+      return { userId: user.id, mailboxEmail };
+    }
+
+    const tenant = await prismaClient.tenants.findFirst({
+      where: { tenantWebUserEmail: { equals: normalized, mode: "insensitive" } },
+      select: { userId: true },
+    });
+
+    if (!tenant?.userId) return null;
+    if (!(await this.canCommunicate(senderId, tenant.userId))) return null;
+
+    const mailboxEmail = await this.resolveMailboxEmail(tenant.userId);
+    return { userId: tenant.userId, mailboxEmail };
   }
 }
 

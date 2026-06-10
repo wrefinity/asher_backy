@@ -1,0 +1,148 @@
+/// Operational PMS profile — compliance, insurance, utilities, ownership.
+/// Additive layer; all records optional. Keep in sync with propertyPmsFormConfig.ts.
+
+enum PropertyComplianceCertType {
+  GAS_SAFETY
+  EICR
+  EPC
+  FIRE_RISK_ASSESSMENT
+  LEGIONELLA
+  HMO_LICENCE
+  ASBESTOS
+  PAT_TESTING
+  SMOKE_CO_ALARM
+  LEAD_PAINT_DISCLOSURE
+  BUSINESS_FIRE_SAFETY
+  EMERGENCY_LIGHTING
+  PLANNING_PERMISSION
+  OTHER
+}
+
+enum ComplianceRecordStatus {
+  VALID
+  EXPIRED
+  EXPIRING_SOON
+  PENDING
+  NOT_APPLICABLE
+}
+
+enum PropertyInsuranceType {
+  BUILDINGS
+  CONTENTS
+  LANDLORD
+  PUBLIC_LIABILITY
+  RENT_GUARANTEE
+  COMMERCIAL_COMBINED
+  OTHER
+}
+
+enum PropertyUtilityType {
+  ELECTRICITY
+  GAS
+  WATER
+  BROADBAND
+  COUNCIL_TAX
+  BUSINESS_RATES
+  SEWER
+  TRASH
+  GENERATOR
+  ESTATE_SECURITY
+  OTHER
+}
+
+enum UtilityPaidBy {
+  LANDLORD
+  TENANT
+  INCLUDED_IN_RENT
+  SHARED
+}
+
+enum OwnerEntityType {
+  INDIVIDUAL
+  LIMITED_COMPANY
+  TRUST
+  PARTNERSHIP
+  SPV
+  OTHER
+}
+
+model propertyComplianceRecord {
+  id                String                     @id @default(cuid())
+  propertyId        String
+  certType          PropertyComplianceCertType
+  certificateNumber String?
+  issueDate         DateTime?
+  expiryDate        DateTime?
+  status            ComplianceRecordStatus     @default(PENDING)
+  documentId        String?
+  notes             String?
+  reminderSentAt    DateTime?
+  isDeleted         Boolean                    @default(false)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  property          properties                 @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, isDeleted])
+  @@index([expiryDate, status])
+  @@index([certType])
+}
+
+model propertyInsurance {
+  id             String                @id @default(cuid())
+  propertyId     String
+  insuranceType  PropertyInsuranceType
+  provider       String?
+  policyNumber   String?
+  coverAmount    Decimal?              @db.Decimal(18, 2)
+  premium        Decimal?              @db.Decimal(18, 2)
+  premiumFrequency String?
+  renewalDate    DateTime?
+  startDate      DateTime?
+  documentId     String?
+  notes          String?
+  isDeleted      Boolean               @default(false)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  property       properties            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, isDeleted])
+  @@index([renewalDate])
+}
+
+model propertyUtilityAccount {
+  id            String              @id @default(cuid())
+  propertyId    String
+  utilityType   PropertyUtilityType
+  supplier      String?
+  accountNumber String?
+  meterNumber   String?
+  paidBy        UtilityPaidBy       @default(LANDLORD)
+  annualEstimate Decimal?           @db.Decimal(18, 2)
+  notes         String?
+  isDeleted     Boolean             @default(false)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  property      properties          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, isDeleted])
+  @@index([utilityType])
+}
+
+model propertyOwnershipProfile {
+  id                 String           @id @default(cuid())
+  propertyId         String           @unique
+  ownerEntityType    OwnerEntityType?
+  ownerEntityName    String?
+  acquisitionDate    DateTime?
+  acquisitionCost    Decimal?         @db.Decimal(18, 2)
+  mortgageLender     String?
+  mortgageAccountRef String?
+  titleReference     String?
+  taxReference       String?
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  property           properties       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}

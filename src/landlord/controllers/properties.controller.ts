@@ -95,6 +95,8 @@ class PropertyController {
                         commercial,
                         shortlet,
                         residential,
+                        operationalProfileJson,
+                        operationalProfile,
                         ...data
                     } = value;
 
@@ -145,6 +147,22 @@ class PropertyController {
                         uploadedFiles,
                         req.user?.id
                     );
+
+                    const operationalRaw =
+                        operationalProfileJson ??
+                        operationalProfile ??
+                        value.operationalProfileJson;
+                    if (operationalRaw && property?.id) {
+                        const PropertyOperationalService = (
+                            await import('../../services/propertyOperational.service')
+                        ).default;
+                        await PropertyOperationalService.syncOperationalProfileFromRaw(
+                            property.id,
+                            landlordId,
+                            operationalRaw
+                        );
+                    }
+
                     results.created.push(property);
                 } catch (error) {
                     const numberedName = `${value.name} ${i.toString().padStart(2, '0')}`;
@@ -188,6 +206,8 @@ class PropertyController {
                     shortlet,
                     residential,
                     count = 1,
+                    operationalProfileJson,
+                    operationalProfile,
                     ...data
                 } = prop;
 
@@ -254,6 +274,21 @@ class PropertyController {
                         uploadedFiles,
                         req.user?.id
                     );
+
+                    const operationalRaw =
+                        operationalProfileJson ??
+                        operationalProfile ??
+                        prop['Operational Profile JSON'];
+                    if (operationalRaw && property?.id) {
+                        const PropertyOperationalService = (
+                            await import('../../services/propertyOperational.service')
+                        ).default;
+                        await PropertyOperationalService.syncOperationalProfileFromRaw(
+                            property.id,
+                            landlordId,
+                            operationalRaw
+                        );
+                    }
 
                     results.created.push(property);
                 }
@@ -938,7 +973,10 @@ class PropertyController {
                         otherTypeSpecific,
                         commercial,
                         shortlet,
-                        residential, ...data
+                        residential,
+                        operationalProfileJson,
+                        operationalProfile,
+                        ...data
                     } = value
 
                     delete data['documentName']
@@ -959,6 +997,23 @@ class PropertyController {
 
                     // const lateFee = rentalFee * 0.01;
                     const property = await PropertyServices.createProperties({ ...data, stateId: state?.id, landlordId }, specification, uploadedFiles, req.user?.id)
+
+                    const operationalRaw =
+                        operationalProfileJson ??
+                        operationalProfile ??
+                        row.operationalProfileJson ??
+                        row['Operational Profile JSON'];
+                    if (operationalRaw && property?.id) {
+                        const PropertyOperationalService = (
+                            await import('../../services/propertyOperational.service')
+                        ).default;
+                        await PropertyOperationalService.syncOperationalProfileFromRaw(
+                            property.id,
+                            landlordId,
+                            operationalRaw
+                        );
+                    }
+
                     uploaded.push(property);
                 } catch (err) {
                     const existingError = uploadErrors.find(error => error.name === row.name);

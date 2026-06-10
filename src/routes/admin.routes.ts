@@ -225,6 +225,13 @@ class AdminRouter {
             AdminController.updateDocumentStatus
         );
 
+        this.router.get(
+            "/compliance/overview",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.getComplianceOverview
+        );
+
         // Test email endpoint (requires authentication)
         this.router.post(
             "/test-email",

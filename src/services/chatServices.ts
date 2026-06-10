@@ -112,10 +112,51 @@ class ChatServices {
             audios: message?.audios,
             chatType: message.chatType,
         };
-        // Emit message to both sender and receiver personal rooms
+        // Emit message to personal rooms (legacy id room + user: prefixed room)
         serverInstance.io.to(senderId).emit("privateMessage", payload);
         serverInstance.io.to(receiverId).emit("privateMessage", payload);
+        serverInstance.io.to(`user:${senderId}`).emit("privateMessage", payload);
+        serverInstance.io.to(`user:${receiverId}`).emit("privateMessage", payload);
         console.log(`📤 Message sent from ${senderId} to ${receiverId}`);
+
+        try {
+            const sender = await prismaClient.users.findUnique({
+                where: { id: senderId },
+                include: {
+                    profile: { select: { fullname: true, firstName: true, lastName: true } },
+                },
+            });
+            const senderName =
+                sender?.profile?.fullname ||
+                [sender?.profile?.firstName, sender?.profile?.lastName].filter(Boolean).join(' ') ||
+                'New message';
+            const preview = (content || '').trim().slice(0, 160) || 'You have a new message';
+
+            const NotificationService = (await import('./notification.service')).default;
+            await NotificationService.createNotification(
+                {
+                    sourceId: senderId,
+                    destId: receiverId,
+                    title: 'New message',
+                    message: `${senderName}: ${preview}`,
+                },
+                'COMMUNICATION'
+            );
+
+            const expoPushService = (await import('./expoPush.service')).default;
+            await expoPushService.sendChatToUser(receiverId, {
+                title: senderName,
+                body: preview,
+                data: {
+                    type: 'chat_message',
+                    route: `/chats/${senderId}`,
+                    senderId,
+                },
+            });
+        } catch (notifyError) {
+            console.error('Failed to send chat notification:', notifyError);
+        }
+
         return message;
     };
 

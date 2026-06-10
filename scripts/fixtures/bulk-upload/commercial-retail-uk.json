@@ -1,0 +1,25 @@
+[
+  {
+    "name": "Sample Commercial Retail UK",
+    "price": "35000",
+    "currency": "GBP",
+    "priceFrequency": "MONTHLY",
+    "rentalPeriod": "MONTHLY",
+    "specificationType": "COMMERCIAL",
+    "propertySubType": "RETAIL_SPACE",
+    "address": "78 High Street",
+    "city": "Birmingham",
+    "state": "Birmingham",
+    "zipcode": "B1 1AA",
+    "country": "United Kingdom",
+    "description": "Sample bulk upload fixture",
+    "commercial": {
+      "totalArea": "2500",
+      "areaUnit": "SQFT",
+      "leaseTermUnit": "YEARS",
+      "minimumLeaseTerm": 5,
+      "totalRooms": 4,
+      "parkingSpaces": 10
+    }
+  }
+]

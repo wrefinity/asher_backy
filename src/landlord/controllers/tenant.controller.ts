@@ -642,10 +642,10 @@ class TenantControls {
 
             let rentIncreaseBill = null;
             const shouldCreateBill = createBill !== false;
+            const { serverInstance } = await import('../..');
             if (shouldCreateBill && Number(scheduledRent) > oldRent) {
                 try {
                     const billTemplateService = (await import('../../services/billTemplate.service')).default;
-                    const { serverInstance } = await import('../..');
                     rentIncreaseBill = await billTemplateService.createRentIncreaseBill({
                         landlordId,
                         propertyId: tenant.propertyId,
@@ -660,6 +660,19 @@ class TenantControls {
                 } catch (billError) {
                     console.error('Failed to create rent increase bill:', billError);
                 }
+            } else if (
+                Number(scheduledRent) !== oldRent &&
+                serverInstance.paymentNotificationService &&
+                tenant.userId
+            ) {
+                await serverInstance.paymentNotificationService.sendRentAdjustmentNotification(
+                    tenant.userId,
+                    oldRent,
+                    Number(scheduledRent),
+                    updatedProperty.currency ? String(updatedProperty.currency) : undefined,
+                    req.user?.id,
+                    landlordId
+                );
             }
 
             return res.status(200).json({

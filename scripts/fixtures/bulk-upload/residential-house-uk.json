@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Sample Residential House UK",
+    "price": "2500",
+    "currency": "GBP",
+    "priceFrequency": "MONTHLY",
+    "rentalPeriod": "MONTHLY",
+    "specificationType": "RESIDENTIAL",
+    "propertySubType": "HOUSE",
+    "address": "123 Test Street",
+    "city": "London",
+    "state": "London",
+    "zipcode": "SW1A 1AA",
+    "country": "United Kingdom",
+    "securityDeposit": 2500,
+    "description": "Sample bulk upload fixture",
+    "residential": {
+      "status": "FOR_RENT",
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "toilets": 2,
+      "furnished": true,
+      "totalArea": "1500",
+      "areaUnit": "SQM",
+      "tenure": "FREEHOLD",
+      "glazingTypes": "DOUBLE_GLAZING"
+    },
+    "operationalProfileJson": "{\"complianceCerts\":[]}"
+  }
+]

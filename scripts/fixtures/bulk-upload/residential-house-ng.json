@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Sample Residential House NG",
+    "price": "3500000",
+    "currency": "NGN",
+    "priceFrequency": "MONTHLY",
+    "rentalPeriod": "MONTHLY",
+    "specificationType": "RESIDENTIAL",
+    "propertySubType": "HOUSE",
+    "address": "12 Test Street",
+    "city": "Lagos",
+    "state": "Lagos",
+    "zipcode": "106104",
+    "country": "Nigeria",
+    "initialDeposit": 3500000,
+    "description": "Sample bulk upload fixture",
+    "residential": {
+      "status": "FOR_RENT",
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "toilets": 2,
+      "furnished": true,
+      "totalArea": "120",
+      "areaUnit": "SQM"
+    }
+  }
+]

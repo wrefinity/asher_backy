@@ -6,7 +6,7 @@ import {
     PropertySpecificationType,
     PropertyType,
 } from '@prisma/client';
-import { LISTING_MARKET_COUNTRY_ALIASES, canonicalizeListingMarketCountry } from './listingMarketGate';
+import { LISTING_MARKET_COUNTRY_ALIASES, canonicalizeListingMarketCountry } from './listingMarketCountries';
 
 export type ListedPropertySort = 'newest' | 'price-asc' | 'price-desc' | 'popular';
 

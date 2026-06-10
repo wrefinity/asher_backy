@@ -74,6 +74,10 @@ class PropertyBulkUploadService {
             videos: row.videos ? JSON.parse(row.videos) : [],
             virtualTours: row.virtualTours ? JSON.parse(row.virtualTours) : [],
             otherTypeSpecific: row.otherTypeSpecific ? JSON.parse(row.otherTypeSpecific) : undefined,
+            operationalProfileJson:
+                row.operationalProfileJson ??
+                row['Operational Profile JSON'] ??
+                undefined,
 
             // Type-specific properties
             residential: specificationType === PropertySpecificationType.RESIDENTIAL ? this.parseResidential(row) : undefined,

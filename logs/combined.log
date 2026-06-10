@@ -1587,3 +1587,226 @@
 {"level":"info","message":"Email sent successfully. ID: 0af5d75e-31f9-419f-9df1-045f8f0ef82a","service":"api-service","timestamp":"2026-06-08 21:17:48"}
 {"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 21:17:48"}
 {"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 21:17:48"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-08 22:17:44"}
+{"level":"info","message":"Email sent successfully. ID: f4fd3075-22ca-4f62-8d6c-343f61904eec","service":"api-service","timestamp":"2026-06-08 22:17:48"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 22:17:48"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 22:17:48"}
+{"0":"c","1":"m","10":"0","11":"0","12":"7","13":"u","14":"x","15":"f","16":"v","17":"4","18":"8","19":"6","2":"p","20":"4","21":"f","22":"2","23":"f","24":"s","3":"v","4":"s","5":"5","6":"y","7":"k","8":"3","9":"0","level":"info","message":"[checker]: Landlord ID:","service":"api-service","timestamp":"2026-06-08 23:15:51"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:16:07"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:16:21"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:17:20"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-08 23:17:44"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:17:47"}
+{"level":"info","message":"Email sent successfully. ID: ca8b5439-552e-4fdc-83ad-f0aaae38d68e","service":"api-service","timestamp":"2026-06-08 23:17:48"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-08 23:17:48"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-08 23:17:48"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:18:02"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:18:16"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:21:35"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:21:37"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:21:40"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:21:44"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:21:54"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:22:23"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:22:55"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:24:39"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:24:44"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:24:52"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:25:03"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:26:28"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:26:43"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:26:43"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:27:47"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:27:54"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:27:56"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:27:57"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:28:04"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:28:16"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:28:56"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:29:21"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:29:21"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:29:41"}
+{"level":"error","message":"An unexpected error occurred Property not found","service":"api-service","stack":"Error: Property not found\n    at PropertyService.getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/services/propertyServices.ts:3107:27)\n    at async getPropertyById (/Users/tosinojo/Documents/GitHub/Property/AsherBE/src/controllers/property.controller.ts:279:30)","timestamp":"2026-06-08 23:29:49"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 23:30:01"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-08 23:30:22"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 00:30:23"}
+{"level":"info","message":"Email sent successfully. ID: 7338f3a0-8a06-4151-9323-bc88fd7d9f61","service":"api-service","timestamp":"2026-06-09 00:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 00:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 00:30:27"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 01:30:22"}
+{"level":"info","message":"Email sent successfully. ID: 0da6bdd0-d8f7-4bbf-b46b-51a26a178c6b","service":"api-service","timestamp":"2026-06-09 01:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 01:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 01:30:27"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 02:30:23"}
+{"level":"info","message":"Email sent successfully. ID: bde7b13c-d62d-4e82-93fe-4eb6dc0d7914","service":"api-service","timestamp":"2026-06-09 02:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 02:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 02:30:27"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 03:30:22"}
+{"level":"info","message":"Email sent successfully. ID: 60348b46-7f14-46df-bf38-745021f9b2dd","service":"api-service","timestamp":"2026-06-09 03:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 03:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 03:30:27"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 04:30:22"}
+{"level":"info","message":"Email sent successfully. ID: 862cd3c2-8bfd-4089-aab4-b7b389cdaa4c","service":"api-service","timestamp":"2026-06-09 04:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 04:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 04:30:27"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 05:30:23"}
+{"level":"info","message":"Email sent successfully. ID: 45721618-0a8d-4db2-8482-060ebde6c07a","service":"api-service","timestamp":"2026-06-09 05:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 05:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 05:30:27"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 06:30:22"}
+{"level":"info","message":"Email sent successfully. ID: aa0c1456-be13-4767-830a-713a69d3c2a6","service":"api-service","timestamp":"2026-06-09 06:30:27"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 06:30:27"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 06:30:27"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:16:36"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:16:39"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:16:43"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:16:45"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:16:50"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:16:57"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-09 07:26:23"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 08:26:25"}
+{"level":"info","message":"Email sent successfully. ID: c766d81f-472d-4225-8a28-253064a5c9c8","service":"api-service","timestamp":"2026-06-09 08:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 08:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 08:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 09:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 9529c181-1ebf-4234-82de-69990c019cec","service":"api-service","timestamp":"2026-06-09 09:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 09:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 09:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 10:26:24"}
+{"level":"info","message":"Email sent successfully. ID: f2100c77-5b07-498a-91ba-7805defbc409","service":"api-service","timestamp":"2026-06-09 10:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 10:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 10:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 11:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 8873ed3e-bc4b-45c0-a79a-e9b24e8cad7c","service":"api-service","timestamp":"2026-06-09 11:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 11:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 11:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 12:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 1277a00c-0e00-49f3-9044-191e7d23d7ce","service":"api-service","timestamp":"2026-06-09 12:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 12:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 12:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 13:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 42b5ba4f-4970-499f-beb2-d820168cb305","service":"api-service","timestamp":"2026-06-09 13:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 13:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 13:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 14:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 2b7f3023-efaf-4de6-bc77-8b95a3eca4d2","service":"api-service","timestamp":"2026-06-09 14:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 14:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 14:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 15:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 9a0fe624-c871-4705-8e06-0ddf994b92cd","service":"api-service","timestamp":"2026-06-09 15:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 15:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 15:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 16:26:24"}
+{"level":"info","message":"Email sent successfully. ID: c7137aa8-24b3-4ec8-b0ba-a90523f56302","service":"api-service","timestamp":"2026-06-09 16:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 16:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 16:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 17:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 3542736f-ef4e-42f2-8175-eb68eb2795bb","service":"api-service","timestamp":"2026-06-09 17:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 17:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 17:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 18:26:24"}
+{"level":"info","message":"Email sent successfully. ID: f8c0b4d1-d528-4a9e-9f84-b00c3fff899e","service":"api-service","timestamp":"2026-06-09 18:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 18:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 18:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 19:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 54f04122-e017-46c5-950f-71c333c21c9a","service":"api-service","timestamp":"2026-06-09 19:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 19:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 19:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 20:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 513bfeeb-5d2b-477b-ae52-83245630424d","service":"api-service","timestamp":"2026-06-09 20:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 20:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 20:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 21:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 166a6b50-9db7-4c98-9318-2c4f6167ca78","service":"api-service","timestamp":"2026-06-09 21:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 21:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 21:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 22:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 1a5d1cf0-804e-4770-b48e-de8848714bba","service":"api-service","timestamp":"2026-06-09 22:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 22:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 22:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-09 23:26:24"}
+{"level":"info","message":"Email sent successfully. ID: f156b895-d304-4d25-8242-a5919affa548","service":"api-service","timestamp":"2026-06-09 23:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-09 23:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-09 23:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 00:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 6429d52b-c245-46b3-a9d7-e3966fa2ad45","service":"api-service","timestamp":"2026-06-10 00:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 00:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 00:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 01:26:24"}
+{"level":"info","message":"Email sent successfully. ID: e1c62971-91bd-499d-8097-ede05687ac0b","service":"api-service","timestamp":"2026-06-10 01:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 01:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 01:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 02:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 537bb688-5503-4e10-a3de-0777c162d97e","service":"api-service","timestamp":"2026-06-10 02:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 02:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 02:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 03:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 9080b1bf-063c-4f79-b7ca-eca33350c3e8","service":"api-service","timestamp":"2026-06-10 03:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 03:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 03:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 04:26:24"}
+{"level":"info","message":"Email sent successfully. ID: b42fed85-1a51-43a2-b77a-aa46889f16e3","service":"api-service","timestamp":"2026-06-10 04:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 04:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 04:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 05:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 7f8f0655-2040-4914-9751-8c624a943de5","service":"api-service","timestamp":"2026-06-10 05:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 05:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 05:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 06:26:24"}
+{"level":"info","message":"Email sent successfully. ID: d95b7dc9-7a35-4b5a-9953-a998b7d38915","service":"api-service","timestamp":"2026-06-10 06:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 06:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 06:26:28"}
+{"level":"info","message":"Recurring bill generation complete: 0 created from 1 series","service":"api-service","timestamp":"2026-06-10 07:26:24"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 07:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 26435248-d0d2-43fb-8789-7b7cd4d61b32","service":"api-service","timestamp":"2026-06-10 07:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 07:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 07:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 08:26:24"}
+{"level":"info","message":"Email sent successfully. ID: c05e9205-a0d1-482b-9347-68ab5d155a31","service":"api-service","timestamp":"2026-06-10 08:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 08:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 08:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 09:26:24"}
+{"level":"info","message":"Email sent successfully. ID: f6b3e8c0-ef93-479f-b9a0-1ac1d55641f9","service":"api-service","timestamp":"2026-06-10 09:26:29"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 09:26:29"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 09:26:29"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 10:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 341713fa-cf44-45cf-bad4-e142307095f0","service":"api-service","timestamp":"2026-06-10 10:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 10:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 10:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 11:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 0bac4993-faaf-4521-b078-73867a645852","service":"api-service","timestamp":"2026-06-10 11:26:30"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 11:26:30"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 11:26:30"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 12:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 6cd479b7-70d7-44f6-9b43-33af98049645","service":"api-service","timestamp":"2026-06-10 12:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 12:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 12:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 13:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 70e868b5-a629-4e44-82c4-ba7cc6de53ed","service":"api-service","timestamp":"2026-06-10 13:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 13:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 13:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 14:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 62e21928-d396-404f-ad93-722c5918b643","service":"api-service","timestamp":"2026-06-10 14:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 14:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 14:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 15:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 0941e3d3-3a2e-4029-9dbd-cd9ecf1dbcfb","service":"api-service","timestamp":"2026-06-10 15:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 15:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 15:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 16:26:24"}
+{"level":"info","message":"Email sent successfully. ID: 1b5cb134-a23b-4f3d-9695-2acd456d3b16","service":"api-service","timestamp":"2026-06-10 16:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 16:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 16:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 17:26:24"}
+{"level":"info","message":"Email sent successfully. ID: d22be563-3cf4-4b89-9987-3ac99dae54be","service":"api-service","timestamp":"2026-06-10 17:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 17:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 17:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 18:26:24"}
+{"level":"info","message":"Email sent successfully. ID: a2feaf5a-57e2-4b21-bae2-7d9cea531e97","service":"api-service","timestamp":"2026-06-10 18:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 18:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 18:26:28"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-10 19:26:24"}
+{"level":"info","message":"Email sent successfully. ID: cf4356b0-ed46-43a3-836a-0ba9585a6e60","service":"api-service","timestamp":"2026-06-10 19:26:28"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 19:26:28"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 19:26:28"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-10 20:05:26"}

@@ -98,16 +98,15 @@ class EmailController {
 
             if (!isDraft) {
                 if (receiverUserId) {
-                    const allowed = await MessagingCircleService.canCommunicate(
+                    const receiver = await MessagingCircleService.resolveReceiverById(
                         req.user.id,
                         receiverUserId
                     );
-                    if (!allowed) {
+                    if (!receiver) {
                         return res.status(404).json({ message: 'Recipient not found' });
                     }
-                    receiverId = receiverUserId;
-                    validatedReceiverEmail =
-                        await MessagingCircleService.resolveMailboxEmailForUser(receiverUserId);
+                    receiverId = receiver.userId;
+                    validatedReceiverEmail = receiver.mailboxEmail;
                 } else if (receiverEmail) {
                     const receiver = await MessagingCircleService.resolveContactInCircle(
                         req.user.id,

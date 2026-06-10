@@ -1,0 +1,28 @@
+[
+  {
+    "name": "Sample Commercial Office NG",
+    "price": "8500000",
+    "currency": "NGN",
+    "priceFrequency": "MONTHLY",
+    "rentalPeriod": "MONTHLY",
+    "specificationType": "COMMERCIAL",
+    "propertySubType": "OFFICE_SPACE",
+    "address": "45 Business Avenue",
+    "city": "Lagos",
+    "state": "Lagos",
+    "zipcode": "106104",
+    "country": "Nigeria",
+    "description": "Sample bulk upload fixture",
+    "commercial": {
+      "totalArea": "500",
+      "areaUnit": "SQM",
+      "leaseTermUnit": "YEARS",
+      "minimumLeaseTerm": 3,
+      "totalRooms": 10,
+      "parkingSpaces": 5,
+      "securityFeatures": ["CCTV"],
+      "heatingTypes": ["Central"],
+      "coolingTypes": ["AC"]
+    }
+  }
+]

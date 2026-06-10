@@ -1,60 +1,59 @@
 /**
- * Validates FE bulk-upload payloads against BulkPropertyUploadSchema.
- * Run: cd AsherBE && npx tsx scripts/validate-bulk-upload-payloads.ts
+ * Validates representative bulk-upload API payloads against BulkPropertyUploadSchema.
+ *
+ * BE owns Joi validation only. CSV → payload mapping is tested in AsherLandlordFE
+ * (see src/services/properties/bulkUpload/bulkUpload.flow.test.ts).
+ *
+ * Run: cd AsherBE && npm run validate:bulk-upload
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import Papa from 'papaparse';
 import { BulkPropertyUploadSchema } from '../src/validations/schemas/properties.schema';
-import { transformBulkPropertyData } from '../../AsherLandlordFE/src/services/properties/bulkUpload/transformBulkPropertyData';
-import { mapCsvRowForBulkUpload } from '../../AsherLandlordFE/src/services/properties/bulkUpload/bulkUpload.flow.helpers';
 
-const feTemplates = resolve(__dirname, '../../AsherLandlordFE/public/templates/properties');
+const fixturesDir = resolve(__dirname, 'fixtures/bulk-upload');
 
-const runCase = (
-  label: string,
-  file: string,
-  type: string,
-  subtype: string
-) => {
-  const raw = readFileSync(resolve(feTemplates, file), 'utf8');
-  const parsed = Papa.parse<Record<string, string>>(raw, {
-    header: true,
-    skipEmptyLines: true,
-  });
-  const headers = parsed.meta.fields ?? [];
-  const mapped = mapCsvRowForBulkUpload(
-    parsed.data[0],
-    headers,
-    type,
-    subtype
-  );
-  const payload = transformBulkPropertyData(mapped, type, subtype);
-  const { error } = BulkPropertyUploadSchema.validate([payload], {
-    abortEarly: false,
-  });
-  if (error) {
-    console.error(`\n❌ ${label}`);
-    error.details.forEach(d => console.error(`  - ${d.message}`));
-    return false;
-  }
-  console.log(`✅ ${label}`);
-  return true;
-};
-
-const cases: Array<[string, string, string, string]> = [
-  ['Residential HOUSE', 'residential_house_template.csv', 'RESIDENTIAL', 'HOUSE'],
-  ['Residential FLAT', 'residential_house_template.csv', 'RESIDENTIAL', 'FLAT'],
-  ['Commercial OFFICE', 'commercial_office_template.csv', 'COMMERCIAL', 'OFFICE'],
-  ['Commercial RETAIL', 'commercial_template.csv', 'COMMERCIAL', 'RETAIL'],
-  ['Commercial INDUSTRIAL', 'commercial_template.csv', 'COMMERCIAL', 'INDUSTRIAL'],
-  ['Commercial WAREHOUSE', 'commercial_template.csv', 'COMMERCIAL', 'WAREHOUSE'],
-];
+const fixtureFiles = readdirSync(fixturesDir)
+  .filter((name) => name.endsWith('.json'))
+  .sort();
 
 let ok = 0;
-for (const c of cases) {
-  if (runCase(...c)) ok += 1;
+
+for (const file of fixtureFiles) {
+  const label = file.replace(/\.json$/, '').replace(/-/g, ' ');
+  const raw = readFileSync(resolve(fixturesDir, file), 'utf8');
+  let payload: unknown;
+
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    console.error(`\n❌ ${label} — invalid JSON in fixture`);
+    continue;
+  }
+
+  const { error } = BulkPropertyUploadSchema.validate(payload, {
+    abortEarly: false,
+  });
+
+  if (error) {
+    console.error(`\n❌ ${label}`);
+    error.details.forEach((d) => console.error(`  - ${d.message}`));
+    continue;
+  }
+
+  const hasOps = Array.isArray(payload)
+    && payload.some(
+      (row) =>
+        row &&
+        typeof row === 'object' &&
+        ('operationalProfileJson' in row || 'operationalProfile' in row)
+    );
+
+  console.log(`✅ ${label}${hasOps ? ' (operational profile present)' : ''}`);
+  ok += 1;
 }
 
-console.log(`\n${ok}/${cases.length} payloads passed Joi validation`);
-process.exit(ok === cases.length ? 0 : 1);
+console.log(`\n${ok}/${fixtureFiles.length} fixture payloads passed Joi validation`);
+
+if (ok !== fixtureFiles.length) {
+  process.exit(1);
+}

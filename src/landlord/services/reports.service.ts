@@ -332,18 +332,8 @@ class ReportsService {
 
     // Business Intelligence Reports
     async getComplianceReport(landlordId: string) {
-        // This would typically include various compliance checks
-        // For now, returning a basic structure
-        return {
-            summary: {
-                totalProperties: 0,
-                complianceScore: 0,
-                violationsFound: 0,
-                recommendations: []
-            },
-            complianceChecks: [],
-            generatedAt: new Date().toISOString()
-        };
+        const PropertyOperationalService = (await import('../../services/propertyOperational.service')).default;
+        return PropertyOperationalService.getLandlordComplianceSummary(landlordId);
     }
 
     async getMarketingReport(landlordId: string, period?: string) {

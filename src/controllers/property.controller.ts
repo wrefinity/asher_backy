@@ -23,6 +23,7 @@ import ListingEngagementService from "../services/listingEngagement.service";
 import { EngagementNormalizer } from "../utils/EngagementNormalizer";
 import { isActivePipelineInvite } from "../utils/InviteStateMachine";
 import { sanitizeListingLandlordsForPublicView } from "../utils/publicProfilePrivacy";
+import { applyPublicComplianceHints } from "../utils/propertyOperationalPrivacy";
 
 class PropertyController {
     constructor() { }
@@ -272,12 +273,18 @@ class PropertyController {
     getPropertyById = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.id;
-            console.log(propertyId  )
             if(!propertyId){
                 return res.status(400).json({ message: "propertyId is required" });
             }
             const property = await PropertyServices.getPropertyById(propertyId)
-            return res.status(200).json({ property })
+            const canonicalId = property.propertyId ?? property.id;
+            const normalized = {
+                ...property,
+                id: canonicalId,
+                propertyId: canonicalId,
+            };
+            const withHints = applyPublicComplianceHints(normalized as Record<string, unknown>);
+            return res.status(200).json({ property: withHints })
         } catch (error) {
             ErrorService.handleError(error, res)
         }
@@ -312,6 +319,12 @@ class PropertyController {
 
             const { viewerContext } = await resolveViewerMarketFromRequest(req);
             const [sanitizedProperty] = await sanitizeListingLandlordsForPublicView([property]);
+
+            const nested = (sanitizedProperty as { property?: Record<string, unknown> }).property;
+            if (nested?.complianceRecords) {
+              (sanitizedProperty as { property: Record<string, unknown> }).property =
+                applyPublicComplianceHints(nested);
+            }
 
             return res.status(200).json({ property: sanitizedProperty, viewerContext })
         } catch (error) {

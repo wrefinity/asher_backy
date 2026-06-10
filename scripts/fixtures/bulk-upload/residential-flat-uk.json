@@ -1,0 +1,28 @@
+[
+  {
+    "name": "Sample Residential Flat UK",
+    "price": "1800",
+    "currency": "GBP",
+    "priceFrequency": "MONTHLY",
+    "rentalPeriod": "MONTHLY",
+    "specificationType": "RESIDENTIAL",
+    "propertySubType": "FLAT",
+    "address": "45 Flat Lane",
+    "city": "Manchester",
+    "state": "Manchester",
+    "zipcode": "M1 1AA",
+    "country": "United Kingdom",
+    "securityDeposit": 1800,
+    "description": "Sample bulk upload fixture",
+    "residential": {
+      "status": "FOR_RENT",
+      "bedrooms": 2,
+      "bathrooms": 1,
+      "toilets": 1,
+      "furnished": false,
+      "totalArea": "850",
+      "areaUnit": "SQFT",
+      "floorLevel": 3
+    }
+  }
+]

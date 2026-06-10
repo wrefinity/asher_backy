@@ -1,6 +1,14 @@
 import { Server as IOServer } from "socket.io";
 import { prismaClient } from "..";
-import { Currency, PriceFrequency, ReminderMethodType, TransactionType } from "@prisma/client";
+import {
+  Currency,
+  NotificationCategory,
+  PriceFrequency,
+  ReminderMethodType,
+  TransactionReference,
+  TransactionStatus,
+  TransactionType,
+} from "@prisma/client";
 import loggers from "../utils/loggers";
 import LandlordSettingsService from "../landlord/services/propertySetting.service";
 import {
@@ -11,7 +19,7 @@ import sendMail from "../utils/emailer";
 import type { IGlobalSetting } from "../landlord/validations/interfaces/propsSettings";
 
 export interface PaymentNotification {
-  type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder' | 'bill_created';
+  type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder' | 'bill_created' | 'rent_adjusted';
   title: string;
   message: string;
   data: any;
@@ -30,11 +38,54 @@ type BillWithRelations = {
   landlord?: { user?: { id: string } | null } | null;
 };
 
+const BILL_DUE_REMINDER_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
 export class PaymentNotificationService {
   private io: IOServer;
 
   constructor(io: IOServer) {
     this.io = io;
+  }
+
+  private async wasBillDueReminderSentRecently(
+    destUserId: string,
+    messagePrefix: string
+  ): Promise<boolean> {
+    const since = new Date(Date.now() - BILL_DUE_REMINDER_COOLDOWN_MS);
+    const recent = await prismaClient.notification.findFirst({
+      where: {
+        destId: destUserId,
+        title: "Bill Due Soon",
+        category: NotificationCategory.ONLINE_PAYMENTS,
+        message: { startsWith: messagePrefix },
+        createdAt: { gte: since },
+      },
+      select: { id: true },
+    });
+    return recent != null;
+  }
+
+  private async isBillPaid(
+    billId: string,
+    bill: { propertyId?: string | null; tenants?: { userId?: string | null } | null }
+  ): Promise<boolean> {
+    const tenantUserId = bill.tenants?.userId;
+    if (!tenantUserId) return false;
+
+    const paid = await prismaClient.transaction.findFirst({
+      where: {
+        reference: TransactionReference.BILL_PAYMENT,
+        propertyId: bill.propertyId ?? undefined,
+        userId: tenantUserId,
+        status: TransactionStatus.COMPLETED,
+        metadata: {
+          path: ["billId"],
+          equals: billId,
+        },
+      },
+      select: { id: true },
+    });
+    return paid != null;
   }
 
   private formatAmount(
@@ -270,6 +321,11 @@ export class PaymentNotificationService {
         return;
       }
 
+      if (await this.isBillPaid(billId, bill)) {
+        loggers.info(`Skipping bill due reminder — bill already paid: ${billId}`);
+        return;
+      }
+
       const resolvedSettings =
         settings ??
         (bill.landlordId
@@ -282,11 +338,24 @@ export class PaymentNotificationService {
       );
       const currency = this.resolveBillCurrency(bill);
       const amountLabel = this.formatAmount(bill.amount, currency);
+      const messagePrefix = `Your ${bill.billName} bill of ${amountLabel}`;
+
+      if (
+        await this.wasBillDueReminderSentRecently(
+          bill.tenants.user.id,
+          messagePrefix
+        )
+      ) {
+        loggers.info(
+          `Skipping bill due reminder — already sent within 7 days: ${billId}`
+        );
+        return;
+      }
 
       const notification: PaymentNotification = {
         type: 'bill_due',
         title: 'Bill Due Soon',
-        message: `Your ${bill.billName} bill of ${amountLabel} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`,
+        message: `${messagePrefix} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`,
         data: {
           billId,
           billName: bill.billName,
@@ -665,6 +734,78 @@ export class PaymentNotificationService {
       console.log(`💰 Wallet balance update sent to user ${userId}`);
     } catch (error) {
       console.error('❌ Error sending wallet balance update:', error);
+    }
+  }
+
+  /**
+   * Notify tenant when landlord adjusts rent (even if no bill is created).
+   */
+  async sendRentAdjustmentNotification(
+    tenantUserId: string,
+    oldRent: number,
+    newRent: number,
+    currency?: string | null,
+    landlordUserId?: string | null,
+    landlordId?: string | null
+  ): Promise<void> {
+    try {
+      const code = currency ? String(currency) : 'NGN';
+      const format = (value: number) =>
+        `${code} ${value.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+      const notification: PaymentNotification = {
+        type: 'rent_adjusted',
+        title: 'Rent updated',
+        message: `Your rent has been updated from ${format(oldRent)} to ${format(newRent)}.`,
+        data: {
+          oldRent,
+          newRent,
+          currency: code,
+          timestamp: new Date(),
+          route: '/profile/TenancyInfo',
+        },
+        timestamp: new Date(),
+      };
+
+      this.io.to(`user:${tenantUserId}`).emit('payment_notification', notification);
+
+      try {
+        const NotificationService = (await import('./notification.service')).default;
+        await NotificationService.createNotification(
+          {
+            sourceId: landlordUserId ?? undefined,
+            destId: tenantUserId,
+            title: notification.title,
+            message: notification.message,
+          },
+          'ONLINE_PAYMENTS'
+        );
+      } catch (persistError) {
+        loggers.error('Failed to persist rent adjustment notification:', persistError);
+      }
+
+      const settings = landlordId
+        ? await LandlordSettingsService.getAllGlobalSettings(landlordId)
+        : null;
+      const methods = this.resolveReminderMethods(settings);
+
+      if (this.shouldUseMethod(methods, ReminderMethodType.PUSH)) {
+        try {
+          const expoPushService = (await import('./expoPush.service')).default;
+          await expoPushService.sendToUser(tenantUserId, {
+            title: notification.title,
+            body: notification.message,
+            data: {
+              type: notification.type,
+              route: '/profile/TenancyInfo',
+            },
+          });
+        } catch (pushError) {
+          loggers.error('Failed to send rent adjustment push:', pushError);
+        }
+      }
+    } catch (error) {
+      loggers.error('Error sending rent adjustment notification:', error);
     }
   }
 }

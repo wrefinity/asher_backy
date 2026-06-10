@@ -1,7 +1,7 @@
 import {
   canonicalizeListingMarketCountry,
   LISTING_MARKET_COUNTRY_ALIASES,
-} from './listingMarketGate';
+} from './listingMarketCountries';
 
 /** Supported tenant application markets — aligned with listing market gate. */
 export type SupportedApplicationMarket =

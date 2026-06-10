@@ -60,6 +60,42 @@ class ExpoPushService {
     return this.sendBatch(messages);
   }
 
+  async sendChatToUser(
+    userId: string,
+    payload: { title: string; body: string; data?: Record<string, unknown> }
+  ) {
+    const shouldPush = await shouldSendNotification(
+      userId,
+      'COMMUNICATION',
+      payload.data?.type ? String(payload.data.type) : 'chat_message',
+      'PUSH'
+    );
+
+    if (!shouldPush) {
+      return { sent: 0, skipped: true };
+    }
+
+    const tokens = await prismaClient.pushDeviceToken.findMany({
+      where: { userId },
+      select: { token: true },
+    });
+
+    if (tokens.length === 0) {
+      return { sent: 0, skipped: false };
+    }
+
+    const messages: ExpoPushMessage[] = tokens.map(({ token }) => ({
+      to: token,
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+      sound: 'default',
+      channelId: 'messages',
+    }));
+
+    return this.sendBatch(messages);
+  }
+
   private async sendBatch(messages: ExpoPushMessage[]) {
     if (messages.length === 0) return { sent: 0 };
 

@@ -1,4 +1,4 @@
-import { prismaClient } from '..';
+import { prismaClient } from '../db/prismaClient';
 import { UpdateNotificationPreferencesInput } from '../validations/interfaces/profile.interface';
 import {NotificationCategory, NotificationChannel, Prisma} from "@prisma/client"
 import { 

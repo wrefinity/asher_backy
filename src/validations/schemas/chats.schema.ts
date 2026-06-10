@@ -27,6 +27,9 @@ export const EmailSchema = Joi.object({
       }
     });
   }
+  if (value.isDraft !== true && !value.receiverEmail && !value.receiverId) {
+    return helpers.message({ custom: 'A recipient is required when sending an email' });
+  }
   return value;
 })
 .messages({

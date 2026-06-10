@@ -14,6 +14,7 @@ import TenantLeaseRenewalRouter from "./leaseRenewal.routes";
 import TenantLeaseExtensionRouter from "./leaseExtension.routes";
 import TenantPaymentRouter from "./payment.routes";
 import TenantSupportRouter from "./support.routes";
+import TenantFinancialAnalyticsRouter from "./financialAnalytics.routes";
 import tenantLeaseRenewalController from "../controllers/leaseRenewal.controller";
 
 class TenantRouter {
@@ -36,6 +37,7 @@ class TenantRouter {
         this.router.use('/profile', ProfileRouter)
         this.router.use('/properties', PropertyRouter)
         this.router.use('/support-tickets', TenantSupportRouter)
+        this.router.use('/financial-analytics', TenantFinancialAnalyticsRouter)
         this.router.use('/document-requests', DocumentRequestRouter)
         this.router.get('/lease-renewal/current-lease', tenantLeaseRenewalController.getCurrentLeaseInfo)
         this.router.get('/lease-renewal', tenantLeaseRenewalController.getLeaseRenewals)

@@ -1499,7 +1499,7 @@ class AdminController {
             return {
               error: err.message,
               file: file.originalname,
-              stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+              stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
             };
           }
         })
@@ -2086,6 +2086,19 @@ class AdminController {
       return res.status(status).json({
         success: false,
         message: error?.message ?? 'Failed to reject identity verification',
+      });
+    }
+  };
+
+  getComplianceOverview = async (req: CustomRequest, res: Response) => {
+    try {
+      const PropertyOperationalService = (await import('../services/propertyOperational.service')).default;
+      const data = await PropertyOperationalService.getPlatformComplianceOverview();
+      return res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error?.message ?? 'Failed to load compliance overview',
       });
     }
   };

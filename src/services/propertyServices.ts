@@ -114,6 +114,10 @@ class PropertyService {
             videos: true,
             virtualTours: true,
             propertyDocument: true,
+            complianceRecords: { where: { isDeleted: false }, orderBy: { certType: 'asc' } },
+            insurancePolicies: { where: { isDeleted: false }, orderBy: { renewalDate: 'asc' } },
+            utilityAccounts: { where: { isDeleted: false }, orderBy: { utilityType: 'asc' } },
+            ownershipProfile: true,
             application: true,
             reviews: true,
             UserLikedProperty: true,
@@ -1275,10 +1279,14 @@ class PropertyService {
                 activeSpec?.shortlet ??
                 {}) as Record<string, any>;
 
+        // Residential/commercial/shortlet rows have their own `id` — never expose those as property.id
         return {
             ...property,
             ...activeSpec,
             ...specificDetails,
+            id: property.id,
+            propertyId: property.id,
+            specificationRecordId: activeSpec?.id,
         };
     }
 
@@ -3002,6 +3010,10 @@ class PropertyService {
                             images: true,
                             videos: true,
                             virtualTours: true,
+                            complianceRecords: {
+                                where: { isDeleted: false },
+                                select: { certType: true, expiryDate: true, status: true },
+                            },
                             reviews: {
                                 where: { isDeleted: false },
                                 orderBy: { createdAt: 'desc' },
@@ -3122,14 +3134,36 @@ class PropertyService {
     }
     // to update property to listing and not listing
     getPropertyById = async (propertyId: string) => {
-        const props = await prismaClient.properties.findFirst({
+        let props = await prismaClient.properties.findFirst({
             where: { id: propertyId },
             include: {
                 ...this.propsInclusion
             }
         });
 
-        if (!props) throw new Error("Property not found")
+        // Legacy URLs used residential/commercial spec ids after flatten() overwrote property.id
+        if (!props) {
+            props = await prismaClient.properties.findFirst({
+                where: {
+                    isDeleted: false,
+                    specification: {
+                        some: {
+                            isActive: true,
+                            OR: [
+                                { residential: { is: { id: propertyId } } },
+                                { commercial: { is: { id: propertyId } } },
+                                { shortlet: { is: { id: propertyId } } },
+                            ],
+                        },
+                    },
+                },
+                include: {
+                    ...this.propsInclusion
+                },
+            });
+        }
+
+        if (!props) throw new NotFoundError("Property not found")
         return this.flatten(props);
     }
     getPropertiesWithoutTenants = async (landlordId: string) => {
@@ -3267,6 +3301,8 @@ class PropertyService {
                 landlord: _omitLandlord,
                 propertySubType: _omitPropertySubType,
                 otherTypeSpecific: _omitOtherTypeSpecific,
+                operationalProfileJson: _omitOperationalProfileJson,
+                operationalProfile: _omitOperationalProfile,
                 ...rest
             } = data as IBasePropertyDTO & Record<string, unknown>;
 

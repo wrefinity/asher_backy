@@ -154,6 +154,12 @@ model properties {
   tenants                tenants[]
   violation              violation[]                @relation("violations")
   PropertyEnquiry        PropertyEnquiry[]
+  operationalProfileComplete    Boolean                    @default(false)
+  operationalProfileCompletedAt DateTime?
+  complianceRecords             propertyComplianceRecord[]
+  insurancePolicies             propertyInsurance[]
+  utilityAccounts               propertyUtilityAccount[]
+  ownershipProfile              propertyOwnershipProfile?
 
   @@unique([landlordId, name, stateId, city])
   // Comprehensive indexing strategy for properties

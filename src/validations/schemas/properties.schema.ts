@@ -926,6 +926,11 @@ export const IBasePropertyDTOSchema = Joi.object({
   /** Single virtual tour URL (Matterport, Kuula, etc.); creates one virtual tour record. No file upload. */
   virtualTourUrl: Joi.string().uri().optional().allow(''),
 
+  /** Optional JSON string or object — synced to operational profile after create (bulk upload). */
+  operationalProfileJson: Joi.alternatives()
+    .try(Joi.string(), Joi.object())
+    .optional(),
+
   propertySubType: Joi.string().valid(...Object.values(propertyType)).messages({
     'any.required': 'Property type is required',
     'any.only': `Property type must be one of: ${propertyType.join(',')}`,

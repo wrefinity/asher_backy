@@ -5,7 +5,6 @@ import cors from 'cors';
 import http from 'http';
 import { WebSocket, WebSocketServer } from "ws";
 import { Server as IOServer } from "socket.io";
-import { PrismaClient } from "@prisma/client";
 import { APP_SECRET, PORT } from "./secrets";
 import swaggerUi from 'swagger-ui-express';
 import AuthRouter from "./routes/auth";
@@ -48,26 +47,9 @@ import supportContentRoutes from "./routes/supportContent.routes";
 import adminRouter from "./routes/admin.routes";
 import CreditScoreRouter from "./routes/creditScore.routes";
 import AIRouter from "./routes/ai.routes";
+import { prismaClient } from "./db/prismaClient";
 
-// WebSocket tracking
-// Configure Prisma with connection pooling to prevent connection exhaustion
-// Use singleton pattern to ensure only one Prisma client instance
-const globalForPrisma = global as unknown as { prismaClient: PrismaClient };
-
-export const prismaClient = globalForPrisma.prismaClient || new PrismaClient({
-    // log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    log: ['error'], // Only log errors to reduce noise and help identify 500 errors
-    datasources: {
-        db: {
-            url: process.env.DATABASE_URL
-        }
-    }
-});
-
-// In development, reuse the same instance across hot reloads
-if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prismaClient = prismaClient;
-}
+export { prismaClient };
 export const userSockets = new Map<string, WebSocket>();
 class Server {
     private app: Express;
@@ -341,14 +323,14 @@ class Server {
     }
 
     private scheduleBillChecks() {
-        // Check for due bills every hour
+        // Check for due bills once per day (reminders are sent at most once per week per bill)
         setInterval(async () => {
             try {
                 await this.paymentNotificationService.checkAndSendDueBillsReminders();
             } catch (error) {
                 loggers.error('Error in scheduled due bills check:', error);
             }
-        }, 60 * 60 * 1000);
+        }, 24 * 60 * 60 * 1000);
 
         // Check for overdue bills every 6 hours
         setInterval(async () => {
@@ -376,6 +358,16 @@ class Server {
                 await recurringBillService.generateDueRecurringBills();
             } catch (error) {
                 loggers.error('Error in scheduled recurring bill generation:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
+
+        // Compliance certificate & insurance renewal reminders — daily
+        setInterval(async () => {
+            try {
+                const PropertyOperationalService = (await import('./services/propertyOperational.service')).default;
+                await PropertyOperationalService.runComplianceReminders(90);
+            } catch (error) {
+                loggers.error('Error in scheduled compliance reminder check:', error);
             }
         }, 24 * 60 * 60 * 1000);
 
