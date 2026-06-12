@@ -1,5 +1,5 @@
 import { Response } from "express"
-import { logTypeStatus, InvitedResponse, YesNo, DocumentType, userRoles, application, NotificationCategory } from "@prisma/client"
+import { logTypeStatus, InvitedResponse, DocumentType, userRoles, application, NotificationCategory } from "@prisma/client"
 import errorService from "../../services/error.service"
 import { CustomRequest } from "../../utils/types"
 import ApplicationService from "../../webuser/services/applicantService"
@@ -35,6 +35,7 @@ import {
   getApplicationFeeRefundInfo,
 } from "../../utils/globalSettings.util";
 import { prismaClient } from "../..";
+import ScreeningService from "../../modules/screening/screening.service";
 
 class ApplicationControls {
     private landlordService: LandlordService;
@@ -110,7 +111,11 @@ class ApplicationControls {
             const applicationId = req.params?.applicationId;
             const application = await ApplicationService.updateApplicationStatus(applicationId, ApplicationStatus.DECLINED);
             if (!application) return res.status(400).json({ message: "property doesn't exist" });
-            return res.status(200).json({ application });
+            return res.status(200).json({
+                message: "Application declined successfully",
+                action: "DECLINED",
+                application
+            });
         } catch (error) {
             errorService.handleError(error, res)
         }
@@ -696,7 +701,18 @@ class ApplicationControls {
                 value.status
             );
 
-            return res.status(200).json({ applicationInvite });
+            const explicitMessage =
+                value.status === ApplicationStatus.APPROVED
+                    ? "Application approved successfully"
+                    : value.status === ApplicationStatus.DECLINED
+                        ? "Application declined successfully"
+                        : `Application status updated to ${value.status}`;
+
+            return res.status(200).json({
+                message: explicitMessage,
+                action: value.status,
+                applicationInvite
+            });
         } catch (error) {
             errorService.handleError(error, res);
         }
@@ -839,6 +855,7 @@ class ApplicationControls {
     updateApplicationVerificationStatus = async (req: CustomRequest, res: Response) => {
         try {
             const applicationId = req.params.id;
+            const landlordId = req.user?.landlords?.id;
             // Validate application ID
             if (!applicationId) {
                 return res.status(400).json({
@@ -846,60 +863,174 @@ class ApplicationControls {
                     details: ["Missing application ID in URL parameters"]
                 });
             }
-            // Verify application exists
-            const application = await applicantService.getApplicationById(applicationId);
-            if (!application) {
-                return res.status(404).json({
-                    error: "Application not found",
-                    details: [`Application with ID ${applicationId} does not exist`]
-                });
-            }
-            // Ensure required fields are not null
-            if (!application.referenceForm || !application.guarantorAgreement || !application.employeeReference) {
-                return res.status(400).json({
-                    error: "your reference form is not yet completed",
-                    details: {
-                        referenceForm: application.referenceForm ? "Provided" : "Missing",
-                        guarantorAgreement: application.guarantorAgreement ? "Provided" : "Missing",
-                        employeeReference: application.employeeReference ? "Provided" : "Missing"
-                    }
-                });
-            }
-            // Perform screenings
-            // const landlordScreeningResult = await landlordScreener(application);
-            // const guarantorScreeningResult = await guarantorScreener(application);
-            // const employmentScreeningResult = await employmentScreener(application);
 
-            // // Consolidate screening results
-            // const allScreeningsPassed = landlordScreeningResult && guarantorScreeningResult && employmentScreeningResult;
-
-            // if (!allScreeningsPassed) {
-            //     return res.status(400).json({
-            //         error: "Application verification failed",
-            //         details: {
-            //             landlordScreening: landlordScreeningResult,
-            //             guarantorScreening: guarantorScreeningResult,
-            //             employmentScreening: employmentScreeningResult
-            //         }
-            //     });
-            // }
-
-            // Proceed with updating verification status if all screenings passed
-            const screener = await ApplicationInvitesService.updateVerificationStatus(applicationId, {
-                employmentVerificationStatus: YesNo.YES,
-                incomeVerificationStatus: YesNo.YES,
-                creditCheckStatus: YesNo.YES,
-                landlordVerificationStatus: YesNo.YES,
-                guarantorVerificationStatus: YesNo.YES,
-                refereeVerificationStatus: YesNo.YES,
+            const screener = await ScreeningService.runApplicationScreening({
+                applicationId,
+                landlordId,
+                triggeredByUserId: req.user?.id,
             });
 
+            if (screener.overall === "BLOCKED") {
+                return res.status(400).json({
+                    error: "Application screening blocked",
+                    details: screener.blockedReasons,
+                    screener,
+                });
+            }
 
             return res.status(200).json({ screener });
+        } catch (error) {
+            if ((error as Error)?.message === "Application not found") {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${req.params.id} does not exist`]
+                });
+            }
+            errorService.handleError(error, res);
+        }
+    };
+
+    getApplicationScreeningRuns = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+
+            const screeningRuns = await ScreeningService.getScreeningRuns(applicationId);
+            return res.status(200).json({ screeningRuns });
         } catch (error) {
             errorService.handleError(error, res);
         }
     };
+
+    getLatestApplicationScreeningRun = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+
+            const screeningRun = await ScreeningService.getLatestScreeningRun(applicationId);
+            return res.status(200).json({ screeningRun });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    overrideApplicationScreeningCheck = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            const { check, status, reason } = req.body;
+            const validChecks = [
+                "identity",
+                "employment",
+                "employmentResearch",
+                "income",
+                "credit",
+                "guarantor",
+                "referee",
+                "landlord",
+                "regional",
+            ];
+            const validStatuses = ["YES", "NO"];
+
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+            if (!validChecks.includes(check)) {
+                return res.status(400).json({
+                    error: "Invalid screening check",
+                    details: [`check must be one of: ${validChecks.join(", ")}`],
+                });
+            }
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    error: "Invalid screening status",
+                    details: ["status must be YES or NO"],
+                });
+            }
+            if (!reason?.trim()) {
+                return res.status(400).json({
+                    error: "Override reason is required",
+                    details: ["Manual screening overrides must include a reason"],
+                });
+            }
+
+            const result = await ScreeningService.overrideScreeningCheck({
+                applicationId,
+                check,
+                status,
+                reason,
+                triggeredByUserId: req.user?.id,
+            });
+
+            return res.status(200).json(result);
+        } catch (error) {
+            if ((error as Error)?.message === "Application not found") {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${req.params.id} does not exist`]
+                });
+            }
+            errorService.handleError(error, res);
+        }
+    };
+
+    recordApplicationCreditScreeningResult = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            const { status, reason, providerReferenceId } = req.body;
+            const validStatuses = ["YES", "NO", "PENDING"];
+
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"]
+                });
+            }
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    error: "Invalid credit/background status",
+                    details: ["status must be YES, NO, or PENDING"],
+                });
+            }
+            if (!reason?.trim()) {
+                return res.status(400).json({
+                    error: "Credit/background result reason is required",
+                    details: ["Credit/background updates must include a reason"],
+                });
+            }
+
+            const result = await ScreeningService.recordCreditScreeningResult({
+                applicationId,
+                status,
+                reason,
+                providerReferenceId,
+                triggeredByUserId: req.user?.id,
+            });
+
+            return res.status(200).json(result);
+        } catch (error) {
+            if ((error as Error)?.message === "Application not found") {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${req.params.id} does not exist`]
+                });
+            }
+            errorService.handleError(error, res);
+        }
+    };
+
     getCurrentLandlordAgreementForm = async (req: CustomRequest, res: Response) => {
         try {
             const agreementDocument = await new PropertyDocumentService().getManyDocumentBaseOnLandlord(req.user.landlords.id, DocumentType.AGREEMENT_DOC)

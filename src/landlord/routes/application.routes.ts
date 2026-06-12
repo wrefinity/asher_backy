@@ -46,6 +46,10 @@ class ApplicationLandlordRouter {
         this.router.post('/sign-agreement-doc/:id', validateBody(updateAgreementSchema), ApplicationController.signAgreementForm);
         this.router.get('/get-agreement-doc',  ApplicationController.getCurrentLandlordAgreementForm);
         this.router.patch('/references/screening/:id', ApplicationController.updateApplicationVerificationStatus);
+        this.router.get('/references/screening/:id/runs', ApplicationController.getApplicationScreeningRuns);
+        this.router.get('/references/screening/:id/latest', ApplicationController.getLatestApplicationScreeningRun);
+        this.router.patch('/references/screening/:id/override', ApplicationController.overrideApplicationScreeningCheck);
+        this.router.patch('/references/screening/:id/credit-result', ApplicationController.recordApplicationCreditScreeningResult);
     }
 }
 

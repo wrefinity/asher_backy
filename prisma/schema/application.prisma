@@ -156,6 +156,7 @@ model application {
   tenant                       tenants?                 @relation("ApplicationTenant")
   users                        users[]                  @relation("applicationTousers")
   Transaction                  Transaction[]
+  screeningRuns                ApplicationScreeningRun[]
 
   // Critical indexes for application reuse and common queries
   @@index([userId, status, isDeleted])
@@ -171,6 +172,26 @@ model application {
   @@index([applicationInviteId])
   // Composite index for application reuse queries
   @@index([userId, status, isDeleted, createdAt])
+}
+
+model ApplicationScreeningRun {
+  id                String      @id @default(cuid())
+  applicationId     String
+  triggeredByUserId String?
+  triggeredAt       DateTime    @default(now())
+  overall           String
+  inputHash         String
+  checks            Json
+  statusUpdate      Json
+  riskScore         Int         @default(0)
+  riskFlags         String[]
+  blockedReasons    String[]
+  createdAt         DateTime    @default(now())
+  application       application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, triggeredAt])
+  @@index([overall])
+  @@index([triggeredByUserId])
 }
 
 model applicantPersonalDetails {
