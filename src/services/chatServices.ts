@@ -132,26 +132,36 @@ class ChatServices {
                 'New message';
             const preview = (content || '').trim().slice(0, 160) || 'You have a new message';
 
-            const NotificationService = (await import('./notification.service')).default;
-            await NotificationService.createNotification(
-                {
-                    sourceId: senderId,
-                    destId: receiverId,
-                    title: 'New message',
-                    message: `${senderName}: ${preview}`,
-                },
-                'COMMUNICATION'
-            );
+            const [NotificationService, expoPushService] = await Promise.all([
+                import('./notification.service').then(({ default: service }) => service),
+                import('./expoPush.service').then(({ default: service }) => service),
+            ]);
+            const deliveryResults = await Promise.allSettled([
+                NotificationService.createNotification(
+                    {
+                        sourceId: senderId,
+                        destId: receiverId,
+                        title: 'New message',
+                        message: `${senderName}: ${preview}`,
+                    },
+                    'COMMUNICATION'
+                ),
+                expoPushService.sendChatToUser(receiverId, {
+                    title: senderName,
+                    body: preview,
+                    data: {
+                        type: 'chat_message',
+                        route: `/chats/${senderId}`,
+                        senderId,
+                    },
+                }),
+            ]);
 
-            const expoPushService = (await import('./expoPush.service')).default;
-            await expoPushService.sendChatToUser(receiverId, {
-                title: senderName,
-                body: preview,
-                data: {
-                    type: 'chat_message',
-                    route: `/chats/${senderId}`,
-                    senderId,
-                },
+            deliveryResults.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    const channel = index === 0 ? 'in-app notification' : 'push notification';
+                    console.error(`Failed to send chat ${channel}:`, result.reason);
+                }
             });
         } catch (notifyError) {
             console.error('Failed to send chat notification:', notifyError);
@@ -271,4 +281,3 @@ class ChatServices {
 }
 
 export default new ChatServices();
-

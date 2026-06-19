@@ -213,32 +213,33 @@ class BroadcastService {
     }
 
     async getBroadcastsByCategory(categoryId: string, landlordId: string) {
-        const broadcasts = await prismaClient.broadcast.findMany({
-            where: {
-                categoryId,
-                landlordId
-            },
-            include: {
-                category: {
-                    include: {
-                        property: true,
-                        _count: {
-                            select: {
-                                members: true
+        const [broadcasts, totalBroadcasts] = await Promise.all([
+            prismaClient.broadcast.findMany({
+                where: {
+                    categoryId,
+                    landlordId
+                },
+                include: {
+                    category: {
+                        include: {
+                            property: true,
+                            _count: {
+                                select: {
+                                    members: true
+                                }
                             }
                         }
                     }
+                },
+                orderBy: { createdAt: 'desc' }
+            }),
+            prismaClient.broadcast.count({
+                where: {
+                    categoryId,
+                    landlordId
                 }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        const totalBroadcasts = await prismaClient.broadcast.count({
-            where: {
-                categoryId,
-                landlordId
-            }
-        });
+            }),
+        ]);
 
         return {
             broadcasts,

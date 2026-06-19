@@ -222,37 +222,38 @@ class TenantPaymentController {
                  type === "rent" ? TransactionReference.RENT_PAYMENT : undefined
     } : {};
 
-    const transactions = await prismaClient.transaction.findMany({
-      where: {
-        userId,
-        ...dateFilter,
-        ...typeFilter,
-        status: TransactionStatus.COMPLETED
-      },
-      include: {
-        property: {
-          select: {
-            id: true,
-            name: true,
-            address: true
+    const [transactions, totalCount] = await Promise.all([
+      prismaClient.transaction.findMany({
+        where: {
+          userId,
+          ...dateFilter,
+          ...typeFilter,
+          status: TransactionStatus.COMPLETED
+        },
+        include: {
+          property: {
+            select: {
+              id: true,
+              name: true,
+              address: true
+            }
           }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        skip: offset,
+        take: limitNum
+      }),
+      prismaClient.transaction.count({
+        where: {
+          userId,
+          ...dateFilter,
+          ...typeFilter,
+          status: TransactionStatus.COMPLETED
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      skip: offset,
-      take: limitNum
-    });
-
-    const totalCount = await prismaClient.transaction.count({
-      where: {
-        userId,
-        ...dateFilter,
-        ...typeFilter,
-        status: TransactionStatus.COMPLETED
-      }
-    });
+      }),
+    ]);
 
     return res.status(200).json(
       ApiResponse.success(

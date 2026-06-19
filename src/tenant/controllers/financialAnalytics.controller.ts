@@ -524,69 +524,69 @@ class TenantFinancialAnalyticsController {
     }
 
     try {
-      // Get credit score
-      const creditScore = await prismaClient.creditScore.findUnique({
-        where: { userId },
-        select: {
-          score: true,
-          paymentHistory: true,
-          rentalHistory: true,
-          maintainanceScore: true,
-          reviewScore: true,
-          lastUpdated: true
-        }
-      });
-
-      // Get payment reliability (last 6 months)
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      const totalPayments = await prismaClient.transaction.count({
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          createdAt: { gte: sixMonthsAgo }
-        }
-      });
-
-      const onTimePayments = await prismaClient.transaction.count({
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: sixMonthsAgo }
-        }
-      });
-
-      const paymentReliability = totalPayments > 0 ? (onTimePayments / totalPayments) * 100 : 100;
-
-      // Get recent spending trends
       const now = new Date();
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      const lastMonthSpending = await prismaClient.transaction.aggregate({
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { 
-            gte: lastMonth,
-            lt: currentMonth
+      const [
+        creditScore,
+        totalPayments,
+        onTimePayments,
+        lastMonthSpending,
+        currentMonthSpending,
+      ] = await Promise.all([
+        prismaClient.creditScore.findUnique({
+          where: { userId },
+          select: {
+            score: true,
+            paymentHistory: true,
+            rentalHistory: true,
+            maintainanceScore: true,
+            reviewScore: true,
+            lastUpdated: true
           }
-        },
-        _sum: { amount: true }
-      });
+        }),
+        prismaClient.transaction.count({
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            createdAt: { gte: sixMonthsAgo }
+          }
+        }),
+        prismaClient.transaction.count({
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: sixMonthsAgo }
+          }
+        }),
+        prismaClient.transaction.aggregate({
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: {
+              gte: lastMonth,
+              lt: currentMonth
+            }
+          },
+          _sum: { amount: true }
+        }),
+        prismaClient.transaction.aggregate({
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: currentMonth }
+          },
+          _sum: { amount: true }
+        }),
+      ]);
 
-      const currentMonthSpending = await prismaClient.transaction.aggregate({
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: currentMonth }
-        },
-        _sum: { amount: true }
-      });
+      const paymentReliability = totalPayments > 0 ? (onTimePayments / totalPayments) * 100 : 100;
 
       const lastMonthTotal = Number(lastMonthSpending._sum.amount) || 0;
       const currentMonthTotal = Number(currentMonthSpending._sum.amount) || 0;

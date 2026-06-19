@@ -110,12 +110,14 @@ class TenantBillController {
     const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
     const landlordId = tenant?.landlordId || null;
 
-    const tenantBills = await landlordBillsService.getOverdueBillsForTenant(
-      tenantId,
-      propertyId ? String(propertyId) : null,
-      landlordId ? String(landlordId) : null
-    );
-    const analysis = await tenantBillsService.getTenantOverdueAnalysis(tenantId);
+    const [tenantBills, analysis] = await Promise.all([
+      landlordBillsService.getOverdueBillsForTenant(
+        tenantId,
+        propertyId ? String(propertyId) : null,
+        landlordId ? String(landlordId) : null
+      ),
+      tenantBillsService.getTenantOverdueAnalysis(tenantId),
+    ]);
     return res.status(200).json(
       ApiResponse.success(
         { analysis, tenantBills: tenantBills ?? [] },

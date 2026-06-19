@@ -109,54 +109,56 @@ class TenantBills {
 
       const rentAmount = this.getRentAmount(tenant);
       const rentFrequency = this.getRentFrequency(tenant);
-      const globalSettings = await LandlordSettingsService.getAllGlobalSettings(
-        tenant.property.landlordId
-      );
-      const propertyLateFee = await LandlordSettingsService.getPropertyLateFeeOverride(
-        tenant.property.id
-      );
+      const [
+        globalSettings,
+        propertyLateFee,
+        tenantBills,
+        rentPaymentHistory,
+        tenantTransactions,
+      ] = await Promise.all([
+        LandlordSettingsService.getAllGlobalSettings(tenant.property.landlordId),
+        LandlordSettingsService.getPropertyLateFeeOverride(tenant.property.id),
+        prismaClient.billsSubCategory.findMany({
+          where: {
+            tenantId,
+            isDeleted: false
+          },
+          include: {
+            bills: true,
+            transactions: {
+              where: {
+                status: 'COMPLETED'
+              },
+              orderBy: {
+                createdAt: 'desc'
+              }
+            }
+          }
+        }),
+        prismaClient.tenantPaymentHistory.findMany({
+          where: {
+            tenantId
+          },
+          orderBy: {
+            rentStartDate: 'desc'
+          }
+        }),
+        prismaClient.transaction.findMany({
+          where: {
+            userId: tenant.userId,
+            status: 'COMPLETED'
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }),
+      ]);
+
       const baseRules = resolveFinancialRules(globalSettings, rentAmount, rentFrequency);
       const rules = mergeFinancialRules(
         baseRules,
         propertySettingsToOverride(propertyLateFee)
       );
-
-      const tenantBills = await prismaClient.billsSubCategory.findMany({
-        where: {
-          tenantId: tenantId,
-          isDeleted: false
-        },
-        include: {
-          bills: true,
-          transactions: {
-            where: {
-              status: 'COMPLETED'
-            },
-            orderBy: {
-              createdAt: 'desc'
-            }
-          }
-        }
-      });
-
-      const rentPaymentHistory = await prismaClient.tenantPaymentHistory.findMany({
-        where: {
-          tenantId: tenantId
-        },
-        orderBy: {
-          rentStartDate: 'desc'
-        }
-      });
-
-      const tenantTransactions = await prismaClient.transaction.findMany({
-        where: {
-          userId: tenant.userId,
-          status: 'COMPLETED'
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      });
 
       const overdueBills = this.analyzeOverdueBills(tenantBills, tenantTransactions, rules);
       const overdueRent = this.analyzeOverdueRent(tenant, rentPaymentHistory, rules);

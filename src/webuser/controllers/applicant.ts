@@ -91,15 +91,35 @@ class ApplicantControls {
     try {
       const userId = req.user?.id;
 
-      const pendingApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.PENDING);
-      const completedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.COMPLETED);
-      const approvedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.APPROVED);
-      const declinedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.DECLINED);
-      const makePaymentApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.MAKEPAYMENT);
-      const acceptedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.ACCEPTED);
-      const submittedApplications = await ApplicantService.getApplicationBasedOnStatus(userId, ApplicationStatus.SUBMITTED);
+      const activeStatuses = [
+        ApplicationStatus.PENDING,
+        ApplicationStatus.SUBMITTED,
+        ApplicationStatus.MAKEPAYMENT,
+        ApplicationStatus.ACCEPTED
+      ];
+      const completedStatuses = [
+        ApplicationStatus.COMPLETED,
+        ApplicationStatus.DECLINED,
+        ApplicationStatus.APPROVED,
+        ApplicationStatus.AGREEMENTS,
+        ApplicationStatus.AGREEMENTS_SIGNED,
+      ];
+      const applicationStatuses = [...new Set([...activeStatuses, ...completedStatuses])];
 
-      const allInvites = await ApplicantService.getInvite({ userInvitedId: userId }, false);
+      const [applications, allInvites] = await Promise.all([
+        ApplicantService.getApplicationBasedOnStatus(userId, applicationStatuses),
+        ApplicantService.getInvite({ userInvitedId: userId }, false),
+      ]);
+
+      const applicationsByStatus = (status: ApplicationStatus) =>
+        applications.filter((application: any) => application.status === status);
+      const pendingApplications = applicationsByStatus(ApplicationStatus.PENDING);
+      const completedApplications = applicationsByStatus(ApplicationStatus.COMPLETED);
+      const approvedApplications = applicationsByStatus(ApplicationStatus.APPROVED);
+      const declinedApplications = applicationsByStatus(ApplicationStatus.DECLINED);
+      const makePaymentApplications = applicationsByStatus(ApplicationStatus.MAKEPAYMENT);
+      const acceptedApplications = applicationsByStatus(ApplicationStatus.ACCEPTED);
+      const submittedApplications = applicationsByStatus(ApplicationStatus.SUBMITTED);
       
       // Filter invites to only include those ready for application:
       // Invites that have completed the full flow (PENDING -> ACCEPTED -> AWAITING_FEEDBACK -> FEEDBACK -> APPLY)
@@ -130,27 +150,12 @@ class ApplicantControls {
           engagement: EngagementNormalizer.fromNormalizedInvite(invite),
         })
       );
-      // Define status groups
-      const activeStatuses = [
-        ApplicationStatus.PENDING,
-        ApplicationStatus.SUBMITTED,
-        ApplicationStatus.MAKEPAYMENT,
-        ApplicationStatus.ACCEPTED
-      ];
-
-      const completedStatuses = [
-        ApplicationStatus.COMPLETED,
-        ApplicationStatus.DECLINED,
-        ApplicationStatus.APPROVED,
-        ApplicationStatus.AGREEMENTS,
-        ApplicationStatus.AGREEMENTS_SIGNED,
-      ];
-
-      // Get grouped applications (already normalized in service)
-      const [activeApps, completedApps] = await Promise.all([
-        ApplicantService.getApplicationBasedOnStatus(userId, activeStatuses),
-        ApplicantService.getApplicationBasedOnStatus(userId, completedStatuses)
-      ]);
+      const activeApps = applications.filter((application: any) =>
+        activeStatuses.includes(application.status)
+      );
+      const completedApps = applications.filter((application: any) =>
+        completedStatuses.includes(application.status)
+      );
 
       const inviteEngagements = EngagementNormalizer.fromNormalizedInvitesMany(invites);
       const applicationEngagements = EngagementNormalizer.fromApplicationRecordsMany([

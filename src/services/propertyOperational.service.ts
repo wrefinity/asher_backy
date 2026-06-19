@@ -175,20 +175,21 @@ class PropertyOperationalService {
           where: { propertyId: resolvedPropertyId, isDeleted: false },
           data: { isDeleted: true },
         });
-        for (const row of payload.complianceRecords) {
+        const complianceRecords = payload.complianceRecords.map((row) => {
           const expiryDate = parseDate(row.expiryDate);
-          await tx.propertyComplianceRecord.create({
-            data: {
-              propertyId: resolvedPropertyId,
-              certType: row.certType as any,
-              certificateNumber: row.certificateNumber || null,
-              issueDate: parseDate(row.issueDate),
-              expiryDate,
-              status: deriveComplianceStatus(expiryDate, row.status),
-              documentId: row.documentId || null,
-              notes: row.notes || null,
-            },
-          });
+          return {
+            propertyId: resolvedPropertyId,
+            certType: row.certType as any,
+            certificateNumber: row.certificateNumber || null,
+            issueDate: parseDate(row.issueDate),
+            expiryDate,
+            status: deriveComplianceStatus(expiryDate, row.status),
+            documentId: row.documentId || null,
+            notes: row.notes || null,
+          };
+        });
+        if (complianceRecords.length > 0) {
+          await tx.propertyComplianceRecord.createMany({ data: complianceRecords });
         }
       }
 
@@ -197,23 +198,22 @@ class PropertyOperationalService {
           where: { propertyId: resolvedPropertyId, isDeleted: false },
           data: { isDeleted: true },
         });
-        for (const row of payload.insurancePolicies) {
-          await tx.propertyInsurance.create({
-            data: {
-              propertyId: resolvedPropertyId,
-              insuranceType: row.insuranceType as any,
-              provider: row.provider || null,
-              policyNumber: row.policyNumber || null,
-              coverAmount:
-                row.coverAmount != null ? new Prisma.Decimal(row.coverAmount) : null,
-              premium: row.premium != null ? new Prisma.Decimal(row.premium) : null,
-              premiumFrequency: row.premiumFrequency || null,
-              renewalDate: parseDate(row.renewalDate),
-              startDate: parseDate(row.startDate),
-              documentId: row.documentId || null,
-              notes: row.notes || null,
-            },
-          });
+        const insurancePolicies = payload.insurancePolicies.map((row) => ({
+          propertyId: resolvedPropertyId,
+          insuranceType: row.insuranceType as any,
+          provider: row.provider || null,
+          policyNumber: row.policyNumber || null,
+          coverAmount:
+            row.coverAmount != null ? new Prisma.Decimal(row.coverAmount) : null,
+          premium: row.premium != null ? new Prisma.Decimal(row.premium) : null,
+          premiumFrequency: row.premiumFrequency || null,
+          renewalDate: parseDate(row.renewalDate),
+          startDate: parseDate(row.startDate),
+          documentId: row.documentId || null,
+          notes: row.notes || null,
+        }));
+        if (insurancePolicies.length > 0) {
+          await tx.propertyInsurance.createMany({ data: insurancePolicies });
         }
       }
 
@@ -222,22 +222,21 @@ class PropertyOperationalService {
           where: { propertyId: resolvedPropertyId, isDeleted: false },
           data: { isDeleted: true },
         });
-        for (const row of payload.utilityAccounts) {
-          await tx.propertyUtilityAccount.create({
-            data: {
-              propertyId: resolvedPropertyId,
-              utilityType: row.utilityType as any,
-              supplier: row.supplier || null,
-              accountNumber: row.accountNumber || null,
-              meterNumber: row.meterNumber || null,
-              paidBy: (row.paidBy as any) || 'LANDLORD',
-              annualEstimate:
-                row.annualEstimate != null
-                  ? new Prisma.Decimal(row.annualEstimate)
-                  : null,
-              notes: row.notes || null,
-            },
-          });
+        const utilityAccounts = payload.utilityAccounts.map((row) => ({
+          propertyId: resolvedPropertyId,
+          utilityType: row.utilityType as any,
+          supplier: row.supplier || null,
+          accountNumber: row.accountNumber || null,
+          meterNumber: row.meterNumber || null,
+          paidBy: (row.paidBy as any) || 'LANDLORD',
+          annualEstimate:
+            row.annualEstimate != null
+              ? new Prisma.Decimal(row.annualEstimate)
+              : null,
+          notes: row.notes || null,
+        }));
+        if (utilityAccounts.length > 0) {
+          await tx.propertyUtilityAccount.createMany({ data: utilityAccounts });
         }
       }
 

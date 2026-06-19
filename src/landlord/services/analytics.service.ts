@@ -494,18 +494,19 @@ class AnalyticsService {
     async getIncomeStatistics(landlordId: string, period: string) {
         const startDate = this.getPeriodStartDate(period);
 
-        const incomeBySource = await prismaClient.transaction.groupBy({
-            by: ['reference'],
-            where: {
-                property: { landlordId },
-                type: 'CREDIT',
-                createdAt: { gte: startDate }
-            },
-            _sum: { amount: true },
-            _count: true
-        });
-
-        const monthlyIncome = await this.getMonthlyIncome(landlordId, startDate);
+        const [incomeBySource, monthlyIncome] = await Promise.all([
+            prismaClient.transaction.groupBy({
+                by: ['reference'],
+                where: {
+                    property: { landlordId },
+                    type: 'CREDIT',
+                    createdAt: { gte: startDate }
+                },
+                _sum: { amount: true },
+                _count: true
+            }),
+            this.getMonthlyIncome(landlordId, startDate),
+        ]);
 
         return {
             totalIncome: incomeBySource.reduce((sum, item) => sum + Number(item._sum.amount || 0), 0),

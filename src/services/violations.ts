@@ -173,19 +173,7 @@ class ViolationService {
     });
   }
 
-  async getTenantViolationDashboard(tenantId: string) {
-    if (!tenantId) throw ApiError.badRequest("Tenant ID is required");
-
-    // Fetch all tenant violations
-    const violations = await prismaClient.violation.findMany({
-      where: { tenantId },
-      include: {
-        ViolationResponse: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Compute dashboard metrics
+  buildTenantViolationDashboard(violations: any[]) {
     const totalNotices = violations.length;
     const activeNotices = violations.filter(v => v.status !== "DELIVERED").length;
     const pendingResponse = violations.filter(
@@ -215,6 +203,20 @@ class ViolationService {
       },
       recentNotices,
     };
+  }
+
+  async getTenantViolationDashboard(tenantId: string) {
+    if (!tenantId) throw ApiError.badRequest("Tenant ID is required");
+
+    const violations = await prismaClient.violation.findMany({
+      where: { tenantId, isDeleted: false },
+      include: {
+        ViolationResponse: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return this.buildTenantViolationDashboard(violations);
   }
 
 }
