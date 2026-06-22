@@ -85,25 +85,26 @@ class PropertyPerformaceService {
 
     getNetOperatingIncome = async (propertyId: string) => {
         //total rent income
-        const rentalIncome = await prismaClient.transaction.aggregate({
-            where:
-            {
-                propertyId: propertyId,
-                reference: TransactionReference.RENT_PAYMENT,
-                status: TransactionStatus.COMPLETED
-            },
-            _sum: { amount: true }
-        })
-
-        // total operating income
-        const operatingIncome = await prismaClient.transaction.aggregate({
-            where: {
-                propertyId: propertyId,
-                reference: { in: [TransactionReference.MAINTENANCE_FEE] },
-                status: TransactionStatus.COMPLETED
-            },
-            _sum: { amount: true }
-        })
+        const [rentalIncome, operatingIncome] = await Promise.all([
+            prismaClient.transaction.aggregate({
+                where:
+                {
+                    propertyId: propertyId,
+                    reference: TransactionReference.RENT_PAYMENT,
+                    status: TransactionStatus.COMPLETED
+                },
+                _sum: { amount: true }
+            }),
+            // total operating income
+            prismaClient.transaction.aggregate({
+                where: {
+                    propertyId: propertyId,
+                    reference: { in: [TransactionReference.MAINTENANCE_FEE] },
+                    status: TransactionStatus.COMPLETED
+                },
+                _sum: { amount: true }
+            }),
+        ])
 
         const rentalIncomeAmount = rentalIncome._sum.amount ? parseFloat(rentalIncome._sum.amount.toString()) : 0;
         const operatingIncomeAmount = operatingIncome._sum.amount ? parseFloat(operatingIncome._sum.amount.toString()) : 0;
@@ -113,15 +114,17 @@ class PropertyPerformaceService {
 
     //tenant satisfaction rate
     async getTenantSatisfactionRate(propertyId: string) {
-        const totalRatings = await prismaClient.rating.count({
-            where: { propertyId: propertyId }
-        })
-        const satisfiedTenants = await prismaClient.rating.count({
-            where: {
-                propertyId: propertyId,
-                ratingValue: { gte: 4 }
-            }
-        })
+        const [totalRatings, satisfiedTenants] = await Promise.all([
+            prismaClient.rating.count({
+                where: { propertyId: propertyId }
+            }),
+            prismaClient.rating.count({
+                where: {
+                    propertyId: propertyId,
+                    ratingValue: { gte: 4 }
+                }
+            }),
+        ])
 
         if (totalRatings === 0) {
             return 0;
@@ -175,32 +178,34 @@ class PropertyPerformaceService {
 
     //financial overview
     async getFinancialOverview(entityId: string, isApartment: boolean) {
-        const totalRevenue = await prismaClient.transaction.aggregate({
-            where: {
-                ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
-                reference: { in: [TransactionReference.BILL_PAYMENT, TransactionReference.RENT_PAYMENT] },
-                status: TransactionStatus.COMPLETED,
-            },
-            _sum: { amount: true },
-        });
-
-        const totalExpenses = await prismaClient.maintenance.aggregate({
-            where: {
-                ...(isApartment ? { propertyId: entityId } : { propertyId: entityId }),
-            },
-            _sum: { amount: true },
-        });
+        const [totalRevenue, totalExpenses, marketValue] = await Promise.all([
+            prismaClient.transaction.aggregate({
+                where: {
+                    ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
+                    reference: { in: [TransactionReference.BILL_PAYMENT, TransactionReference.RENT_PAYMENT] },
+                    status: TransactionStatus.COMPLETED,
+                },
+                _sum: { amount: true },
+            }),
+            prismaClient.maintenance.aggregate({
+                where: {
+                    ...(isApartment ? { propertyId: entityId } : { propertyId: entityId }),
+                },
+                _sum: { amount: true },
+            }),
+            isApartment
+                ? Promise.resolve(0)
+                : prismaClient.properties.findUnique({
+                    where: { id: entityId },
+                    select: { marketValue: true }
+                }).then(property => property?.marketValue || 0),
+        ]);
 
         const totalRev = totalRevenue._sum.amount ? parseFloat(totalRevenue._sum.amount.toString()) : 0;
         const totalExp = totalExpenses._sum.amount ? parseFloat(totalExpenses._sum.amount.toString()) : 0;
 
         const vatPercentage = 0.2;
         const vatPaid = totalRev * vatPercentage;
-
-        const marketValue = isApartment ? 0 : await prismaClient.properties.findUnique({
-            where: { id: entityId },
-            select: { marketValue: true }
-        }).then(property => property?.marketValue || 0);
 
         const annualNetIncome = totalRev - totalExp - vatPaid;
 
@@ -218,20 +223,21 @@ class PropertyPerformaceService {
     }
 
     async getRentRenewalRate(entityId: string, isApartment: boolean) {
-        const totalRentals = await prismaClient.transaction.count({
-            where: {
-                ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
-                reference: TransactionReference.RENT_PAYMENT
-            }
-        });
-
-        const renewedRentals = await prismaClient.transaction.count({
-            where: {
-                ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
-                reference: TransactionReference.RENT_PAYMENT,
-                status: TransactionStatus.RENT_RENEWED,
-            }
-        });
+        const [totalRentals, renewedRentals] = await Promise.all([
+            prismaClient.transaction.count({
+                where: {
+                    ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
+                    reference: TransactionReference.RENT_PAYMENT
+                }
+            }),
+            prismaClient.transaction.count({
+                where: {
+                    ...(isApartment ? { appartmentId: entityId } : { propertyId: entityId }),
+                    reference: TransactionReference.RENT_PAYMENT,
+                    status: TransactionStatus.RENT_RENEWED,
+                }
+            }),
+        ]);
 
         if (totalRentals === 0) {
             return 0;
@@ -244,33 +250,34 @@ class PropertyPerformaceService {
 async  getRentVSExpenseMonthlyData(entityId: string, isApartment: boolean, startDate: Date, endDate: Date) {
     try {
         // Fetch monthly rent data with details
-        const rentData = await prismaClient.transaction.groupBy({
-            by: ['createdAt', 'reference'],
-            where: {
-                ...(isApartment ? { apartmentId: entityId } : { propertyId: entityId }),
-                reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
-                status: TransactionStatus.COMPLETED,
-                createdAt: {
-                    gte: startDate,
-                    lte: endDate
-                }
-            },
-            _sum: { amount: true }
-        });
-
-        // Fetch monthly expenses data
-        const expenseData = await prismaClient.maintenance.groupBy({
-            by: ['createdAt', 'categoryId'],
-            where: {
-                ...(isApartment ? { apartmentId: entityId } : { propertyId: entityId }),
-                isDeleted: false,
-                createdAt: {
-                    gte: startDate,
-                    lte: endDate
-                }
-            },
-            _sum: { amount: true }
-        });
+        const [rentData, expenseData] = await Promise.all([
+            prismaClient.transaction.groupBy({
+                by: ['createdAt', 'reference'],
+                where: {
+                    ...(isApartment ? { apartmentId: entityId } : { propertyId: entityId }),
+                    reference: { in: [TransactionReference.RENT_PAYMENT, TransactionReference.LATE_FEE, TransactionReference.CHARGES] },
+                    status: TransactionStatus.COMPLETED,
+                    createdAt: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                },
+                _sum: { amount: true }
+            }),
+            // Fetch monthly expenses data
+            prismaClient.maintenance.groupBy({
+                by: ['createdAt', 'categoryId'],
+                where: {
+                    ...(isApartment ? { apartmentId: entityId } : { propertyId: entityId }),
+                    isDeleted: false,
+                    createdAt: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                },
+                _sum: { amount: true }
+            }),
+        ]);
 
         // Fetch category names separately if needed
         const categories = await prismaClient.category.findMany({

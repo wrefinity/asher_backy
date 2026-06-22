@@ -110,12 +110,21 @@ class ProfessionalCreditScoreService {
             }
 
             // Calculate each component
-            const paymentHistory = await this.calculatePaymentHistoryScore(userId, user);
-            const rentalHistory = await this.calculateRentalHistoryScore(user);
-            const financialBehavior = await this.calculateFinancialBehaviorScore(userId, user);
-            const propertyCare = await this.calculatePropertyCareScore(userId, user);
-            const communication = await this.calculateCommunicationScore(userId, user);
-            const { bonusPoints, penaltyPoints } = await this.calculateBonusPenaltyPoints(userId, user);
+            const [
+                paymentHistory,
+                rentalHistory,
+                financialBehavior,
+                propertyCare,
+                communication,
+                { bonusPoints, penaltyPoints },
+            ] = await Promise.all([
+                this.calculatePaymentHistoryScore(userId, user),
+                this.calculateRentalHistoryScore(user),
+                this.calculateFinancialBehaviorScore(userId, user),
+                this.calculatePropertyCareScore(userId, user),
+                this.calculateCommunicationScore(userId, user),
+                this.calculateBonusPenaltyPoints(userId, user),
+            ]);
 
             // Calculate final score
             let finalScore = this.BASE_SCORE;
@@ -237,30 +246,31 @@ class ProfessionalCreditScoreService {
         }
 
         // Get payment history records to find due dates
-        const paymentHistory = await prismaClient.tenantPaymentHistory.findMany({
-            where: {
-                tenantId: { in: user.tenants.map((t: any) => t.id) },
-            },
-            orderBy: { rentStartDate: 'desc' },
-        });
-
-        // Get tenant leases to determine payment frequency
-        const tenancies = await prismaClient.tenants.findMany({
-            where: { userId },
-            include: {
-                property: {
-                    include: {
-                        specification: {
-                            include: {
-                                residential: true,
-                                commercial: true,
-                                shortlet: true,
+        const [paymentHistory, tenancies] = await Promise.all([
+            prismaClient.tenantPaymentHistory.findMany({
+                where: {
+                    tenantId: { in: user.tenants.map((t: any) => t.id) },
+                },
+                orderBy: { rentStartDate: 'desc' },
+            }),
+            // Get tenant leases to determine payment frequency
+            prismaClient.tenants.findMany({
+                where: { userId },
+                include: {
+                    property: {
+                        include: {
+                            specification: {
+                                include: {
+                                    residential: true,
+                                    commercial: true,
+                                    shortlet: true,
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            }),
+        ]);
 
         // Build payment periods based on frequency
         const paymentPeriods = this.buildPaymentPeriods(payments, paymentHistory, tenancies);
@@ -712,20 +722,21 @@ class ProfessionalCreditScoreService {
         }
 
         // Get maintenance requests
-        const maintenanceRequests = await prismaClient.maintenance.findMany({
-            where: {
-                tenantId: { in: tenantIds },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
-
-        // Get inspections
-        const inspections = await prismaClient.inspection.findMany({
-            where: {
-                tenantId: { in: tenantIds },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+        const [maintenanceRequests, inspections] = await Promise.all([
+            prismaClient.maintenance.findMany({
+                where: {
+                    tenantId: { in: tenantIds },
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+            // Get inspections
+            prismaClient.inspection.findMany({
+                where: {
+                    tenantId: { in: tenantIds },
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+        ]);
 
         // Calculate tenancy months
         const tenancyMonths = this.calculateTenancyMonths(user.tenants);
@@ -879,18 +890,20 @@ class ProfessionalCreditScoreService {
         }
 
         // Check for outstanding debt
-        const outstandingDebt = await this.calculateOutstandingDebt(userId);
+        const [outstandingDebt, breaches] = await Promise.all([
+            this.calculateOutstandingDebt(userId),
+            tenantIds.length > 0
+                ? prismaClient.tenantLeaseBreach.findMany({
+                    where: {
+                        tenantId: { in: tenantIds },
+                    },
+                })
+                : Promise.resolve([]),
+        ]);
         if (outstandingDebt > 1000) penaltyPoints += 30;
 
         // Check for lease breaches
-        if (tenantIds.length > 0) {
-            const breaches = await prismaClient.tenantLeaseBreach.findMany({
-                where: {
-                    tenantId: { in: tenantIds },
-                },
-            });
-            penaltyPoints += breaches.length * 40;
-        }
+        penaltyPoints += breaches.length * 40;
 
         // Check for early terminations
         const earlyTerminations = tenancies.filter((t: any) => {

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { prismaClient } from '../..';
 import { Response } from "express";
 import ErrorService from "../../services/error.service";
 import PropertyServices from "../../services/propertyServices";
@@ -34,6 +35,31 @@ import {
     assertPropertyEligibleForTenantListing,
     validateListingMarketFields,
 } from '../../utils/listingMarketGuardrails';
+
+const BULK_PROPERTY_CONCURRENCY = 5;
+
+async function mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let nextIndex = 0;
+
+    const workers = Array.from(
+        { length: Math.min(Math.max(concurrency, 1), items.length) },
+        async () => {
+            while (true) {
+                const index = nextIndex++;
+                if (index >= items.length) return;
+                results[index] = await mapper(items[index], index);
+            }
+        }
+    );
+
+    await Promise.all(workers);
+    return results;
+}
 
 
 class PropertyController {
@@ -679,23 +705,39 @@ class PropertyController {
                 });
             }
 
-            // Validate array of unitIds
-            if (Array.isArray(data.unitId) && data.unitId.length > 0) {
-                for (const uid of data.unitId) {
-                    const unitExists = await propertyUnitService.getUnitById(uid);
-                    if (!unitExists) {
-                        return res.status(400).json({ message: `Invalid unit ID: ${uid}` });
-                    }
+            // Validate unit IDs and room IDs in parallel using bulk lookups instead of
+            // sequential per-ID queries, which reduces N+M round-trips to at most 2.
+            const unitIds: string[] = Array.isArray(data.unitId) ? data.unitId : [];
+            const roomIds: string[] = Array.isArray(data.roomId) ? data.roomId : [];
+
+            const [foundUnits, foundRooms] = await Promise.all([
+                unitIds.length > 0
+                    ? prismaClient.unitConfiguration.findMany({
+                        where: { id: { in: unitIds } },
+                        select: { id: true },
+                    })
+                    : Promise.resolve([]),
+                roomIds.length > 0
+                    ? prismaClient.roomDetail.findMany({
+                        where: { id: { in: roomIds } },
+                        select: { id: true },
+                    })
+                    : Promise.resolve([]),
+            ]);
+
+            if (unitIds.length > 0) {
+                const foundUnitIds = new Set(foundUnits.map((u: { id: string }) => u.id));
+                const missingUnit = unitIds.find((uid) => !foundUnitIds.has(uid));
+                if (missingUnit) {
+                    return res.status(400).json({ message: `Invalid unit ID: ${missingUnit}` });
                 }
             }
 
-            // Validate array of roomIds
-            if (Array.isArray(data.roomId) && data.roomId.length > 0) {
-                for (const rid of data.roomId) {
-                    const roomExists = await propertyRoomService.getRoomById(rid);
-                    if (!roomExists) {
-                        return res.status(400).json({ message: `Invalid room ID: ${rid}` });
-                    }
+            if (roomIds.length > 0) {
+                const foundRoomIds = new Set(foundRooms.map((r: { id: string }) => r.id));
+                const missingRoom = roomIds.find((rid) => !foundRoomIds.has(rid));
+                if (missingRoom) {
+                    return res.status(400).json({ message: `Invalid room ID: ${missingRoom}` });
                 }
             }
 
@@ -920,26 +962,27 @@ class PropertyController {
                 row?: any;
             }
 
-            let uploadErrors: UploadError[] = [];
+            type UploadResult =
+                | { uploaded: any; error?: undefined }
+                | { uploaded?: undefined; error: UploadError };
 
-
-            for (const row of dataFetched) {
+            const rowResults = await mapWithConcurrency<any, UploadResult>(
+                dataFetched,
+                BULK_PROPERTY_CONCURRENCY,
+                async (row) => {
+                const rowName = Array.isArray(row.name) ? row.name[0] : row.name;
                 try {
                     const propertyType = row.specificationType as PropertySpecificationType;
                     const propertyDto = await propertyUploadServices.transformRowToDto(row, propertyType);
 
                     const { error, value } = IBasePropertyDTOSchema.validate(propertyDto, { abortEarly: false });
                     if (error) {
-                        const existingError = uploadErrors.find(err => err.name === row.name);
-                        if (existingError) {
-                            existingError.errors.push(...error.details.map(detail => detail.message));
-                        } else {
-                            uploadErrors.push({
-                                name: Array.isArray(row.name) ? row.name[0] : row.name,
-                                errors: [...error.details.map(detail => detail.message)],
-                            });
-                        }
-                        continue;
+                        return {
+                            error: {
+                                name: rowName,
+                                errors: error.details.map(detail => detail.message),
+                            },
+                        };
                     }
 
                     const state = await stateServices.getStateByName(Array.isArray(row.state) ? row.state[0] : row.state)
@@ -952,16 +995,12 @@ class PropertyController {
                     );
 
                     if (existance) {
-                        const existingError = uploadErrors.find(err => err.name === row.name);
-                        if (existingError) {
-                            existingError.errors.push('Property already exists');
-                        } else {
-                            uploadErrors.push({
-                                name: Array.isArray(row.name) ? row.name[0] : row.name,
+                        return {
+                            error: {
+                                name: rowName,
                                 errors: ['Property already exists'],
-                            });
-                        }
-                        continue;
+                            },
+                        };
                     }
 
                     delete value["state"]
@@ -1014,19 +1053,23 @@ class PropertyController {
                         );
                     }
 
-                    uploaded.push(property);
-                } catch (err) {
-                    const existingError = uploadErrors.find(error => error.name === row.name);
-                    if (existingError) {
-                        existingError.errors.push(`Unexpected error: ${err.message}`);
-                    } else {
-                        uploadErrors.push({
-                            name: Array.isArray(row.name) ? row.name[0] : row.name,
-                            errors: [`Unexpected error: ${err.message}`],
-                        });
-                    }
+                    return { uploaded: property };
+                } catch (err: any) {
+                    return {
+                        error: {
+                            name: rowName,
+                            errors: [`Unexpected error: ${err?.message || 'Unknown error'}`],
+                        },
+                    };
                 }
-            }
+            });
+
+            uploaded = rowResults
+                .filter((result): result is { uploaded: any } => 'uploaded' in result)
+                .map(result => result.uploaded);
+            const uploadErrors = rowResults
+                .filter((result): result is { error: UploadError } => 'error' in result)
+                .map(result => result.error);
 
             // Delete the file after processing if needed
             fs.unlinkSync(filePath);
@@ -1196,5 +1239,4 @@ class PropertyController {
     }
 }
 export default new PropertyController()
-
 

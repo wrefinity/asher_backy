@@ -137,9 +137,11 @@ class MaintenanceControls {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) return res.status(400).json({ message: "kindly log in as a landlord" })
-            const pendingMaintenace = await MaintenanceService.getLandlordPropertiesMaintenance(landlordId, maintenanceStatus.PENDING);
-            const assignedMaintenace = await MaintenanceService.getLandlordPropertiesMaintenance(landlordId, maintenanceStatus.ASSIGNED);
-            const completedMaintenace = await MaintenanceService.getLandlordPropertiesMaintenance(landlordId, maintenanceStatus.COMPLETED);
+            const [pendingMaintenace, assignedMaintenace, completedMaintenace] = await Promise.all([
+                MaintenanceService.getLandlordPropertiesMaintenance(landlordId, maintenanceStatus.PENDING),
+                MaintenanceService.getLandlordPropertiesMaintenance(landlordId, maintenanceStatus.ASSIGNED),
+                MaintenanceService.getLandlordPropertiesMaintenance(landlordId, maintenanceStatus.COMPLETED)
+            ]);
 
             return res.status(200).json({ pendingMaintenace, assignedMaintenace, completedMaintenace })
         } catch (error) {
@@ -173,9 +175,11 @@ class MaintenanceControls {
         try {
             const landlordId = req.user?.landlords?.id;
             if (!landlordId) return res.status(400).json({ message: "kindly log in as a landlord" })
-            const maintenaceRequestedByLandlord = await MaintenanceService.getRequestedMaintenanceByLandlord(landlordId);
-            const maintenaceRequestedByTenants = await MaintenanceService.getRequestedMaintenanceByTenants(landlordId);
-            const maintenanceHistory = await MaintenanceService.getLandlordPropertiesMaintenance(landlordId);
+            const [maintenaceRequestedByLandlord, maintenaceRequestedByTenants, maintenanceHistory] = await Promise.all([
+                MaintenanceService.getRequestedMaintenanceByLandlord(landlordId),
+                MaintenanceService.getRequestedMaintenanceByTenants(landlordId),
+                MaintenanceService.getLandlordPropertiesMaintenance(landlordId)
+            ]);
 
             return res.status(200).json({ maintenaceRequestedByLandlord, maintenaceRequestedByTenants, maintenanceHistory })
         } catch (error) {

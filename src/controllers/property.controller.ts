@@ -58,14 +58,16 @@ class PropertyController {
 
             const currencyOptions = buildListingBrowseCurrencyOptions();
 
-            const totalProperties = await PropertyServices.countListedProperties(filters);
-            const properties = await PropertyServices.getAllListedProperties(
-                filters,
-                skip,
-                pageSize,
-                true,
-                currencyOptions
-            );
+            const [totalProperties, properties] = await Promise.all([
+                PropertyServices.countListedProperties(filters),
+                PropertyServices.getAllListedProperties(
+                    filters,
+                    skip,
+                    pageSize,
+                    true,
+                    currencyOptions
+                ),
+            ]);
 
             return res.status(200).json({
                 properties: properties ?? [],
@@ -86,9 +88,11 @@ class PropertyController {
         try {
 
             const landlordId = req.params.landlordId;
-            const { marketCountry } = await resolveViewerMarketFromRequest(req);
+            const [{ marketCountry }, landlord] = await Promise.all([
+                resolveViewerMarketFromRequest(req),
+                new LandlordService().getLandlordById(landlordId),
+            ]);
             // check landlord existence
-            const landlord = await new LandlordService().getLandlordById(landlordId);
             if (!landlord) {
                 return res.status(404).json({ message: "Landlord not found" });
             }
@@ -511,9 +515,10 @@ class PropertyController {
             const excludeListingId = req.query.excludeListingId as string;
             const { marketCountry } = await resolveViewerMarketFromRequest(req);
 
-            const relatedListings = await PropertyServices.getRelatedListings(propertyId, excludeListingId);
-
-            const parentProperty = await PropertyServices.getPropertyById(propertyId);
+            const [relatedListings, parentProperty] = await Promise.all([
+                PropertyServices.getRelatedListings(propertyId, excludeListingId),
+                PropertyServices.getPropertyById(propertyId),
+            ]);
             if (!propertyCountryMatchesMarket(parentProperty?.country, marketCountry)) {
                 return res.status(404).json({
                     success: false,

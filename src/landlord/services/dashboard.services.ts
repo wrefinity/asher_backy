@@ -5,25 +5,40 @@ import todosService from "../../services/todos.service";
 class LandlordDashboardService {
 
   async getDashboardData(landlordId: string, filters: any, accountUserId: string) {
-    const properties = await prismaClient.properties.findMany({
-      where: { landlordId, isDeleted: false },
-      select: { id: true, availability: true },
-    });
+    const [properties, transactions, maintenance, applications, files] = await Promise.all([
+      prismaClient.properties.findMany({
+        where: { landlordId, isDeleted: false },
+        select: { id: true, availability: true },
+      }),
+      prismaClient.transaction.findMany({
+        where: {
+          userId: accountUserId,
+          property: { landlordId },
+          createdAt: filters?.from && filters?.to ? {
+            gte: new Date(filters.from),
+            lte: new Date(filters.to),
+          } : undefined
+        },
+      }),
+      prismaClient.maintenance.findMany({
+        where: { property: { landlordId } },
+        select: { status: true }
+      }),
+      prismaClient.application.findMany({
+        where: { properties: { landlordId } }
+      }),
+      prismaClient.propertyDocument.findMany({
+        where: {
+          deletedAt: null,
+          purgedAt: null,
+          properties: { landlordId },
+        }
+      })
+    ]);
 
     const totalProperties = properties.length;
     const vacant = properties.filter(p => p.availability === 'VACANT').length;
     const occupied = totalProperties - vacant;
-
-    const transactions = await prismaClient.transaction.findMany({
-      where: {
-        userId: accountUserId,
-        property: { landlordId },
-        createdAt: filters?.from && filters?.to ? {
-          gte: new Date(filters.from),
-          lte: new Date(filters.to),
-        } : undefined
-      },
-    });
 
     const creditTransactions = transactions.filter(t => t.type === TransactionType.CREDIT);
     const income = creditTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
@@ -44,11 +59,6 @@ class LandlordDashboardService {
       .filter(t => t.reference === TransactionReference.LATE_FEE)
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const maintenance = await prismaClient.maintenance.findMany({
-      where: { property: { landlordId } },
-      select: { status: true }
-    });
-
     const maintenanceStats = {
       total: maintenance.length,
       inProgress: maintenance.filter(m => m.status === maintenanceStatus.PENDING).length,
@@ -56,18 +66,6 @@ class LandlordDashboardService {
       unassigned: maintenance.filter(m => m.status === maintenanceStatus.UNASSIGNED).length,
       assigned: maintenance.filter(m => m.status === maintenanceStatus.ASSIGNED).length,
     };
-
-    const applications = await prismaClient.application.findMany({
-      where: { properties: { landlordId } }
-    });
-
-    const files = await prismaClient.propertyDocument.findMany({
-      where: {
-        deletedAt: null,
-        purgedAt: null,
-        properties: { landlordId },
-      }
-    });
 
     return {
       properties: {

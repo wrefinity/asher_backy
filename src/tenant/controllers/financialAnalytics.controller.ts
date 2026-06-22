@@ -24,68 +24,61 @@ class TenantFinancialAnalyticsController {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      // Get wallet balance
-      const wallet = await prismaClient.wallet.findFirst({
-        where: { userId },
-        select: { balance: true, currency: true }
-      });
-
-      // Get current month spending
-      const monthlySpending = await prismaClient.transaction.aggregate({
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: startOfMonth, lte: endOfMonth }
-        },
-        _sum: { amount: true }
-      });
-
-      // Get upcoming bills
-      const upcomingBills = await prismaClient.billsSubCategory.findMany({
-        where: {
-          tenantId,
-          payableBy: 'TENANT',
-          isDeleted: false,
-          dueDate: { gte: now }
-        },
-        select: {
-          id: true,
-          billName: true,
-          amount: true,
-          dueDate: true
-        },
-        orderBy: { dueDate: 'asc' },
-        take: 3
-      });
-
-      // Get rent status
-      const currentLease = await prismaClient.tenants.findUnique({
-        where: { id: tenantId },
-        select: {
-          leaseStartDate: true,
-          leaseEndDate: true,
-          rentstatus: true,
-          property: {
-            select: {
-              name: true,
-              price: true
+      const [wallet, monthlySpending, upcomingBills, currentLease, creditScore] = await Promise.all([
+        prismaClient.wallet.findFirst({
+          where: { userId },
+          select: { balance: true, currency: true }
+        }),
+        prismaClient.transaction.aggregate({
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: startOfMonth, lte: endOfMonth }
+          },
+          _sum: { amount: true }
+        }),
+        prismaClient.billsSubCategory.findMany({
+          where: {
+            tenantId,
+            payableBy: 'TENANT',
+            isDeleted: false,
+            dueDate: { gte: now }
+          },
+          select: {
+            id: true,
+            billName: true,
+            amount: true,
+            dueDate: true
+          },
+          orderBy: { dueDate: 'asc' },
+          take: 3
+        }),
+        prismaClient.tenants.findUnique({
+          where: { id: tenantId },
+          select: {
+            leaseStartDate: true,
+            leaseEndDate: true,
+            rentstatus: true,
+            property: {
+              select: {
+                name: true,
+                price: true
+              }
             }
           }
-        }
-      });
-
-      // Get credit score
-      const creditScore = await prismaClient.creditScore.findUnique({
-        where: { userId },
-        select: {
-          score: true,
-          paymentHistory: true,
-          rentalHistory: true,
-          maintainanceScore: true,
-          reviewScore: true
-        }
-      });
+        }),
+        prismaClient.creditScore.findUnique({
+          where: { userId },
+          select: {
+            score: true,
+            paymentHistory: true,
+            rentalHistory: true,
+            maintainanceScore: true,
+            reviewScore: true
+          }
+        })
+      ]);
 
       // Calculate rent status
       const isRentCurrent = currentLease?.rentstatus === 1;
@@ -161,58 +154,53 @@ class TenantFinancialAnalyticsController {
           startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
       }
 
-      // Get spending by category
-      const spendingByCategory = await prismaClient.transaction.groupBy({
-        by: ['reference'],
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: startDate }
-        },
-        _sum: { amount: true },
-        _count: { id: true },
-        orderBy: { _sum: { amount: 'desc' } }
-      });
-
-      // Get monthly spending trends
-      const monthlyTrends = await prismaClient.$queryRaw`
-        SELECT 
-          DATE_TRUNC('month', "createdAt") as month,
-          SUM(amount) as total_spent,
-          COUNT(*) as transaction_count
-        FROM "Transaction"
-        WHERE "userId" = ${userId}
-          AND type = 'DEBIT'
-          AND status = 'COMPLETED'
-          AND "createdAt" >= ${startDate}
-        GROUP BY DATE_TRUNC('month', "createdAt")
-        ORDER BY month ASC
-      `;
-
-      // Get spending by payment method
-      const spendingByMethod = await prismaClient.transaction.groupBy({
-        by: ['paymentGateway'],
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: startDate }
-        },
-        _sum: { amount: true },
-        _count: { id: true }
-      });
-
-      // Calculate total spending
-      const totalSpending = await prismaClient.transaction.aggregate({
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: startDate }
-        },
-        _sum: { amount: true }
-      });
+      const [spendingByCategory, monthlyTrends, spendingByMethod, totalSpending] = await Promise.all([
+        prismaClient.transaction.groupBy({
+          by: ['reference'],
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: startDate }
+          },
+          _sum: { amount: true },
+          _count: { id: true },
+          orderBy: { _sum: { amount: 'desc' } }
+        }),
+        prismaClient.$queryRaw`
+          SELECT
+            DATE_TRUNC('month', "createdAt") as month,
+            SUM(amount) as total_spent,
+            COUNT(*) as transaction_count
+          FROM "Transaction"
+          WHERE "userId" = ${userId}
+            AND type = 'DEBIT'
+            AND status = 'COMPLETED'
+            AND "createdAt" >= ${startDate}
+          GROUP BY DATE_TRUNC('month', "createdAt")
+          ORDER BY month ASC
+        `,
+        prismaClient.transaction.groupBy({
+          by: ['paymentGateway'],
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: startDate }
+          },
+          _sum: { amount: true },
+          _count: { id: true }
+        }),
+        prismaClient.transaction.aggregate({
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: startDate }
+          },
+          _sum: { amount: true }
+        })
+      ]);
 
       const analyticsData = {
         period,
@@ -293,42 +281,39 @@ class TenantFinancialAnalyticsController {
         whereClause.reference = category;
       }
 
-      // Get transactions
-      const transactions = await prismaClient.transaction.findMany({
-        where: whereClause,
-        include: {
-          property: {
-            select: { name: true, address: true }
-          },
-          billsSubCategory: {
-            select: { billName: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum
-      });
-
-      // Get total count
-      const totalTransactions = await prismaClient.transaction.count({
-        where: whereClause
-      });
-
-      // Get summary statistics
-      const summary = await prismaClient.transaction.aggregate({
-        where: {
-          userId,
-          status: TransactionStatus.COMPLETED,
-          ...(startDate && endDate ? {
-            createdAt: {
-              gte: new Date(startDate as string),
-              lte: new Date(endDate as string)
+      const [transactions, totalTransactions, summary] = await Promise.all([
+        prismaClient.transaction.findMany({
+          where: whereClause,
+          include: {
+            property: {
+              select: { name: true, address: true }
+            },
+            billsSubCategory: {
+              select: { billName: true }
             }
-          } : {})
-        },
-        _sum: { amount: true },
-        _count: { id: true }
-      });
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limitNum
+        }),
+        prismaClient.transaction.count({
+          where: whereClause
+        }),
+        prismaClient.transaction.aggregate({
+          where: {
+            userId,
+            status: TransactionStatus.COMPLETED,
+            ...(startDate && endDate ? {
+              createdAt: {
+                gte: new Date(startDate as string),
+                lte: new Date(endDate as string)
+              }
+            } : {})
+          },
+          _sum: { amount: true },
+          _count: { id: true }
+        })
+      ]);
 
       const historyData = {
         transactions: transactions?.map(txn => ({
@@ -386,27 +371,27 @@ class TenantFinancialAnalyticsController {
         throw ApiError.notFound("Tenant property not found");
       }
 
-      // Get budgets for the property
-      const budgets = await prismaClient.budget.findMany({
-        where: { propertyId: tenant.propertyId },
-        orderBy: { createdAt: 'desc' }
-      });
-
       // Get current month spending by transaction type
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      const currentMonthSpending = await prismaClient.transaction.groupBy({
-        by: ['reference'],
-        where: {
-          userId,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.COMPLETED,
-          createdAt: { gte: startOfMonth, lte: endOfMonth }
-        },
-        _sum: { amount: true }
-      });
+      const [budgets, currentMonthSpending] = await Promise.all([
+        prismaClient.budget.findMany({
+          where: { propertyId: tenant.propertyId },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prismaClient.transaction.groupBy({
+          by: ['reference'],
+          where: {
+            userId,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.COMPLETED,
+            createdAt: { gte: startOfMonth, lte: endOfMonth }
+          },
+          _sum: { amount: true }
+        })
+      ]);
 
       // Map budgets with current spending
       const budgetStatus = budgets.map(budget => {
@@ -536,6 +521,7 @@ class TenantFinancialAnalyticsController {
         onTimePayments,
         lastMonthSpending,
         currentMonthSpending,
+        upcomingBills,
       ] = await Promise.all([
         prismaClient.creditScore.findUnique({
           where: { userId },
@@ -584,6 +570,17 @@ class TenantFinancialAnalyticsController {
           },
           _sum: { amount: true }
         }),
+        prismaClient.billsSubCategory.count({
+          where: {
+            tenantId,
+            payableBy: 'TENANT',
+            isDeleted: false,
+            dueDate: {
+              gte: now,
+              lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+            }
+          }
+        }),
       ]);
 
       const paymentReliability = totalPayments > 0 ? (onTimePayments / totalPayments) * 100 : 100;
@@ -625,19 +622,6 @@ class TenantFinancialAnalyticsController {
       } else if (spendingTrend < -10) {
         insights.push("Great job! Spending has decreased this month.");
       }
-
-      // Check for upcoming bills
-      const upcomingBills = await prismaClient.billsSubCategory.count({
-        where: {
-          tenantId,
-          payableBy: 'TENANT',
-          isDeleted: false,
-          dueDate: { 
-            gte: now,
-            lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // Next 7 days
-          }
-        }
-      });
 
       if (upcomingBills > 0) {
         tips.push(`${upcomingBills} bills due in the next 7 days. Plan your payments accordingly.`);

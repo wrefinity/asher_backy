@@ -16,9 +16,11 @@ class ChatMessageAuth {
             const userId = String(req.user.id); // The logged-in user ID
 
             // Step 1: Find all chat rooms where the user is either user1 or user2
-            const chatRooms = await ChatServices.getChatRoomsForUser(userId);
-            const circle = await MessagingCircleService.getCircleUserIds(userId);
-            const isAdmin = await MessagingCircleService.isAdmin(userId);
+            const [chatRooms, circle, isAdmin] = await Promise.all([
+                ChatServices.getChatRoomsForUser(userId),
+                MessagingCircleService.getCircleUserIds(userId),
+                MessagingCircleService.isAdmin(userId),
+            ]);
 
             const visibleRooms = isAdmin
                 ? chatRooms

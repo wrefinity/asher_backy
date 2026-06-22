@@ -50,15 +50,19 @@ class FinanceService {
 
 
     async generatePaymentLink(payeeId: string, creatorId: string, amount: number, currency: Currency = Currency.NGN, countryCode: string, expirationDate: Date, description: string, email: string) {
-        const creator = await prismaClient.users.findUnique({ where: { id: creatorId } });
-        const payee = await prismaClient.users.findUnique({ where: { id: payeeId } });
+        const [creator, payee] = await Promise.all([
+            prismaClient.users.findUnique({ where: { id: creatorId } }),
+            prismaClient.users.findUnique({ where: { id: payeeId } }),
+        ]);
 
         if (!creator || !payee) {
             throw new Error('Creator or payee not found');
         }
 
-        const creatorWallet = await walletService.getOrCreateWallet(creatorId, currency);
-        const payeeWallet = await walletService.getOrCreateWallet(payeeId, currency);
+        const [creatorWallet, payeeWallet] = await Promise.all([
+            walletService.getOrCreateWallet(creatorId, currency),
+            walletService.getOrCreateWallet(payeeId, currency),
+        ]);
 
         // const gateway = paymentGatewayService.selectGateway(countryCode);
 
@@ -211,10 +215,10 @@ class FinanceService {
     }
 
     async getIncomeStatistics(propertyId: string, userId: string) {
-        const monthlyPayments = [];
         const currentYear = new Date().getFullYear();
 
-        for (let month = 1; month <= 12; month++) {
+        return Promise.all(Array.from({ length: 12 }, async (_, index) => {
+            const month = index + 1;
             const startDate = new Date(currentYear, month - 1, 1);
             const endDate = new Date(currentYear, month, 0);
 
@@ -244,15 +248,13 @@ class FinanceService {
                 }
             });
 
-            monthlyPayments.push({
+            return {
                 month,
                 totalRentPayments,
                 totalLateFees,
                 totalCharges,
-            });
-        }
-
-        return monthlyPayments;
+            };
+        }));
     }
 
     async createBudget(propertyId: string, transactionType: TransactionReference, budgetAmount: number, frequency: BudgetFrequency) {
@@ -295,8 +297,8 @@ class FinanceService {
 
     async getIncomeBreakdown(userId: string, year?: number, propertyId?: string) {
         const filterYear = year || new Date().getFullYear();
-        const result = [];
-        for (let month = 1; month <= 12; month++) {
+        return Promise.all(Array.from({ length: 12 }, async (_, index) => {
+            const month = index + 1;
             const startDate = new Date(filterYear, month - 1, 1);
             const endDate = new Date(filterYear, month, 1);
             const where: any = {
@@ -318,15 +320,14 @@ class FinanceService {
                 if (t.reference === 'LATE_FEE') late_fees += Number(t.amount);
                 if (t.reference === 'CHARGES') charges += Number(t.amount);
             });
-            result.push({ month, rent, late_fees, charges });
-        }
-        return result;
+            return { month, rent, late_fees, charges };
+        }));
     }
 
     async getExpenseBreakdown(userId: string, year?: number, propertyId?: string) {
         const filterYear = year || new Date().getFullYear();
-        const result = [];
-        for (let month = 1; month <= 12; month++) {
+        return Promise.all(Array.from({ length: 12 }, async (_, index) => {
+            const month = index + 1;
             const startDate = new Date(filterYear, month - 1, 1);
             const endDate = new Date(filterYear, month, 1);
             const where: any = {
@@ -348,9 +349,8 @@ class FinanceService {
                 if (t.reference === 'SUPPLIES') supplies += Number(t.amount);
                 if (t.reference === 'EQUIPMENTS') equipment += Number(t.amount);
             });
-            result.push({ month, maintenance, supplies, equipment });
-        }
-        return result;
+            return { month, maintenance, supplies, equipment };
+        }));
     }
 
     async getStats(userId: string, year?: number, propertyId?: string) {
@@ -382,18 +382,20 @@ class FinanceService {
             expensesWhere.propertyId = propertyId;
             outstandingWhere.propertyId = propertyId;
         }
-        const revenue = await prismaClient.transaction.aggregate({
-            _sum: { amount: true },
-            where: revenueWhere,
-        });
-        const expenses = await prismaClient.transaction.aggregate({
-            _sum: { amount: true },
-            where: expensesWhere,
-        });
-        const outstanding = await prismaClient.transaction.aggregate({
-            _sum: { amount: true },
-            where: outstandingWhere,
-        });
+        const [revenue, expenses, outstanding] = await Promise.all([
+            prismaClient.transaction.aggregate({
+                _sum: { amount: true },
+                where: revenueWhere,
+            }),
+            prismaClient.transaction.aggregate({
+                _sum: { amount: true },
+                where: expensesWhere,
+            }),
+            prismaClient.transaction.aggregate({
+                _sum: { amount: true },
+                where: outstandingWhere,
+            }),
+        ]);
         return {
             totalRevenue: Number(revenue._sum.amount) || 0,
             totalExpenses: Number(expenses._sum.amount) || 0,

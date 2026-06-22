@@ -9,6 +9,26 @@ import {
   getPropertyPmsFormConfig,
 } from '../utils/propertyPmsFormConfig';
 
+const COMPLIANCE_REMINDER_CONCURRENCY = 5;
+
+async function runWithConcurrency<T>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<void>
+): Promise<void> {
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, limit), items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const item = items[nextIndex++];
+        await worker(item);
+      }
+    })
+  );
+}
+
 export type OperationalProfilePayload = {
   complianceRecords?: Array<{
     id?: string;
@@ -448,9 +468,9 @@ class PropertyOperationalService {
 
     const emailEnabled = process.env.PMS_COMPLIANCE_EMAIL !== 'false';
 
-    for (const cert of certs) {
+    await runWithConcurrency(certs, COMPLIANCE_REMINDER_CONCURRENCY, async (cert) => {
       const userId = cert.property.landlord?.userId;
-      if (!userId || cert.reminderSentAt) continue;
+      if (!userId || cert.reminderSentAt) return;
 
       const title = 'Compliance certificate expiring';
       const message = `${cert.certType.replace(/_/g, ' ')} for ${cert.property.name} expires on ${cert.expiryDate?.toISOString().slice(0, 10)}.`;
@@ -475,40 +495,64 @@ class PropertyOperationalService {
         data: { reminderSentAt: new Date() },
       });
       sent += 1;
-    }
+    });
 
+    const policyGroups = new Map<string, typeof insurance>();
     for (const policy of insurance) {
       const userId = policy.property.landlord?.userId;
-      if (!userId || !policy.renewalDate) continue;
+      const renewalDate = policy.renewalDate;
+      if (!userId || !renewalDate) continue;
 
-      const message = `${policy.insuranceType.replace(/_/g, ' ')} for ${policy.property.name} renews on ${policy.renewalDate.toISOString().slice(0, 10)}.`;
-      const alreadySent = await prismaClient.notification.findFirst({
-        where: {
-          destId: userId,
-          title: 'Insurance renewal due',
-          message,
-        },
-      });
-      if (alreadySent) continue;
+      const message = `${policy.insuranceType.replace(/_/g, ' ')} for ${policy.property.name} renews on ${renewalDate.toISOString().slice(0, 10)}.`;
+      const key = JSON.stringify([userId, 'Insurance renewal due', message]);
+      const policies = policyGroups.get(key);
+      if (policies) {
+        policies.push(policy);
+      } else {
+        policyGroups.set(key, [policy]);
+      }
+    }
 
-      const title = 'Insurance renewal due';
-      await NotificationService.createNotification(
-        { destId: userId, title, message },
-        'MAINTENANCE_REQUESTS'
-      );
+    await runWithConcurrency(
+      Array.from(policyGroups.values()),
+      COMPLIANCE_REMINDER_CONCURRENCY,
+      async (policies) => {
+        // Matching notification identities stay sequential so the read-before-
+        // create deduplication check cannot race within this run.
+        for (const policy of policies) {
+          const userId = policy.property.landlord?.userId;
+          if (!userId || !policy.renewalDate) continue;
 
-      const landlordEmail = policy.property.landlord?.user?.email;
-      if (emailEnabled && landlordEmail) {
-        try {
-          const { sendMail } = await import('../utils/emailer');
-          await sendMail(landlordEmail, title, `<p>${message}</p>`);
-        } catch (emailErr) {
-          console.warn('Insurance reminder email skipped:', emailErr);
+          const message = `${policy.insuranceType.replace(/_/g, ' ')} for ${policy.property.name} renews on ${policy.renewalDate.toISOString().slice(0, 10)}.`;
+          const alreadySent = await prismaClient.notification.findFirst({
+            where: {
+              destId: userId,
+              title: 'Insurance renewal due',
+              message,
+            },
+          });
+          if (alreadySent) continue;
+
+          const title = 'Insurance renewal due';
+          await NotificationService.createNotification(
+            { destId: userId, title, message },
+            'MAINTENANCE_REQUESTS'
+          );
+
+          const landlordEmail = policy.property.landlord?.user?.email;
+          if (emailEnabled && landlordEmail) {
+            try {
+              const { sendMail } = await import('../utils/emailer');
+              await sendMail(landlordEmail, title, `<p>${message}</p>`);
+            } catch (emailErr) {
+              console.warn('Insurance reminder email skipped:', emailErr);
+            }
+          }
+
+          sent += 1;
         }
       }
-
-      sent += 1;
-    }
+    );
 
     return sent;
   }

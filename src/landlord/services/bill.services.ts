@@ -47,7 +47,11 @@ interface IncludeOptions {
 class BillService {
     constructor() { }
 
-    createSubBills = async (billData: any, landlordId: string) => {
+    createSubBills = async (
+        billData: any,
+        landlordId: string,
+        options: { skipReferenceValidation?: boolean } = {}
+    ) => {
         const { propertyId, tenantId, billCategoryId, ...rest } = billData;
 
         try {
@@ -58,7 +62,7 @@ class BillService {
             };
 
             // Only connect property if propertyId is provided
-            if (propertyId) {
+            if (propertyId && !options.skipReferenceValidation) {
                 // Verify property exists if ID is provided
                 const property = await prismaClient.properties.findUnique({
                     where: { id: propertyId },
@@ -71,7 +75,7 @@ class BillService {
             }
 
             // Only connect landlord if landlordId is provided
-            if (landlordId) {
+            if (landlordId && !options.skipReferenceValidation) {
                 const landlord = await prismaClient.landlords.findUnique({
                     where: { id: landlordId },
                     select: { id: true }
@@ -82,7 +86,7 @@ class BillService {
                 data.landlord = { connect: { id: landlordId } };
             }
             // Only connect tenant if tenant is provided
-            if (tenantId) {
+            if (tenantId && !options.skipReferenceValidation) {
                 const tenantx = await prismaClient.tenants.findUnique({
                     where: { id: tenantId },
                     select: { id: true }
@@ -94,7 +98,7 @@ class BillService {
             }
 
             // Only connect bill category if billCategoryId is provided
-            if (billCategoryId) {
+            if (billCategoryId && !options.skipReferenceValidation) {
                 const billCategory = await prismaClient.bills.findUnique({
                     where: { id: billCategoryId },
                     select: { id: true }
@@ -103,6 +107,13 @@ class BillService {
                     throw new Error(`Bill category with ID ${billCategoryId} not found`);
                 }
                 data.bills = { connect: { id: billCategoryId } };
+            }
+
+            if (options.skipReferenceValidation) {
+                if (propertyId) data.property = { connect: { id: propertyId } };
+                if (landlordId) data.landlord = { connect: { id: landlordId } };
+                if (tenantId) data.tenants = { connect: { id: tenantId } };
+                if (billCategoryId) data.bills = { connect: { id: billCategoryId } };
             }
 
             const createdBill = await prismaClient.billsSubCategory.create({ 
@@ -137,6 +148,63 @@ class BillService {
             throw error; // Or handle it as appropriate for your application
         }
     }
+
+    validateBulkBillReferences = async (
+        billData: Array<{
+            propertyId?: string | null;
+            tenantId?: string | null;
+            billCategoryId?: string | null;
+        }>,
+        landlordId: string
+    ): Promise<Map<number, string>> => {
+        const propertyIds = [...new Set(billData.map(row => row.propertyId).filter(Boolean))] as string[];
+        const tenantIds = [...new Set(billData.map(row => row.tenantId).filter(Boolean))] as string[];
+        const categoryIds = [...new Set(billData.map(row => row.billCategoryId).filter(Boolean))] as string[];
+
+        const [landlord, properties, tenants, categories] = await Promise.all([
+            prismaClient.landlords.findUnique({
+                where: { id: landlordId },
+                select: { id: true },
+            }),
+            propertyIds.length
+                ? prismaClient.properties.findMany({
+                    where: { id: { in: propertyIds } },
+                    select: { id: true },
+                })
+                : [],
+            tenantIds.length
+                ? prismaClient.tenants.findMany({
+                    where: { id: { in: tenantIds } },
+                    select: { id: true },
+                })
+                : [],
+            categoryIds.length
+                ? prismaClient.bills.findMany({
+                    where: { id: { in: categoryIds } },
+                    select: { id: true },
+                })
+                : [],
+        ]);
+
+        const propertySet = new Set(properties.map(property => property.id));
+        const tenantSet = new Set(tenants.map(tenant => tenant.id));
+        const categorySet = new Set(categories.map(category => category.id));
+        const errors = new Map<number, string>();
+
+        billData.forEach((row, index) => {
+            if (row.propertyId && !propertySet.has(row.propertyId)) {
+                errors.set(index, `Property with ID ${row.propertyId} not found`);
+            } else if (!landlord) {
+                errors.set(index, `Landlord with ID ${landlordId} not found`);
+            } else if (row.tenantId && !tenantSet.has(row.tenantId)) {
+                errors.set(index, `Tenant with ID ${row.tenantId} not found`);
+            } else if (row.billCategoryId && !categorySet.has(row.billCategoryId)) {
+                errors.set(index, `Bill category with ID ${row.billCategoryId} not found`);
+            }
+        });
+
+        return errors;
+    };
     createBills = async (billData: { name: string, description: string }) => {
         return await prismaClient.bills.create({
             data: {
@@ -585,30 +653,36 @@ class BillService {
     seedMarketBillCategories = async (market: string) => {
         const { getBillCatalogForMarket } = await import('../../utils/billCatalog');
         const catalog = getBillCatalogForMarket(market);
-        const createdCategories: string[] = [];
-        const skippedCategories: string[] = [];
+        const uniqueCatalog = Array.from(
+            new Map(catalog.map(category => [category.name.trim().toLowerCase(), category])).values()
+        );
+        const existing = await prismaClient.bills.findMany({
+            where: {
+                isDeleted: false,
+                OR: uniqueCatalog.map(category => ({
+                    name: { equals: category.name, mode: 'insensitive' as const },
+                })),
+            },
+            select: { name: true },
+        });
+        const existingNames = new Set(existing.map(category => category.name.trim().toLowerCase()));
+        const categoriesToCreate = uniqueCatalog.filter(
+            category => !existingNames.has(category.name.trim().toLowerCase())
+        );
 
-        for (const category of catalog) {
-            const existing = await prismaClient.bills.findFirst({
-                where: {
-                    name: { equals: category.name, mode: 'insensitive' },
-                    isDeleted: false,
-                },
-            });
-
-            if (existing) {
-                skippedCategories.push(category.name);
-                continue;
-            }
-
-            await prismaClient.bills.create({
-                data: {
+        if (categoriesToCreate.length > 0) {
+            await prismaClient.bills.createMany({
+                data: categoriesToCreate.map(category => ({
                     name: category.name,
                     description: category.description,
-                },
+                })),
             });
-            createdCategories.push(category.name);
         }
+
+        const createdCategories = categoriesToCreate.map(category => category.name);
+        const skippedCategories = uniqueCatalog
+            .filter(category => existingNames.has(category.name.trim().toLowerCase()))
+            .map(category => category.name);
 
         return { market, createdCategories, skippedCategories };
     };

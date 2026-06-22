@@ -39,6 +39,42 @@ type BillWithRelations = {
 };
 
 const BILL_DUE_REMINDER_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+const NOTIFICATION_CONCURRENCY = 5;
+
+async function runWithConcurrency<T>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<void>
+): Promise<void> {
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, limit), items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const item = items[nextIndex++];
+        await worker(item);
+      }
+    })
+  );
+}
+
+function groupByKey<T>(
+  items: readonly T[],
+  getKey: (item: T) => string
+): T[][] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = getKey(item);
+    const group = groups.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+  return Array.from(groups.values());
+}
 
 export class PaymentNotificationService {
   private io: IOServer;
@@ -515,32 +551,36 @@ export class PaymentNotificationService {
       });
       const userById = new Map(users.map((user) => [user.id, user]));
 
-      for (const userId of userIds) {
-        const user = userById.get(userId);
-        const notification: PaymentNotification = {
-          type: 'bill_created',
-          title: 'New Bill Added',
-          message: `A new bill "${bill.billName}" of ${amountLabel} is due on ${dueLabel}.`,
-          data: {
-            billId: bill.id,
-            billName: bill.billName,
-            amount: bill.amount,
-            dueDate: bill.dueDate,
-            propertyName: bill.property?.name,
-            currency,
+      await runWithConcurrency(
+        Array.from(userIds),
+        NOTIFICATION_CONCURRENCY,
+        async (userId) => {
+          const user = userById.get(userId);
+          const notification: PaymentNotification = {
+            type: 'bill_created',
+            title: 'New Bill Added',
+            message: `A new bill "${bill.billName}" of ${amountLabel} is due on ${dueLabel}.`,
+            data: {
+              billId: bill.id,
+              billName: bill.billName,
+              amount: bill.amount,
+              dueDate: bill.dueDate,
+              propertyName: bill.property?.name,
+              currency,
+              timestamp: new Date(),
+              route: '/bills/viewAllBills',
+            },
             timestamp: new Date(),
-            route: '/bills/viewAllBills',
-          },
-          timestamp: new Date(),
-        };
+          };
 
-        await this.deliverBillNotification(
-          bill,
-          notification,
-          settings,
-          user ?? { id: userId }
-        );
-      }
+          await this.deliverBillNotification(
+            bill,
+            notification,
+            settings,
+            user ?? { id: userId }
+          );
+        }
+      );
 
       loggers.info(`New bill notification sent for bill ${billId} to ${userIds.size} tenant(s)`);
     } catch (error) {
@@ -620,7 +660,10 @@ export class PaymentNotificationService {
   async checkAndSendDueBillsReminders(): Promise<void> {
     try {
       const now = new Date();
-      const settingsCache = new Map<string, Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>>();
+      const settingsCache = new Map<
+        string,
+        Promise<Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>>
+      >();
 
       const upcomingBills = await prismaClient.billsSubCategory.findMany({
         where: {
@@ -635,39 +678,53 @@ export class PaymentNotificationService {
 
       let sent = 0;
 
-      for (const bill of upcomingBills) {
-        if (!bill.tenants?.user || !bill.landlordId) continue;
+      const billGroups = groupByKey(
+        upcomingBills,
+        (bill) => bill.tenants?.user?.id ?? `bill:${bill.id}`
+      );
 
-        if (!settingsCache.has(bill.landlordId)) {
-          settingsCache.set(
-            bill.landlordId,
-            await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
-          );
+      await runWithConcurrency(
+        billGroups,
+        NOTIFICATION_CONCURRENCY,
+        async (bills) => {
+          // Reminders for one recipient stay ordered so cooldown deduplication
+          // checks observe notifications created earlier in this run.
+          for (const bill of bills) {
+            if (!bill.tenants?.user || !bill.landlordId) continue;
+
+            let settingsPromise = settingsCache.get(bill.landlordId);
+            if (!settingsPromise) {
+              settingsPromise = LandlordSettingsService.getAllGlobalSettings(
+                bill.landlordId
+              );
+              settingsCache.set(bill.landlordId, settingsPromise);
+            }
+
+            const settings = await settingsPromise;
+            if (!settings?.notificationEnabled) continue;
+
+            const frequency = bill.property?.priceFrequency ?? PriceFrequency.MONTHLY;
+            const rentBase = Number(bill.property?.price ?? bill.amount);
+            const rules = resolveFinancialRules(settings, rentBase, frequency);
+
+            const { isRentBillRecord } = await import('../utils/globalSettings.util');
+            const isRent = isRentBillRecord(bill);
+            const leadDays = isRent
+              ? rules.rentReminderIntervalDays
+              : rules.billReminderIntervalDays;
+            if (leadDays <= 0) continue;
+
+            const daysUntilDue = Math.ceil(
+              (new Date(bill.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+            );
+
+            if (daysUntilDue >= 0 && daysUntilDue <= leadDays) {
+              await this.sendBillDueReminder(bill.id, settings ?? undefined);
+              sent += 1;
+            }
+          }
         }
-
-        const settings = settingsCache.get(bill.landlordId);
-        if (!settings?.notificationEnabled) continue;
-
-        const frequency = bill.property?.priceFrequency ?? PriceFrequency.MONTHLY;
-        const rentBase = Number(bill.property?.price ?? bill.amount);
-        const rules = resolveFinancialRules(settings, rentBase, frequency);
-
-        const { isRentBillRecord } = await import('../utils/globalSettings.util');
-        const isRent = isRentBillRecord(bill);
-        const leadDays = isRent
-          ? rules.rentReminderIntervalDays
-          : rules.billReminderIntervalDays;
-        if (leadDays <= 0) continue;
-
-        const daysUntilDue = Math.ceil(
-          (new Date(bill.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        if (daysUntilDue >= 0 && daysUntilDue <= leadDays) {
-          await this.sendBillDueReminder(bill.id, settings ?? undefined);
-          sent += 1;
-        }
-      }
+      );
 
       loggers.info(`Checked ${upcomingBills.length} upcoming bills, sent ${sent} reminders`);
     } catch (error) {
@@ -697,9 +754,19 @@ export class PaymentNotificationService {
         }
       });
 
-      for (const bill of overdueBills) {
-        await this.sendBillOverdueNotification(bill.id);
-      }
+      const billGroups = groupByKey(
+        overdueBills,
+        (bill) => bill.tenants?.user?.id ?? `bill:${bill.id}`
+      );
+      await runWithConcurrency(
+        billGroups,
+        NOTIFICATION_CONCURRENCY,
+        async (bills) => {
+          for (const bill of bills) {
+            await this.sendBillOverdueNotification(bill.id);
+          }
+        }
+      );
 
       console.log(`🚨 Checked ${overdueBills.length} overdue bills`);
     } catch (error) {

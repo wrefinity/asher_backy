@@ -6,6 +6,31 @@ import billServices, { BillQueryParams } from "../services/bill.services";
 import { PayableBy } from "@prisma/client";
 import { serverInstance } from "../..";
 
+const BULK_BILL_CONCURRENCY = 5;
+
+async function mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let nextIndex = 0;
+
+    const workers = Array.from(
+        { length: Math.min(Math.max(concurrency, 1), items.length) },
+        async () => {
+            while (true) {
+                const index = nextIndex++;
+                if (index >= items.length) return;
+                results[index] = await mapper(items[index], index);
+            }
+        }
+    );
+
+    await Promise.all(workers);
+    return results;
+}
+
 class BillController {
     constructor() { }
 
@@ -49,8 +74,8 @@ class BillController {
 
         const defaultCategoryId = await billServices.ensureDefaultBillCategory();
 
-        const created: unknown[] = [];
         const errors: { index: number; message: string }[] = [];
+        const validatedBills: { index: number; data: any }[] = [];
 
         for (let index = 0; index < bills.length; index++) {
             const row = {
@@ -62,14 +87,52 @@ class BillController {
                 errors.push({ index, message: error.details[0].message });
                 continue;
             }
-            try {
-                const { notify, ...data } = value;
-                const bill = await billServices.createSubBills(data, landlordId);
-                created.push(bill);
-            } catch (err: any) {
-                errors.push({ index, message: err.message || 'Failed to create bill' });
-            }
+            const { notify, ...data } = value;
+            validatedBills.push({ index, data });
         }
+
+        const referenceErrors = await billServices.validateBulkBillReferences(
+            validatedBills.map(({ data }) => data),
+            landlordId
+        );
+        const creatableBills = validatedBills.filter((row, validatedIndex) => {
+            const message = referenceErrors.get(validatedIndex);
+            if (message) errors.push({ index: row.index, message });
+            return !message;
+        });
+
+        type BillCreationResult =
+            | { index: number; bill: unknown; error?: undefined }
+            | { index: number; error: string; bill?: undefined };
+
+        const creationResults = await mapWithConcurrency<{ index: number; data: any }, BillCreationResult>(
+            creatableBills,
+            BULK_BILL_CONCURRENCY,
+            async ({ index, data }): Promise<BillCreationResult> => {
+                try {
+                    const bill = await billServices.createSubBills(data, landlordId, {
+                        skipReferenceValidation: true,
+                    });
+                    return { index, bill };
+                } catch (err: any) {
+                    return {
+                        index,
+                        error: err?.message || 'Failed to create bill',
+                    };
+                }
+            }
+        );
+
+        const created = creationResults
+            .filter((result): result is { index: number; bill: unknown } => result.bill !== undefined)
+            .sort((a, b) => a.index - b.index)
+            .map(result => result.bill);
+        errors.push(
+            ...creationResults
+                .filter((result): result is { index: number; error: string } => result.error !== undefined)
+                .map(result => ({ index: result.index, message: result.error }))
+        );
+        errors.sort((a, b) => a.index - b.index);
 
         return res.status(201).json({
             success: errors.length === 0,
