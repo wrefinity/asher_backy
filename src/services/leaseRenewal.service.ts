@@ -91,7 +91,20 @@ class LeaseRenewalService {
       }
     });
 
-    const settingsCache = new Map<string, Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>>();
+    const uniqueLandlordIds = [
+      ...new Set(
+        activeLeases
+          .map((lease) => lease.property?.landlordId)
+          .filter((landlordId): landlordId is string => !!landlordId)
+      ),
+    ];
+    const settingsEntries = await Promise.all(
+      uniqueLandlordIds.map(async (landlordId) => [
+        landlordId,
+        await LandlordSettingsService.getAllGlobalSettings(landlordId),
+      ] as const)
+    );
+    const settingsCache = new Map(settingsEntries);
 
     for (const lease of activeLeases) {
       if (!lease.leaseStartDate || !lease.leaseEndDate) continue;
@@ -99,12 +112,6 @@ class LeaseRenewalService {
       const landlordId = lease.property?.landlordId;
       if (!landlordId) continue;
 
-      if (!settingsCache.has(landlordId)) {
-        settingsCache.set(
-          landlordId,
-          await LandlordSettingsService.getAllGlobalSettings(landlordId)
-        );
-      }
       const landlordSettings = settingsCache.get(landlordId);
       if (!landlordSettings?.leaseRenewalRemindersEnabled) continue;
 
@@ -203,27 +210,26 @@ class LeaseRenewalService {
 
     const message = reminderMessages[reminderType];
 
-    // Send email to tenant
-    await this.emailService.createEmail({
-      senderEmail: landlord.email,
-      receiverEmail: tenant.email,
-      attachment: [],
-      subject: `Asher - ${message.title}`,
-      body: this.generateRenewalEmailBody(tenant, property, message.tenantMessage, frequency),
-      senderId: landlord.id,
-      receiverId: tenant.id
-    });
-
-    // Send email to landlord
-    await this.emailService.createEmail({
-      senderEmail: tenant.email,
-      receiverEmail: landlord.email,
-      attachment: [],
-      subject: `Asher - ${message.title}`,
-      body: this.generateRenewalEmailBody(landlord, property, message.landlordMessage, frequency),
-      senderId: tenant.id,
-      receiverId: landlord.id
-    });
+    await Promise.all([
+      this.emailService.createEmail({
+        senderEmail: landlord.email,
+        receiverEmail: tenant.email,
+        attachment: [],
+        subject: `Asher - ${message.title}`,
+        body: this.generateRenewalEmailBody(tenant, property, message.tenantMessage, frequency),
+        senderId: landlord.id,
+        receiverId: tenant.id
+      }),
+      this.emailService.createEmail({
+        senderEmail: tenant.email,
+        receiverEmail: landlord.email,
+        attachment: [],
+        subject: `Asher - ${message.title}`,
+        body: this.generateRenewalEmailBody(landlord, property, message.landlordMessage, frequency),
+        senderId: tenant.id,
+        receiverId: landlord.id
+      }),
+    ]);
 
     // Send real-time notifications
     this.sendRealtimeNotification(tenant.id, {

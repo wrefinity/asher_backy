@@ -269,11 +269,18 @@ class ChatServices {
         });
 
         return Promise.all(
-            rooms.map(async (room) => ({
-                ...room,
-                user1: await this.sanitizeChatParticipant(room.user1, userId),
-                user2: await this.sanitizeChatParticipant(room.user2, userId),
-            }))
+            rooms.map(async (room) => {
+                const [user1, user2] = await Promise.all([
+                    this.sanitizeChatParticipant(room.user1, userId),
+                    this.sanitizeChatParticipant(room.user2, userId),
+                ]);
+
+                return {
+                    ...room,
+                    user1,
+                    user2,
+                };
+            })
         );
     };
 

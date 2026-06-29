@@ -847,12 +847,20 @@ class ApplicantService {
 
   // statistics
   countApplicationStatsForLandlord = async (landlordId: string) => {
+    const [pending, approved, completed, total, enquiries] = await Promise.all([
+      this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.PENDING),
+      this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.APPROVED),
+      this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.SUBMITTED),
+      this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
+      logsServices.getLogCounts(landlordId, LogType.FEEDBACK),
+    ]);
+
     return {
-      pending: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.PENDING),
-      approved: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.APPROVED),
-      completed: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId, InvitedResponse.SUBMITTED),
-      total: await this.getInvitesApplicationCountForLandlordWithStatus(landlordId),
-      enquiries: await logsServices.getLogCounts(landlordId, LogType.FEEDBACK),
+      pending,
+      approved,
+      completed,
+      total,
+      enquiries,
     };
   };
 

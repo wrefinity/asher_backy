@@ -55,7 +55,14 @@ class DashboardService {
     }
 async dashboardDetails(userId: string): Promise<DashboardData> {
     try {
-        const [userCreditScore, propertyPaymentDetails, transactionDetails, tenants] = await Promise.all([
+        const [
+            userCreditScore,
+            propertyPaymentDetails,
+            transactionDetails,
+            tenants,
+            totalDueBills,
+            totalDuePayments,
+        ] = await Promise.all([
             prismaClient.creditScore.findUnique({
                 where: { userId },
                 select: { score: true },
@@ -80,6 +87,8 @@ async dashboardDetails(userId: string): Promise<DashboardData> {
                     landlord: true,
                 },
             }),
+            this.calculateTotalDueBills(userId),
+            this.calculateTotalDuePayments(userId),
         ]);
 
         let rentStatus: RentStatus | null = null;
@@ -98,11 +107,6 @@ async dashboardDetails(userId: string): Promise<DashboardData> {
                 rentStatus = await this.calculateRentStatus(currentLease, latestTransaction ?? undefined);
             }
         }
-
-        const [totalDueBills, totalDuePayments] = await Promise.all([
-            this.calculateTotalDueBills(userId),
-            this.calculateTotalDuePayments(userId),
-        ]);
 
         return {
             userCreditScore: userCreditScore?.score ?? null,

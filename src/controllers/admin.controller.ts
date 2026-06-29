@@ -512,6 +512,9 @@ class AdminController {
    */
   getSystemStats = async (req: CustomRequest, res: Response) => {
     try {
+      const sevenDaysAgo = subDays(new Date(), 7);
+      const fourteenDaysAgo = subDays(new Date(), 14);
+
       const [
         totalLandlords,
         totalTenants,
@@ -523,6 +526,8 @@ class AdminController {
         unreadEmails,
         totalDocuments,
         activeUsers,
+        newUsersThisWeek,
+        newUsersLastWeek,
       ] = await Promise.all([
         // Total landlords
         prismaClient.landlords.count({ where: { isDeleted: false } }),
@@ -549,13 +554,6 @@ class AdminController {
             onlineStatus: onlineStatus.online,
           },
         }),
-      ]);
-
-      // Calculate growth (last 7 days vs previous 7 days)
-      const sevenDaysAgo = subDays(new Date(), 7);
-      const fourteenDaysAgo = subDays(new Date(), 14);
-
-      const [newUsersThisWeek, newUsersLastWeek] = await Promise.all([
         prismaClient.users.count({
           where: {
             role: { has: userRoles.LANDLORD },
@@ -602,36 +600,37 @@ class AdminController {
   getActivityData = async (req: CustomRequest, res: Response) => {
     try {
       const days = 7;
-      const activityData = [];
+      const activityData = await Promise.all(
+        Array.from({ length: days }, async (_, index) => {
+          const i = days - 1 - index;
+          const date = subDays(new Date(), i);
+          const dayStart = startOfDay(date);
+          const dayEnd = endOfDay(date);
+          const dayName = format(date, 'EEE');
 
-      for (let i = days - 1; i >= 0; i--) {
-        const date = subDays(new Date(), i);
-        const dayStart = startOfDay(date);
-        const dayEnd = endOfDay(date);
-        const dayName = format(date, 'EEE');
+          const [users, tickets] = await Promise.all([
+            // Users active on this day (logged in)
+            prismaClient.users.count({
+              where: {
+                role: { has: userRoles.LANDLORD },
+                updatedAt: { gte: dayStart, lte: dayEnd },
+              },
+            }),
+            // Tickets created on this day
+            prismaClient.supportTicket.count({
+              where: {
+                createdAt: { gte: dayStart, lte: dayEnd },
+              },
+            }),
+          ]);
 
-        const [users, tickets] = await Promise.all([
-          // Users active on this day (logged in)
-          prismaClient.users.count({
-            where: {
-              role: { has: userRoles.LANDLORD },
-              updatedAt: { gte: dayStart, lte: dayEnd },
-            },
-          }),
-          // Tickets created on this day
-          prismaClient.supportTicket.count({
-            where: {
-              createdAt: { gte: dayStart, lte: dayEnd },
-            },
-          }),
-        ]);
-
-        activityData.push({
-          name: dayName,
-          users,
-          tickets,
-        });
-      }
+          return {
+            name: dayName,
+            users,
+            tickets,
+          };
+        })
+      );
 
       return res.status(200).json({
         success: true,
@@ -650,23 +649,22 @@ class AdminController {
     try {
       // Calculate uptime (based on recent activity)
       const last24Hours = subDays(new Date(), 1);
-      const recentActivity = await prismaClient.users.count({
-        where: {
-          role: { has: userRoles.LANDLORD },
-          updatedAt: { gte: last24Hours },
-        },
-      });
-
-      const totalLandlords = await prismaClient.landlords.count({ where: { isDeleted: false } });
+      const [recentActivity, totalLandlords, activeUsers] = await Promise.all([
+        prismaClient.users.count({
+          where: {
+            role: { has: userRoles.LANDLORD },
+            updatedAt: { gte: last24Hours },
+          },
+        }),
+        prismaClient.landlords.count({ where: { isDeleted: false } }),
+        prismaClient.users.count({
+          where: {
+            role: { has: userRoles.LANDLORD },
+            onlineStatus: onlineStatus.online,
+          },
+        }),
+      ]);
       const uptime = totalLandlords > 0 ? (recentActivity / totalLandlords) * 100 : 100;
-
-      // Get active users count
-      const activeUsers = await prismaClient.users.count({
-        where: {
-          role: { has: userRoles.LANDLORD },
-          onlineStatus: onlineStatus.online,
-        },
-      });
 
       return res.status(200).json({
         success: true,

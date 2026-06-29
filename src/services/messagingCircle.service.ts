@@ -51,57 +51,105 @@ class MessagingCircleService {
   async getLandlordCircleIds(userId: string): Promise<string[]> {
     const ids = new Set<string>();
 
-    const asLandlord = await prismaClient.landlords.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
+    const [asLandlord, tenantRows, enquiries, applications, invites] =
+      await Promise.all([
+        prismaClient.landlords.findUnique({
+          where: { userId },
+          select: { id: true },
+        }),
+        prismaClient.tenants.findMany({
+          where: { userId },
+          select: { landlordId: true },
+        }),
+        prismaClient.log.findMany({
+          where: { createdById: userId, type: LogType.ENQUIRED },
+          select: {
+            property: { select: { landlordId: true } },
+            propertyListing: {
+              select: { property: { select: { landlordId: true } } },
+            },
+          },
+        }),
+        prismaClient.application.findMany({
+          where: { userId, isDeleted: false },
+          select: {
+            properties: { select: { landlordId: true } },
+            propertyListing: {
+              select: { property: { select: { landlordId: true } } },
+            },
+          },
+        }),
+        prismaClient.applicationInvites.findMany({
+          where: { userInvitedId: userId, isDeleted: false },
+          select: { invitedByLandordId: true },
+        }),
+      ]);
+
     if (asLandlord) ids.add(asLandlord.id);
-
-    const tenantRows = await prismaClient.tenants.findMany({
-      where: { userId },
-      select: { landlordId: true },
-    });
     tenantRows.forEach((t) => ids.add(t.landlordId));
-
-    const enquiries = await prismaClient.log.findMany({
-      where: { createdById: userId, type: LogType.ENQUIRED },
-      select: {
-        property: { select: { landlordId: true } },
-        propertyListing: {
-          select: { property: { select: { landlordId: true } } },
-        },
-      },
-    });
     enquiries.forEach((e) => {
       const landlordId =
         e.property?.landlordId ?? e.propertyListing?.property?.landlordId;
       if (landlordId) ids.add(landlordId);
-    });
-
-    const applications = await prismaClient.application.findMany({
-      where: { userId, isDeleted: false },
-      select: {
-        properties: { select: { landlordId: true } },
-        propertyListing: {
-          select: { property: { select: { landlordId: true } } },
-        },
-      },
     });
     applications.forEach((a) => {
       const landlordId =
         a.properties?.landlordId ?? a.propertyListing?.property?.landlordId;
       if (landlordId) ids.add(landlordId);
     });
-
-    const invites = await prismaClient.applicationInvites.findMany({
-      where: { userInvitedId: userId, isDeleted: false },
-      select: { invitedByLandordId: true },
-    });
     invites.forEach((i) => {
       if (i.invitedByLandordId) ids.add(i.invitedByLandordId);
     });
 
     return Array.from(ids);
+  }
+
+  private toContact(
+    user: {
+      id: string;
+      email: string;
+      profile?: {
+        fullname?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        profileUrl?: string | null;
+      } | null;
+    },
+    mailboxEmail: string,
+    relationship: MessagingRelationship,
+    landlordId: string
+  ): MessagingContact {
+    return {
+      userId: user.id,
+      name: displayName(user.profile, mailboxEmail),
+      email: user.email,
+      mailboxEmail,
+      profileUrl: user.profile?.profileUrl ?? null,
+      relationship,
+      landlordId,
+    };
+  }
+
+  private async toMailboxContact(
+    user: {
+      id: string;
+      email: string;
+      profile?: {
+        fullname?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        profileUrl?: string | null;
+      } | null;
+    },
+    relationship: MessagingRelationship,
+    landlordId: string
+  ): Promise<MessagingContact> {
+    return this.toContact(
+      user,
+      await this.resolveMailboxEmail(user.id),
+      relationship,
+      landlordId
+    );
   }
 
   /**
@@ -149,138 +197,113 @@ class MessagingCircleService {
   ): Promise<Map<string, MessagingContact>> {
     const map = new Map<string, MessagingContact>();
 
-    const landlord = await prismaClient.landlords.findUnique({
-      where: { id: landlordId },
-      include: {
-        user: { select: { id: true, email: true, profile: { select: profileSelect } } },
-      },
-    });
+    const [landlord, tenants, propertyIds, invites] = await Promise.all([
+      prismaClient.landlords.findUnique({
+        where: { id: landlordId },
+        include: {
+          user: { select: { id: true, email: true, profile: { select: profileSelect } } },
+        },
+      }),
+      prismaClient.tenants.findMany({
+        where: { landlordId },
+        include: {
+          user: { select: { id: true, email: true, profile: { select: profileSelect } } },
+        },
+      }),
+      prismaClient.properties.findMany({
+        where: { landlordId },
+        select: { id: true },
+      }),
+      prismaClient.applicationInvites.findMany({
+        where: {
+          invitedByLandordId: landlordId,
+          isDeleted: false,
+          userInvitedId: { not: null },
+        },
+        include: {
+          userInvited: {
+            select: { id: true, email: true, profile: { select: profileSelect } },
+          },
+        },
+      }),
+    ]);
 
     if (landlord?.user && landlord.user.id !== viewerUserId) {
-      map.set(landlord.user.id, {
-        userId: landlord.user.id,
-        name: displayName(landlord.user.profile, landlord.user.email),
-        email: landlord.user.email,
-        mailboxEmail: landlord.user.email,
-        profileUrl: landlord.user.profile?.profileUrl ?? null,
-        relationship: "landlord",
-        landlordId,
-      });
+      map.set(
+        landlord.user.id,
+        this.toContact(landlord.user, landlord.user.email, "landlord", landlordId)
+      );
     }
-
-    const tenants = await prismaClient.tenants.findMany({
-      where: { landlordId },
-      include: {
-        user: { select: { id: true, email: true, profile: { select: profileSelect } } },
-      },
-    });
 
     for (const t of tenants) {
       if (!t.user || t.user.id === viewerUserId) continue;
       const mailbox = t.tenantWebUserEmail || t.user.email;
-      map.set(t.user.id, {
-        userId: t.user.id,
-        name: displayName(t.user.profile, mailbox),
-        email: t.user.email,
-        mailboxEmail: mailbox,
-        profileUrl: t.user.profile?.profileUrl ?? null,
-        relationship: "tenant",
-        landlordId,
-      });
+      map.set(t.user.id, this.toContact(t.user, mailbox, "tenant", landlordId));
     }
 
-    const propertyIds = await prismaClient.properties.findMany({
-      where: { landlordId },
-      select: { id: true },
-    });
     const propIds = propertyIds.map((p) => p.id);
 
     if (propIds.length) {
-      const applications = await prismaClient.application.findMany({
-        where: {
-          isDeleted: false,
-          userId: { not: null },
-          OR: [
-            { propertiesId: { in: propIds } },
-            { propertyListing: { property: { landlordId } } },
-          ],
-        },
-        include: {
-          user: { select: { id: true, email: true, profile: { select: profileSelect } } },
-        },
-      });
+      const [applications, enquiries] = await Promise.all([
+        prismaClient.application.findMany({
+          where: {
+            isDeleted: false,
+            userId: { not: null },
+            OR: [
+              { propertiesId: { in: propIds } },
+              { propertyListing: { property: { landlordId } } },
+            ],
+          },
+          include: {
+            user: { select: { id: true, email: true, profile: { select: profileSelect } } },
+          },
+        }),
+        prismaClient.log.findMany({
+          where: {
+            type: LogType.ENQUIRED,
+            createdById: { not: null },
+            OR: [
+              { propertyId: { in: propIds } },
+              { propertyListing: { property: { landlordId } } },
+            ],
+          },
+          include: {
+            users: { select: { id: true, email: true, profile: { select: profileSelect } } },
+          },
+        }),
+      ]);
 
-      for (const app of applications) {
-        if (!app.user || app.user.id === viewerUserId) continue;
-        const mailbox = await this.resolveMailboxEmail(app.user.id);
-        map.set(app.user.id, {
-          userId: app.user.id,
-          name: displayName(app.user.profile, app.user.email),
-          email: app.user.email,
-          mailboxEmail: mailbox,
-          profileUrl: app.user.profile?.profileUrl ?? null,
-          relationship: "applicant",
-          landlordId,
-        });
-      }
+      const applicationContacts = await Promise.all(
+        applications
+          .filter((app) => app.user && app.user.id !== viewerUserId)
+          .map((app) => this.toMailboxContact(app.user!, "applicant", landlordId))
+      );
+      applicationContacts.forEach((contact) => map.set(contact.userId, contact));
 
-      const enquiries = await prismaClient.log.findMany({
-        where: {
-          type: LogType.ENQUIRED,
-          createdById: { not: null },
-          OR: [
-            { propertyId: { in: propIds } },
-            { propertyListing: { property: { landlordId } } },
-          ],
-        },
-        include: {
-          users: { select: { id: true, email: true, profile: { select: profileSelect } } },
-        },
-      });
-
-      for (const enq of enquiries) {
-        if (!enq.users || enq.users.id === viewerUserId) continue;
-        if (map.has(enq.users.id)) continue;
-        const mailbox = await this.resolveMailboxEmail(enq.users.id);
-        map.set(enq.users.id, {
-          userId: enq.users.id,
-          name: displayName(enq.users.profile, enq.users.email),
-          email: enq.users.email,
-          mailboxEmail: mailbox,
-          profileUrl: enq.users.profile?.profileUrl ?? null,
-          relationship: "enquirer",
-          landlordId,
-        });
-      }
+      const enquiryContacts = await Promise.all(
+        enquiries
+          .filter(
+            (enq) =>
+              enq.users &&
+              enq.users.id !== viewerUserId &&
+              !map.has(enq.users.id)
+          )
+          .map((enq) => this.toMailboxContact(enq.users!, "enquirer", landlordId))
+      );
+      enquiryContacts.forEach((contact) => map.set(contact.userId, contact));
     }
 
-    const invites = await prismaClient.applicationInvites.findMany({
-      where: {
-        invitedByLandordId: landlordId,
-        isDeleted: false,
-        userInvitedId: { not: null },
-      },
-      include: {
-        userInvited: {
-          select: { id: true, email: true, profile: { select: profileSelect } },
-        },
-      },
-    });
-
-    for (const inv of invites) {
-      if (!inv.userInvited || inv.userInvited.id === viewerUserId) continue;
-      if (map.has(inv.userInvited.id)) continue;
-      const mailbox = await this.resolveMailboxEmail(inv.userInvited.id);
-      map.set(inv.userInvited.id, {
-        userId: inv.userInvited.id,
-        name: displayName(inv.userInvited.profile, inv.userInvited.email),
-        email: inv.userInvited.email,
-        mailboxEmail: mailbox,
-        profileUrl: inv.userInvited.profile?.profileUrl ?? null,
-        relationship: "applicant",
-        landlordId,
-      });
-    }
+    const inviteContacts = await Promise.all(
+      invites
+        .filter(
+          (inv) =>
+            inv.userInvited &&
+            inv.userInvited.id !== viewerUserId &&
+            !map.has(inv.userInvited.id)
+        )
+        .map((inv) => this.toMailboxContact(inv.userInvited!, "applicant", landlordId))
+    );
+    inviteContacts.forEach((contact) => map.set(contact.userId, contact));
 
     return map;
   }
@@ -294,8 +317,12 @@ class MessagingCircleService {
     const landlordIds = await this.getLandlordCircleIds(viewerUserId);
     const ids = new Set<string>();
 
-    for (const landlordId of landlordIds) {
-      const contacts = await this.collectContactsForLandlord(landlordId, viewerUserId);
+    const contactGroups = await Promise.all(
+      landlordIds.map((landlordId) =>
+        this.collectContactsForLandlord(landlordId, viewerUserId)
+      )
+    );
+    for (const contacts of contactGroups) {
       contacts.forEach((_, userId) => ids.add(userId));
     }
 
@@ -323,28 +350,22 @@ class MessagingCircleService {
         include: { profile: { select: profileSelect } },
       });
 
-      const results: MessagingContact[] = [];
-      for (const u of users) {
-        if (u.id === viewerUserId) continue;
-        const mailbox = await this.resolveMailboxEmail(u.id);
-        results.push({
-          userId: u.id,
-          name: displayName(u.profile, u.email),
-          email: u.email,
-          mailboxEmail: mailbox,
-          profileUrl: u.profile?.profileUrl ?? null,
-          relationship: "tenant",
-          landlordId: "",
-        });
-      }
-      return results;
+      return Promise.all(
+        users
+          .filter((u) => u.id !== viewerUserId)
+          .map((u) => this.toMailboxContact(u, "tenant", ""))
+      );
     }
 
     const landlordIds = await this.getLandlordCircleIds(viewerUserId);
     const merged = new Map<string, MessagingContact>();
 
-    for (const landlordId of landlordIds) {
-      const contacts = await this.collectContactsForLandlord(landlordId, viewerUserId);
+    const contactGroups = await Promise.all(
+      landlordIds.map((landlordId) =>
+        this.collectContactsForLandlord(landlordId, viewerUserId)
+      )
+    );
+    for (const contacts of contactGroups) {
       contacts.forEach((c, id) => merged.set(id, c));
     }
 

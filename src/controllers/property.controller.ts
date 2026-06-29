@@ -88,9 +88,10 @@ class PropertyController {
         try {
 
             const landlordId = req.params.landlordId;
-            const [{ marketCountry }, landlord] = await Promise.all([
+            const [{ marketCountry }, landlord, properties] = await Promise.all([
                 resolveViewerMarketFromRequest(req),
                 new LandlordService().getLandlordById(landlordId),
+                PropertyServices.getActiveOrInactivePropsListing(String(landlordId), true, AvailabilityStatus.VACANT),
             ]);
             // check landlord existence
             if (!landlord) {
@@ -98,7 +99,6 @@ class PropertyController {
             }
 
             // Fetch the filtered properties
-            const properties = await PropertyServices.getActiveOrInactivePropsListing(String(landlordId), true, AvailabilityStatus.VACANT);
             const gated = (properties || []).filter((item: { country?: string | null; property?: { country?: string | null } }) => {
                 const country = item?.country || item?.property?.country;
                 return propertyCountryMatchesMarket(country, marketCountry);
@@ -117,15 +117,14 @@ class PropertyController {
             const propertyId = req.params.propertyId
             const userId = req.user?.id;
 
-            // Check if the property exists
-            const propertyExists = await PropertyServices.getPropertyById(propertyId);
+            const [propertyExists, liked] = await Promise.all([
+                PropertyServices.getPropertyById(propertyId),
+                PropertyServices.getLikeHistory(userId, propertyId),
+            ]);
 
             if (!propertyExists) {
                 throw new Error(`Property with ID ${propertyId} does not exist.`);
             }
-
-            // check if the user already liked the props 
-            const liked = await PropertyServices.getLikeHistory(userId, propertyId)
 
             if (liked) {
                 return res.status(400).json({ message: "property alread liked by the current user" })
@@ -141,8 +140,10 @@ class PropertyController {
         try {
 
             const userId = req.user?.id;
-            const { marketCountry } = await resolveViewerMarketFromRequest(req);
-            const likedRecords = await PropertyServices.getLikeHistories(userId)
+            const [{ marketCountry }, likedRecords] = await Promise.all([
+                resolveViewerMarketFromRequest(req),
+                PropertyServices.getLikeHistories(userId),
+            ]);
             const properties = likedRecords
                 .map((record: { property?: { country?: string | null } & Record<string, unknown> }) => record.property)
                 .filter((property) => {
@@ -158,17 +159,17 @@ class PropertyController {
         try {
             const createdById = req.user?.id;
             const propertyId = req.params.propertyId;
-            // check props existence
-            const property = await PropertyServices.getPropertyById(propertyId)
+            const [property, logcreated] = await Promise.all([
+                PropertyServices.getPropertyById(propertyId),
+                LogsServices.checkPropertyLogs(
+                    createdById,
+                    LogType.VIEW,
+                    propertyId
+                ),
+            ]);
 
             if (!property) return res.status(400).json({ message: "property with the id given doesnt exist" });
-            // check if propertyId have been viewed before by the user 
-            const logcreated = await LogsServices.checkPropertyLogs(
-                createdById,
-                LogType.VIEW,
-                propertyId
-            )
-            if (logcreated) res.status(200).json({ message: "property viewed have been logged already" });
+            if (logcreated) return res.status(200).json({ message: "property viewed have been logged already" });
 
             const log = await LogsServices.createLog({
                 propertyId,
@@ -190,10 +191,12 @@ class PropertyController {
                 return res.status(400).json({ message: "Both propertyId (ex unitId, propertyId, roomId), listingId, and message are required" });
             }
 
-            const propertyListing = await PropertyServices.getPropertyListingByListingId(propertyListingId);
+            const [propertyListing, { marketCountry }] = await Promise.all([
+                PropertyServices.getPropertyListingByListingId(propertyListingId),
+                resolveViewerMarketFromRequest(req),
+            ]);
             if(!propertyListing) return res.status(400).json({ message: "propertylisting is not found" });
 
-            const { marketCountry } = await resolveViewerMarketFromRequest(req);
             const listingCountry = propertyListing.property?.country;
             if (!propertyCountryMatchesMarket(listingCountry, marketCountry)) {
                 return res.status(404).json({ message: "This property is not available in your region." });
@@ -297,8 +300,10 @@ class PropertyController {
         try {
             const listingId = req.params.id;
             const userId = req.user?.id;
-            const { marketCountry } = await resolveViewerMarketFromRequest(req);
-            const property = await PropertyServices.getPropertyListingByListingIdNew(listingId)
+            const [{ marketCountry, viewerContext }, property] = await Promise.all([
+                resolveViewerMarketFromRequest(req),
+                PropertyServices.getPropertyListingByListingIdNew(listingId),
+            ]);
             if (!property) {
                 return res.status(404).json({ message: "Property listing not found" });
             }
@@ -321,7 +326,6 @@ class PropertyController {
                 }
             }
 
-            const { viewerContext } = await resolveViewerMarketFromRequest(req);
             const [sanitizedProperty] = await sanitizeListingLandlordsForPublicView([property]);
 
             const nested = (sanitizedProperty as { property?: Record<string, unknown> }).property;
@@ -370,11 +374,13 @@ class PropertyController {
     getPropsMaintenance = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
-            const property = await PropertyServices.getPropertyById(propertyId);
+            const [property, properties] = await Promise.all([
+                PropertyServices.getPropertyById(propertyId),
+                MaintenanceServices.getPropertyMaintenance(propertyId),
+            ]);
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
             }
-            const properties = await MaintenanceServices.getPropertyMaintenance(propertyId)
             return res.status(200).json({ properties })
         } catch (error) {
             ErrorService.handleError(error, res)
@@ -383,11 +389,13 @@ class PropertyController {
     getVendorsServicesOnProps = async (req: CustomRequest, res: Response) => {
         try {
             const propertyId = req.params.propertyId;
-            const property = await PropertyServices.getPropertyById(propertyId);
+            const [property, vendors] = await Promise.all([
+                PropertyServices.getPropertyById(propertyId),
+                MaintenanceServices.getVendorsForPropertyMaintenance(propertyId),
+            ]);
             if (!property) {
                 return res.status(404).json({ message: 'Property not found' });
             }
-            const vendors = await MaintenanceServices.getVendorsForPropertyMaintenance(propertyId)
             return res.status(200).json({ vendors })
         } catch (error) {
             ErrorService.handleError(error, res)

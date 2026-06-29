@@ -319,7 +319,8 @@ class ServiceService {
       statusCounts,
       paymentStats,
       revenueResult,
-      nextAppointment
+      nextAppointment,
+      pendingApprovalCount,
     ] = await Promise.all([
       // Count by maintenance status
       prismaClient.maintenance.groupBy({
@@ -372,20 +373,20 @@ class ServiceService {
         select: {
           scheduleDate: true
         }
+      }),
+
+      // Count pending approval (maintenance with pending landlord decision)
+      prismaClient.maintenance.count({
+        where: {
+          vendorId: vendorId,
+          isDeleted: false,
+          landlordDecision: maintenanceDecisionStatus.PENDING,
+          status: {
+            in: [maintenanceStatus.ASSIGNED, maintenanceStatus.IN_PROGRESS]
+          }
+        }
       })
     ])
-
-    // Count pending approval (maintenance with pending landlord decision)
-    const pendingApprovalCount = await prismaClient.maintenance.count({
-      where: {
-        vendorId: vendorId,
-        isDeleted: false,
-        landlordDecision: maintenanceDecisionStatus.PENDING,
-        status: {
-          in: [maintenanceStatus.ASSIGNED, maintenanceStatus.IN_PROGRESS]
-        }
-      }
-    })
 
     // Calculate new requests by explicitly checking each status
     const newRequests = statusCounts.reduce((sum, item) => {
