@@ -2432,6 +2432,61 @@ class PropertyService {
             }
         }
 
+        const propertyRecord = await prismaClient.properties.findUnique({
+            where: { id: propertyId },
+            select: { availability: true },
+        });
+
+        if (
+            type === ListingType.ENTIRE_PROPERTY &&
+            unitIds.length === 0 &&
+            roomIds.length === 0 &&
+            !this.isEntityVacant(propertyRecord?.availability)
+        ) {
+            throw new ConflictError(
+                'This property is occupied and cannot be listed. Mark it as vacant first.'
+            );
+        }
+
+        if (unitIds.length > 0) {
+            const units = await prismaClient.unitConfiguration.findMany({
+                where: { id: { in: unitIds.filter(Boolean) } },
+                select: { id: true, availability: true },
+            });
+            const occupiedUnit = units.find(
+                (unit) =>
+                    !this.isEntityVacant(unit.availability, propertyRecord?.availability)
+            );
+            if (occupiedUnit) {
+                throw new ConflictError(
+                    'One or more units are occupied and cannot be listed.'
+                );
+            }
+        }
+
+        if (roomIds.length > 0) {
+            const rooms = await prismaClient.roomDetail.findMany({
+                where: { id: { in: roomIds.filter(Boolean) } },
+                select: {
+                    id: true,
+                    availability: true,
+                    unit: { select: { availability: true } },
+                },
+            });
+            const occupiedRoom = rooms.find(
+                (room) =>
+                    !this.isEntityVacant(
+                        room.availability,
+                        room.unit?.availability ?? propertyRecord?.availability
+                    )
+            );
+            if (occupiedRoom) {
+                throw new ConflictError(
+                    'One or more rooms are occupied and cannot be listed.'
+                );
+            }
+        }
+
         const response = await prismaClient.$transaction(async (tx) => {
             const response: {
                 success: boolean;
@@ -3176,6 +3231,30 @@ class PropertyService {
             });
 
             if (!listing) {
+                throw new Error('Listing not found');
+            }
+
+            if (!listing.onListing || !listing.isActive) {
+                throw new Error('Listing not found');
+            }
+
+            const propertyAvailability = listing.property?.availability;
+            const listingEntityVacant =
+                listing.type === ListingType.ENTIRE_PROPERTY
+                    ? this.isEntityVacant(propertyAvailability)
+                    : listing.type === ListingType.SINGLE_UNIT
+                      ? this.isEntityVacant(
+                            listing.unit?.availability,
+                            propertyAvailability
+                        )
+                      : listing.type === ListingType.ROOM
+                        ? this.isEntityVacant(
+                              listing.room?.availability,
+                              listing.unit?.availability ?? propertyAvailability
+                          )
+                        : true;
+
+            if (!listingEntityVacant) {
                 throw new Error('Listing not found');
             }
 

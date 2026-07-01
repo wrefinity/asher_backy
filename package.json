@@ -33,6 +33,8 @@
     "validate:pms-config": "tsx scripts/validate-property-pms-config.ts",
     "db:backfill-operational": "tsx scripts/backfill-operational-profile-flags.ts",
     "db:backfill-operational:dry": "tsx scripts/backfill-operational-profile-flags.ts --dry-run",
+    "db:unlist-occupied": "tsx scripts/unlist-occupied-listings.ts",
+    "db:unlist-occupied:dry": "tsx scripts/unlist-occupied-listings.ts --dry-run",
     "verify:operational-profile": "tsx scripts/verify-operational-profile-api.ts",
     "validate:bulk-upload": "tsx scripts/validate-bulk-upload-payloads.ts",
     "validate:pms-all": "npm run validate:pms-config && npm run verify:operational-profile && npm run validate:bulk-upload"

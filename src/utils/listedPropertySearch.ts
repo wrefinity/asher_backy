@@ -364,6 +364,58 @@ function buildAvailabilityWhere(
     return undefined;
 }
 
+function buildEntityVacancyWhere(): Prisma.propertyListingHistoryWhereInput {
+    const vacantOrUnset = (
+        field: 'property' | 'unit' | 'room'
+    ): Prisma.propertyListingHistoryWhereInput => {
+        if (field === 'property') {
+            return {
+                property: {
+                    OR: [
+                        { availability: AvailabilityStatus.VACANT },
+                        { availability: null },
+                    ],
+                },
+            };
+        }
+        if (field === 'unit') {
+            return {
+                unit: {
+                    OR: [
+                        { availability: AvailabilityStatus.VACANT },
+                        { availability: null },
+                    ],
+                },
+            };
+        }
+        return {
+            room: {
+                OR: [
+                    { availability: AvailabilityStatus.VACANT },
+                    { availability: null },
+                ],
+            },
+        };
+    };
+
+    return {
+        OR: [
+            {
+                type: ListingType.ENTIRE_PROPERTY,
+                ...vacantOrUnset('property'),
+            },
+            {
+                type: ListingType.SINGLE_UNIT,
+                ...vacantOrUnset('unit'),
+            },
+            {
+                type: ListingType.ROOM,
+                ...vacantOrUnset('room'),
+            },
+        ],
+    };
+}
+
 /**
  * Shared Prisma where clause for public tenant property search.
  */
@@ -424,9 +476,7 @@ export function buildListedPropertyWhereClause(
         propertyAndConditions.push({ landlordId });
     }
 
-    if (availability) {
-        propertyAndConditions.push({ availability: AvailabilityStatus.VACANT });
-    }
+    const listingVacancyWhere = availability ? buildEntityVacancyWhere() : undefined;
 
     if (specificationType) {
         const valid = Object.values(PropertySpecificationType).includes(
@@ -570,14 +620,15 @@ export function buildListedPropertyWhereClause(
             : {
                   property: {
                       isDeleted: false,
-                      ...(availability ? { availability: AvailabilityStatus.VACANT } : {}),
                   },
               }),
     };
 
-    const extraConditions = [furnishedWhere, availabilityWhere].filter(
-        Boolean
-    ) as Prisma.propertyListingHistoryWhereInput[];
+    const extraConditions = [
+        furnishedWhere,
+        availabilityWhere,
+        listingVacancyWhere,
+    ].filter(Boolean) as Prisma.propertyListingHistoryWhereInput[];
 
     if (extraConditions.length) {
         return {
