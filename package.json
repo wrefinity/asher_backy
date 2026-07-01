@@ -6,7 +6,7 @@
   "scripts": {
     "build": "prisma generate",
     "build-dev": "rimraf dist && tsc",
-    "postinstall": "prisma generate && node scripts/verify-node-deps.js",
+    "postinstall": "prisma generate && node scripts/run-postinstall-verify.js",
     "ts.check": "tsc --project tsconfig.json",
     "dev": "nodemon",
     "start": "node dist/index.js",
