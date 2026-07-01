@@ -344,6 +344,22 @@ class AuthControls {
         );
     }
 
+    private assertTenantPortalAccess(tenant: {
+        isDeleted?: boolean;
+        isAppAccessSuspended?: boolean;
+    }) {
+        if (tenant.isDeleted) {
+            throw ApiError.forbidden(
+                'This tenant account is no longer active. Please contact your landlord.'
+            );
+        }
+        if (tenant.isAppAccessSuspended) {
+            throw ApiError.forbidden(
+                'Your access to the tenant app has been suspended. Please contact your landlord.'
+            );
+        }
+    }
+
     private recordLoginSession = async (
         user: { id: string; email?: string | null },
         accessToken: string,
@@ -367,6 +383,7 @@ class AuthControls {
             include: { property: { select: { id: true, name: true, address: true, currency: true, country: true } } },
         });
         if (!activeTenant) throw ApiError.notFound("Tenant record not found");
+        this.assertTenantPortalAccess(activeTenant);
 
         await UserServices.updateOnlineStatus(user.id, onlineStatus.online);
         const tokens = await this.tokenService.createToken({
@@ -406,6 +423,12 @@ class AuthControls {
         const tenant = this.resolveTenantForCode(user, tenantCode);
         if (!tenant) throw ApiError.notFound("Tenant record not found");
 
+        const tenantRecord = await prismaClient.tenants.findUnique({
+            where: { id: tenant.id },
+        });
+        if (!tenantRecord) throw ApiError.notFound("Tenant record not found");
+        this.assertTenantPortalAccess(tenantRecord);
+
         const property = tenant.property;
         const dob = user.profile?.dateOfBirth;
 
@@ -432,6 +455,12 @@ class AuthControls {
 
         const tenant = this.resolveTenantForCode(user, tenantCode);
         if (!tenant) throw ApiError.notFound("Tenant record not found");
+
+        const tenantRecord = await prismaClient.tenants.findUnique({
+            where: { id: tenant.id },
+        });
+        if (!tenantRecord) throw ApiError.notFound("Tenant record not found");
+        this.assertTenantPortalAccess(tenantRecord);
 
         if (tenant.password) {
             throw ApiError.validationError(["Password already set. Please log in with your tenant ID and password."]);
@@ -479,6 +508,13 @@ class AuthControls {
         if (tenantCode && !email) {
             const tenant = this.resolveTenantForCode(user, tenantCode);
             if (!tenant) throw ApiError.notFound("Tenant record not found");
+
+            const tenantRecord = await prismaClient.tenants.findUnique({
+                where: { id: tenant.id },
+            });
+            if (!tenantRecord) throw ApiError.notFound("Tenant record not found");
+            this.assertTenantPortalAccess(tenantRecord);
+
             storedPassword = tenant.password || user.password;
         }
 

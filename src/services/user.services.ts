@@ -11,6 +11,7 @@ import EmergencyContactService from "../services/emergencyinfo.services"
 import EmploymentService from "../services/employmentinfo.services"
 import NextOfKinService from "../services/nextkin.services"
 import ApplicantPersonalDetailsService from "../services/personaldetails.services"
+import ResidentialinfoServices from "./residentialinfo.services"
 import WalletService from "./wallet.service";
 import { getCurrentCountryCurrency } from "../utils/currencyContext";
 import sendMail from "../utils/emailer";
@@ -306,6 +307,13 @@ class UserService {
                     userData.createdById
                 );
             }
+
+            const userWithProfile = await this.getUserById(user.id);
+            return {
+                ...userWithProfile,
+                tenantId: tenant?.id,
+                tenant,
+            };
         }
 
         // for web user complete tenant account profile creation
@@ -567,7 +575,37 @@ class UserService {
             userId
         });
 
-        // 4. Create application
+        // 4. Residential information (from bulk upload address fields)
+        let residentialId: string | null = null;
+        const hasResidentialAddress =
+            userData?.address ||
+            userData?.city ||
+            userData?.state ||
+            userData?.country ||
+            userData?.zip ||
+            userData?.zipCode;
+
+        if (hasResidentialAddress) {
+            const residentialInfo = await ResidentialinfoServices.upsertResidentialInformation({
+                address: userData?.address || 'N/A',
+                addressStatus: userData?.addressStatus || 'Current',
+                city: userData?.city || 'N/A',
+                state: userData?.state || 'N/A',
+                country: userData?.country || 'N/A',
+                zipCode: userData?.zip || userData?.zipCode || 'N/A',
+                lengthOfResidence: userData?.lengthOfResidence || '1 Years',
+                landlordOrAgencyName: userData?.landlordOrAgencyName || 'N/A',
+                landlordOrAgencyEmail: userData?.landlordOrAgencyEmail || 'n/a@placeholder.local',
+                landlordOrAgencyPhoneNumber:
+                    userData?.landlordOrAgencyPhoneNumber || userData?.phoneNumber || 'N/A',
+                reasonForLeaving: userData?.reasonForLeaving || '',
+                userId,
+                prevAddresses: [],
+            });
+            residentialId = residentialInfo.id;
+        }
+
+        // 5. Create application
         const invitedStatus =
             userData?.invited?.toString().toUpperCase() === 'YES'
                 ? InvitedStatus.YES
@@ -577,7 +615,7 @@ class UserService {
             data: {
                 status: ApplicationStatus.COMPLETED,
                 userId,
-                residentialId: null,
+                residentialId,
                 emergencyContactId: emergencyInfo.id,
                 employmentInformationId: employmentInfo.id,
                 guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
@@ -588,7 +626,7 @@ class UserService {
             }
         });
 
-        // 5. Application questions
+        // 6. Application questions
         await prismaClient.applicationQuestions.create({
             data: {
                 havePet: userData.havePet,

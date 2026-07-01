@@ -7,6 +7,7 @@ import UserService from "../services/user.services";
 import { userRoles } from "@prisma/client";
 import { requireWebUserPortalRole as requireWebUserPortalRoleMiddleware } from "./requireWebUserPortalRole";
 import LoginSessionService from "../services/loginSession.service";
+import { prismaClient } from "..";
 
 export class Authorize {
     private tokenService: Jtoken;
@@ -277,12 +278,34 @@ export class Authorize {
      * Middleware to ensure user is operating in tenant context
      */
     requireTenantContext() {
-        return (req: CustomRequest, res: Response, next: NextFunction) => {
-            if (!req.user?.tenant?.id && !req.user?.tenantId) {
+        return async (req: CustomRequest, res: Response, next: NextFunction) => {
+            const tenantId = req.user?.tenant?.id || req.user?.tenantId;
+            if (!tenantId) {
                 return res.status(403).json({
                     message: "Tenant context required. Please log in as a specific tenant."
                 });
             }
+
+            const tenant = await prismaClient.tenants.findUnique({
+                where: { id: tenantId },
+                select: {
+                    isDeleted: true,
+                    isAppAccessSuspended: true,
+                },
+            });
+
+            if (!tenant || tenant.isDeleted) {
+                return res.status(403).json({
+                    message: "This tenant account is no longer active. Please contact your landlord."
+                });
+            }
+
+            if (tenant.isAppAccessSuspended) {
+                return res.status(403).json({
+                    message: "Your access to the tenant app has been suspended. Please contact your landlord."
+                });
+            }
+
             next();
         };
     }

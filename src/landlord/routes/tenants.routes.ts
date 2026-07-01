@@ -26,6 +26,7 @@ class TenantsLandlordRouter {
         this.router.get('/previous', TenantLandlordController.getPreviousTenant);
         //  this.router.post('/upload', uploadcsv.single("files"), TenantLandlordController.bulkTenantUpload)
         this.router.post('/upload', TenantLandlordController.bulkTenantUpload)
+        this.router.post('/bulk-delete', TenantLandlordController.bulkDeleteTenants)
         this.router.post('/milestones/', TenantLandlordController.createTenantMileStones)
         this.router.get('/milestones/:tenantId', TenantLandlordController.getTenantMileStones)
         this.router.get('/scores/:tenantId', TenantLandlordController.getTenantPerformance)
@@ -44,6 +45,8 @@ class TenantsLandlordRouter {
         this.router.patch('/:tenantId/lease-dates', TenantLandlordController.updateLeaseDates)
         this.router.post('/:tenantId/lease/extend', TenantLandlordController.extendLease)
         this.router.post('/:tenantId/lease/terminate', TenantLandlordController.terminateLease)
+        this.router.patch('/:tenantId/app-access', TenantLandlordController.setTenantAppAccess)
+        this.router.delete('/:tenantId', TenantLandlordController.deleteTenant)
         this.router.get('/:tenantId/lease-extension/requests', TenantLandlordController.getLeaseExtensionRequests)
         this.router.post('/:tenantId/lease-extension/:requestId/respond', TenantLandlordController.respondToLeaseExtensionRequest)
         // Other tenant routes

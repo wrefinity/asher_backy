@@ -20,6 +20,7 @@ export interface NormalizedTenant {
     leaseStartDate: string | Date | null;
     leaseEndDate: string | Date | null;
     isCurrentLease: boolean;
+    isAppAccessSuspended: boolean;
     dateOfFirstRent: string | Date | null;
     initialDeposit: string;
     
@@ -233,6 +234,7 @@ export class TenantNormalizer {
             leaseStartDate: tenant.leaseStartDate || null,
             leaseEndDate: tenant.leaseEndDate || null,
             isCurrentLease: tenant.isCurrentLease ?? false,
+            isAppAccessSuspended: tenant.isAppAccessSuspended ?? false,
             dateOfFirstRent: tenant.dateOfFirstRent || null,
             initialDeposit: this.convertDecimalToString(tenant.initialDeposit) || '0',
             tenantWebUserEmail: tenant.tenantWebUserEmail || '',
@@ -390,6 +392,17 @@ export class TenantNormalizer {
             residentialInfo = tenant.residentialInfo;
         } else if (tenant.application?.residentialInfo) {
             residentialInfo = tenant.application.residentialInfo;
+        } else if (tenant.user?.residentialInformation?.[0]) {
+            residentialInfo = tenant.user.residentialInformation[0];
+        } else if (tenant.user?.profile?.address) {
+            const profile = tenant.user.profile;
+            residentialInfo = {
+                address: profile.address,
+                city: profile.city,
+                state: profile.state,
+                country: profile.country,
+                zipCode: profile.zip,
+            };
         }
         if (!residentialInfo) return null;
         

@@ -16,7 +16,12 @@ class TenantService {
                             employmentInfo: true,
                             emergencyInfo: true,
                             guarantorInformation: true,
-                            referee: true
+                            referee: true,
+                            residentialInfo: {
+                                include: {
+                                    prevAddresses: true,
+                                },
+                            },
                         }
                     },
                 },
@@ -43,7 +48,12 @@ class TenantService {
                                 employmentInfo: true,
                                 emergencyInfo: true,
                                 guarantorInformation: true,
-                                referee: true
+                                referee: true,
+                                residentialInfo: {
+                                    include: {
+                                        prevAddresses: true,
+                                    },
+                                },
                             }
                         },
                     },
@@ -171,6 +181,7 @@ class TenantService {
         return prismaClient.tenants.findMany({
             where: {
                 landlordId: landlordId,
+                isDeleted: false,
                 landlord: {
                     isDeleted: false,
                 },
@@ -256,6 +267,68 @@ class TenantService {
             },
         });
         return tenant;
+    };
+
+    setTenantAppAccessSuspended = async (
+        landlordId: string,
+        tenantId: string,
+        suspended: boolean
+    ) => {
+        const tenant = await prismaClient.tenants.findFirst({
+            where: { id: tenantId, landlordId, isDeleted: false },
+        });
+        if (!tenant) {
+            throw new Error('Tenant not found or does not belong to you');
+        }
+
+        return prismaClient.tenants.update({
+            where: { id: tenantId },
+            data: {
+                isAppAccessSuspended: suspended,
+                appAccessSuspendedAt: suspended ? new Date() : null,
+            },
+        });
+    };
+
+    softDeleteTenant = async (landlordId: string, tenantId: string) => {
+        const tenant = await prismaClient.tenants.findFirst({
+            where: { id: tenantId, landlordId, isDeleted: false },
+        });
+        if (!tenant) {
+            throw new Error('Tenant not found or does not belong to you');
+        }
+
+        const now = new Date();
+        return prismaClient.tenants.update({
+            where: { id: tenantId },
+            data: {
+                isDeleted: true,
+                isAppAccessSuspended: true,
+                appAccessSuspendedAt: now,
+                isCurrentLease: false,
+                leaseEndDate: tenant.leaseEndDate ?? now,
+            },
+        });
+    };
+
+    bulkSoftDeleteTenants = async (landlordId: string, tenantIds: string[]) => {
+        const uniqueIds = [...new Set(tenantIds.filter(Boolean))];
+        const deleted: string[] = [];
+        const errors: Array<{ tenantId: string; error: string }> = [];
+
+        for (const tenantId of uniqueIds) {
+            try {
+                await this.softDeleteTenant(landlordId, tenantId);
+                deleted.push(tenantId);
+            } catch (error: any) {
+                errors.push({
+                    tenantId,
+                    error: error?.message || 'Failed to delete tenant',
+                });
+            }
+        }
+
+        return { deleted, errors };
     };
 
 }

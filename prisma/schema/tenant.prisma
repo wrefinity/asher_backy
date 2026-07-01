@@ -8,6 +8,9 @@ model tenants {
   leaseStartDate        DateTime?
   leaseEndDate          DateTime?
   isCurrentLease        Boolean                @default(true)
+  isDeleted             Boolean                @default(false)
+  isAppAccessSuspended  Boolean                @default(false)
+  appAccessSuspendedAt  DateTime?
   initialDeposit        Decimal?               @default(0.00) @db.Decimal(18, 2)
   dateOfFirstRent       DateTime?              @default(now()) @db.Timestamptz(6)
   apartmentOrFlatNumber Int?

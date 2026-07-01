@@ -532,6 +532,9 @@ class TenantControls {
                 return res.status(404).json({ error: 'kindly login as landlord' });
             }
             const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId)
+            if (!tenant || tenant.isDeleted) {
+                return res.status(404).json({ error: 'Tenant not found' });
+            }
             return res.status(201).json({
                 tenant
             });
@@ -935,6 +938,113 @@ class TenantControls {
             }
 
             return res.status(200).json({ success: true, message: `Request ${response.toLowerCase()}`, data: updated });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Suspend or restore tenant app access
+     * PATCH /api/landlord/tenants/:tenantId/app-access
+     */
+    setTenantAppAccess = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const suspended = Boolean(req.body?.suspended);
+            const updated = await TenantService.setTenantAppAccessSuspended(
+                landlordId,
+                tenantId,
+                suspended
+            );
+
+            await LogsServices.createLog({
+                events: suspended
+                    ? `Tenant app access suspended for ${tenantId}`
+                    : `Tenant app access restored for ${tenantId}`,
+                type: LogType.ACTIVITY,
+                propertyId: updated.propertyId,
+                createdById: req.user?.id,
+                subjects: suspended ? 'Tenant access suspended' : 'Tenant access restored',
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: suspended
+                    ? 'Tenant app access has been suspended'
+                    : 'Tenant app access has been restored',
+                data: updated,
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Soft-delete a tenant record and revoke app access
+     * DELETE /api/landlord/tenants/:tenantId
+     */
+    deleteTenant = async (req: CustomRequest, res: Response) => {
+        try {
+            const { tenantId } = req.params;
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const updated = await TenantService.softDeleteTenant(landlordId, tenantId);
+
+            await LogsServices.createLog({
+                events: `Tenant ${tenantId} removed from landlord portfolio`,
+                type: LogType.ACTIVITY,
+                propertyId: updated.propertyId,
+                createdById: req.user?.id,
+                subjects: 'Tenant deleted',
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Tenant removed successfully',
+                data: updated,
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Bulk soft-delete tenants
+     * POST /api/landlord/tenants/bulk-delete
+     */
+    bulkDeleteTenants = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenantIds = Array.isArray(req.body?.tenantIds) ? req.body.tenantIds : [];
+            if (tenantIds.length === 0) {
+                return res.status(400).json({ error: 'tenantIds array is required' });
+            }
+
+            const result = await TenantService.bulkSoftDeleteTenants(landlordId, tenantIds);
+
+            if (result.deleted.length > 0) {
+                await LogsServices.createLog({
+                    events: `Bulk tenant delete: ${result.deleted.length} tenant(s) removed`,
+                    type: LogType.ACTIVITY,
+                    createdById: req.user?.id,
+                    subjects: 'Bulk tenant delete',
+                });
+            }
+
+            return res.status(200).json({
+                success: result.errors.length === 0,
+                message:
+                    result.deleted.length > 0
+                        ? `${result.deleted.length} tenant(s) removed`
+                        : 'No tenants were removed',
+                ...result,
+            });
         } catch (error) {
             errorService.handleError(error, res);
         }
