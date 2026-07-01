@@ -4,7 +4,20 @@ import { Prisma } from "@prisma/client/default";
 class ApplicantPersonalDetailsService {
   // Upsert Applicant Personal Details
   upsertApplicantPersonalDetails = async (data: ApplicantPersonalDetailsIF) => {
-    const { id, userId, nextOfKin, ...rest } = data;
+    const {
+      id,
+      userId,
+      nextOfKin,
+      // Application-level / props fields — not columns on applicantPersonalDetails
+      invited: _invited,
+      leaseStartDate: _leaseStartDate,
+      leaseEndDate: _leaseEndDate,
+      moveInDate: _moveInDate,
+      rentAmountPaid: _rentAmountPaid,
+      securityDeposit: _securityDeposit,
+      applicationInviteId: _applicationInviteId,
+      ...rest
+    } = data;
   
     const inputData: Prisma.applicantPersonalDetailsCreateInput = {
       ...rest,

@@ -103,9 +103,9 @@ export const scheduleDueBillsCheck = async () => {
       jobData,
       {
         repeat: {
-          cron: '0 * * * *', // Every hour
+          cron: '0 9 * * *', // Once daily at 9 AM (dedup limits tenant messages to once per month)
         },
-        jobId: 'check-due-bills-hourly',
+        jobId: 'check-due-bills-daily',
         removeOnComplete: true,
         attempts: 3,
         backoff: {
@@ -114,7 +114,7 @@ export const scheduleDueBillsCheck = async () => {
         },
       }
     );
-    logger.info('🔔 Scheduled job: Check due bills (every hour)');
+    logger.info('🔔 Scheduled job: Check due bills (daily at 9 AM)');
   } catch (error: any) {
     // Handle specific Bull/Redis errors gracefully
     if (error.message?.includes('buffer') || error.code === 'ERR_BUFFER_OUT_OF_BOUNDS') {
@@ -145,9 +145,9 @@ export const scheduleOverdueBillsCheck = async () => {
       jobData,
       {
         repeat: {
-          cron: '0 */6 * * *', // Every 6 hours
+          cron: '0 10 * * *', // Once daily at 10 AM
         },
-        jobId: 'check-overdue-bills-6hourly',
+        jobId: 'check-overdue-bills-daily',
         removeOnComplete: true,
         attempts: 3,
         backoff: {
@@ -156,7 +156,7 @@ export const scheduleOverdueBillsCheck = async () => {
         },
       }
     );
-    logger.info('🔔 Scheduled job: Check overdue bills (every 6 hours)');
+    logger.info('🔔 Scheduled job: Check overdue bills (daily at 10 AM)');
   } catch (error: any) {
     // Handle specific Bull/Redis errors gracefully
     if (error.message?.includes('buffer') || error.code === 'ERR_BUFFER_OUT_OF_BOUNDS') {

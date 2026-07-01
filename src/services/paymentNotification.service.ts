@@ -38,7 +38,7 @@ type BillWithRelations = {
   landlord?: { user?: { id: string } | null } | null;
 };
 
-const BILL_DUE_REMINDER_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+const BILL_REMINDER_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 const NOTIFICATION_CONCURRENCY = 5;
 
 async function runWithConcurrency<T>(
@@ -76,6 +76,10 @@ function groupByKey<T>(
   return Array.from(groups.values());
 }
 
+function billReminderDedupMarker(billId: string): string {
+  return `\u200B${billId}\u200B`;
+}
+
 export class PaymentNotificationService {
   private io: IOServer;
 
@@ -83,22 +87,51 @@ export class PaymentNotificationService {
     this.io = io;
   }
 
-  private async wasBillDueReminderSentRecently(
+  private async wasBillReminderSentRecently(
     destUserId: string,
-    messagePrefix: string
+    billId: string,
+    titles: string[]
   ): Promise<boolean> {
-    const since = new Date(Date.now() - BILL_DUE_REMINDER_COOLDOWN_MS);
+    const since = new Date(Date.now() - BILL_REMINDER_COOLDOWN_MS);
+    const marker = billReminderDedupMarker(billId);
     const recent = await prismaClient.notification.findFirst({
       where: {
         destId: destUserId,
-        title: "Bill Due Soon",
+        title: { in: titles },
         category: NotificationCategory.ONLINE_PAYMENTS,
-        message: { startsWith: messagePrefix },
+        message: { contains: marker },
         createdAt: { gte: since },
       },
       select: { id: true },
     });
     return recent != null;
+  }
+
+  private async recordBillReminderDedup(
+    destUserId: string,
+    billId: string,
+    title: string
+  ): Promise<void> {
+    const marker = billReminderDedupMarker(billId);
+    const existing = await prismaClient.notification.findFirst({
+      where: {
+        destId: destUserId,
+        title,
+        message: { contains: marker },
+      },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    await prismaClient.notification.create({
+      data: {
+        destId: destUserId,
+        title,
+        message: `Reminder recorded ${marker}`,
+        category: NotificationCategory.ONLINE_PAYMENTS,
+        isRead: true,
+      },
+    });
   }
 
   private async isBillPaid(
@@ -375,15 +408,17 @@ export class PaymentNotificationService {
       const currency = this.resolveBillCurrency(bill);
       const amountLabel = this.formatAmount(bill.amount, currency);
       const messagePrefix = `Your ${bill.billName} bill of ${amountLabel}`;
+      const dedupMarker = billReminderDedupMarker(billId);
 
       if (
-        await this.wasBillDueReminderSentRecently(
+        await this.wasBillReminderSentRecently(
           bill.tenants.user.id,
-          messagePrefix
+          billId,
+          ["Bill Due Soon"]
         )
       ) {
         loggers.info(
-          `Skipping bill due reminder — already sent within 7 days: ${billId}`
+          `Skipping bill due reminder — already sent within 30 days: ${billId}`
         );
         return;
       }
@@ -391,7 +426,7 @@ export class PaymentNotificationService {
       const notification: PaymentNotification = {
         type: 'bill_due',
         title: 'Bill Due Soon',
-        message: `${messagePrefix} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`,
+        message: `${messagePrefix} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.${dedupMarker}`,
         data: {
           billId,
           billName: bill.billName,
@@ -407,6 +442,11 @@ export class PaymentNotificationService {
       };
 
       await this.deliverBillNotification(bill, notification, resolvedSettings);
+      await this.recordBillReminderDedup(
+        bill.tenants.user.id,
+        billId,
+        "Bill Due Soon"
+      );
       loggers.info(`Bill due reminder sent to user ${bill.tenants.user.id}`);
     } catch (error) {
       loggers.error('Error sending bill due reminder:', error);
@@ -436,18 +476,37 @@ export class PaymentNotificationService {
         return;
       }
 
+      if (await this.isBillPaid(billId, bill)) {
+        loggers.info(`Skipping bill overdue notification — bill already paid: ${billId}`);
+        return;
+      }
+
+      if (
+        await this.wasBillReminderSentRecently(
+          bill.tenants.user.id,
+          billId,
+          ["Bill Overdue"]
+        )
+      ) {
+        loggers.info(
+          `Skipping bill overdue notification — already sent within 30 days: ${billId}`
+        );
+        return;
+      }
+
       const settings = bill.landlordId
         ? await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
         : null;
       const currency = this.resolveBillCurrency(bill);
       const amountLabel = this.formatAmount(bill.amount, currency);
       const daysOverdue = Math.ceil((new Date().getTime() - new Date(bill.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+      const dedupMarker = billReminderDedupMarker(billId);
 
       // Notify tenant
       const tenantNotification: PaymentNotification = {
         type: 'bill_overdue',
         title: 'Bill Overdue',
-        message: `Your ${bill.billName} bill of ${amountLabel} is overdue by ${daysOverdue} day${daysOverdue === 1 ? '' : 's'}.`,
+        message: `Your ${bill.billName} bill of ${amountLabel} is overdue by ${daysOverdue} day${daysOverdue === 1 ? '' : 's'}.${dedupMarker}`,
         data: {
           billId,
           billName: bill.billName,
@@ -461,6 +520,11 @@ export class PaymentNotificationService {
       };
 
       await this.deliverBillNotification(bill, tenantNotification, settings);
+      await this.recordBillReminderDedup(
+        bill.tenants.user.id,
+        billId,
+        "Bill Overdue"
+      );
 
       // Notify landlord
       if (bill.landlord?.user) {

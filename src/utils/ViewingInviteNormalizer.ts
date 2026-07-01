@@ -285,6 +285,10 @@ export class ViewingInviteNormalizer {
         nearbyAmenities: property?.nearbyAmenities || [],
         customNearbyAmenities: property?.customNearbyAmenities || [],
         amenityDistances: property?.amenityDistances ?? null,
+        cachedNearbyPlaces: Array.isArray(property?.cachedNearbyPlaces)
+          ? property.cachedNearbyPlaces
+          : [],
+        cachedNearbyPlacesFetchedAt: property?.cachedNearbyPlacesFetchedAt ?? null,
         reviews: [],
         bedrooms: property?.bedrooms ?? 
           (property?.specification?.residential?.bedrooms ?? null),
@@ -415,6 +419,10 @@ export class ViewingInviteNormalizer {
         nearbyAmenities: property?.nearbyAmenities || [],
         customNearbyAmenities: property?.customNearbyAmenities || [],
         amenityDistances: property?.amenityDistances ?? null,
+        cachedNearbyPlaces: Array.isArray(property?.cachedNearbyPlaces)
+          ? property.cachedNearbyPlaces
+          : [],
+        cachedNearbyPlacesFetchedAt: property?.cachedNearbyPlacesFetchedAt ?? null,
         reviews: [],
         bedrooms: property?.bedrooms ?? 
           (property?.specification?.residential?.bedrooms ?? null),

@@ -323,7 +323,8 @@ class Server {
     }
 
     private scheduleBillChecks() {
-        // Check for due bills once per day (reminders are sent at most once per week per bill)
+        void this.removeStaleBillReminderJobs();
+        // Check for due bills once per day (reminders are sent at most once per month per bill)
         setInterval(async () => {
             try {
                 await this.paymentNotificationService.checkAndSendDueBillsReminders();
@@ -332,14 +333,14 @@ class Server {
             }
         }, 24 * 60 * 60 * 1000);
 
-        // Check for overdue bills every 6 hours
+        // Check for overdue bills once per day (same monthly dedup applies)
         setInterval(async () => {
             try {
                 await this.paymentNotificationService.checkAndSendOverdueBillsNotifications();
             } catch (error) {
                 loggers.error('Error in scheduled overdue bills check:', error);
             }
-        }, 6 * 60 * 60 * 1000);
+        }, 24 * 60 * 60 * 1000);
 
         // Lease renewal reminders — daily
         setInterval(async () => {
@@ -372,6 +373,25 @@ class Server {
         }, 24 * 60 * 60 * 1000);
 
         loggers.info('Scheduled bill checks initialized');
+    }
+
+    /** Remove legacy Bull repeat jobs (e.g. hourly) that may still live in Redis. */
+    private async removeStaleBillReminderJobs() {
+        try {
+            const { notificationQueue } = await import('./queues/notificationQueue');
+            const repeatableJobs = await notificationQueue.getRepeatableJobs();
+            for (const job of repeatableJobs) {
+                if (
+                    job.id === 'check-due-bills-hourly' ||
+                    job.id === 'check-overdue-bills-6hourly'
+                ) {
+                    await notificationQueue.removeRepeatableByKey(job.key);
+                    loggers.info(`Removed stale bill reminder job: ${job.id}`);
+                }
+            }
+        } catch (error) {
+            loggers.warn('Could not clean up stale bill reminder jobs (Redis may be unavailable):', error);
+        }
     }
 
 

@@ -7,6 +7,10 @@ import UserServices from '../../services/user.services';
 import { EnquireStatus, userRoles, YesNo, LogType, DocumentType } from '@prisma/client';
 import { LandlordService } from '../services/landlord.service';
 import { tenantArraySchema } from '../validations/schema/tenancy.schema';
+import {
+    formatJoiBulkUploadErrors,
+    normalizeTenantBulkRow,
+} from '../../utils/tenantBulkUploadNormalizer';
 import { LogsSchema } from '../../validations/schemas/logs.schema';
 import { ViolationSchema } from '../../validations/schemas/violations';
 import LogsServices from '../../services/logs.services';
@@ -21,6 +25,12 @@ import {
   parseGracePeriodDays,
   resolveFinancialRules,
 } from '../../utils/globalSettings.util';
+import {
+  humanizeTenantBulkUploadError,
+  isPlaceholderPropertyId,
+  PROPERTY_ID_NOT_FOUND_MESSAGE,
+  PROPERTY_ID_PLACEHOLDER_MESSAGE,
+} from '../../utils/tenantBulkUploadErrors';
 import { resolveTenantMilestoneTimeline } from '../../utils/tenantMilestoneTimeline';
 
 
@@ -213,15 +223,20 @@ class TenantControls {
                 return res.status(403).json({ error: "Invalid landlord. Please re-login." });
             }
 
-            // Validate payload once (array + required fields). If invalid, stop early.
-            const { error, value } = tenantArraySchema.validate(req.body, { abortEarly: false });
+            // Auto-correct fixable format issues, then validate with Joi.
+            const rawRows = Array.isArray(req.body) ? req.body : [req.body];
+            const normalizedBody = rawRows.map(row => normalizeTenantBulkRow(row).row);
+
+            const { error, value } = tenantArraySchema.validate(normalizedBody, {
+                abortEarly: false,
+            });
             if (error) {
                 return res.status(400).json({
                     error: 'Validation failed',
                     uploadErrors: [
                         {
                             email: 'Bulk Upload',
-                            errors: error.details.map(detail => detail.message),
+                            errors: formatJoiBulkUploadErrors(error.details),
                         },
                     ],
                 });
@@ -233,6 +248,23 @@ class TenantControls {
                     const rowErrors: string[] = [];
                     const userEmail = row.email.toString().split('@')[0];
                     const tenantEmail = `${userEmail}${landlord.emailDomains}`;
+
+                    if (isPlaceholderPropertyId(row.propertyId)) {
+                        rowErrors.push(PROPERTY_ID_PLACEHOLDER_MESSAGE);
+                    } else {
+                        const property = await propertyServices.checkLandlordPropertyExist(
+                            landlordId,
+                            row.propertyId
+                        );
+                        if (!property) {
+                            rowErrors.push(PROPERTY_ID_NOT_FOUND_MESSAGE);
+                        }
+                    }
+
+                    if (rowErrors.length > 0) {
+                        uploadErrors.push({ email: row.email, errors: rowErrors });
+                        continue;
+                    }
 
                     const existingUser = await UserServices.findUserByEmail(row.email.toString());
 
@@ -290,11 +322,14 @@ class TenantControls {
                         continue;
                     }
                 } catch (err) {
-                    let existingError = uploadErrors.find(err => err.email === row.email);
+                    const friendlyMessage = humanizeTenantBulkUploadError(err);
+                    let existingError = uploadErrors.find(
+                        uploadErr => uploadErr.email === row.email
+                    );
                     if (existingError) {
-                        existingError.errors.push(`Unexpected error: ${err.message}`);
+                        existingError.errors.push(friendlyMessage);
                     } else {
-                        uploadErrors.push({ email: row.email, errors: [`Unexpected error: ${err.message}`] });
+                        uploadErrors.push({ email: row.email, errors: [friendlyMessage] });
                     }
                 }
             }

@@ -1810,4 +1810,31 @@
 {"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-10 19:26:28"}
 {"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-10 19:26:28"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-10 20:05:26"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-10 23:58:00"}
+{"level":"info","message":"Recurring bill generation complete: 0 created from 1 series","service":"api-service","timestamp":"2026-06-11 23:58:00"}
+{"level":"info","message":"Sending mail to - lxbrw23@gmail.com","service":"api-service","timestamp":"2026-06-11 23:58:01"}
+{"level":"info","message":"Email sent successfully. ID: 3a30ef29-17f1-46da-9ef0-0a684d60f733","service":"api-service","timestamp":"2026-06-11 23:58:06"}
+{"level":"info","message":"Bill due reminder sent to user cmq25rhcg0000a2kxn3qms41y","service":"api-service","timestamp":"2026-06-11 23:58:06"}
+{"level":"info","message":"Checked 1 upcoming bills, sent 1 reminders","service":"api-service","timestamp":"2026-06-11 23:58:06"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-12 22:38:06"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-12 22:40:47"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-15 14:56:05"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-15 20:47:22"}
+{"level":"info","message":"🔔 Notification queue initialized (Redis connection will be attempted)","service":"api-service","timestamp":"2026-06-15 20:47:22"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-15 21:14:51"}
+{"level":"info","message":"🔔 Notification queue initialized (Redis connection will be attempted)","service":"api-service","timestamp":"2026-06-15 21:14:52"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-06-15 21:14:52"}
+{"level":"info","message":"Redis retry attempt 10, waiting 10000ms","service":"api-service","timestamp":"2026-06-15 21:15:37"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-06-15 21:15:57"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-06-15 21:16:57"}
+{"level":"info","message":"Redis retry attempt 20, waiting 10000ms","service":"api-service","timestamp":"2026-06-15 21:17:17"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-06-15 21:17:57"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-06-15 21:18:57"}
+{"level":"info","message":"Redis retry attempt 30, waiting 10000ms","service":"api-service","timestamp":"2026-06-15 21:18:57"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-18 18:50:17"}
+{"level":"info","message":"🔔 Notification queue initialized (Redis connection will be attempted)","service":"api-service","timestamp":"2026-06-18 18:50:17"}
+{"level":"info","message":"Sending mail to - admin@ashercorp.co.uk","service":"api-service","timestamp":"2026-06-18 18:52:17"}
+{"level":"info","message":"Email sent successfully. ID: 0653727e-771a-4739-b610-e0d12e1c984f","service":"api-service","timestamp":"2026-06-18 18:52:21"}
+{"level":"info","message":"Sending mail to - aliyutimileyin2340@gmail.com","service":"api-service","timestamp":"2026-06-18 18:55:27"}
+{"level":"info","message":"Email sent successfully. ID: c9c04a3a-0dd9-44e1-bcd4-0afbdaa01c2e","service":"api-service","timestamp":"2026-06-18 18:55:31"}
 {"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-06-29 20:14:57"}

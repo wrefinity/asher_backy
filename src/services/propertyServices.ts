@@ -31,6 +31,10 @@ import {
     enrichListedPropertySearchFilters,
     syncPropertyLocationFromCoordinates,
 } from '../utils/geoLocation';
+import {
+    ensureNearbyPlacesCacheFresh,
+    refreshNearbyPlacesCache,
+} from './nearbyPlacesCache.service';
 
 type PropertyFilters = ListedPropertySearchFilters;
 
@@ -232,16 +236,30 @@ class PropertyService {
     uploadedFiles: any[] = [],
     userId?: string
   ) {
-    return prismaClient.$transaction(async (tx) => {
+    const existingProperty = await prismaClient.properties.findUnique({
+      where: { id: propertyId },
+      select: {
+        latitude: true,
+        longitude: true,
+        country: true,
+        cachedNearbyPlacesFetchedAt: true,
+      },
+    });
+
+    if (!existingProperty) {
+      throw new Error('Property not found');
+    }
+
+    const result = await prismaClient.$transaction(async (tx) => {
       // Get existing property
-      const existingProperty = await tx.properties.findUnique({
+      const propertyInTx = await tx.properties.findUnique({
         where: { id: propertyId },
         include: {
           specification: true
         }
       });
 
-      if (!existingProperty) {
+      if (!propertyInTx) {
         throw new Error('Property not found');
       }
 
@@ -368,7 +386,7 @@ class PropertyService {
       // Handle specification update if provided
       if (specificationType || propertySubType || otherTypeSpecific || commercial || shortlet || residential) {
         await this.updatePropertySpecs(
-          existingProperty,
+          propertyInTx,
           {
             specificationType,
             propertySubType,
@@ -408,6 +426,47 @@ class PropertyService {
       maxWait: 30000,
       timeout: 30000
     });
+
+    if (result) {
+      const lat =
+        result.latitude != null ? Number(result.latitude) : null;
+      const lng =
+        result.longitude != null ? Number(result.longitude) : null;
+
+      if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        const prevLat =
+          existingProperty.latitude != null
+            ? Number(existingProperty.latitude)
+            : null;
+        const prevLng =
+          existingProperty.longitude != null
+            ? Number(existingProperty.longitude)
+            : null;
+        const coordsChanged =
+          data.latitude != null &&
+          data.longitude != null &&
+          (prevLat !== lat || prevLng !== lng);
+
+        if (coordsChanged) {
+          void refreshNearbyPlacesCache(
+            propertyId,
+            lat,
+            lng,
+            result.country || existingProperty.country || ""
+          ).catch(() => undefined);
+        } else {
+          ensureNearbyPlacesCacheFresh(
+            propertyId,
+            lat,
+            lng,
+            result.country || existingProperty.country || "",
+            result.cachedNearbyPlacesFetchedAt ?? existingProperty.cachedNearbyPlacesFetchedAt
+          );
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -3079,6 +3138,21 @@ class PropertyService {
                 throw new Error('Listing not found');
             }
 
+            const listingProperty = listing.property;
+            if (listingProperty?.id) {
+                ensureNearbyPlacesCacheFresh(
+                    listingProperty.id,
+                    listingProperty.latitude != null
+                        ? Number(listingProperty.latitude)
+                        : null,
+                    listingProperty.longitude != null
+                        ? Number(listingProperty.longitude)
+                        : null,
+                    listingProperty.country || "",
+                    listingProperty.cachedNearbyPlacesFetchedAt
+                );
+            }
+
             // Check if property itself has an active listing (for breadcrumb navigation)
             let propertyListingId: string | null = null;
             if (listing.type !== 'ENTIRE_PROPERTY' && listing.propertyId) {
@@ -3276,7 +3350,7 @@ class PropertyService {
     async createProperties(data: IBasePropertyDTO, specification: IPropertySpecificationDTO, uploadedFiles?: any[], userId?: string) {
         const { shortlet, specificationType, residential, commercial } = specification;
 
-        return prismaClient.$transaction(async (tx) => {
+        const created = await prismaClient.$transaction(async (tx) => {
             const {
                 agencyId,
                 landlordId,
@@ -3479,6 +3553,21 @@ class PropertyService {
             maxWait: 30000, // Maximum time to wait for transaction to start (10 seconds)
             timeout: 30000 // Maximum time for transaction to complete (10 seconds)
         });
+
+        if (created?.latitude != null && created?.longitude != null) {
+            const lat = Number(created.latitude);
+            const lng = Number(created.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                void refreshNearbyPlacesCache(
+                    created.id,
+                    lat,
+                    lng,
+                    created.country || ""
+                ).catch(() => undefined);
+            }
+        }
+
+        return created;
     }
 
 
@@ -4077,19 +4166,163 @@ class PropertyService {
     };
 
 
+    async setShortletMode(propertyId: string, enabled: boolean) {
+        return prismaClient.$transaction(async (tx) => {
+            const property = await tx.properties.findUnique({
+                where: { id: propertyId },
+                include: {
+                    specification: {
+                        include: {
+                            residential: true,
+                            shortlet: true,
+                        },
+                        orderBy: { createdAt: 'desc' },
+                    },
+                },
+            });
+
+            if (!property) {
+                throw new Error(`Property ${propertyId} not found`);
+            }
+
+            const activeSpec = property.specification.find(spec => spec.isActive);
+
+            if (enabled) {
+                if (activeSpec?.specificationType === PropertySpecificationType.SHORTLET) {
+                    return this.fetchFlattenedProperty(tx, propertyId);
+                }
+
+                if (
+                    activeSpec?.specificationType !== PropertySpecificationType.RESIDENTIAL
+                ) {
+                    throw new Error(
+                        'Shortlet mode can only be enabled on residential properties'
+                    );
+                }
+
+                const residential = activeSpec.residential;
+                const shortletSeed = {
+                    bedrooms: residential?.bedrooms ?? undefined,
+                    bathrooms: residential?.bathrooms ?? undefined,
+                    basePrice: property.price ? Number(property.price) : undefined,
+                    minStayDays: 1,
+                    maxStayDays: 30,
+                    checkInTime: '15:00',
+                    checkOutTime: '11:00',
+                };
+
+                const existingShortletSpec = property.specification.find(
+                    spec =>
+                        spec.specificationType === PropertySpecificationType.SHORTLET &&
+                        spec.shortletId
+                );
+
+                if (activeSpec) {
+                    await tx.propertySpecification.update({
+                        where: { id: activeSpec.id },
+                        data: { isActive: false, toDate: new Date() },
+                    });
+                }
+
+                if (existingShortletSpec?.shortletId) {
+                    await tx.shortletProperty.update({
+                        where: { id: existingShortletSpec.shortletId },
+                        data: shortletSeed,
+                    });
+                    await tx.propertySpecification.update({
+                        where: { id: existingShortletSpec.id },
+                        data: {
+                            isActive: true,
+                            fromDate: new Date(),
+                            toDate: null,
+                        },
+                    });
+                } else {
+                    await this.updateShortletProps(propertyId, shortletSeed, tx);
+                }
+
+                await tx.properties.update({
+                    where: { id: propertyId },
+                    data: { specificationType: PropertySpecificationType.SHORTLET },
+                });
+            } else {
+                if (activeSpec?.specificationType !== PropertySpecificationType.SHORTLET) {
+                    return this.fetchFlattenedProperty(tx, propertyId);
+                }
+
+                await tx.propertySpecification.update({
+                    where: { id: activeSpec.id },
+                    data: { isActive: false, toDate: new Date() },
+                });
+
+                const residentialSpec = property.specification.find(
+                    spec =>
+                        spec.specificationType === PropertySpecificationType.RESIDENTIAL &&
+                        spec.residentialId
+                );
+
+                if (!residentialSpec) {
+                    throw new Error(
+                        'No residential profile found to restore. Create the property as residential first.'
+                    );
+                }
+
+                await tx.propertySpecification.update({
+                    where: { id: residentialSpec.id },
+                    data: {
+                        isActive: true,
+                        fromDate: new Date(),
+                        toDate: null,
+                    },
+                });
+
+                await tx.properties.update({
+                    where: { id: propertyId },
+                    data: { specificationType: PropertySpecificationType.RESIDENTIAL },
+                });
+            }
+
+            return this.fetchFlattenedProperty(tx, propertyId);
+        });
+    }
+
+    private async fetchFlattenedProperty(
+        tx: Prisma.TransactionClient,
+        propertyId: string
+    ) {
+        const updatedProperty = await tx.properties.findUnique({
+            where: { id: propertyId },
+            include: {
+                state: true,
+                specification: this.specificationInclusion,
+                agency: true,
+                application: true,
+                reviews: true,
+                UserLikedProperty: true,
+                landlord: this.landlordInclusion,
+            },
+        });
+
+        if (!updatedProperty) {
+            throw new Error(`Property ${propertyId} not found after update`);
+        }
+
+        return this.flatten(updatedProperty as any);
+    }
+
     async updateShortletSettings(propertyId: string, data: Partial<IShortletDTO>) {
         return await prismaClient.$transaction(async (tx) => {
-            // Verify property exists and get current active specification
             const property = await tx.properties.findUnique({
                 where: { id: propertyId },
                 include: {
                     specification: {
                         where: { isActive: true },
                         include: {
-                            shortlet: true
-                        }
-                    }
-                }
+                            shortlet: true,
+                            residential: true,
+                        },
+                    },
+                },
             });
 
             if (!property) {
@@ -4097,13 +4330,15 @@ class PropertyService {
             }
 
             const activeSpec = property.specification?.find(spec => spec.isActive);
-            if (!activeSpec || !activeSpec.shortlet) {
-                throw new Error(`Property ${propertyId} is not configured as a shortlet`);
+
+            if (!activeSpec?.shortlet) {
+                throw new Error(
+                    `Property ${propertyId} is not configured as a shortlet. Enable shortlet mode on the property page first.`
+                );
             }
 
             const shortletId = activeSpec.shortlet.id;
 
-            // Prepare update data - exclude nested relations
             const {
                 safetyFeatures,
                 buildingAmenityFeatures,
@@ -4115,49 +4350,36 @@ class PropertyService {
                 hostLanguages,
                 sharedFacilities,
                 bookings,
+                id: _shortletId,
+                yearBuilt,
                 ...updateData
             } = data;
 
-            // // Update shortlet property
-            // const updatedShortlet = await tx.shortletProperty.update({
-            //     where: { id: shortletId },
-            //     data: {
-            //         ...updateData,
-            //         ...(safetyFeatures !== undefined && { safetyFeatures: { set: safetyFeatures } }),
-            //         ...(buildingAmenityFeatures !== undefined && { buildingAmenityFeatures: { set: buildingAmenityFeatures } }),
-            //         ...(outdoorsSpacesFeatures !== undefined && { outdoorsSpacesFeatures: { set: outdoorsSpacesFeatures } }),
-            //     },
-            //     include: {
-            //         bookings: true,
-            //         seasonalPricing: true,
-            //         unavailableDates: true,
-            //         additionalRules: true,
-            //         hostLanguages: true,
-            //         roomDetails: true,
-            //         sharedFacilities: true,
-            //     }
-            // });
+            const shortletUpdate: Prisma.ShortletPropertyUpdateInput = {
+                ...updateData,
+                ...(yearBuilt !== undefined && {
+                    yearBuilt:
+                        yearBuilt === null || yearBuilt === ''
+                            ? null
+                            : Number(yearBuilt),
+                }),
+                ...(safetyFeatures !== undefined && {
+                    safetyFeatures: { set: safetyFeatures },
+                }),
+                ...(buildingAmenityFeatures !== undefined && {
+                    buildingAmenityFeatures: { set: buildingAmenityFeatures },
+                }),
+                ...(outdoorsSpacesFeatures !== undefined && {
+                    outdoorsSpacesFeatures: { set: outdoorsSpacesFeatures },
+                }),
+            };
 
-            // Return updated property with flattened structure
-            const updatedProperty = await tx.properties.findUnique({
-                where: { id: propertyId },
-                include: {
-                    state: true,
-                    specification: this.specificationInclusion,
-                    agency: true,
-                    application: true,
-                    reviews: true,
-                    UserLikedProperty: true,
-                    landlord: this.landlordInclusion,
-                }
+            await tx.shortletProperty.update({
+                where: { id: shortletId },
+                data: shortletUpdate,
             });
 
-            if (!updatedProperty) {
-                throw new Error(`Property ${propertyId} not found after update`);
-            }
-
-            // return this.flatten(updatedProperty);
-            return this.flatten(updatedProperty as any);
+            return this.fetchFlattenedProperty(tx, propertyId);
         });
     }
 

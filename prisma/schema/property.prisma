@@ -120,6 +120,9 @@ model properties {
   nearbyAmenities        String[]                 @default([])
   customNearbyAmenities  String[]                 @default([])
   amenityDistances       Json?
+  /// Google Places nearby results for map display; refreshed on coordinate change or TTL.
+  cachedNearbyPlaces     Json?
+  cachedNearbyPlacesFetchedAt DateTime?
   count                  Int?
   isListed               Boolean                    @default(false)
   BroadcastCategory      BroadcastCategory[]

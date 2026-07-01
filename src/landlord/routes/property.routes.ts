@@ -44,6 +44,7 @@ class ApartmentLandlordRouter {
         this.router.get('/property/:propertyId/operational-profile', PropertyOperationalController.getOperationalProfile)
         this.router.put('/property/:propertyId/operational-profile', validateBody(upsertOperationalProfileSchema), PropertyOperationalController.upsertOperationalProfile)
         this.router.patch('/property/shortlet/:propertyId', PropertyController.updateShortletSettings)
+        this.router.patch('/property/:propertyId/shortlet-mode', PropertyController.setShortletMode)
         this.router.get('/property/tenants/:propertyId', PropertyController.getTenantsForProperty)
         this.router.get('/property/without-tenants', PropertyController.getPropertiesWithoutTenants)
         this.router.get('/property/user-preferences/:userId', PropertyController.getPropertyBasedOnUserPreference)

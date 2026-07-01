@@ -72,6 +72,16 @@ export interface NormalizedListing {
         nearbyAmenities: string[];
         customNearbyAmenities: string[];
         amenityDistances: Record<string, string | number> | null;
+        cachedNearbyPlaces: Array<{
+            id: string;
+            name: string;
+            distance: string;
+            type: string;
+            place_id: string;
+            vicinity: string;
+            rating?: number;
+        }>;
+        cachedNearbyPlacesFetchedAt: string | Date | null;
         reviews: Array<{
             id: string;
             rating: number;
@@ -324,6 +334,10 @@ export class ListingNormalizer {
             nearbyAmenities: property.nearbyAmenities || [],
             customNearbyAmenities: property.customNearbyAmenities || [],
             amenityDistances: (property.amenityDistances as Record<string, string | number> | null) ?? null,
+            cachedNearbyPlaces: Array.isArray(property.cachedNearbyPlaces)
+                ? (property.cachedNearbyPlaces as NormalizedListing['property']['cachedNearbyPlaces'])
+                : [],
+            cachedNearbyPlacesFetchedAt: property.cachedNearbyPlacesFetchedAt ?? null,
             reviews: this.extractReviews(property.reviews),
             currency: property.currency == null ? null : String(property.currency),
             landlord: this.extractLandlord(property.landlord)

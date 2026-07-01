@@ -2,7 +2,7 @@ import { prismaClient } from "..";
 import { hashSync, compareSync } from "bcrypt";
 // import { SignUpIF } from "../interfaces/authInt";
 import loggers from "../utils/loggers";
-import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus, LogType } from "@prisma/client";
+import { userRoles, ApplicationStatus, onlineStatus, AvailabilityStatus, LogType, InvitedStatus } from "@prisma/client";
 import LogsServices from "./logs.services";
 import { CreateLandlordIF, RegisterVendorInput } from "../validations/interfaces/auth.interface";
 import GuarantorService from "../services/guarantor.services"
@@ -176,7 +176,9 @@ class UserService {
                         profileUrl: userData?.profileUrl,
                         zip: userData?.zip,
                         unit: userData?.unit,
+                        city: userData?.city,
                         state: userData?.state,
+                        country: userData?.country,
                         timeZone: userData?.timeZone,
                         taxPayerId: userData?.taxPayerId,
                         taxType: userData?.taxType,
@@ -470,7 +472,6 @@ class UserService {
         // 1. Create personal details first (needed by NextOfKin)
         const personalDetails = await ApplicantPersonalDetailsService.upsertApplicantPersonalDetails({
             title: userData?.title,
-            invited: userData?.invited,
             maritalStatus: userData?.maritalStatus,
             phoneNumber: userData?.phoneNumber,
             email: userData?.email,
@@ -567,6 +568,11 @@ class UserService {
         });
 
         // 4. Create application
+        const invitedStatus =
+            userData?.invited?.toString().toUpperCase() === 'YES'
+                ? InvitedStatus.YES
+                : InvitedStatus.NO;
+
         const application = await prismaClient.application.create({
             data: {
                 status: ApplicationStatus.COMPLETED,
@@ -577,7 +583,8 @@ class UserService {
                 guarantorInformationId: guarantorInfo ? guarantorInfo.id : null,
                 applicantPersonalDetailsId: personalDetails.id,
                 refereeId: refreeInfo.id,
-                createdById: createdBy
+                createdById: createdBy,
+                invited: invitedStatus,
             }
         });
 
