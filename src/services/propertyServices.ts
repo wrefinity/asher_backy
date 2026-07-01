@@ -2455,22 +2455,57 @@ class PropertyService {
                 newlyListed: { units: [], rooms: [] }
             };
 
-            // Check for existing ENTIRE_PROPERTY listing
+            // Check for existing ENTIRE_PROPERTY listing (must match tenant search: onListing + isActive)
             if (type === ListingType.ENTIRE_PROPERTY && unitIds.length === 0 && roomIds.length === 0) {
 
-                const existing = await tx.propertyListingHistory.findFirst({
+                const existingActive = await tx.propertyListingHistory.findFirst({
                     where: {
                         propertyId,
                         type: ListingType.ENTIRE_PROPERTY,
-                        onListing: true
+                        onListing: true,
+                        isActive: true,
                     },
                     orderBy: { createdAt: 'desc' },
                 });
 
-                if (existing) {
+                if (existingActive) {
                     response.alreadyListed.property = true;
+                    response.listings.push(existingActive);
                     response.message = 'Property is already listed as entire property';
-                    response.success = false;
+                    return response;
+                }
+
+                const staleEntire = await tx.propertyListingHistory.findFirst({
+                    where: {
+                        propertyId,
+                        type: ListingType.ENTIRE_PROPERTY,
+                        onListing: true,
+                        isActive: false,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                });
+
+                if (staleEntire) {
+                    const reactivated = await tx.propertyListingHistory.update({
+                        where: { id: staleEntire.id },
+                        data: {
+                            ...baseData,
+                            propertyId,
+                            unitId: null,
+                            roomId: null,
+                            type: ListingType.ENTIRE_PROPERTY,
+                            onListing: true,
+                            isActive: true,
+                            availableTo: null,
+                        },
+                    });
+                    response.listings.push(reactivated);
+                    response.newlyListed.property = true;
+                    response.message = 'Property listing reactivated';
+                    await tx.properties.update({
+                        where: { id: propertyId },
+                        data: { isListed: true },
+                    });
                     return response;
                 }
             }
@@ -2479,41 +2514,123 @@ class PropertyService {
             for (const unitId of unitIds) {
                 if (!unitId) continue;
 
-                const existing = await tx.propertyListingHistory.findFirst({
+                const existingActive = await tx.propertyListingHistory.findFirst({
                     where: {
                         unitId,
-                        onListing: true
+                        onListing: true,
+                        isActive: true,
                     },
                     orderBy: { createdAt: "desc" }
                 });
 
-                if (existing) {
+                if (existingActive) {
                     response.alreadyListed.units.push(unitId);
-                } else {
-                    response.newlyListed.units.push(unitId);
+                    response.listings.push(existingActive);
+                    continue;
                 }
+
+                const stale = await tx.propertyListingHistory.findFirst({
+                    where: {
+                        unitId,
+                        onListing: true,
+                        isActive: false,
+                    },
+                    orderBy: { createdAt: "desc" },
+                });
+
+                if (stale) {
+                    const reactivated = await tx.propertyListingHistory.update({
+                        where: { id: stale.id },
+                        data: {
+                            ...baseData,
+                            propertyId,
+                            unitId,
+                            roomId: null,
+                            type: ListingType.SINGLE_UNIT,
+                            onListing: true,
+                            isActive: true,
+                            availableTo: null,
+                        },
+                    });
+                    response.listings.push(reactivated);
+                    response.newlyListed.units.push(unitId);
+                    await tx.unitConfiguration.update({
+                        where: { id: unitId },
+                        data: { isListed: true },
+                    });
+                    await tx.properties.update({
+                        where: { id: propertyId },
+                        data: { isListed: true },
+                    });
+                    continue;
+                }
+
+                response.newlyListed.units.push(unitId);
             }
 
             // Check room listings
             for (const roomId of roomIds) {
                 if (!roomId) continue;
 
-                const existing = await tx.propertyListingHistory.findFirst({
+                const existingActive = await tx.propertyListingHistory.findFirst({
                     where: {
                         roomId,
-                        onListing: true
-                    }
+                        onListing: true,
+                        isActive: true,
+                    },
+                    orderBy: { createdAt: "desc" },
                 });
 
-                if (existing) {
+                if (existingActive) {
                     response.alreadyListed.rooms.push(roomId);
-                } else {
-                    response.newlyListed.rooms.push(roomId);
+                    response.listings.push(existingActive);
+                    continue;
                 }
+
+                const stale = await tx.propertyListingHistory.findFirst({
+                    where: {
+                        roomId,
+                        onListing: true,
+                        isActive: false,
+                    },
+                    orderBy: { createdAt: "desc" },
+                });
+
+                if (stale) {
+                    const reactivated = await tx.propertyListingHistory.update({
+                        where: { id: stale.id },
+                        data: {
+                            ...baseData,
+                            propertyId,
+                            roomId,
+                            unitId: null,
+                            type: ListingType.ROOM,
+                            onListing: true,
+                            isActive: true,
+                            availableTo: null,
+                        },
+                    });
+                    response.listings.push(reactivated);
+                    response.newlyListed.rooms.push(roomId);
+                    await tx.roomDetail.update({
+                        where: { id: roomId },
+                        data: { isListed: true },
+                    });
+                    await tx.properties.update({
+                        where: { id: propertyId },
+                        data: { isListed: true },
+                    });
+                    continue;
+                }
+
+                response.newlyListed.rooms.push(roomId);
             }
 
-            // Create listings for new units
-            for (const unitId of response.newlyListed.units) {
+            // Create listings for new units (not reactivated above)
+            const unitsToCreate = response.newlyListed.units.filter(
+                (uid) => !response.listings.some((l) => l.unitId === uid)
+            );
+            for (const unitId of unitsToCreate) {
                 const created = await tx.propertyListingHistory.create({
                     data: {
                         ...baseData,
@@ -2535,8 +2652,11 @@ class PropertyService {
                 });
             }
 
-            // Create listings for new rooms
-            for (const roomId of response.newlyListed.rooms) {
+            // Create listings for new rooms (not reactivated above)
+            const roomsToCreate = response.newlyListed.rooms.filter(
+                (rid) => !response.listings.some((l) => l.roomId === rid)
+            );
+            for (const roomId of roomsToCreate) {
                 const created = await tx.propertyListingHistory.create({
                     data: {
                         ...baseData,
@@ -2579,10 +2699,27 @@ class PropertyService {
 
             // Set appropriate message
             if (response.listings.length > 0) {
-                response.message = 'Successfully created listings for new items';
-                if (response.alreadyListed.units.length > 0 || response.alreadyListed.rooms.length > 0) {
-                    response.message += ', some items were already listed';
+                const onlyAlready =
+                    response.newlyListed.units.length === 0 &&
+                    response.newlyListed.rooms.length === 0 &&
+                    !response.newlyListed.property &&
+                    (response.alreadyListed.units.length > 0 ||
+                        response.alreadyListed.rooms.length > 0 ||
+                        response.alreadyListed.property);
+
+                if (onlyAlready && !response.message) {
+                    response.message =
+                        'All specified items are already live on the tenant site';
+                } else if (!response.message) {
+                    response.message = 'Successfully created listings for new items';
+                    if (
+                        response.alreadyListed.units.length > 0 ||
+                        response.alreadyListed.rooms.length > 0
+                    ) {
+                        response.message += ', some items were already listed';
+                    }
                 }
+                response.success = true;
             } else {
                 response.message = 'No new listings created - all specified items were already listed';
                 response.success = false;
@@ -2646,138 +2783,28 @@ class PropertyService {
             let lastListedHistory: any = null;
 
             await prismaClient.$transaction(async (tx) => {
-                // 1. Attempt to update `properties` model
-                const propertyUpdate = await tx.properties.update({
+                // 1. Property-level unlist only removes ENTIRE_PROPERTY listings.
+                // Room/unit listings stay live — do not mass-unlist children.
+                const propertyRecord = await tx.properties.findUnique({
                     where: { id: resourceId },
-                    data: { isListed: false },
                     include: {
                         propertyListingHistory: {
-                            where: { onListing: true, isActive: true },
+                            where: {
+                                onListing: true,
+                                isActive: true,
+                                type: ListingType.ENTIRE_PROPERTY,
+                            },
                             orderBy: { createdAt: 'desc' },
                             take: 1,
                         },
-                        specification: {
-                            include: {
-                                residential: {
-                                    include: {
-                                        unitConfigurations: {
-                                            include: {
-                                                RoomDetail: true
-                                            }
-                                        }
-                                    }
-                                },
-                                commercial: {
-                                    include: {
-                                        unitConfigurations: {
-                                            include: {
-                                                RoomDetail: true
-                                            }
-                                        }
-                                    }
-                                },
-                                shortlet: {
-                                    include: {
-                                        roomDetails: true
-                                    }
-                                }
-                            }
-                        }
                     },
                 }).catch(() => null);
 
-                if (propertyUpdate) {
-                    updatedResource = propertyUpdate;
+                if (propertyRecord) {
+                    updatedResource = propertyRecord;
                     resourceType = 'property';
-                    if (propertyUpdate.propertyListingHistory.length > 0) {
-                        lastListedHistory = propertyUpdate.propertyListingHistory[0];
-                    }
-
-                    // Check if specification exists before accessing it
-                    const specification = propertyUpdate.specification;
-                    if (specification) {
-                        // Handle residential property units and rooms
-                        if (specification.residential) {
-                            const residential = specification.residential;
-                            if (residential.unitConfigurations && residential.unitConfigurations.length > 0) {
-                                // Unlist all units
-                                await tx.unitConfiguration.updateMany({
-                                    where: {
-                                        id: {
-                                            in: residential.unitConfigurations.map(unit => unit.id)
-                                        }
-                                    },
-                                    data: { isListed: false }
-                                });
-
-                                // Unlist all rooms in these units
-                                const allRoomIds = residential.unitConfigurations
-                                    .flatMap(unit => unit.RoomDetail)
-                                    .map(room => room.id);
-
-                                if (allRoomIds.length > 0) {
-                                    await tx.roomDetail.updateMany({
-                                        where: {
-                                            id: {
-                                                in: allRoomIds
-                                            }
-                                        },
-                                        data: { isListed: false }
-                                    });
-                                }
-                            }
-                        }
-
-                        // Handle commercial property units and rooms
-                        if (specification.commercial) {
-                            const commercial = specification.commercial;
-                            if (commercial.unitConfigurations && commercial.unitConfigurations.length > 0) {
-                                // Unlist all units
-                                await tx.unitConfiguration.updateMany({
-                                    where: {
-                                        id: {
-                                            in: commercial.unitConfigurations.map(unit => unit.id)
-                                        }
-                                    },
-                                    data: { isListed: false }
-                                });
-
-                                // Unlist all rooms in these units
-                                const allRoomIds = commercial.unitConfigurations
-                                    .flatMap(unit => unit.RoomDetail)
-                                    .map(room => room.id);
-
-                                if (allRoomIds.length > 0) {
-                                    await tx.roomDetail.updateMany({
-                                        where: {
-                                            id: {
-                                                in: allRoomIds
-                                            }
-                                        },
-                                        data: { isListed: false }
-                                    });
-                                }
-                            }
-                        }
-
-                        // Handle shortlet property rooms
-                        if (specification.shortlet) {
-                            const shortlet = specification.shortlet;
-                            if (shortlet.roomDetails && shortlet.roomDetails.length > 0) {
-                                // Unlist all rooms
-                                await tx.roomDetail.updateMany({
-                                    where: {
-                                        id: {
-                                            in: shortlet.roomDetails.map(room => room.id)
-                                        }
-                                    },
-                                    data: { isListed: false }
-                                });
-                            }
-                        }
-                    } else {
-                        console.warn(`Property ${resourceId} has no specification associated`);
-                        // Continue with unlisting the property even without specification
+                    if (propertyRecord.propertyListingHistory.length > 0) {
+                        lastListedHistory = propertyRecord.propertyListingHistory[0];
                     }
                 }
 
@@ -2845,8 +2872,22 @@ class PropertyService {
                     throw new Error('Resource not found');
                 }
 
-                // 4. Update the corresponding propertyListingHistory record if one was found.
-                if (lastListedHistory) {
+                // 4. Deactivate listing history — entire-property rows only for property unlist
+                if (resourceType === 'property') {
+                    await tx.propertyListingHistory.updateMany({
+                        where: {
+                            propertyId: resourceId,
+                            type: ListingType.ENTIRE_PROPERTY,
+                            onListing: true,
+                            isActive: true,
+                        },
+                        data: {
+                            onListing: false,
+                            isActive: false,
+                            availableTo: new Date(),
+                        },
+                    });
+                } else if (lastListedHistory) {
                     await tx.propertyListingHistory.update({
                         where: { id: lastListedHistory.id },
                         data: {

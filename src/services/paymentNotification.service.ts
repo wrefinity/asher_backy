@@ -77,7 +77,11 @@ function groupByKey<T>(
 }
 
 function billReminderDedupMarker(billId: string): string {
-  return `\u200B${billId}\u200B`;
+  return `|asherBillReminder:${billId}|`;
+}
+
+function stripBillReminderMarker(message: string): string {
+  return message.replace(/\|asherBillReminder:[^|]+\|/g, "").trimEnd();
 }
 
 export class PaymentNotificationService {
@@ -215,9 +219,13 @@ export class PaymentNotificationService {
     const landlordUserId = bill.landlord?.user?.id ?? null;
     const pushRoute =
       (notification.data?.route as string | undefined) ?? "/bills/viewAllBills";
+    const displayMessage = stripBillReminderMarker(notification.message);
 
     if (this.shouldUseMethod(methods, ReminderMethodType.IN_APP)) {
-      this.io.to(`user:${tenantUser.id}`).emit("payment_notification", notification);
+      this.io.to(`user:${tenantUser.id}`).emit("payment_notification", {
+        ...notification,
+        message: displayMessage,
+      });
 
       try {
         const NotificationService = (await import("./notification.service")).default;
@@ -226,7 +234,7 @@ export class PaymentNotificationService {
             sourceId: landlordUserId,
             destId: tenantUser.id,
             title: notification.title,
-            message: notification.message,
+            message: displayMessage,
           },
           "ONLINE_PAYMENTS"
         );
@@ -240,7 +248,7 @@ export class PaymentNotificationService {
         const expoPushService = (await import("./expoPush.service")).default;
         await expoPushService.sendToUser(tenantUser.id, {
           title: notification.title,
-          body: notification.message,
+          body: displayMessage,
           data: {
             type: notification.type,
             billId: bill.id,
@@ -257,7 +265,7 @@ export class PaymentNotificationService {
         await sendMail(
           tenantUser.email,
           notification.title,
-          `<p>${notification.message}</p>`
+          `<p>${displayMessage}</p>`
         );
       } catch (emailError) {
         loggers.error("Failed to send bill email notification:", emailError);
@@ -441,12 +449,14 @@ export class PaymentNotificationService {
         timestamp: new Date(),
       };
 
-      await this.deliverBillNotification(bill, notification, resolvedSettings);
+      // Record dedup before delivery so email/push-only tenants are not reminded daily
+      // when in-app notification persistence is blocked by user preferences.
       await this.recordBillReminderDedup(
         bill.tenants.user.id,
         billId,
         "Bill Due Soon"
       );
+      await this.deliverBillNotification(bill, notification, resolvedSettings);
       loggers.info(`Bill due reminder sent to user ${bill.tenants.user.id}`);
     } catch (error) {
       loggers.error('Error sending bill due reminder:', error);
@@ -519,12 +529,12 @@ export class PaymentNotificationService {
         timestamp: new Date()
       };
 
-      await this.deliverBillNotification(bill, tenantNotification, settings);
       await this.recordBillReminderDedup(
         bill.tenants.user.id,
         billId,
         "Bill Overdue"
       );
+      await this.deliverBillNotification(bill, tenantNotification, settings);
 
       // Notify landlord
       if (bill.landlord?.user) {

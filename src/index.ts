@@ -375,18 +375,21 @@ class Server {
         loggers.info('Scheduled bill checks initialized');
     }
 
-    /** Remove legacy Bull repeat jobs (e.g. hourly) that may still live in Redis. */
+    /** Remove legacy Bull repeat jobs that may still fire bill checks from Redis. */
     private async removeStaleBillReminderJobs() {
         try {
             const { notificationQueue } = await import('./queues/notificationQueue');
             const repeatableJobs = await notificationQueue.getRepeatableJobs();
             for (const job of repeatableJobs) {
+                const jobKey = `${job.id ?? ''} ${job.name ?? ''} ${job.key ?? ''}`.toLowerCase();
                 if (
-                    job.id === 'check-due-bills-hourly' ||
-                    job.id === 'check-overdue-bills-6hourly'
+                    jobKey.includes('check-due-bills') ||
+                    jobKey.includes('check-overdue-bills') ||
+                    jobKey.includes('check_due_bills') ||
+                    jobKey.includes('check_overdue_bills')
                 ) {
                     await notificationQueue.removeRepeatableByKey(job.key);
-                    loggers.info(`Removed stale bill reminder job: ${job.id}`);
+                    loggers.info(`Removed stale bill reminder job: ${job.id ?? job.name ?? job.key}`);
                 }
             }
         } catch (error) {
