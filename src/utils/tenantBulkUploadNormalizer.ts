@@ -122,6 +122,30 @@ export const normalizeTenantBulkRentStatus = (value: unknown): number | null => 
   return null;
 };
 
+const PHONE_FIELD_PATTERN = /phone/i;
+
+const normalizePhoneValue = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+
+  let raw =
+    typeof value === 'number'
+      ? String(Math.round(value))
+      : trimStr(value);
+
+  if (!raw) return null;
+
+  if (/^\d+(\.\d+)?[eE][+\-]?\d+$/.test(raw)) {
+    const num = Number(raw);
+    if (!Number.isNaN(num)) {
+      raw = String(Math.round(num));
+    }
+  }
+
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  return raw.startsWith('+') ? `+${digits}` : digits;
+};
+
 const normalizeEnum = (
   value: unknown,
   map: Record<string, string>
@@ -231,6 +255,13 @@ export const normalizeTenantBulkRow = (
     if (normalized !== null) {
       setIfChanged(row, 'rentstatus', normalized, fixes);
     }
+  }
+
+  for (const key of Object.keys(row)) {
+    if (!PHONE_FIELD_PATTERN.test(key)) continue;
+    if (row[key] == null || row[key] === '') continue;
+    const normalized = normalizePhoneValue(row[key]);
+    if (normalized) setIfChanged(row, key, normalized, fixes);
   }
 
   if (row.nextOfKin && typeof row.nextOfKin === 'object') {
