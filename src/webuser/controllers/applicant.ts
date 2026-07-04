@@ -44,6 +44,9 @@ import {
     validateTenantApplicationStart,
     validateTenantInviteUpdate,
 } from '../../utils/InviteStateMachine';
+import applicationFeeService from '../../services/applicationFee.service';
+import moveInPaymentService from '../../services/moveInPayment.service';
+import { PaymentGateway } from '@prisma/client';
 
 class ApplicantControls {
 
@@ -274,7 +277,7 @@ class ApplicantControls {
       const rent = Number(price);
       const rules = resolveFinancialRules(globalSettings, rent, property.priceFrequency);
 
-      if (!globalSettings || rules.applicationFeePercent <= 0) {
+      if (!globalSettings) {
         return res.status(400).json({ error: 'Application fee settings not found.' });
       }
 
@@ -289,9 +292,88 @@ class ApplicantControls {
     }
   };
 
+  getApplicationFeeStatus = async (req: CustomRequest, res: Response) => {
+    try {
+      const applicationId = req.params.applicationId;
+      const userId = String(req.user.id);
+      const status = await applicationFeeService.getFeeStatus(applicationId, userId);
+      return res.status(200).json(status);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  payApplicationFee = async (req: CustomRequest, res: Response) => {
+    try {
+      const applicationId = req.params.applicationId;
+      const userId = String(req.user.id);
+      const paymentMethod = (req.body.paymentMethod || 'card') as 'wallet' | 'card';
+      const paymentGateway = req.body.paymentGateway as PaymentGateway | undefined;
+
+      if (paymentMethod === 'wallet') {
+        const result = await applicationFeeService.payFromWallet(applicationId, userId);
+        return res.status(200).json(result);
+      }
+
+      const result = await applicationFeeService.initiateCardPayment(
+        applicationId,
+        userId,
+        paymentGateway
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  verifyApplicationFeePayment = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = String(req.user.id);
+      const applicationId = req.params.applicationId;
+      const { referenceId, paymentGateway } = req.body;
+      if (!referenceId || !paymentGateway) {
+        return res.status(400).json({ error: 'referenceId and paymentGateway are required' });
+      }
+
+      await applicationFeeService.getFeeStatus(applicationId, userId);
+
+      const result = await applicationFeeService.settleFromProviderReference(
+        referenceId,
+        paymentGateway as PaymentGateway,
+        applicationId
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  getMoveInPaymentStatus = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = String(req.user.id);
+      const applicationId = req.params.applicationId;
+      const status = await moveInPaymentService.getPaymentStatus(applicationId, userId);
+      return res.status(200).json(status);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  payMoveInFromWallet = async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = String(req.user.id);
+      const applicationId = req.params.applicationId;
+      const result = await moveInPaymentService.payFromWallet(applicationId, userId);
+      return res.status(200).json(result);
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
   completeApplication = async (req: CustomRequest, res: Response) => {
     try {
       const applicationId = req.params.applicationId;
+      const userId = String(req.user.id);
 
       if (!applicationId) {
         return res.status(400).json({ error: 'Application ID is required' });
@@ -299,6 +381,19 @@ class ApplicantControls {
       // check for the existance of application before proceeding
       const applicationExist = await ApplicantService.getApplicationById(applicationId);
       if (!applicationExist) return res.status(500).json({ message: "Application Doesn't Exist" });
+
+      if (applicationExist.userId !== userId) {
+        return res.status(403).json({ error: 'Not authorized to complete this application' });
+      }
+
+      const feeGate = await applicationFeeService.assertCanComplete(applicationId);
+      if (!feeGate.ok) {
+        return res.status(402).json({
+          error: feeGate.message,
+          code: 'APPLICATION_FEE_REQUIRED',
+          fee: feeGate.fee,
+        });
+      }
 
       const landlordMinimum = await resolveLandlordTenancyMinimum(applicationExist);
       const missingFields = getMissingApplicationFields(

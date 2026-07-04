@@ -750,6 +750,20 @@ class TransactionService {
         await this.updateTransaction(transaction.id, transaction.userId, {
             status: TransactionStatus.FAILED,
         });
+
+        const metadata = (transaction.metadata || {}) as Record<string, string>;
+        const landlordReferenceId = metadata.landlordReferenceId;
+        if (landlordReferenceId) {
+            const landlordTx = await prismaClient.transaction.findFirst({
+                where: { referenceId: landlordReferenceId },
+            });
+            if (landlordTx && landlordTx.status === TransactionStatus.PENDING) {
+                await prismaClient.transaction.update({
+                    where: { id: landlordTx.id },
+                    data: { status: TransactionStatus.FAILED },
+                });
+            }
+        }
     }
 
     createCounterpartyTransaction = async (data: {
@@ -760,13 +774,16 @@ class TransactionService {
         walletId: string;
         propertyId?: string;
         billId?: string;
+        applicationId?: string;
     }) => {
+        const { billId, ...rest } = data;
         return prismaClient.transaction.create({
             data: {
-                ...data,
+                ...rest,
                 type: TransactionType.CREDIT,
                 status: TransactionStatus.COMPLETED,
                 referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
+                ...(billId ? { billsSubCategory: { connect: { id: billId } } } : {}),
             }
         });
     }

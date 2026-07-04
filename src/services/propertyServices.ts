@@ -2821,7 +2821,7 @@ class PropertyService {
                 await LandlordSettingsService.syncApplicationSettingsFromGlobal(
                     property.landlordId,
                     propertyId,
-                    Number(baseData.applicationFeeAmount ?? property.price ?? 0),
+                    Number(property.price ?? 0),
                     property.priceFrequency
                 );
             }

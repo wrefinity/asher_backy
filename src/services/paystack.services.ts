@@ -42,7 +42,8 @@ class PayStackService {
         email: string,
         type: TransactionReference,
         walletId?: string,
-        propertyId?: string
+        propertyId?: string,
+        extraMetadata?: Record<string, string>
     ) {
         try {
 
@@ -51,11 +52,12 @@ class PayStackService {
             // Prepare metadata
             const metadata = {
                 userId,
-                walletId,
-                propertyId,
+                walletId: walletId || '',
+                propertyId: propertyId || '',
                 type,
                 fundAmount: String(amount),
                 fundCurrency: currency,
+                ...extraMetadata,
             };
             const response = await axios.post<PaystackResponseType>(
                 `${this.payStackBaseUrl}/transaction/initialize`,
@@ -65,6 +67,9 @@ class PayStackService {
                     currency: currency || Currency.NGN,
                     metadata,
                     reference: uniqueRef,
+                    ...(extraMetadata?.callbackUrl
+                        ? { callback_url: extraMetadata.callbackUrl }
+                        : {}),
                 },
                 { headers: this.getHeaders() });
 
@@ -91,8 +96,10 @@ class PayStackService {
             return res.status(400).json({ message: 'Invalid Signature header' });
         }
 
-        const body = JSON.stringify(req.body);
-        const computedSignature = crypto.createHmac('sha512', this.payStackSecretKey).update(body).digest('hex');
+        const rawBody = Buffer.isBuffer(req.body)
+            ? req.body.toString('utf8')
+            : JSON.stringify(req.body);
+        const computedSignature = crypto.createHmac('sha512', this.payStackSecretKey).update(rawBody).digest('hex');
 
         console.log("Received Signature:", signature);
         console.log("Computed Signature:", computedSignature);
@@ -101,7 +108,7 @@ class PayStackService {
             return res.status(400).json({ message: 'Invalid signature' });
         }
 
-        const event: WebhookEventResponse = req.body;
+        const event: WebhookEventResponse = JSON.parse(rawBody);
         console.log("Logging Paystack webhook event", event);
 
         try {
@@ -154,6 +161,21 @@ class PayStackService {
                 paymentGateway: PaymentGateway.PAYSTACK,
                 description: `Wallet funding of ${actualAmount} ${currency} via PAYSTACK`,
                 metadata: data,
+            });
+        }
+
+        if (
+            purpose === TransactionReference.APPLICATION_FEE ||
+            transactions?.reference === TransactionReference.APPLICATION_FEE
+        ) {
+            const applicationFeeService = (await import('./applicationFee.service')).default;
+            return applicationFeeService.settleApplicationFeePayment({
+                tenantReferenceId: metadata.tenantReferenceId,
+                landlordReferenceId: metadata.landlordReferenceId,
+                providerReference: data.reference,
+                amount: actualAmount,
+                currency,
+                paymentGateway: PaymentGateway.PAYSTACK,
             });
         }
 
@@ -259,6 +281,8 @@ class PayStackService {
             userId?: string;
             walletId?: string;
             propertyId?: string;
+            type?: string;
+            fundCurrency?: string;
         };
 
         // Find transaction by reference
@@ -277,7 +301,26 @@ class PayStackService {
         }
 
         const amount = paystackData.amount / 100;
-        // SUpdate transaction and wallet in a single Prisma transaction
+        const currency = (paystackData.currency || metadata.fundCurrency || 'NGN').toUpperCase();
+        const purpose = (metadata as { type?: string }).type || transaction.reference;
+
+        if (
+            purpose === TransactionReference.APPLICATION_FEE ||
+            transaction.reference === TransactionReference.APPLICATION_FEE
+        ) {
+            const applicationFeeService = (await import('./applicationFee.service')).default;
+            const txMeta = (transaction.metadata || {}) as Record<string, string>;
+            return applicationFeeService.settleApplicationFeePayment({
+                tenantReferenceId: txMeta.tenantReferenceId,
+                landlordReferenceId: txMeta.landlordReferenceId,
+                providerReference: referenceId,
+                amount,
+                currency,
+                paymentGateway: PaymentGateway.PAYSTACK,
+            });
+        }
+
+        // Update transaction and wallet in a single Prisma transaction
         return await prismaClient.$transaction(async (prisma) => {
             // Update transaction status and attach Paystack data
             const updatedTransaction = await prisma.transaction.update({

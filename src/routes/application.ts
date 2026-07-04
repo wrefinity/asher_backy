@@ -29,6 +29,11 @@ class ApplicantRoutes {
 
         this.router.post('/:propertiesId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.createOrUpdateApplicantBioData);
         this.router.get('/application-fees/:propertyId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getPropertyApplicationFee);
+        this.router.get('/:applicationId/fee-status', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getApplicationFeeStatus);
+        this.router.post('/:applicationId/pay-fee', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.payApplicationFee);
+        this.router.post('/:applicationId/verify-fee', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.verifyApplicationFeePayment);
+        this.router.get('/:applicationId/move-in-payment-status', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getMoveInPaymentStatus);
+        this.router.post('/:applicationId/pay-move-in', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.payMoveInFromWallet);
         this.router.get('/milestones/:propertyId/:applicationId', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getApplicationPropsMilestone);
         this.router.get('/pending', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getPendingApplications);
         this.router.get('/all', this.authenticateService.authorize, this.authenticateService.requireWebUserPortalRole(), ApplicantControls.getApplications);

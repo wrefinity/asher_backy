@@ -94,7 +94,10 @@ class FlutterwaveService {
       return res.status(401).send("Invalid signature");
     }
 
-    const { event, data } = req.body;
+    const payload = Buffer.isBuffer(req.body)
+      ? JSON.parse(req.body.toString('utf8'))
+      : req.body;
+    const { event, data } = payload;
 
     switch (event.type) {
       case "CARD_TRANSACTION":

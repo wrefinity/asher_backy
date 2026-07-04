@@ -20,8 +20,7 @@ class TransactionRouter {
         // this.router.patch('/verify/:referenceId', transactionsControllers.verifyPayment)
         // this.router.patch('/verify-flutter/:referenceId', transactionsControllers.verifyFlutterWave)
         // this.router.patch('/verify-stripe/:referenceId', transactionsControllers.verifyStripe)
-        // this.router.post('/pay-bill', transferControllers.makePayment)
-        this.router.post('/pay-bill', transactionsControllers.makeTransaction)
+        this.router.post('/pay-bill', transferControllers.makePayment)
         this.router.post('/transfer', transferControllers.transferFunds)
         this.router.get('/all', transactionsControllers.getTransaction)
     }

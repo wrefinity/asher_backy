@@ -100,13 +100,17 @@ class TransferService {
                   userId: tenant.userId,
                   amount: data.amount,
                   description: `${data.billType} payment transaction`,
-                  type: 'DEBIT',
-                  reference: data.billType,
-                  status: 'COMPLETED',
+                  type: TransactionType.DEBIT,
+                  reference: TransactionReference.BILL_PAYMENT,
+                  status: TransactionStatus.COMPLETED,
                   walletId: tenantWallet.id,
                   referenceId: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
-                  propertyId: tenant.propertyId,
-                } as Prisma.TransactionUncheckedCreateInput,
+                  propertyId: data.propertyId ?? tenant.propertyId,
+                  metadata: data.billId ? { billId: data.billId } : undefined,
+                  ...(data.billId
+                    ? { billsSubCategory: { connect: { id: data.billId } } }
+                    : {}),
+                },
               });
               
 
@@ -115,7 +119,7 @@ class TransferService {
                 userId: tenant.landlord.userId,
                 amount: data.amount,
                 description: `${data.billType} payment received from ${tenant.user?.profile?.fullname}`,
-                reference: data.billType,
+                reference: TransactionReference.BILL_PAYMENT,
                 walletId: landlordWallet.id,
                 propertyId: data?.propertyId,
                 billId: data?.billId,

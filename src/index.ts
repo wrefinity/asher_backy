@@ -40,6 +40,8 @@ import TenantInspectionRouter from "./tenant/routes/inspection.routes";
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
+import stripeService from './services/stripe.service';
+import paystackServices from './services/paystack.services';
 import { ApiError } from "./utils/ApiError";
 import PaymentNotificationService from "./services/paymentNotification.service";
 import loggers from "./utils/loggers";
@@ -83,6 +85,24 @@ class Server {
     private configureMiddlewares(secret: string) {
         // Required for accurate client IP behind reverse proxies (login sessions, geo, etc.)
         this.app.set('trust proxy', 1);
+
+        // Payment webhooks require the raw request body for signature verification
+        this.app.post(
+            '/stripe/webhook',
+            express.raw({ type: 'application/json' }),
+            (req, res) => stripeService.handleWebhook(req, res)
+        );
+        this.app.post(
+            '/paystack/webhook',
+            express.raw({ type: 'application/json' }),
+            (req, res) => paystackServices.handleWebhook(req, res)
+        );
+        this.app.post(
+            '/flutterwave/webhook',
+            express.raw({ type: 'application/json' }),
+            (req, res) => flutterWaveService.handleWebhook(req, res)
+        );
+
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
         this.app.use(cookieParser());
@@ -101,9 +121,7 @@ class Server {
         this.app.get("/health", (req, res) => this.healthCheck(req, res));
         this.app.get("/health/websocket", (req, res) => this.websocketHealthCheck(req, res));
 
-        // Webhooks
-        // this.app.post("/paystack/webhook", (req, res) => paystackServices.handleWebhook(req, res))
-        this.app.post("/flutterwave/webhook", (req, res) => flutterWaveService.handleWebhook(req, res))
+        // Webhooks are registered in configureMiddlewares (raw body required)
         this.app.use("/api/auth", AuthRouter);
         this.app.use("/api/file-uploads", FileUploads);
         this.app.use("/api/status", StatusRouter);

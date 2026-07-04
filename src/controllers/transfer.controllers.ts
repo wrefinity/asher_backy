@@ -4,14 +4,29 @@ import TransactionSchema from "../validations/schemas/transaction.schema";
 import errorService from "../services/error.service";
 import transferServices from "../services/transfer.services";
 import { getClientIpFromRequest, getCurrentCountryCurrency } from "../utils/currencyContext";
+import { prismaClient } from "../db/prismaClient";
+
 class TransferController {
     async makePayment(req: CustomRequest, res: Response) {
-        const tenantId = req.user.id;
+        const userId = req.user.id;
         const { value, error } = TransactionSchema.makePayment().validate(req.body);
         if (error) {
             return res.status(400).json({ message: error.details[0].message });
         }
         try {
+            const tenantId =
+                req.user?.tenant?.id ||
+                (
+                    await prismaClient.tenants.findFirst({
+                        where: { userId, isDeleted: false },
+                        select: { id: true },
+                    })
+                )?.id;
+
+            if (!tenantId) {
+                return res.status(404).json({ message: 'Tenant record not found for this user' });
+            }
+
             const payment = await transferServices.payBill(value, tenantId, value.currency)
             res.status(200).json(payment);
         } catch (error) {

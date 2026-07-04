@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { prismaClient } from '..';
-import { PaymentGateway, TransactionStatus, TransactionType } from '@prisma/client';
+import { PaymentGateway, TransactionStatus, TransactionType, TransactionReference } from '@prisma/client';
 import walletService from './wallet.service';
 import transactionServices from './transaction.services';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -145,7 +145,7 @@ class StripeService {
 
 
             if (paymentIntent.status === 'succeeded') {
-                this.handleSuccessfulPayment(paymentIntent as StripePaymentIntent);
+                await this.handleSuccessfulPayment(paymentIntent as StripePaymentIntent);
             }
 
             return {
@@ -238,14 +238,29 @@ class StripeService {
 
         const amount = paymentIntent.amount / 100;
         const metadata = paymentIntent.metadata || {};
-        const userId = metadata.userId || existing?.userId;
-        const walletId = metadata.walletId || existing?.walletId;
+        const purpose = metadata.purpose || metadata.type || existing?.reference;
         const currency = (
             metadata.fundCurrency ||
             paymentIntent.currency ||
             existing?.currency ||
             'GBP'
         ).toUpperCase();
+
+        if (purpose === TransactionReference.APPLICATION_FEE || existing?.reference === TransactionReference.APPLICATION_FEE) {
+            const applicationFeeService = (await import('./applicationFee.service')).default;
+            return applicationFeeService.settleApplicationFeePayment({
+                tenantReferenceId: metadata.tenantReferenceId,
+                landlordReferenceId: metadata.landlordReferenceId,
+                providerReference: paymentIntent.id,
+                amount,
+                currency,
+                paymentGateway: PaymentGateway.STRIPE,
+                stripePaymentIntentId: paymentIntent.id,
+            });
+        }
+
+        const userId = metadata.userId || existing?.userId;
+        const walletId = metadata.walletId || existing?.walletId;
 
         if (!userId || !walletId) {
             console.error(`Cannot complete wallet funding — missing user/wallet on PI: ${paymentIntent.id}`);
@@ -286,6 +301,20 @@ class StripeService {
                 status: TransactionStatus.FAILED,
             },
         });
+
+        const metadata = (transaction.metadata || {}) as Record<string, string>;
+        const landlordReferenceId = metadata.landlordReferenceId;
+        if (landlordReferenceId) {
+            const landlordTx = await prismaClient.transaction.findFirst({
+                where: { referenceId: landlordReferenceId },
+            });
+            if (landlordTx && landlordTx.status === TransactionStatus.PENDING) {
+                await prismaClient.transaction.update({
+                    where: { id: landlordTx.id },
+                    data: { status: TransactionStatus.FAILED },
+                });
+            }
+        }
     }
 
     private async handleSubscriptionUpdate(subscription: StripeSubscription): Promise<void> {
