@@ -30,6 +30,8 @@ import oauth2Client from "../configs/oauth.config";
 import { calculateAgeFromDob } from "../services/tenantOnboarding.service";
 import LoginSessionService from "../services/loginSession.service";
 
+export const MOBILE_TENANT_TERMS_VERSION = "2026-06-06";
+
 class AuthControls {
     protected tokenService: Jtoken;
 
@@ -360,6 +362,31 @@ class AuthControls {
         }
     }
 
+    private tenantMobileOnboardingFlags(tenant: {
+        password?: string | null;
+        mobileTermsAcceptedAt?: Date | null;
+        mobileTermsVersion?: string | null;
+        mobileOnboardingCompletedAt?: Date | null;
+    }) {
+        const hasAcceptedTerms =
+            Boolean(tenant.mobileTermsAcceptedAt)
+            && tenant.mobileTermsVersion === MOBILE_TENANT_TERMS_VERSION;
+
+        return {
+            hasPassword: Boolean(tenant.password),
+            hasAcceptedTerms,
+            hasCompletedOnboarding: Boolean(tenant.mobileOnboardingCompletedAt),
+        };
+    }
+
+    private resolveAuthorizedTenantId(req: CustomRequest): string {
+        const tenantId = req.user?.tenantId || req.user?.tenant?.id;
+        if (!tenantId) {
+            throw ApiError.forbidden("Tenant context required");
+        }
+        return tenantId;
+    }
+
     private recordLoginSession = async (
         user: { id: string; email?: string | null },
         accessToken: string,
@@ -431,6 +458,7 @@ class AuthControls {
 
         const property = tenant.property;
         const dob = user.profile?.dateOfBirth;
+        const onboarding = this.tenantMobileOnboardingFlags(tenantRecord);
 
         return res.status(200).json(
             ApiResponse.success(
@@ -440,8 +468,9 @@ class AuthControls {
                         [user.profile?.firstName, user.profile?.lastName].filter(Boolean).join(" "),
                     age: calculateAgeFromDob(dob),
                     property: property?.name || property?.address || "Your property",
-                    // Mobile app password is stored on the tenant record, not the user account.
-                    hasPassword: Boolean(tenant.password),
+                    hasPassword: onboarding.hasPassword,
+                    hasAcceptedTerms: onboarding.hasAcceptedTerms,
+                    hasCompletedOnboarding: onboarding.hasCompletedOnboarding,
                 },
                 "Tenant validated successfully"
             )
@@ -487,6 +516,99 @@ class AuthControls {
 
         return res.status(200).json(
             ApiResponse.success(payload, "Password set successfully")
+        );
+    });
+
+    getTenantOnboardingStatus = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const tenantId = this.resolveAuthorizedTenantId(req);
+        const tenant = await prismaClient.tenants.findUnique({
+            where: { id: tenantId },
+            select: {
+                mobileTermsAcceptedAt: true,
+                mobileTermsVersion: true,
+                mobileOnboardingCompletedAt: true,
+                isDeleted: true,
+                isAppAccessSuspended: true,
+            },
+        });
+        if (!tenant) throw ApiError.notFound("Tenant record not found");
+        this.assertTenantPortalAccess(tenant);
+
+        const onboarding = this.tenantMobileOnboardingFlags(tenant);
+
+        return res.status(200).json(
+            ApiResponse.success(
+                {
+                    mobileTermsAcceptedAt: tenant.mobileTermsAcceptedAt,
+                    mobileTermsVersion: tenant.mobileTermsVersion,
+                    mobileOnboardingCompletedAt: tenant.mobileOnboardingCompletedAt,
+                    currentTermsVersion: MOBILE_TENANT_TERMS_VERSION,
+                    hasAcceptedTerms: onboarding.hasAcceptedTerms,
+                    hasCompletedOnboarding: onboarding.hasCompletedOnboarding,
+                },
+                "Tenant onboarding status retrieved"
+            )
+        );
+    });
+
+    acceptTenantTerms = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const tenantId = this.resolveAuthorizedTenantId(req);
+        const tenant = await prismaClient.tenants.findUnique({ where: { id: tenantId } });
+        if (!tenant) throw ApiError.notFound("Tenant record not found");
+        this.assertTenantPortalAccess(tenant);
+
+        const updated = await prismaClient.tenants.update({
+            where: { id: tenantId },
+            data: {
+                mobileTermsAcceptedAt: new Date(),
+                mobileTermsVersion: MOBILE_TENANT_TERMS_VERSION,
+            },
+        });
+
+        return res.status(200).json(
+            ApiResponse.success(
+                {
+                    mobileTermsAcceptedAt: updated.mobileTermsAcceptedAt,
+                    mobileTermsVersion: updated.mobileTermsVersion,
+                    mobileOnboardingCompletedAt: updated.mobileOnboardingCompletedAt,
+                },
+                "Terms accepted successfully"
+            )
+        );
+    });
+
+    completeTenantOnboarding = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const tenantId = this.resolveAuthorizedTenantId(req);
+        const tenant = await prismaClient.tenants.findUnique({ where: { id: tenantId } });
+        if (!tenant) throw ApiError.notFound("Tenant record not found");
+        this.assertTenantPortalAccess(tenant);
+
+        if (!tenant.mobileTermsAcceptedAt) {
+            throw ApiError.validationError(["Accept terms before completing onboarding"]);
+        }
+
+        const updated = await prismaClient.tenants.update({
+            where: { id: tenantId },
+            data: {
+                mobileOnboardingCompletedAt: tenant.mobileOnboardingCompletedAt ?? new Date(),
+            },
+        });
+
+        await logsServices.createLog({
+            events: `Tenant ${tenant.tenantCode || tenantId} completed mobile onboarding`,
+            type: LogType.ACTIVITY,
+            createdById: req.user!.id,
+        });
+
+        return res.status(200).json(
+            ApiResponse.success(
+                {
+                    mobileTermsAcceptedAt: updated.mobileTermsAcceptedAt,
+                    mobileTermsVersion: updated.mobileTermsVersion,
+                    mobileOnboardingCompletedAt: updated.mobileOnboardingCompletedAt,
+                },
+                "Onboarding completed successfully"
+            )
         );
     });
 

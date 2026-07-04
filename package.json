@@ -26,6 +26,7 @@
     "db:property-operational": "prisma db execute --schema prisma/schema --file prisma/sql/add_property_operational_profile.sql",
     "db:cached-nearby-places": "prisma db execute --schema prisma/schema --file prisma/sql/add_cached_nearby_places.sql",
     "db:tenant-management": "prisma db execute --schema prisma/schema --file prisma/sql/add_tenant_management_flags.sql",
+    "db:tenant-mobile-onboarding": "prisma db execute --schema prisma/schema --file prisma/sql/add_tenant_mobile_onboarding.sql",
     "db:backfill-nearby-places": "tsx scripts/backfill-nearby-places-cache.ts",
     "db:backfill-nearby-places:dry": "tsx scripts/backfill-nearby-places-cache.ts --dry-run",
     "db:backfill-nearby-places:force": "tsx scripts/backfill-nearby-places-cache.ts --force",

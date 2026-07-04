@@ -36,6 +36,9 @@ model tenants {
   refereeInfo           Json?
   applicationMetadata   Json?
   agreementInfo         Json?
+  mobileTermsAcceptedAt DateTime?
+  mobileTermsVersion    String?
+  mobileOnboardingCompletedAt DateTime?
   leaseRenewals           LeaseRenewal[]
   leaseExtensionRequests  LeaseExtensionRequest[]
   SupportTicket           SupportTicket[]        @relation("TicketTenantRaisedBy")
