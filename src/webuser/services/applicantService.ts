@@ -880,7 +880,10 @@ class ApplicantService {
         userInvited: this.userInclusion,
         properties: {
           include: this.propsIncusion,
-        }
+        },
+        application: {
+          include: this.applicationInclusion,
+        },
       },
     });
   }
