@@ -20,6 +20,8 @@ import PerformanceCalculator from '../../services/PerformanceCalculator';
 import applicantService from "../../webuser/services/applicantService";
 import { sendApplicationCompletionEmails } from "../../utils/emailer";
 import propertyServices from '../../services/propertyServices';
+import moveOutNoticeService from '../../services/moveOutNotice.service';
+import asherReferenceService from '../../services/asherReference.service';
 import LandlordSettingsService from '../services/propertySetting.service';
 import {
   parseGracePeriodDays,
@@ -90,6 +92,8 @@ class TenantControls {
         // Normalize PropertyEnquiry listings for each tenant
         const normalizedTenants = await Promise.all(
             rawTenants.map(async (tenant: any) => {
+                let enriched = tenant;
+
                 if (tenant.PropertyEnquiry && tenant.PropertyEnquiry.length > 0) {
                     const normalizedEnquiries = await Promise.all(
                         tenant.PropertyEnquiry.map(async (enquiry: any) => {
@@ -125,13 +129,29 @@ class TenantControls {
                         })
                     );
                     
-                    return {
+                    enriched = {
                         ...tenant,
                         PropertyEnquiry: normalizedEnquiries
                     };
                 }
+
+                try {
+                    const asherReference = await asherReferenceService.buildForTenantId(tenant.id, landlordId);
+                    if (asherReference) {
+                        enriched = {
+                            ...enriched,
+                            referenceMode: 'ASHER_VOUCHED',
+                            asherReference,
+                        };
+                    } else {
+                        enriched = { ...enriched, referenceMode: 'TRADITIONAL' };
+                    }
+                } catch (err) {
+                    console.warn(`Failed to build Asher reference for tenant ${tenant.id}`, err);
+                    enriched = { ...enriched, referenceMode: 'TRADITIONAL' };
+                }
                 
-                return tenant;
+                return enriched;
             })
         );
         
@@ -1045,6 +1065,103 @@ class TenantControls {
                         : 'No tenants were removed',
                 ...result,
             });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * List move-out notices for landlord's tenants
+     * GET /api/landlord/tenants/move-out-notices
+     */
+    getMoveOutNotices = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const status = req.query.status as string | undefined;
+            const notices = await moveOutNoticeService.listForLandlord(
+                landlordId,
+                status === 'PENDING' || status === 'ACKNOWLEDGED' ? status : undefined
+            );
+
+            return res.status(200).json({ success: true, data: notices });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * Pending move-out notice count (dashboard badge)
+     * GET /api/landlord/tenants/move-out-notices/pending-count
+     */
+    getPendingMoveOutNoticeCount = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const count = await moveOutNoticeService.countPendingForLandlord(landlordId);
+            return res.status(200).json({ success: true, data: { count } });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    /**
+     * GET /api/landlord/tenants/:tenantId/asher-reference
+     */
+    getAsherReference = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            const { tenantId } = req.params;
+            if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
+            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+
+            const asherReference = await asherReferenceService.buildForTenantId(tenantId, landlordId);
+            if (!asherReference) {
+                return res.status(403).json({
+                    error: 'Tenant does not qualify for Asher vouched reference',
+                    referenceMode: 'TRADITIONAL',
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                referenceMode: 'ASHER_VOUCHED',
+                data: asherReference,
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    };
+
+    acknowledgeMoveOutNotice = async (req: CustomRequest, res: Response) => {
+        try {
+            const landlordId = req.user?.landlords?.id;
+            const userId = req.user?.id;
+            if (!landlordId || !userId) return res.status(401).json({ error: 'Please login as landlord' });
+
+            const { noticeId } = req.params;
+            try {
+                const updated = await moveOutNoticeService.acknowledge(noticeId, landlordId, userId);
+                return res.status(200).json({
+                    success: true,
+                    message: 'Move-out notice acknowledged',
+                    data: updated,
+                });
+            } catch (err) {
+                if (err instanceof Error) {
+                    if (err.message === 'NOTICE_NOT_FOUND') {
+                        return res.status(404).json({ error: 'Move-out notice not found' });
+                    }
+                    if (err.message === 'NOTICE_ALREADY_ACKNOWLEDGED') {
+                        return res.status(400).json({ error: 'Notice already acknowledged' });
+                    }
+                }
+                throw err;
+            }
         } catch (error) {
             errorService.handleError(error, res);
         }

@@ -96,9 +96,10 @@ class StripeService {
                 status: paymentIntent.status,
                 client_secret: paymentIntent.client_secret!,
             };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating Stripe payment intent:', error);
-            throw new Error('Failed to create Stripe payment intent');
+            const stripeMessage = error?.raw?.message || error?.message;
+            throw new Error(stripeMessage || 'Failed to create Stripe payment intent');
         }
     }
 
@@ -356,23 +357,35 @@ class StripeService {
         }
 
         if (user.stripeCustomerId) {
-            // If the user already has a Stripe Customer ID, fetch and return the customer
-            const stripeCustomer = await stripe.customers.retrieve(user.stripeCustomerId) as StripeCustomer;
-            return {
-                id: stripeCustomer.id,
-                email: stripeCustomer.email!,
-                name: stripeCustomer.name!,
-            };
+            try {
+                const existing = await stripe.customers.retrieve(user.stripeCustomerId);
+                if (!('deleted' in existing && existing.deleted)) {
+                    const activeCustomer = existing as Stripe.Customer;
+                    return {
+                        id: activeCustomer.id,
+                        email: activeCustomer.email || user.email,
+                        name: activeCustomer.name || user.profile?.fullname || user.email,
+                    };
+                }
+            } catch (error: any) {
+                console.warn(
+                    'Stale or missing Stripe customer — creating a new one:',
+                    error?.message || error
+                );
+            }
+
+            await prismaClient.users.update({
+                where: { id: userId },
+                data: { stripeCustomerId: null },
+            });
         }
 
-        // If the user doesn't have a Stripe Customer ID, create a new customer
         const customer = await stripe.customers.create({
             email: user.email,
             name: user.profile?.fullname || user.email,
             metadata: { userId: user.id },
         });
 
-        // Save the Stripe Customer ID to the user record
         await prismaClient.users.update({
             where: { id: userId },
             data: { stripeCustomerId: customer.id },

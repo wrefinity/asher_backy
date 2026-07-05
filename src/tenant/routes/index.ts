@@ -12,6 +12,8 @@ import ViolationRoutes from "./violation.routes";
 import DocumentRequestRouter from "./documentRequest.routes";
 import TenantLeaseRenewalRouter from "./leaseRenewal.routes";
 import TenantLeaseExtensionRouter from "./leaseExtension.routes";
+import TenantMoveOutNoticeRouter from "./moveOutNotice.routes";
+import TenantRelocationRouter from "./relocation.routes";
 import TenantPaymentRouter from "./payment.routes";
 import TenantSupportRouter from "./support.routes";
 import TenantFinancialAnalyticsRouter from "./financialAnalytics.routes";
@@ -43,6 +45,8 @@ class TenantRouter {
         this.router.get('/lease-renewal', tenantLeaseRenewalController.getLeaseRenewals)
         this.router.use('/lease-renewal', TenantLeaseRenewalRouter)
         this.router.use('/lease-extension', TenantLeaseExtensionRouter)
+        this.router.use('/move-out-notice', TenantMoveOutNoticeRouter)
+        this.router.use('/relocation', TenantRelocationRouter)
         this.router.get('/tenant-scores', PerformanceController.getTenantPerformance)
         this.router.get('/:tenantId', this.authenticateService.authorize, TenantController.getTenantById)
     }

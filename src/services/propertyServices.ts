@@ -4597,6 +4597,7 @@ class PropertyService {
         propertyId?: string;
         unitId?: string;
         roomId?: string;
+        logId?: string;
     }) => {
         return await prismaClient.propertyEnquiry.create({ data });
     }

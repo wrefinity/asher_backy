@@ -23,6 +23,10 @@ class TenantsLandlordRouter {
         this.router.get('/current-present-future-all', TenantLandlordController.getTenanciesCategorized);
         this.router.get('/property/:propertyId', TenantLandlordController.getCurrentTenantOnProperty);
         this.router.get('/currents/all', TenantLandlordController.getAllCurrentTenant);
+        this.router.get('/move-out-notices/pending-count', TenantLandlordController.getPendingMoveOutNoticeCount);
+        this.router.get('/move-out-notices', TenantLandlordController.getMoveOutNotices);
+        this.router.post('/move-out-notices/:noticeId/acknowledge', TenantLandlordController.acknowledgeMoveOutNotice);
+        this.router.get('/:tenantId/asher-reference', TenantLandlordController.getAsherReference);
         this.router.get('/previous', TenantLandlordController.getPreviousTenant);
         //  this.router.post('/upload', uploadcsv.single("files"), TenantLandlordController.bulkTenantUpload)
         this.router.post('/upload', TenantLandlordController.bulkTenantUpload)

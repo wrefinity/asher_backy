@@ -1,0 +1,55 @@
+enum MoveOutNoticeType {
+  RELOCATING
+  LEAVING
+}
+
+enum MoveOutNoticeStatus {
+  PENDING
+  ACKNOWLEDGED
+}
+
+enum RelocationInterestStatus {
+  ACTIVE
+  MATCHED
+  CLOSED
+}
+
+model MoveOutNotice {
+  id                  String              @id @default(cuid())
+  tenantId            String
+  intendedMoveOutDate DateTime
+  reason              String
+  comments            String?             @db.Text
+  type                MoveOutNoticeType
+  status              MoveOutNoticeStatus @default(PENDING)
+  searchCriteria      Json?
+  acknowledgedBy      String?
+  acknowledgedAt      DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  tenant              tenants             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  relocationInterest  RelocationInterest?
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@map("move_out_notice")
+}
+
+model RelocationInterest {
+  id              String                   @id @default(cuid())
+  tenantId        String
+  moveOutNoticeId String?                  @unique
+  criteria        Json
+  status          RelocationInterestStatus @default(ACTIVE)
+  matchCount      Int                      @default(0)
+  postedAt        DateTime                 @default(now())
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  tenant          tenants                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  moveOutNotice   MoveOutNotice?           @relation(fields: [moveOutNoticeId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("relocation_interest")
+}

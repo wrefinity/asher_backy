@@ -41,6 +41,8 @@ model tenants {
   mobileOnboardingCompletedAt DateTime?
   leaseRenewals           LeaseRenewal[]
   leaseExtensionRequests  LeaseExtensionRequest[]
+  moveOutNotices          MoveOutNotice[]
+  relocationInterests     RelocationInterest[]
   SupportTicket           SupportTicket[]        @relation("TicketTenantRaisedBy")
   TenantLeaseBreach     TenantLeaseBreach[]
   applicationInvites    applicationInvites[]
