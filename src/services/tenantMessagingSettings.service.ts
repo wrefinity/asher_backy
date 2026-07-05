@@ -81,7 +81,10 @@ class TenantMessagingSettingsService {
           user.email.split("@")[0],
       })),
       discoverableTenants: discoverable
-        .filter((c) => c.relationship === "tenant")
+        .filter(
+          (c) =>
+            c.relationship === "tenant" && !sharedUserIds.includes(c.userId)
+        )
         .map((c) => ({ userId: c.userId, name: c.name })),
       property: tenant.property,
     };
@@ -104,11 +107,6 @@ class TenantMessagingSettingsService {
     const tenant = await this.getCurrentTenant(userId);
     if (!tenant) throw new Error("Active tenant record not found");
 
-    const allowed = await messagingCircleService.canCommunicate(userId, peerUserId);
-    if (!allowed) {
-      throw new Error("This tenant is not in your messaging circle");
-    }
-
     const peer = await prismaClient.tenants.findFirst({
       where: {
         userId: peerUserId,
@@ -116,7 +114,12 @@ class TenantMessagingSettingsService {
         isDeleted: false,
       },
     });
-    if (!peer) throw new Error("Tenant contact must be under the same landlord");
+    if (!peer) throw new Error("Tenant not found");
+
+    const inCircle = await messagingCircleService.canCommunicate(userId, peerUserId);
+    if (!inCircle) {
+      throw new Error("This tenant is not available to share with");
+    }
 
     return prismaClient.tenantMessagingShare.upsert({
       where: {
