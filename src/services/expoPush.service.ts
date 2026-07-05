@@ -29,36 +29,12 @@ class ExpoPushService {
     userId: string,
     payload: { title: string; body: string; data?: Record<string, unknown> }
   ) {
-    const shouldPush = await shouldSendNotification(
+    return this.sendCategoryPush(
       userId,
       'ONLINE_PAYMENTS',
-      payload.data?.type ? String(payload.data.type) : 'bill_created',
-      'PUSH'
+      payload,
+      payload.data?.type ? String(payload.data.type) : 'bill_created'
     );
-
-    if (!shouldPush) {
-      return { sent: 0, skipped: true };
-    }
-
-    const tokens = await prismaClient.pushDeviceToken.findMany({
-      where: { userId },
-      select: { token: true },
-    });
-
-    if (tokens.length === 0) {
-      return { sent: 0, skipped: false };
-    }
-
-    const messages: ExpoPushMessage[] = tokens.map(({ token }) => ({
-      to: token,
-      title: payload.title,
-      body: payload.body,
-      data: payload.data,
-      sound: 'default',
-      channelId: 'bills',
-    }));
-
-    return this.sendBatch(messages);
   }
 
   async sendChatToUser(

@@ -50,6 +50,38 @@ class NotificationService {
         }
     }
 
+    private async deliverPush(
+        data: NotificationData,
+        notificationCategory: NotificationCategory,
+        typeKey: string,
+        notificationId?: string
+    ) {
+        if (data.skipPush) return;
+
+        try {
+            const expoPushService = (await import('./expoPush.service')).default;
+            const route =
+                data.route ||
+                this.defaultRouteForCategory(notificationCategory, typeKey);
+            await expoPushService.sendCategoryPush(
+                data.destId,
+                notificationCategory,
+                {
+                    title: data.title,
+                    body: data.message,
+                    data: {
+                        type: typeKey,
+                        route,
+                        ...(notificationId ? { notificationId } : {}),
+                    },
+                },
+                typeKey
+            );
+        } catch (pushError) {
+            console.error('Failed to send push notification:', pushError);
+        }
+    }
+
     /**
      * Create a notification after checking user preferences
      * @param data - Notification data
@@ -68,83 +100,80 @@ class NotificationService {
             mapNotificationTypeToCategory(typeKey) || 
             'COMMUNICATION'; // Default category
 
-        // Check if user should receive this notification
-        const shouldSend = await shouldSendNotification(
-            data.destId,
-            notificationCategory as NotificationCategory,
-            typeKey,
-            'IN_APP' // Check IN_APP channel for database notifications
-        );
+        const [shouldSendInApp, shouldSendPush] = await Promise.all([
+            shouldSendNotification(
+                data.destId,
+                notificationCategory as NotificationCategory,
+                typeKey,
+                'IN_APP'
+            ),
+            data.skipPush
+                ? Promise.resolve(false)
+                : shouldSendNotification(
+                    data.destId,
+                    notificationCategory as NotificationCategory,
+                    typeKey,
+                    'PUSH'
+                ),
+        ]);
 
-        if (!shouldSend) {
+        if (!shouldSendInApp && !shouldSendPush) {
             console.log(`Notification blocked by user preferences: ${data.destId}, category: ${notificationCategory}`);
-            return null; // Don't create notification if user has disabled it
+            return null;
         }
 
         // Create and save notification using Prisma (PostgreSQL)
         try {
-            const notification = await prismaClient.notification.create({
-                data: {
-                    sourceId: data.sourceId || null,
-                    destId: data.destId,
-                    title: data.title,
-                    message: data.message,
-                    category: notificationCategory,
-                    isRead: false,
-                },
-                include: {
-                    source: {
-                        select: {
-                            id: true,
-                            email: true,
-                            profile: {
-                                select: {
-                                    fullname: true,
-                                    firstName: true,
-                                    lastName: true,
+            let notification = null;
+
+            if (shouldSendInApp) {
+                notification = await prismaClient.notification.create({
+                    data: {
+                        sourceId: data.sourceId || null,
+                        destId: data.destId,
+                        title: data.title,
+                        message: data.message,
+                        category: notificationCategory,
+                        isRead: false,
+                    },
+                    include: {
+                        source: {
+                            select: {
+                                id: true,
+                                email: true,
+                                profile: {
+                                    select: {
+                                        fullname: true,
+                                        firstName: true,
+                                        lastName: true,
+                                    }
                                 }
                             }
-                        }
-                    },
-                    dest: {
-                        select: {
-                            id: true,
-                            email: true,
-                            profile: {
-                                select: {
-                                    fullname: true,
-                                    firstName: true,
-                                    lastName: true,
+                        },
+                        dest: {
+                            select: {
+                                id: true,
+                                email: true,
+                                profile: {
+                                    select: {
+                                        fullname: true,
+                                        firstName: true,
+                                        lastName: true,
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
 
-            if (!data.skipPush && notification) {
-                try {
-                    const expoPushService = (await import('./expoPush.service')).default;
-                    const route =
-                        data.route ||
-                        this.defaultRouteForCategory(notificationCategory, typeKey);
-                    await expoPushService.sendCategoryPush(
-                        data.destId,
-                        notificationCategory,
-                        {
-                            title: data.title,
-                            body: data.message,
-                            data: {
-                                type: typeKey,
-                                route,
-                                notificationId: notification.id,
-                            },
-                        },
-                        typeKey
-                    );
-                } catch (pushError) {
-                    console.error('Failed to send push notification:', pushError);
-                }
+            if (shouldSendPush) {
+                await this.deliverPush(
+                    data,
+                    notificationCategory,
+                    typeKey,
+                    notification?.id
+                );
             }
 
             return notification;
