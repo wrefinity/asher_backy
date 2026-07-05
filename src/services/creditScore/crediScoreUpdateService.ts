@@ -1,8 +1,9 @@
 import { prismaClient } from "../..";
 import Queue from 'bull';
-import CreditScoreService from "./creditScore.service";
+import ProfessionalCreditScoreService from "./professionalCreditScore.service";
 
-const creditScoreQueue = new Queue('creditScoreUpdates')
+const creditScoreQueue = new Queue('creditScoreUpdates');
+const creditScoreService = new ProfessionalCreditScoreService();
 
 let isRunning = false;
 
@@ -37,7 +38,6 @@ export const startCreditScoreUpdateJob = async () => {
 // Define the creditScoreUpdate job
 creditScoreQueue.process(10, async (job) => {
     console.log(`Credit scores process started updated for ${job.data.userId}`);
-    job.log("My bull is gettting started")
-    const creditScoreService = new CreditScoreService();
+    job.log("My bull is gettting started");
     await creditScoreService.updateCreditScore(job.data.userId);
-})
+});
