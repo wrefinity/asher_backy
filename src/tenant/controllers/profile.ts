@@ -4,6 +4,7 @@ import applicantService from "../../webuser/services/applicantService"
 import { asyncHandler } from "../../utils/asyncHandler"
 import { ApiResponse } from "../../utils/ApiResponse"
 import { ApiError } from "../../utils/ApiError"
+import TenantJourneyService from "../services/tenantJourney.service"
 
 
 class ProfileController {
@@ -38,6 +39,21 @@ class ProfileController {
             ApiResponse.success(bundle)
         )
 
+    })
+
+    getTenantJourney = asyncHandler(async (req: CustomRequest, res: Response) => {
+        const { tenantId } = req.params;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            throw ApiError.unauthorized('Authentication required');
+        }
+
+        const feed = await TenantJourneyService.getJourneyFeed(tenantId, userId);
+
+        return res.json(
+            ApiResponse.success(feed, 'Tenant journey retrieved successfully')
+        );
     })
 
     // Get last application data for user

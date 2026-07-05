@@ -47,6 +47,7 @@ import {
 import applicationFeeService from '../../services/applicationFee.service';
 import moveInPaymentService from '../../services/moveInPayment.service';
 import { PaymentGateway } from '@prisma/client';
+import TenantJourneyService from '../../tenant/services/tenantJourney.service';
 
 class ApplicantControls {
 
@@ -204,49 +205,26 @@ class ApplicantControls {
   getApplicationPropsMilestone = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.user?.id;
-      const { propertyId, applicationId } = req.params;
+      const { propertyId, applicationId: applicationIdParam } = req.params;
 
-      // Validate propertyId
       if (!propertyId) {
         return res.status(400).json({ error: 'Property ID is required.' });
       }
 
-      // Fetch property milestones
-      const propsMilestone = await LogsServices.getMilestone(
+      const applicationIdFromRoute =
+        applicationIdParam &&
+        !['undefined', 'null', 'none', 'pending', '_'].includes(applicationIdParam)
+          ? applicationIdParam
+          : null;
+
+      const { milestones, application } = await TenantJourneyService.getMilestonesForApplication({
         userId,
-        LogType.APPLICATION,
         propertyId,
-      );
+        applicationId: applicationIdFromRoute,
+      });
 
-      let application = null;
-      let milestones = propsMilestone;
-
-      // Fetch application milestones if applicationId is provided
-      if (applicationId) {
-        // Validate applicationId
-        if (!applicationId) {
-          return res.status(400).json({ error: 'Application ID is required.' });
-        }
-
-        // Fetch application details
-        application = await ApplicantService.getApplicationById(applicationId);
-
-        // Fetch application-specific milestones
-        const applicationMilestone = await LogsServices.getMilestone(
-          userId,
-          LogType.APPLICATION,
-          propertyId,
-          applicationId,
-        );
-
-        // Combine property and application milestones
-        milestones = [...propsMilestone, ...applicationMilestone];
-      }
-
-      // Return the response
       res.status(200).json({ milestones, application });
     } catch (error) {
-      // Handle errors
       ErrorService.handleError(error, res);
     }
   };

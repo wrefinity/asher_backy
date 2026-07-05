@@ -16,6 +16,7 @@ class Profile {
 
     private initializeRoutes() {
         this.router.use(this.authenticateService.authorize);
+        this.router.get("/:tenantId/journey", ProfileController.getTenantJourney);
         this.router.get("/:tenantId", ProfileController.getProfileData);
         this.router.patch("/:tenantId", validateBody(tenantCreateSchema), ProfileController.updateTenantApplicationData);
     }
