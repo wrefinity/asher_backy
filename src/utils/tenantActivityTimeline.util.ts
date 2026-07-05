@@ -1,4 +1,8 @@
 import { LogType } from '@prisma/client';
+import {
+  parseActivityLogRef,
+  stripActivityLogRef,
+} from './activityLogRef.util';
 
 export type ActivityTimelineTone =
   | 'enquiry'
@@ -11,6 +15,7 @@ export type ActivityTimelineTone =
   | 'payment'
   | 'bill'
   | 'inspection'
+  | 'moveOut'
   | 'default';
 
 export type TenantActivityItem = {
@@ -19,8 +24,18 @@ export type TenantActivityItem = {
   subtitle?: string;
   createdAt: string;
   tone: ActivityTimelineTone;
-  source: 'milestone' | 'web' | 'maintenance' | 'payment' | 'bill' | 'inspection';
+  source: 'milestone' | 'web' | 'maintenance' | 'payment' | 'bill' | 'inspection' | 'moveOut';
+  route?: string;
+  entityType?: 'inspection' | 'notice' | 'maintenance' | 'payment' | 'bill';
+  entityId?: string;
 };
+
+function resolveActivityRoute(ref: ReturnType<typeof parseActivityLogRef>): string | undefined {
+  if (!ref) return undefined;
+  if (ref.type === 'inspection') return `/inspections/${ref.id}`;
+  if (ref.type === 'notice') return '/profile/ViewInvitation';
+  return undefined;
+}
 
 export function resolveActivityTone(text: string, type?: string | null): ActivityTimelineTone {
   const haystack = text.toLowerCase();
@@ -37,6 +52,13 @@ export function resolveActivityTone(text: string, type?: string | null): Activit
     return 'payment';
   }
   if (haystack.includes('bill') || haystack.includes('rent due')) return 'bill';
+  if (
+    haystack.includes('move-out') ||
+    haystack.includes('move out') ||
+    haystack.includes('relocating')
+  ) {
+    return 'moveOut';
+  }
   if (haystack.includes('inspection')) return 'inspection';
   if (haystack.includes('tenant') || haystack.includes('onboard')) return 'onboarding';
   if (haystack.includes('application') || haystack.includes('approved') || haystack.includes('submitted')) {
@@ -66,15 +88,24 @@ export function milestonesToActivityItems(milestones: any[]): TenantActivityItem
   const items: TenantActivityItem[] = [];
 
   milestones.forEach((item, index) => {
-    const text = `${item.subjects ?? ''} ${item.events ?? ''}`.trim();
-    if (!text) return;
+    const rawText = `${item.subjects ?? ''} ${item.events ?? ''}`.trim();
+    if (!rawText) return;
+
+    const ref = parseActivityLogRef(rawText);
+    const displayEvents = stripActivityLogRef(item.events || '');
+    const displaySubjects = item.subjects || undefined;
+    const title = displayEvents || displaySubjects || 'Update';
+
     items.push({
       id: item.id ? `milestone-${item.id}` : `milestone-${item.createdAt}-${index}`,
-      title: item.events || item.subjects || 'Update',
-      subtitle: item.subjects && item.events ? item.subjects : undefined,
+      title,
+      subtitle: displaySubjects && displayEvents ? displaySubjects : undefined,
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : new Date(0).toISOString(),
-      tone: resolveActivityTone(text, item.type),
+      tone: resolveActivityTone(rawText, item.type),
       source: 'milestone',
+      route: resolveActivityRoute(ref),
+      entityType: ref?.type === 'notice' ? 'notice' : ref?.type === 'inspection' ? 'inspection' : undefined,
+      entityId: ref?.id,
     });
   });
 
@@ -206,10 +237,70 @@ export function tenancyDataToActivityItems(data: {
       createdAt: (inspection.updatedAt || inspection.createdAt || new Date()).toISOString(),
       tone: 'inspection',
       source: 'inspection',
+      route: `/inspections/${inspection.id}`,
+      entityType: 'inspection',
+      entityId: inspection.id,
     });
+
+    const ack = inspection.acknowledgment;
+    if (ack?.acknowledged && ack.acknowledgedAt) {
+      items.push({
+        id: `inspection-ack-${inspection.id}`,
+        title: ack.disputed
+          ? 'Inspection acknowledged with disputes'
+          : 'Inspection acknowledged',
+        subtitle: inspection.title || inspection.type || 'Property inspection',
+        createdAt: new Date(ack.acknowledgedAt).toISOString(),
+        tone: 'inspection',
+        source: 'inspection',
+        route: `/inspections/${inspection.id}`,
+        entityType: 'inspection',
+        entityId: inspection.id,
+      });
+    }
   });
 
   return items;
+}
+
+export function moveOutNoticesToActivityItems(notices: any[]): TenantActivityItem[] {
+  return (notices ?? []).flatMap((notice: any) => {
+    const items: TenantActivityItem[] = [];
+    const moveOutDate = notice.intendedMoveOutDate
+      ? new Date(notice.intendedMoveOutDate).toLocaleDateString('en-GB')
+      : '';
+
+    items.push({
+      id: `moveout-notice-${notice.id}`,
+      title:
+        notice.type === 'RELOCATING'
+          ? 'Relocation notice submitted'
+          : 'Move-out notice submitted',
+      subtitle: moveOutDate ? `Intended move-out: ${moveOutDate}` : undefined,
+      createdAt: (notice.createdAt || new Date()).toISOString(),
+      tone: 'moveOut',
+      source: 'moveOut',
+      route: '/profile/ViewInvitation',
+      entityType: 'notice',
+      entityId: notice.id,
+    });
+
+    if (notice.status === 'ACKNOWLEDGED' && notice.acknowledgedAt) {
+      items.push({
+        id: `moveout-ack-${notice.id}`,
+        title: 'Move-out notice acknowledged by landlord',
+        subtitle: moveOutDate ? `Move-out date: ${moveOutDate}` : undefined,
+        createdAt: new Date(notice.acknowledgedAt).toISOString(),
+        tone: 'moveOut',
+        source: 'moveOut',
+        route: '/profile/ViewInvitation',
+        entityType: 'notice',
+        entityId: notice.id,
+      });
+    }
+
+    return items;
+  });
 }
 
 export function dedupeActivityItems(items: TenantActivityItem[]): TenantActivityItem[] {

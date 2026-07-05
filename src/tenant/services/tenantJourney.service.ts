@@ -6,6 +6,7 @@ import { resolveTenantMilestoneTimeline } from '../../utils/tenantMilestoneTimel
 import {
   dedupeActivityItems,
   milestonesToActivityItems,
+  moveOutNoticesToActivityItems,
   tenancyDataToActivityItems,
   TenantActivityItem,
   webStatsToActivityItems,
@@ -86,6 +87,7 @@ class TenantJourneyService {
       transactions,
       bills,
       inspections,
+      moveOutNotices,
       applicationRecord,
     ] = await Promise.all([
       this.resolveTimeline({
@@ -111,8 +113,14 @@ class TenantJourneyService {
       TenantBillsService.getTenantBills(tenant.id).then((rows) => rows.slice(0, 20)),
       prismaClient.inspection.findMany({
         where: { tenantId: tenant.id },
+        include: { acknowledgment: true },
         orderBy: { updatedAt: 'desc' },
         take: 20,
+      }),
+      prismaClient.moveOutNotice.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
       }),
       tenant.applicationId
         ? ApplicantService.getApplicationById(tenant.applicationId).catch(() => null)
@@ -122,6 +130,7 @@ class TenantJourneyService {
     const items = dedupeActivityItems([
       ...milestonesToActivityItems(milestones),
       ...(webStats ? webStatsToActivityItems(webStats as Record<string, any>) : []),
+      ...moveOutNoticesToActivityItems(moveOutNotices),
       ...tenancyDataToActivityItems({
         maintenanceRequests,
         transactions,

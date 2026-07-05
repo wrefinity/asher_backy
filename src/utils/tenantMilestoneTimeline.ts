@@ -464,6 +464,17 @@ export async function resolveTenantMilestoneTimeline(params: {
       OR: [
         { propertyId, createdById: userId },
         ...(finalApplicationId ? [{ applicationId: finalApplicationId }] : []),
+        // Move-out / inspection lifecycle (landlord-authored property activity)
+        {
+          propertyId,
+          type: LogType.ACTIVITY,
+          OR: [
+            { subjects: { contains: 'Move-out', mode: 'insensitive' as const } },
+            { subjects: { contains: 'Inspection', mode: 'insensitive' as const } },
+            { events: { contains: 'move-out', mode: 'insensitive' as const } },
+            { events: { contains: 'inspection', mode: 'insensitive' as const } },
+          ],
+        },
       ],
     },
     orderBy: { createdAt: "asc" },

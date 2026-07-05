@@ -13,6 +13,8 @@ import propertyServices from '../../services/propertyServices';
 import { prismaClient } from '../..';
 import logger from '../../utils/loggers';
 import LogsServices from '../../services/logs.services';
+import InspectionActivityLogService from '../../services/inspectionActivityLog.service';
+import { appendActivityLogRef } from '../../utils/activityLogRef.util';
 import { LogType } from '@prisma/client';
 
 
@@ -56,9 +58,12 @@ class InspectionController {
       try {
         await LogsServices.createLog({
           propertyId: inspection.propertyId,
-          events: scheduledLabel
-            ? `${typeLabel} booked for ${scheduledLabel}`
-            : `${typeLabel} booked`,
+          events: appendActivityLogRef(
+            scheduledLabel
+              ? `${typeLabel} booked for ${scheduledLabel}`
+              : `${typeLabel} booked`,
+            { type: 'inspection', id: inspection.id }
+          ),
           type: LogType.ACTIVITY,
           createdById: req.user?.id,
           subjects: 'Inspection booked',
@@ -254,7 +259,10 @@ class InspectionController {
         try {
           await LogsServices.createLog({
             propertyId: updatedInspection.propertyId,
-            events: `${typeLabel} completed`,
+            events: appendActivityLogRef(`${typeLabel} completed`, {
+              type: 'inspection',
+              id: updatedInspection.id,
+            }),
             type: LogType.ACTIVITY,
             createdById: req.user?.id,
             subjects: 'Inspection completed',
@@ -460,6 +468,26 @@ class InspectionController {
         req.user.id
       );
 
+      if (inspection.propertyId && inspection.tenantId) {
+        const tenant = await prismaClient.tenants.findUnique({
+          where: { id: inspection.tenantId },
+          select: { userId: true },
+        });
+        if (tenant?.userId) {
+          try {
+            await InspectionActivityLogService.logEvent({
+              propertyId: inspection.propertyId,
+              tenantUserId: tenant.userId,
+              inspectionId: id,
+              subjects: 'Inspection certificate generated',
+              events: `${type === 'tenant' ? 'Tenant' : 'Landlord'} inspection certificate generated for ${property.name}`,
+            });
+          } catch (logErr) {
+            console.warn('Failed to write inspection certificate activity log', logErr);
+          }
+        }
+      }
+
       // Send notification to tenant if tenant certificate was generated
       if (type === 'tenant' && inspection.tenantId) {
         const tenant = await prismaClient.tenants.findUnique({
@@ -517,10 +545,25 @@ class InspectionController {
         inspection.tenantId
       );
 
+      const tenantUserId = acknowledgment.tenant?.userId;
+      if (inspection.propertyId && tenantUserId) {
+        try {
+          await InspectionActivityLogService.logEvent({
+            propertyId: inspection.propertyId,
+            tenantUserId,
+            inspectionId: id,
+            subjects: 'Inspection shared with tenant',
+            events: `Inspection report shared with tenant for ${property.name}`,
+          });
+        } catch (logErr) {
+          console.warn('Failed to write inspection shared activity log', logErr);
+        }
+      }
+
       // Send notification to tenant
-      if (acknowledgment.tenant?.userId) {
+      if (tenantUserId) {
         await NotificationService.createNotification({
-          destId: acknowledgment.tenant.userId,
+          destId: tenantUserId,
           title: 'New Inspection Report',
           message: `Your landlord has shared an inspection report for ${property.name}. Please review and acknowledge.`,
           notificationType: 'inspection_report',

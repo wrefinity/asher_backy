@@ -8,6 +8,7 @@ import InspectionService from '../../services/inspection.services';
 import InspectionCertificateService from '../../services/inspectionCertificate.service';
 import NotificationService from '../../services/notification.service';
 import InspectionChatService from '../../services/inspectionChat.service';
+import InspectionActivityLogService from '../../services/inspectionActivityLog.service';
 import {
   mapInspectionForTenant,
   normalizeInspectionStatus,
@@ -305,6 +306,24 @@ class TenantInspectionController {
       }
     }
 
+    if (inspection.propertyId) {
+      try {
+        await InspectionActivityLogService.logEvent({
+          propertyId: inspection.propertyId,
+          tenantUserId: userId,
+          inspectionId: id,
+          subjects: hasDisputes
+            ? 'Inspection acknowledged with disputes'
+            : 'Inspection acknowledged',
+          events: hasDisputes
+            ? `Tenant acknowledged the inspection with disputes for ${property?.name || 'the property'}`
+            : `Tenant acknowledged the inspection for ${property?.name || 'the property'}`,
+        });
+      } catch (logErr) {
+        console.warn('Failed to write inspection acknowledgment activity log', logErr);
+      }
+    }
+
     return res.status(200).json(
       ApiResponse.success(
         {
@@ -512,6 +531,20 @@ class TenantInspectionController {
         } catch (notifyErr) {
           console.warn('Failed to notify landlord of inspection dispute', notifyErr);
         }
+      }
+    }
+
+    if (inspection.propertyId) {
+      try {
+        await InspectionActivityLogService.logEvent({
+          propertyId: inspection.propertyId,
+          tenantUserId: userId,
+          inspectionId: id,
+          subjects: 'Inspection dispute raised',
+          events: `Tenant raised a dispute on the inspection for ${property?.name || 'the property'}`,
+        });
+      } catch (logErr) {
+        console.warn('Failed to write inspection dispute activity log', logErr);
       }
     }
 

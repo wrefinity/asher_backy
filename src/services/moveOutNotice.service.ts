@@ -9,6 +9,7 @@ import NotificationService from './notification.service';
 import LogsServices from './logs.services';
 import { LogType } from '@prisma/client';
 import InspectionMoveOutService from './inspectionMoveOut.service';
+import { appendActivityLogRef } from '../utils/activityLogRef.util';
 
 export interface CreateMoveOutNoticeInput {
   tenantId: string;
@@ -106,7 +107,10 @@ class MoveOutNoticeService {
     );
 
     await LogsServices.createLog({
-      events: `${tenantName} submitted move-out notice (${typeLabel}) for ${moveOutDateStr}`,
+      events: appendActivityLogRef(
+        `${tenantName} submitted move-out notice (${typeLabel}) for ${moveOutDateStr}`,
+        { type: 'notice', id: notice.id }
+      ),
       type: LogType.ACTIVITY,
       propertyId: tenant.propertyId,
       createdById: tenant.userId,
@@ -152,7 +156,10 @@ class MoveOutNoticeService {
       }
 
       await LogsServices.createLog({
-        events: `Move-out inspection scheduled for ${moveOutDateStr}`,
+        events: appendActivityLogRef(
+          `Move-out inspection scheduled for ${moveOutDateStr}`,
+          { type: 'inspection', id: inspection.id }
+        ),
         type: LogType.ACTIVITY,
         propertyId: tenant.propertyId,
         createdById: tenant.userId,
@@ -269,10 +276,13 @@ class MoveOutNoticeService {
     );
 
     await LogsServices.createLog({
-      events: `Move-out notice ${noticeId} acknowledged by landlord`,
+      events: appendActivityLogRef(
+        `Landlord acknowledged move-out notice for ${notice.tenant.property?.name || 'the property'}`,
+        { type: 'notice', id: noticeId }
+      ),
       type: LogType.ACTIVITY,
       propertyId: notice.tenant.propertyId,
-      createdById: acknowledgedByUserId,
+      createdById: notice.tenant.userId,
       subjects: 'Move-out notice acknowledged',
     });
 
