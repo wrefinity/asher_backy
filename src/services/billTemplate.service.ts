@@ -298,6 +298,54 @@ class BillTemplateService {
       params.landlordId
     );
   }
+
+  /** Full renewed rent charge when a lease renewal agreement is sent (not just the delta). */
+  async createRenewalRentBill(params: {
+    landlordId: string;
+    propertyId: string;
+    tenantId: string;
+    oldRent: number;
+    newRent: number;
+    dueDate: Date;
+    effectiveDate: Date;
+  }) {
+    const renewedRent = Number(params.newRent);
+    if (!Number.isFinite(renewedRent) || renewedRent <= 0) return null;
+
+    const property = await prismaClient.properties.findUnique({
+      where: { id: params.propertyId },
+      select: { country: true, priceFrequency: true },
+    });
+    const market = marketCodeFromCountry(property?.country) ?? 'UK';
+    let categoryId = await this.resolveCategoryForTag('rent', market);
+    if (!categoryId) {
+      categoryId = await this.resolveCategoryId(['Rent & occupancy', 'Rent & deposits', 'General']);
+    }
+    if (!categoryId) {
+      categoryId = await billServices.ensureDefaultBillCategory();
+    }
+
+    const { buildRenewalRentBillDescription } = await import('../utils/renewalEffectiveDate');
+
+    return billServices.createSubBills(
+      {
+        billName: 'Renewal rent',
+        billCategoryId: categoryId,
+        description: buildRenewalRentBillDescription({
+          oldRent: params.oldRent,
+          newRent: renewedRent,
+          effectiveDate: params.effectiveDate,
+        }),
+        amount: renewedRent,
+        billFrequency: priceFrequencyToPayment(property?.priceFrequency),
+        dueDate: params.dueDate,
+        payableBy: 'TENANT',
+        propertyId: params.propertyId,
+        tenantId: params.tenantId,
+      },
+      params.landlordId
+    );
+  }
 }
 
 export default new BillTemplateService();

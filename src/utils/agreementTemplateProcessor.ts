@@ -8,6 +8,7 @@ import {
   formatAgreementDate,
   resolveLeaseAgreementContext,
 } from './leaseAgreementContext';
+import { formatFamilyOccupantsDisplay } from './familyMembers';
 import {
   formatApplicationReference,
   joinAddress,
@@ -212,7 +213,7 @@ export function createAgreementTagMapping(
     petPolicy: questions?.havePet || '',
     smokingPolicy: questions?.youSmoke || '',
     parkingPolicy: questions?.requireParking || '',
-    additionalOccupants: questions?.additionalOccupants || '',
+    additionalOccupants: formatFamilyOccupantsDisplay(questions?.additionalOccupants),
     'bill:rentAmount': rentValue,
     'bill:securityDeposit': depositValue,
     'bill:monthlyRent': rentValue,

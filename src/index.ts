@@ -380,6 +380,16 @@ class Server {
             }
         }, 24 * 60 * 60 * 1000);
 
+        // Apply renewal rent/lease updates once their start date is reached
+        setInterval(async () => {
+            try {
+                const { applyPendingRenewalLeaseUpdates } = await import('./services/renewalWorkflow.service');
+                await applyPendingRenewalLeaseUpdates();
+            } catch (error) {
+                loggers.error('Error applying scheduled renewal lease updates:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
+
         // Compliance certificate & insurance renewal reminders — daily
         setInterval(async () => {
             try {

@@ -6,6 +6,15 @@ import {
   createRenewalAgreementDocument,
   type RenewalAgreementResult,
 } from './renewalAgreement.service';
+import {
+  buildRenewalRentBillDescription,
+  formatRenewalEffectiveDate,
+  isRenewalRentEffectiveOnOrBefore,
+  parseRenewalTermEndDate,
+  parseRenewalTermStartDate,
+  readPendingLeaseUpdate,
+  type PendingLeaseUpdate,
+} from '../utils/renewalEffectiveDate';
 
 export type RenewalWorkflowPhase =
   | 'negotiating'
@@ -251,7 +260,7 @@ async function createRentIncreaseBillForProposal(proposal: {
     where: {
       tenantId: proposal.tenantId,
       propertyId: proposal.propertyId,
-      billName: 'Rent increase',
+      billName: { in: ['Renewal rent', 'Rent increase'] },
       isDeleted: false,
       createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
     },
@@ -262,15 +271,17 @@ async function createRentIncreaseBillForProposal(proposal: {
 
   const billTemplateService = (await import('./billTemplate.service')).default;
   const terms = (effective.renewalTerms || proposal.renewalTerms) as { startDate?: string } | null;
-  const dueDate = terms?.startDate ? new Date(terms.startDate) : new Date();
+  const effectiveStart = parseRenewalTermStartDate(terms);
+  const dueDate = effectiveStart ?? new Date();
 
-  const rentBill = await billTemplateService.createRentIncreaseBill({
+  const rentBill = await billTemplateService.createRenewalRentBill({
     landlordId: proposal.property.landlordId,
     propertyId: proposal.propertyId,
     tenantId: proposal.tenantId,
     oldRent: currentRent,
     newRent: Number(effectiveRent),
     dueDate,
+    effectiveDate: effectiveStart ?? dueDate,
   });
 
   if (rentBill && serverInstance.paymentNotificationService) {
@@ -398,40 +409,148 @@ export async function finalizeRenewalAfterCounterSign(agreementId: string): Prom
   if (!proposal || proposal.status !== 'ACCEPTED') return;
 
   const effective = resolveEffectiveRenewalTerms(proposal as Parameters<typeof resolveEffectiveRenewalTerms>[0]);
-  const terms = (effective.renewalTerms || proposal.renewalTerms) as
-    | { startDate?: string; endDate?: string; duration?: string }
-    | null;
+  const terms = effective.renewalTerms || proposal.renewalTerms;
+  const startDate = parseRenewalTermStartDate(terms);
+  const endDate = parseRenewalTermEndDate(terms);
+  const effectiveRent = effective.proposedRent;
+  const rentEffectiveNow = isRenewalRentEffectiveOnOrBefore(startDate);
+  const existingMetadata = (metadata ?? {}) as Record<string, unknown>;
 
-  if (terms && (terms.startDate || terms.endDate)) {
-    const startDate = terms.startDate ? new Date(terms.startDate) : undefined;
-    const endDate = terms.endDate ? new Date(terms.endDate) : undefined;
+  if (rentEffectiveNow) {
+    if (startDate || endDate) {
+      await prismaClient.tenants.update({
+        where: { id: proposal.tenantId },
+        data: {
+          ...(startDate ? { leaseStartDate: startDate } : {}),
+          ...(endDate ? { leaseEndDate: endDate } : {}),
+          isCurrentLease: true,
+        },
+      });
+    }
 
-    await prismaClient.tenants.update({
-      where: { id: proposal.tenantId },
+    if (Number.isFinite(effectiveRent)) {
+      await prismaClient.properties.update({
+        where: { id: proposal.propertyId },
+        data: { price: effectiveRent },
+      });
+    }
+
+    await prismaClient.agreementDocument.update({
+      where: { id: agreementId },
       data: {
-        ...(startDate && !Number.isNaN(startDate.getTime()) ? { leaseStartDate: startDate } : {}),
-        ...(endDate && !Number.isNaN(endDate.getTime()) ? { leaseEndDate: endDate } : {}),
-        isCurrentLease: true,
+        metadata: {
+          ...existingMetadata,
+          renewalFinalized: true,
+          finalizedAt: new Date().toISOString(),
+          rentEffectiveFrom: (startDate ?? new Date()).toISOString(),
+          pendingLeaseUpdate: undefined,
+        },
       },
     });
+    return;
   }
 
-  const effectiveRent = effective.proposedRent;
-  if (Number.isFinite(effectiveRent)) {
-    await prismaClient.properties.update({
-      where: { id: proposal.propertyId },
-      data: { price: effectiveRent },
-    });
-  }
+  const pendingLeaseUpdate: PendingLeaseUpdate = {
+    startDate: (startDate ?? new Date()).toISOString(),
+    ...(endDate ? { endDate: endDate.toISOString() } : {}),
+    rent: Number(effectiveRent),
+    tenantId: proposal.tenantId,
+    propertyId: proposal.propertyId,
+    proposalId,
+  };
 
   await prismaClient.agreementDocument.update({
     where: { id: agreementId },
     data: {
       metadata: {
-        ...(metadata ?? {}),
+        ...existingMetadata,
         renewalFinalized: true,
         finalizedAt: new Date().toISOString(),
+        rentEffectiveFrom: pendingLeaseUpdate.startDate,
+        pendingLeaseUpdate,
       },
     },
   });
+}
+
+/** Apply renewal rent and lease dates once the agreed start date is reached. */
+export async function applyPendingRenewalLeaseUpdates(): Promise<number> {
+  const agreements = await prismaClient.agreementDocument.findMany({
+    where: {
+      signedByTenantAt: { not: null },
+      signedByLandlordAt: { not: null },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 300,
+    select: {
+      id: true,
+      metadata: true,
+    },
+  });
+
+  let applied = 0;
+
+  for (const agreement of agreements) {
+    const pending = readPendingLeaseUpdate(agreement.metadata);
+    if (!pending || pending.appliedAt) continue;
+
+    const startDate = new Date(pending.startDate);
+    if (!isRenewalRentEffectiveOnOrBefore(startDate)) continue;
+
+    const endDate = pending.endDate ? new Date(pending.endDate) : null;
+
+    await prismaClient.tenants.update({
+      where: { id: pending.tenantId },
+      data: {
+        leaseStartDate: startDate,
+        ...(endDate && !Number.isNaN(endDate.getTime()) ? { leaseEndDate: endDate } : {}),
+        isCurrentLease: true,
+      },
+    });
+
+    if (Number.isFinite(pending.rent)) {
+      await prismaClient.properties.update({
+        where: { id: pending.propertyId },
+        data: { price: pending.rent },
+      });
+    }
+
+    const existingMetadata =
+      agreement.metadata && typeof agreement.metadata === 'object'
+        ? (agreement.metadata as Record<string, unknown>)
+        : {};
+
+    await prismaClient.agreementDocument.update({
+      where: { id: agreement.id },
+      data: {
+        metadata: {
+          ...existingMetadata,
+          pendingLeaseUpdate: {
+            ...pending,
+            appliedAt: new Date().toISOString(),
+          },
+          rentEffectiveFrom: pending.startDate,
+        },
+      },
+    });
+
+    applied += 1;
+  }
+
+  if (applied > 0) {
+    console.log(`[Renewal] Applied ${applied} scheduled lease/rent update(s)`);
+  }
+
+  return applied;
+}
+
+export function getRenewalRentEffectiveMessage(terms: unknown): string {
+  const startDate = parseRenewalTermStartDate(terms);
+  if (!startDate) {
+    return 'New rent applies once the renewal is fully signed.';
+  }
+  if (isRenewalRentEffectiveOnOrBefore(startDate)) {
+    return `New rent is in effect from ${formatRenewalEffectiveDate(startDate)}.`;
+  }
+  return `New rent takes effect from ${formatRenewalEffectiveDate(startDate)}. Current rent stays until then.`;
 }
