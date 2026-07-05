@@ -1094,12 +1094,18 @@ class ApplicantService {
       throw new Error('Agreement not found');
     }
 
+    const existingMetadata =
+      currentAgreement.metadata && typeof currentAgreement.metadata === 'object'
+        ? (currentAgreement.metadata as Record<string, unknown>)
+        : {};
+
     const updateData: Prisma.AgreementDocumentUpdateInput = {
       signedByTenantAt: new Date(),
       processedContent: value.processedContent,
       // documentUrl: { set: documentUrls },
       documentUrl: { set: this.mergeDocumentUrls(documentUrls, currentAgreement.documentUrl) },
       metadata: {
+        ...existingMetadata,
         ...(value.metadata as object),
         tenantSignature: {
           signedAt: new Date(),
@@ -1146,11 +1152,17 @@ class ApplicantService {
       throw new Error('Agreement not found');
     }
 
+    const existingMetadata =
+      currentAgreement.metadata && typeof currentAgreement.metadata === 'object'
+        ? (currentAgreement.metadata as Record<string, unknown>)
+        : {};
+
     const updateData: Prisma.AgreementDocumentUpdateInput = {
       signedByLandlordAt: new Date(),
       processedContent: value.processedContent,
       documentUrl: { set: this.mergeDocumentUrls(documentUrls, currentAgreement.documentUrl) },
       metadata: {
+        ...existingMetadata,
         ...(value.metadata as object),
         landlordSignature: {
           signedAt: new Date(),

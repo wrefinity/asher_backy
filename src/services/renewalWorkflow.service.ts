@@ -51,7 +51,37 @@ type AgreementRow = {
 function readRenewalProposalId(metadata: unknown): string | undefined {
   if (!metadata || typeof metadata !== 'object') return undefined;
   const proposalId = (metadata as { renewalProposalId?: unknown }).renewalProposalId;
-  return typeof proposalId === 'string' ? proposalId : undefined;
+  if (typeof proposalId === 'string' && proposalId.length > 0) return proposalId;
+  if (typeof proposalId === 'number') return String(proposalId);
+  return undefined;
+}
+
+async function resolveRenewalProposalIdForAgreement(agreement: {
+  applicationId: string;
+  createdAt: Date;
+}): Promise<string | undefined> {
+  const tenant = await prismaClient.tenants.findFirst({
+    where: { applicationId: agreement.applicationId },
+    select: { id: true },
+  });
+  if (!tenant) return undefined;
+
+  const proposals = await prismaClient.leaseRenewal.findMany({
+    where: {
+      tenantId: tenant.id,
+      status: 'ACCEPTED',
+    },
+    orderBy: [{ respondedAt: 'desc' }, { createdAt: 'desc' }],
+  });
+
+  for (const proposal of proposals) {
+    const anchor = proposal.respondedAt ?? proposal.createdAt;
+    if (anchor && agreement.createdAt >= anchor) {
+      return proposal.id;
+    }
+  }
+
+  return proposals[0]?.id;
 }
 
 function isRenewalFinalized(metadata: unknown): boolean {
@@ -150,12 +180,21 @@ function findAgreementForRenewal(
   }
 
   if (respondedAt && !Number.isNaN(respondedAt.getTime())) {
-    for (const row of agreements) {
+    const candidates = agreements
+      .filter((row) => row.createdAt >= respondedAt)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    for (const row of candidates) {
       if (
-        row.createdAt >= respondedAt &&
         (!row.signedByTenantAt || !row.signedByLandlordAt) &&
         !isRenewalFinalized(row.metadata)
       ) {
+        return toAgreementState(row);
+      }
+    }
+
+    for (const row of candidates) {
+      if (row.signedByTenantAt && row.signedByLandlordAt) {
         return toAgreementState(row);
       }
     }
@@ -196,6 +235,17 @@ export async function attachRenewalWorkflow<T extends Record<string, unknown>>(
   }
 
   const workflowPhase = resolveRenewalWorkflowPhase(String(renewal.status), agreement);
+
+  if (
+    agreement?.signedByTenantAt &&
+    agreement?.signedByLandlordAt &&
+    !agreement.renewalFinalized &&
+    agreement.agreementDocumentId
+  ) {
+    finalizeRenewalAfterCounterSign(agreement.agreementDocumentId).catch((error) => {
+      console.error('Failed to finalize renewal during workflow attach:', error);
+    });
+  }
 
   return {
     ...renewal,
@@ -395,7 +445,13 @@ export async function finalizeRenewalAfterCounterSign(agreementId: string): Prom
   if (!agreement?.signedByTenantAt || !agreement.signedByLandlordAt) return;
 
   const metadata = agreement.metadata as Record<string, unknown> | null;
-  const proposalId = readRenewalProposalId(metadata);
+  let proposalId = readRenewalProposalId(metadata);
+  if (!proposalId) {
+    proposalId = await resolveRenewalProposalIdForAgreement({
+      applicationId: agreement.applicationId,
+      createdAt: agreement.createdAt,
+    });
+  }
   if (!proposalId || isRenewalFinalized(metadata)) return;
 
   const proposal = await prismaClient.leaseRenewal.findUnique({
