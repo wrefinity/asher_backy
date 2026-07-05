@@ -83,6 +83,21 @@ class NotificationController {
         }
     };
 
+    public unregisterPushToken = async (req: CustomRequest, res: Response) => {
+        try {
+            const { token } = req.body ?? {};
+            if (!token || typeof token !== 'string') {
+                return res.status(400).json({ error: 'Push token is required' });
+            }
+
+            const expoPushService = (await import('../services/expoPush.service')).default;
+            await expoPushService.removeToken(token);
+            return res.status(200).json({ success: true });
+        } catch (err: any) {
+            return res.status(500).json({ error: err.message || 'Failed to unregister push token' });
+        }
+    };
+
     public deleteNotification = async (req: CustomRequest, res: Response) => {
         try {
             const { id } = req.params;

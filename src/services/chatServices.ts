@@ -143,6 +143,9 @@ class ChatServices {
                         destId: receiverId,
                         title: 'New message',
                         message: `${senderName}: ${preview}`,
+                        notificationType: 'chat_message',
+                        route: `/chats/${senderId}`,
+                        skipPush: true,
                     },
                     'COMMUNICATION'
                 ),

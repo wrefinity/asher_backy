@@ -235,6 +235,9 @@ export class PaymentNotificationService {
             destId: tenantUser.id,
             title: notification.title,
             message: displayMessage,
+            notificationType: notification.type,
+            route: pushRoute,
+            skipPush: true,
           },
           "ONLINE_PAYMENTS"
         );
@@ -308,6 +311,23 @@ export class PaymentNotificationService {
 
       // Send to tenant's socket
       this.io.to(`user:${userId}`).emit('payment_notification', notification);
+
+      try {
+        const NotificationService = (await import('./notification.service')).default;
+        await NotificationService.createNotification(
+          {
+            sourceId: bill?.landlord?.user?.id,
+            destId: userId,
+            title: notification.title,
+            message: notification.message,
+            notificationType: 'payment_success',
+            route: '/bills/viewAllBills',
+          },
+          'ONLINE_PAYMENTS'
+        );
+      } catch (persistError) {
+        loggers.error('Failed to persist payment success notification:', persistError);
+      }
       
       if (bill?.landlord?.user) {
         const landlordNotification: PaymentNotification = {
@@ -366,6 +386,23 @@ export class PaymentNotificationService {
       };
 
       this.io.to(`user:${userId}`).emit('payment_notification', notification);
+
+      try {
+        const NotificationService = (await import('./notification.service')).default;
+        await NotificationService.createNotification(
+          {
+            destId: userId,
+            title: notification.title,
+            message: notification.message,
+            notificationType: 'payment_failed',
+            route: '/bills/viewAllBills',
+          },
+          'ONLINE_PAYMENTS'
+        );
+      } catch (persistError) {
+        loggers.error('Failed to persist payment failure notification:', persistError);
+      }
+
       loggers.info(`Payment failure notification sent to user ${userId}`);
     } catch (error) {
       loggers.error('Error sending payment failure notification:', error);
@@ -918,6 +955,9 @@ export class PaymentNotificationService {
             destId: tenantUserId,
             title: notification.title,
             message: notification.message,
+            notificationType: 'rent_adjusted',
+            route: '/profile/TenancyInfo',
+            skipPush: true,
           },
           'ONLINE_PAYMENTS'
         );

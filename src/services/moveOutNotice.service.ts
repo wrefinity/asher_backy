@@ -200,9 +200,10 @@ class MoveOutNoticeService {
         destId: notice.tenant.userId,
         title: 'Move-Out Notice Acknowledged',
         message: `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
-        category: NotificationCategory.COMMUNICATION,
+        notificationType: 'move_out_acknowledged',
+        route: '/profile/TenancyInfo',
       },
-      NotificationCategory.COMMUNICATION
+      NotificationCategory.MOVE_OUT
     );
 
     await LogsServices.createLog({

@@ -67,13 +67,17 @@ class DocumentRequestService {
 
     // Send notification to tenant
     if (tenant.userId) {
-      await NotificationService.createNotification({
+      await NotificationService.createNotification(
+      {
         sourceId: data.requestedBy,
         destId: tenant.userId,
         title: "New Document Request",
         message: `Your landlord has requested ${data.documentName}. Please upload by ${new Date(data.dueDate).toLocaleDateString()}.`,
-        category: NotificationCategory.COMMUNICATION,
-      });
+        notificationType: 'document_request',
+        route: '/profile/Documents',
+      },
+      NotificationCategory.COMMUNICATION
+    );
     }
 
     return documentRequest;

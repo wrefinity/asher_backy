@@ -15,6 +15,7 @@ class NotificationRoutes {
         this.router.post('/', this.authenticateService.authorize, NotificationController.createNotification);
         this.router.get('/me', this.authenticateService.authorize, NotificationController.getAllNotifications);
         this.router.post('/push-token', this.authenticateService.authorize, NotificationController.registerPushToken);
+        this.router.delete('/push-token', this.authenticateService.authorize, NotificationController.unregisterPushToken);
         this.router.patch('/mark-all-read', this.authenticateService.authorize, NotificationController.markAllAsRead);
         this.router.get('/:id', this.authenticateService.authorize, NotificationController.getNotificationById);
         this.router.patch('/:id', this.authenticateService.authorize, NotificationController.updateNotification);

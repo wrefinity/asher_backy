@@ -79,8 +79,9 @@ class InspectionController {
               destId: tenant.userId,
               title: 'Inspection Scheduled',
               message: `An inspection has been scheduled for ${property.name} on ${inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'TBD'}.`,
-              category: 'COMMUNICATION',
-            });
+              notificationType: 'inspection_scheduled',
+              route: '/profile/TenantActivity',
+            }, 'COMMUNICATION');
           }
         } catch (notifError) {
           console.warn('⚠️ Failed to send notification (non-critical):', notifError);
@@ -276,8 +277,9 @@ class InspectionController {
               destId: tenant.userId,
               title: 'Inspection Completed',
               message: `The inspection for ${property.name} has been completed. You will receive the report shortly.`,
-              category: 'COMMUNICATION',
-            });
+              notificationType: 'inspection_completed',
+              route: '/profile/TenantActivity',
+            }, 'COMMUNICATION');
           }
         }
 
@@ -469,8 +471,9 @@ class InspectionController {
             destId: tenant.userId,
             title: 'Inspection Certificate Generated',
             message: `Your inspection certificate for ${property.name} has been generated and is ready for download.`,
-            category: 'COMMUNICATION',
-          });
+            notificationType: 'inspection_certificate',
+            route: '/profile/Documents',
+          }, 'COMMUNICATION');
         }
       }
 
@@ -515,8 +518,9 @@ class InspectionController {
           destId: acknowledgment.tenant.userId,
           title: 'New Inspection Report',
           message: `Your landlord has shared an inspection report for ${property.name}. Please review and acknowledge.`,
-          category: 'COMMUNICATION',
-        });
+          notificationType: 'inspection_report',
+          route: '/profile/Documents',
+        }, 'COMMUNICATION');
       }
 
       res.json(acknowledgment);

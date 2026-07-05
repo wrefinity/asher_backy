@@ -15,9 +15,41 @@ interface NotificationData {
     message: string;
     category?: NotificationCategory;
     isRead?: boolean;
+    notificationType?: string;
+    route?: string;
+    skipPush?: boolean;
 }
 
 class NotificationService {
+    private defaultRouteForCategory(
+        category: NotificationCategory,
+        notificationType?: string
+    ): string {
+        switch (category) {
+            case 'ONLINE_PAYMENTS':
+                return '/bills/viewAllBills';
+            case 'COMMUNICATION': {
+                const type = (notificationType || '').toLowerCase();
+                if (type.includes('document')) return '/profile/Documents';
+                if (type.includes('inspection')) return '/profile/TenantActivity';
+                if (type.includes('chat') || type.includes('message')) return '/(tabs)/chat';
+                return '/notifications';
+            }
+            case 'MAINTENANCE_REQUESTS':
+                return '/(tabs)/settings';
+            case 'MOVE_OUT':
+                return '/profile/TenancyInfo';
+            case 'PROPERTY_MATCH':
+                return '/profile/RelocationTracker';
+            case 'SECURITY':
+                return '/notifications';
+            case 'SUPPORT_TICKET':
+                return '/supports/supportScreen';
+            default:
+                return '/notifications';
+        }
+    }
+
     /**
      * Create a notification after checking user preferences
      * @param data - Notification data
@@ -28,16 +60,19 @@ class NotificationService {
         data: NotificationData, 
         category?: NotificationCategory
     ) {
+        const typeKey = data.notificationType || data.title || data.message || '';
+
         // Determine category from notification type if not provided
         const notificationCategory = category || 
-            mapNotificationTypeToCategory(data.title || data.message || '') || 
+            data.category ||
+            mapNotificationTypeToCategory(typeKey) || 
             'COMMUNICATION'; // Default category
 
         // Check if user should receive this notification
         const shouldSend = await shouldSendNotification(
             data.destId,
             notificationCategory as NotificationCategory,
-            data.title || '',
+            typeKey,
             'IN_APP' // Check IN_APP channel for database notifications
         );
 
@@ -86,6 +121,32 @@ class NotificationService {
                     }
                 }
             });
+
+            if (!data.skipPush && notification) {
+                try {
+                    const expoPushService = (await import('./expoPush.service')).default;
+                    const route =
+                        data.route ||
+                        this.defaultRouteForCategory(notificationCategory, typeKey);
+                    await expoPushService.sendCategoryPush(
+                        data.destId,
+                        notificationCategory,
+                        {
+                            title: data.title,
+                            body: data.message,
+                            data: {
+                                type: typeKey,
+                                route,
+                                notificationId: notification.id,
+                            },
+                        },
+                        typeKey
+                    );
+                } catch (pushError) {
+                    console.error('Failed to send push notification:', pushError);
+                }
+            }
+
             return notification;
         } catch (error) {
             console.error('Error saving notification to database:', error);

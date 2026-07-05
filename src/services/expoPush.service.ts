@@ -1,3 +1,4 @@
+import { NotificationCategory } from '@prisma/client';
 import { prismaClient } from '..';
 import loggers from '../utils/loggers';
 import { shouldSendNotification } from '../utils/notificationPreferenceChecker';
@@ -64,10 +65,28 @@ class ExpoPushService {
     userId: string,
     payload: { title: string; body: string; data?: Record<string, unknown> }
   ) {
-    const shouldPush = await shouldSendNotification(
+    return this.sendCategoryPush(
       userId,
       'COMMUNICATION',
-      payload.data?.type ? String(payload.data.type) : 'chat_message',
+      payload,
+      payload.data?.type ? String(payload.data.type) : 'chat_message'
+    );
+  }
+
+  async sendCategoryPush(
+    userId: string,
+    category: NotificationCategory,
+    payload: { title: string; body: string; data?: Record<string, unknown> },
+    notificationType?: string
+  ) {
+    const typeKey =
+      notificationType ||
+      (payload.data?.type ? String(payload.data.type) : payload.title);
+
+    const shouldPush = await shouldSendNotification(
+      userId,
+      category,
+      typeKey,
       'PUSH'
     );
 
@@ -84,16 +103,36 @@ class ExpoPushService {
       return { sent: 0, skipped: false };
     }
 
+    const channelId = this.channelForCategory(category, typeKey);
     const messages: ExpoPushMessage[] = tokens.map(({ token }) => ({
       to: token,
       title: payload.title,
       body: payload.body,
       data: payload.data,
       sound: 'default',
-      channelId: 'messages',
+      channelId,
     }));
 
     return this.sendBatch(messages);
+  }
+
+  private channelForCategory(
+    category: NotificationCategory,
+    notificationType?: string
+  ): string {
+    if (category === 'ONLINE_PAYMENTS') {
+      return 'bills';
+    }
+    if (category === 'MAINTENANCE_REQUESTS') {
+      return 'maintenance';
+    }
+    if (category === 'COMMUNICATION') {
+      const type = (notificationType || '').toLowerCase();
+      if (type.includes('chat') || type.includes('message')) {
+        return 'messages';
+      }
+    }
+    return 'general';
   }
 
   private async sendBatch(messages: ExpoPushMessage[]) {

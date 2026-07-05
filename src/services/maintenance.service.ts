@@ -583,6 +583,16 @@ class MaintenanceService {
   updateMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>) => {
     const { subcategoryIds, ...rest } = maintenanceData;
 
+    const existing = await prismaClient.maintenance.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        landlordDecision: true,
+        tenant: { select: { userId: true } },
+      },
+    });
+
     const updateData: any = {
       ...rest,
       subcategories: subcategoryIds ? {
@@ -590,11 +600,22 @@ class MaintenanceService {
       } : undefined,
     };
 
-    return await prismaClient.maintenance.update({
+    const updated = await prismaClient.maintenance.update({
       where: { id },
       data: updateData,
       include: this.inclusion,
     });
+
+    if (existing) {
+      try {
+        const { notifyTenantMaintenanceUpdate } = await import('./maintenanceNotification.service');
+        await notifyTenantMaintenanceUpdate(existing, updated);
+      } catch (notifyError) {
+        console.error('Failed to send maintenance notification:', notifyError);
+      }
+    }
+
+    return updated;
   }
 
 

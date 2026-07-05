@@ -803,8 +803,20 @@ class LandlordMaintenanceService {
   }
 
   changeLandlordPropertiesMaintenanceDecisionState = async (landlordId: string, maintenanceId: string, status?: maintenanceDecisionStatus) => {
+    const existing = await prismaClient.maintenance.findFirst({
+      where: {
+        id: maintenanceId,
+        property: { landlordId },
+      },
+      select: {
+        id: true,
+        status: true,
+        landlordDecision: true,
+        tenant: { select: { userId: true } },
+      },
+    });
 
-    return await prismaClient.maintenance.update({
+    const updated = await prismaClient.maintenance.update({
       where: {
         id: maintenanceId,
         property: {
@@ -821,6 +833,21 @@ class LandlordMaintenanceService {
         ...this.inclusion,
       },
     });
+
+    if (existing) {
+      try {
+        const landlord = await prismaClient.landlords.findUnique({
+          where: { id: landlordId },
+          select: { userId: true },
+        });
+        const { notifyTenantMaintenanceUpdate } = await import('../../services/maintenanceNotification.service');
+        await notifyTenantMaintenanceUpdate(existing, updated, landlord?.userId);
+      } catch (notifyError) {
+        console.error('Failed to send maintenance decision notification:', notifyError);
+      }
+    }
+
+    return updated;
   }
 
   createWhitelist = async (data: MaintenanceWhitelistInput, landlordId: string) => {

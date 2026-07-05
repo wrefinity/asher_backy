@@ -16,6 +16,9 @@ export const mapNotificationTypeToCategory = (type: string): NotificationCategor
   if (typeLower.includes('message') || typeLower.includes('chat')) {
     return 'COMMUNICATION';
   }
+  if (typeLower.includes('inspection') || typeLower.includes('document')) {
+    return 'COMMUNICATION';
+  }
   if (typeLower.includes('login') || typeLower.includes('security')) {
     return 'SECURITY';
   }
