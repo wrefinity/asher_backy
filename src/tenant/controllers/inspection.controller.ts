@@ -424,6 +424,109 @@ class TenantInspectionController {
       throw error;
     }
   });
+
+  /**
+   * Raise a dispute after the tenant already certified the inspection (within review window).
+   */
+  raiseInspectionDispute = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { comments } = req.body as { comments?: string };
+
+    if (!comments?.trim()) {
+      throw ApiError.badRequest('Please explain what you disagree with');
+    }
+
+    const tenant = await this.resolveTenant(userId);
+    if (!tenant) {
+      throw ApiError.badRequest('No active tenant found');
+    }
+
+    const inspection = await InspectionService.getInspectionById(id);
+    if (!inspection) {
+      throw ApiError.notFound('Inspection not found');
+    }
+    if (inspection.tenantId !== tenant.id) {
+      throw ApiError.forbidden('You do not have access to this inspection');
+    }
+
+    const existingAcknowledgment = await prismaClient.inspectionAcknowledgment.findUnique({
+      where: { inspectionId: id },
+    });
+
+    if (!existingAcknowledgment?.acknowledged) {
+      throw ApiError.badRequest(
+        'Please review and sign the inspection first, or use sign with disputes during acknowledgment'
+      );
+    }
+
+    if (existingAcknowledgment.disputed) {
+      throw ApiError.badRequest('A dispute has already been raised for this inspection');
+    }
+
+    const mergedComments = existingAcknowledgment.comments
+      ? `${existingAcknowledgment.comments}\n\n--- Dispute raised ---\n${comments.trim()}`
+      : comments.trim();
+
+    const updatedAcknowledgment = await prismaClient.inspectionAcknowledgment.update({
+      where: { inspectionId: id },
+      data: {
+        disputed: true,
+        comments: mergedComments,
+      },
+    });
+
+    try {
+      await InspectionChatService.ensureDisputeChatRoom(id);
+      await InspectionChatService.sendDisputeMessage(id, userId, comments.trim());
+    } catch (chatErr) {
+      console.warn('Failed to open dispute chat after raise-dispute', chatErr);
+    }
+
+    const property = inspection.propertyId
+      ? await prismaClient.properties.findUnique({
+          where: { id: inspection.propertyId },
+          select: { name: true, landlordId: true },
+        })
+      : null;
+
+    if (property?.landlordId) {
+      const landlord = await prismaClient.landlords.findUnique({
+        where: { id: property.landlordId },
+        select: { userId: true },
+      });
+
+      if (landlord?.userId) {
+        try {
+          await NotificationService.createNotification(
+            {
+              sourceId: userId,
+              destId: landlord.userId,
+              title: 'Inspection dispute raised',
+              message: `The tenant raised a dispute on the inspection for ${property.name}. Please review their comments.`,
+              notificationType: 'inspection_disputed',
+              route: `/service/inspections/${id}`,
+            },
+            'COMMUNICATION'
+          );
+        } catch (notifyErr) {
+          console.warn('Failed to notify landlord of inspection dispute', notifyErr);
+        }
+      }
+    }
+
+    return res.status(200).json(
+      ApiResponse.success(
+        {
+          acknowledgment: {
+            ...updatedAcknowledgment,
+            hasDisputes: true,
+          },
+        },
+        'Dispute raised successfully. You can continue the discussion below.'
+      )
+    );
+  });
 }
 
 export default new TenantInspectionController();

@@ -25,6 +25,7 @@ class TenantInspectionRouter {
     // Param routes (must come after specific routes)
     this.router.get('/:id/dispute-chat', tenantInspectionController.getDisputeChat);
     this.router.post('/:id/dispute-chat', tenantInspectionController.sendDisputeMessage);
+    this.router.post('/:id/raise-dispute', tenantInspectionController.raiseInspectionDispute);
     this.router.get('/:id/certificate', tenantInspectionController.getInspectionCertificate);
     this.router.post('/:id/acknowledge', tenantInspectionController.acknowledgeInspection);
     this.router.get('/:id', tenantInspectionController.getInspectionById);
