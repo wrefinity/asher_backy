@@ -469,7 +469,11 @@ class EmailController {
             const mailbox = await resolveSenderMailbox(req);
             const isReciever =
                 email.receiverId === req.user.id || email.receiverEmail === mailbox;
-            const updatedEmail = await EmailService.markEmailAsRead(emailId, isReciever)
+            const updatedEmail = await EmailService.markEmailAsRead(
+                emailId,
+                req.user.id,
+                isReciever
+            );
             return res.status(200).json(updatedEmail)
         } catch (error) {
             return res.status(500).json({ message: "Couldnt read email" })

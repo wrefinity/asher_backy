@@ -141,6 +141,37 @@ class EmailService {
         return await prismaClient.email.create({ data: createData });
     };
 
+    private mapEmailForUserView(
+        email: any,
+        userId: string,
+        view: 'inbox' | 'sent' = 'inbox'
+    ) {
+        const [userState] = email.states ?? [];
+        const readFromEmail =
+            view === 'sent' ? email.isReadBySender : email.isReadByReceiver;
+        const resolvedRead = userState?.isRead ?? readFromEmail ?? false;
+
+        const resolvedState = {
+            isRead: resolvedRead,
+            isStarred: userState?.isStarred ?? email.isStarred ?? false,
+            isArchived: userState?.isArchived ?? email.isArchived ?? false,
+            isSpam: userState?.isSpam ?? email.isSpam ?? false,
+            isDeleted: userState?.isDeleted ?? email.isDeleted ?? false,
+        };
+
+        return {
+            ...email,
+            replies: email.replies?.sort(
+                (a: { createdAt: Date }, b: { createdAt: Date }) =>
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            ),
+            state: resolvedState,
+            states: userState
+                ? { ...userState, isRead: resolvedRead }
+                : resolvedState,
+        };
+    }
+
     async getEmailById(emailId: string) {
         try {
             return await prismaClient.email.findUnique({
@@ -238,6 +269,7 @@ class EmailService {
         const emails = await prismaClient.email.findMany({
             where: baseWhere,
             include: {
+                sender: userSelect,
                 states: {
                     where: { userId },
                     select: {
@@ -245,31 +277,19 @@ class EmailService {
                         isStarred: true,
                         isArchived: true,
                         isSpam: true,
-                        isDeleted: true
-                    }
+                        isDeleted: true,
+                    },
                 },
-                replies: true
+                replies: true,
             },
             orderBy: { createdAt: 'desc' },
             skip: (currentPage - 1) * itemsPerPage,
             take: itemsPerPage,
         });
 
-        console.log(emails)
-
-        const transformedEmails = emails.map(email => {
-            const [userState] = email.states;
-            return {
-                ...email,
-                state: userState || {
-                    isRead: false,
-                    isStarred: false,
-                    isArchived: false,
-                    isSpam: false,
-                    isDeleted: false
-                }
-            };
-        });
+        const transformedEmails = emails.map((email) =>
+            this.mapEmailForUserView(email, userId, 'inbox')
+        );
 
         return {
             data: transformedEmails,
@@ -449,9 +469,11 @@ class EmailService {
         const emails = await prismaClient.email.findMany({
             where,
             include: {
+                sender: userSelect,
+                receiver: userSelect,
                 states: {
                     ...(baseConditions.isDraft !== true && {
-                        where: { userId }
+                        where: { userId },
                     }),
                     select: {
                         isRead: true,
@@ -460,7 +482,7 @@ class EmailService {
                                 id: true,
                                 email: true,
                                 profile: profileSelect,
-                            }
+                            },
                         },
                         isStarred: true,
                         isArchived: true,
@@ -475,34 +497,10 @@ class EmailService {
             take: itemsPerPage,
         });
 
-        // const transformedEmails = emails.map((email) => {
-
-        //     const [userState] = email.states;
-        //     return {
-        //         ...email,
-        //         states: userState || {
-        //             isRead: false,
-        //             isStarred: false,
-        //             isArchived: false,
-        //             isSpam: false,
-        //             isDeleted: false,
-        //         },
-        //     };
-        // });
-        const transformedEmails = emails.map((email) => {
-            const [userState] = email.states;
-            return {
-                ...email,
-                replies: email.replies?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-                states: userState || {
-                    isRead: false,
-                    isStarred: false,
-                    isArchived: false,
-                    isSpam: false,
-                    isDeleted: false,
-                },
-            };
-        });
+        const view: 'inbox' | 'sent' = sent ? 'sent' : 'inbox';
+        const transformedEmails = emails.map((email) =>
+            this.mapEmailForUserView(email, userId, view)
+        );
 
         return {
             data: transformedEmails,
@@ -692,16 +690,40 @@ class EmailService {
     }
 
 
-    async markEmailAsRead(emailId: string, isReciever: boolean) {
+    async markEmailAsRead(emailId: string, userId: string, isReciever: boolean) {
         try {
-            const updateData = isReciever ? { isReadByReceiver: true } : { isReadBySender: true }
-            return await prismaClient.email.update({
-                where: { id: emailId },
-                data: updateData
-            })
+            const updateData = isReciever
+                ? { isReadByReceiver: true }
+                : { isReadBySender: true };
+
+            return await prismaClient.$transaction(async (tx) => {
+                const updatedEmail = await tx.email.update({
+                    where: { id: emailId },
+                    data: updateData,
+                });
+
+                await tx.userEmailState.upsert({
+                    where: {
+                        emailId_userId: { emailId, userId },
+                    },
+                    create: {
+                        emailId,
+                        userId,
+                        isRead: true,
+                        isStarred: false,
+                        isArchived: false,
+                        isSpam: false,
+                        isDeleted: false,
+                        isDraft: false,
+                    },
+                    update: { isRead: true },
+                });
+
+                return updatedEmail;
+            });
         } catch (error) {
-            loggers.error(`Error reading email: ${error}`)
-            throw new Error('Failed to read email')
+            loggers.error(`Error reading email: ${error}`);
+            throw new Error('Failed to read email');
         }
     }
 
