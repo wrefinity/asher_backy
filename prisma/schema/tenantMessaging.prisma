@@ -1,0 +1,11 @@
+model tenantMessagingShare {
+  id          String   @id @default(cuid())
+  ownerUserId String
+  peerUserId  String
+  landlordId  String
+  createdAt   DateTime @default(now())
+
+  @@unique([ownerUserId, peerUserId, landlordId])
+  @@index([ownerUserId])
+  @@index([peerUserId])
+}

@@ -39,6 +39,7 @@ model tenants {
   mobileTermsAcceptedAt DateTime?
   mobileTermsVersion    String?
   mobileOnboardingCompletedAt DateTime?
+  visibleToNeighborTenants    Boolean                @default(false)
   leaseRenewals           LeaseRenewal[]
   leaseExtensionRequests  LeaseExtensionRequest[]
   moveOutNotices          MoveOutNotice[]

@@ -17,6 +17,17 @@ export interface MessagingContact {
   landlordId: string;
 }
 
+type ViewerContext =
+  | { type: "landlord" }
+  | {
+      type: "tenant";
+      propertyId: string;
+      city: string | null;
+      stateId: string | null;
+      landlordId: string;
+    }
+  | { type: "restricted" };
+
 const profileSelect = {
   fullname: true,
   firstName: true,
@@ -24,11 +35,14 @@ const profileSelect = {
   profileUrl: true,
 } as const;
 
-function displayName(profile?: {
-  fullname?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-} | null, fallbackEmail?: string): string {
+function displayName(
+  profile?: {
+    fullname?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null,
+  fallbackEmail?: string
+): string {
   if (profile?.fullname?.trim()) return profile.fullname.trim();
   const parts = [profile?.firstName, profile?.lastName].filter(Boolean);
   if (parts.length) return parts.join(" ").trim();
@@ -45,6 +59,78 @@ class MessagingCircleService {
     return !!user?.role?.includes(userRoles.ADMIN);
   }
 
+  private async resolveViewerContext(userId: string): Promise<ViewerContext> {
+    const asLandlord = await prismaClient.landlords.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (asLandlord) return { type: "landlord" };
+
+    const tenant = await prismaClient.tenants.findFirst({
+      where: { userId, isDeleted: false, isCurrentLease: true },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        property: { select: { id: true, city: true, stateId: true } },
+      },
+    });
+
+    if (tenant) {
+      return {
+        type: "tenant",
+        propertyId: tenant.propertyId,
+        city: tenant.property?.city ?? null,
+        stateId: tenant.property?.stateId ?? null,
+        landlordId: tenant.landlordId,
+      };
+    }
+
+    return { type: "restricted" };
+  }
+
+  private isSameArea(
+    viewer: { propertyId: string; city: string | null; stateId: string | null },
+    other: {
+      propertyId: string;
+      property?: { city: string | null; stateId: string | null } | null;
+    }
+  ): boolean {
+    if (viewer.propertyId && viewer.propertyId === other.propertyId) return true;
+    const viewerCity = viewer.city?.trim().toLowerCase();
+    const otherCity = other.property?.city?.trim().toLowerCase();
+    if (
+      viewerCity &&
+      otherCity &&
+      viewer.stateId &&
+      other.property?.stateId &&
+      viewerCity === otherCity &&
+      viewer.stateId === other.property.stateId
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private async getSharedPeerUserIds(
+    viewerUserId: string,
+    landlordId: string
+  ): Promise<Set<string>> {
+    const [outbound, inbound] = await Promise.all([
+      prismaClient.tenantMessagingShare.findMany({
+        where: { ownerUserId: viewerUserId, landlordId },
+        select: { peerUserId: true },
+      }),
+      prismaClient.tenantMessagingShare.findMany({
+        where: { peerUserId: viewerUserId, landlordId },
+        select: { ownerUserId: true },
+      }),
+    ]);
+
+    const ids = new Set<string>();
+    outbound.forEach((row) => ids.add(row.peerUserId));
+    inbound.forEach((row) => ids.add(row.ownerUserId));
+    return ids;
+  }
+
   /**
    * Landlord record ids this user belongs to (as landlord, tenant, applicant, or enquirer).
    */
@@ -58,7 +144,7 @@ class MessagingCircleService {
           select: { id: true },
         }),
         prismaClient.tenants.findMany({
-          where: { userId },
+          where: { userId, isDeleted: false },
           select: { landlordId: true },
         }),
         prismaClient.log.findMany({
@@ -152,9 +238,6 @@ class MessagingCircleService {
     );
   }
 
-  /**
-   * Preferred in-app mailbox address for a user (tenant portal email when applicable).
-   */
   async resolveMailboxEmail(
     userId: string,
     tenantRecordId?: string | null
@@ -184,46 +267,42 @@ class MessagingCircleService {
     return user.email;
   }
 
-  /**
-   * Mailbox + login email for addressing a contact in the circle.
-   */
   async resolveMailboxEmailForUser(userId: string): Promise<string> {
     return this.resolveMailboxEmail(userId);
   }
 
   private async collectContactsForLandlord(
     landlordId: string,
-    viewerUserId: string
+    viewerUserId: string,
+    viewerContext: ViewerContext
   ): Promise<Map<string, MessagingContact>> {
     const map = new Map<string, MessagingContact>();
+    const isRestrictedViewer = viewerContext.type !== "landlord";
 
-    const [landlord, tenants, propertyIds, invites] = await Promise.all([
+    const [landlord, tenants] = await Promise.all([
       prismaClient.landlords.findUnique({
         where: { id: landlordId },
         include: {
-          user: { select: { id: true, email: true, profile: { select: profileSelect } } },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              profile: { select: profileSelect },
+            },
+          },
         },
       }),
       prismaClient.tenants.findMany({
-        where: { landlordId },
+        where: { landlordId, isDeleted: false },
         include: {
-          user: { select: { id: true, email: true, profile: { select: profileSelect } } },
-        },
-      }),
-      prismaClient.properties.findMany({
-        where: { landlordId },
-        select: { id: true },
-      }),
-      prismaClient.applicationInvites.findMany({
-        where: {
-          invitedByLandordId: landlordId,
-          isDeleted: false,
-          userInvitedId: { not: null },
-        },
-        include: {
-          userInvited: {
-            select: { id: true, email: true, profile: { select: profileSelect } },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              profile: { select: profileSelect },
+            },
           },
+          property: { select: { id: true, city: true, stateId: true } },
         },
       }),
     ]);
@@ -235,16 +314,57 @@ class MessagingCircleService {
       );
     }
 
+    if (isRestrictedViewer) {
+      const tenantViewer =
+        viewerContext.type === "tenant" &&
+        viewerContext.landlordId === landlordId
+          ? viewerContext
+          : null;
+
+      const sharedPeerIds = tenantViewer
+        ? await this.getSharedPeerUserIds(viewerUserId, landlordId)
+        : new Set<string>();
+
+      for (const t of tenants) {
+        if (!t.user || t.user.id === viewerUserId) continue;
+
+        let canSee = sharedPeerIds.has(t.user.id);
+
+        if (
+          !canSee &&
+          tenantViewer &&
+          t.visibleToNeighborTenants &&
+          this.isSameArea(tenantViewer, t)
+        ) {
+          canSee = true;
+        }
+
+        if (!canSee) continue;
+
+        const mailbox = t.tenantWebUserEmail || t.user.email;
+        map.set(
+          t.user.id,
+          this.toContact(t.user, mailbox, "tenant", landlordId)
+        );
+      }
+
+      return map;
+    }
+
     for (const t of tenants) {
       if (!t.user || t.user.id === viewerUserId) continue;
       const mailbox = t.tenantWebUserEmail || t.user.email;
       map.set(t.user.id, this.toContact(t.user, mailbox, "tenant", landlordId));
     }
 
+    const propertyIds = await prismaClient.properties.findMany({
+      where: { landlordId },
+      select: { id: true },
+    });
     const propIds = propertyIds.map((p) => p.id);
 
     if (propIds.length) {
-      const [applications, enquiries] = await Promise.all([
+      const [applications, enquiries, invites] = await Promise.all([
         prismaClient.application.findMany({
           where: {
             isDeleted: false,
@@ -255,7 +375,13 @@ class MessagingCircleService {
             ],
           },
           include: {
-            user: { select: { id: true, email: true, profile: { select: profileSelect } } },
+            user: {
+              select: {
+                id: true,
+                email: true,
+                profile: { select: profileSelect },
+              },
+            },
           },
         }),
         prismaClient.log.findMany({
@@ -268,7 +394,29 @@ class MessagingCircleService {
             ],
           },
           include: {
-            users: { select: { id: true, email: true, profile: { select: profileSelect } } },
+            users: {
+              select: {
+                id: true,
+                email: true,
+                profile: { select: profileSelect },
+              },
+            },
+          },
+        }),
+        prismaClient.applicationInvites.findMany({
+          where: {
+            invitedByLandordId: landlordId,
+            isDeleted: false,
+            userInvitedId: { not: null },
+          },
+          include: {
+            userInvited: {
+              select: {
+                id: true,
+                email: true,
+                profile: { select: profileSelect },
+              },
+            },
           },
         }),
       ]);
@@ -291,19 +439,21 @@ class MessagingCircleService {
           .map((enq) => this.toMailboxContact(enq.users!, "enquirer", landlordId))
       );
       enquiryContacts.forEach((contact) => map.set(contact.userId, contact));
-    }
 
-    const inviteContacts = await Promise.all(
-      invites
-        .filter(
-          (inv) =>
-            inv.userInvited &&
-            inv.userInvited.id !== viewerUserId &&
-            !map.has(inv.userInvited.id)
-        )
-        .map((inv) => this.toMailboxContact(inv.userInvited!, "applicant", landlordId))
-    );
-    inviteContacts.forEach((contact) => map.set(contact.userId, contact));
+      const inviteContacts = await Promise.all(
+        invites
+          .filter(
+            (inv) =>
+              inv.userInvited &&
+              inv.userInvited.id !== viewerUserId &&
+              !map.has(inv.userInvited.id)
+          )
+          .map((inv) =>
+            this.toMailboxContact(inv.userInvited!, "applicant", landlordId)
+          )
+      );
+      inviteContacts.forEach((contact) => map.set(contact.userId, contact));
+    }
 
     return map;
   }
@@ -314,12 +464,13 @@ class MessagingCircleService {
       return new Set(all.map((u) => u.id));
     }
 
+    const viewerContext = await this.resolveViewerContext(viewerUserId);
     const landlordIds = await this.getLandlordCircleIds(viewerUserId);
     const ids = new Set<string>();
 
     const contactGroups = await Promise.all(
       landlordIds.map((landlordId) =>
-        this.collectContactsForLandlord(landlordId, viewerUserId)
+        this.collectContactsForLandlord(landlordId, viewerUserId, viewerContext)
       )
     );
     for (const contacts of contactGroups) {
@@ -357,12 +508,13 @@ class MessagingCircleService {
       );
     }
 
+    const viewerContext = await this.resolveViewerContext(viewerUserId);
     const landlordIds = await this.getLandlordCircleIds(viewerUserId);
     const merged = new Map<string, MessagingContact>();
 
     const contactGroups = await Promise.all(
       landlordIds.map((landlordId) =>
-        this.collectContactsForLandlord(landlordId, viewerUserId)
+        this.collectContactsForLandlord(landlordId, viewerUserId, viewerContext)
       )
     );
     for (const contacts of contactGroups) {
@@ -381,12 +533,13 @@ class MessagingCircleService {
       );
     }
 
-    return list.sort((a, b) => a.name.localeCompare(b.name));
+    return list.sort((a, b) => {
+      if (a.relationship === "landlord" && b.relationship !== "landlord") return -1;
+      if (b.relationship === "landlord" && a.relationship !== "landlord") return 1;
+      return a.name.localeCompare(b.name);
+    });
   }
 
-  /**
-   * Invisible gate: returns false when recipient should not exist for the sender.
-   */
   async canCommunicate(senderId: string, receiverId: string): Promise<boolean> {
     if (senderId === receiverId) return false;
     if (await this.isAdmin(senderId)) return true;
@@ -395,9 +548,6 @@ class MessagingCircleService {
     return circle.has(receiverId);
   }
 
-  /**
-   * Resolve a recipient user id within the sender's messaging circle.
-   */
   async resolveReceiverById(
     senderId: string,
     receiverId: string
@@ -417,9 +567,6 @@ class MessagingCircleService {
     return { userId: user.id, mailboxEmail };
   }
 
-  /**
-   * Resolve contact by mailbox/login email within sender's circle only.
-   */
   async resolveContactInCircle(
     senderId: string,
     email: string
