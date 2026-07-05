@@ -13,7 +13,6 @@ class TenantMessagingSettingsRouter {
   }
 
   private initializeRoutes() {
-    this.router.use(this.authenticateService.authorize);
     this.router.get("/", TenantMessagingSettingsController.getSettings);
     this.router.patch("/visibility", TenantMessagingSettingsController.updateVisibility);
     this.router.post("/share", TenantMessagingSettingsController.shareContact);
