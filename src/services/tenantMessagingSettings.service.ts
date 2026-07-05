@@ -4,8 +4,8 @@ import messagingCircleService from "./messagingCircle.service";
 class TenantMessagingSettingsService {
   async getCurrentTenant(userId: string) {
     return prismaClient.tenants.findFirst({
-      where: { userId, isDeleted: false, isCurrentLease: true },
-      orderBy: { updatedAt: "desc" },
+      where: { userId, isDeleted: false },
+      orderBy: [{ isCurrentLease: "desc" }, { updatedAt: "desc" }],
       include: {
         property: { select: { id: true, name: true, city: true, stateId: true } },
         landlord: {
@@ -25,15 +25,16 @@ class TenantMessagingSettingsService {
   }
 
   async getSettings(userId: string) {
-    const tenant = await this.getCurrentTenant(userId);
-    if (!tenant) {
-      return {
-        visibleToNeighborTenants: false,
-        landlordContact: null,
-        sharedContacts: [] as Array<{ userId: string; name: string }>,
-        discoverableTenants: [] as Array<{ userId: string; name: string }>,
-      };
-    }
+    try {
+      const tenant = await this.getCurrentTenant(userId);
+      if (!tenant) {
+        return {
+          visibleToNeighborTenants: false,
+          landlordContact: null,
+          sharedContacts: [] as Array<{ userId: string; name: string }>,
+          discoverableTenants: [] as Array<{ userId: string; name: string }>,
+        };
+      }
 
     const landlordUser = tenant.landlord?.user;
     const landlordContact = landlordUser
@@ -88,6 +89,15 @@ class TenantMessagingSettingsService {
         .map((c) => ({ userId: c.userId, name: c.name })),
       property: tenant.property,
     };
+    } catch (error) {
+      console.error("getMessagingSettings failed:", error);
+      return {
+        visibleToNeighborTenants: false,
+        landlordContact: null,
+        sharedContacts: [] as Array<{ userId: string; name: string }>,
+        discoverableTenants: [] as Array<{ userId: string; name: string }>,
+      };
+    }
   }
 
   async updateVisibility(userId: string, visibleToNeighborTenants: boolean) {
