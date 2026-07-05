@@ -5,6 +5,10 @@ import {
   TransactionStatus,
 } from '@prisma/client';
 import { prismaClient } from '../..';
+import {
+  applyExternalProviderScoreFloor,
+  resolveExternalCreditSignals,
+} from './externalCreditIntegration.service';
 
 /** Default score for new joiners — separate from behavioral scoring. */
 export const DEFAULT_APPLICATION_CREDIT_SCORE = 650;
@@ -156,8 +160,16 @@ export type ApplicationProfileScoreResult = {
   overallScore: number;
   bonusPoints: number;
   factors: string[];
+  externalCreditSource?: string | null;
+  externalProviderScore?: number;
   scoreBreakdown: {
     applicationProfile: {
+      score: number;
+      maxScore: number;
+      percentage: number;
+      factors: string[];
+    };
+    externalCredit?: {
       score: number;
       maxScore: number;
       percentage: number;
@@ -270,27 +282,50 @@ export async function calculateApplicationProfileScore(
     factors.push('Income verified (+5)');
   }
 
-  return buildResult(bonusPoints, factors);
+  const externalCredit = await resolveExternalCreditSignals(application, application.id);
+  bonusPoints += externalCredit.bonusPoints;
+  factors.push(...externalCredit.factors);
+
+  return buildResult(bonusPoints, factors, externalCredit);
 }
 
-function buildResult(bonusPoints: number, factors: string[]): ApplicationProfileScoreResult {
-  const score = clampScore(DEFAULT_APPLICATION_CREDIT_SCORE + bonusPoints);
+function buildResult(
+  bonusPoints: number,
+  factors: string[],
+  externalCredit?: Awaited<ReturnType<typeof resolveExternalCreditSignals>>
+): ApplicationProfileScoreResult {
+  let score = clampScore(DEFAULT_APPLICATION_CREDIT_SCORE + bonusPoints);
+  if (externalCredit) {
+    score = applyExternalProviderScoreFloor(score, externalCredit);
+  }
   const overallScore = Math.round(score / 10);
   const maxBonus = 750 - DEFAULT_APPLICATION_CREDIT_SCORE;
-  const percentage = Math.round((bonusPoints / maxBonus) * 100);
+  const applicationBonus = bonusPoints - (externalCredit?.bonusPoints ?? 0);
 
   return {
     score,
     overallScore,
     bonusPoints,
     factors,
+    externalCreditSource: externalCredit?.source ?? null,
+    externalProviderScore: externalCredit?.providerScore,
     scoreBreakdown: {
       applicationProfile: {
-        score: bonusPoints,
+        score: applicationBonus,
         maxScore: maxBonus,
-        percentage: Math.min(100, percentage),
-        factors,
+        percentage: Math.min(100, Math.round((applicationBonus / maxBonus) * 100)),
+        factors: factors.filter((f) => !externalCredit?.factors.includes(f)),
       },
+      ...(externalCredit && externalCredit.bonusPoints > 0
+        ? {
+            externalCredit: {
+              score: externalCredit.bonusPoints,
+              maxScore: 60,
+              percentage: Math.min(100, Math.round((externalCredit.bonusPoints / 60) * 100)),
+              factors: externalCredit.factors,
+            },
+          }
+        : {}),
     },
   };
 }
@@ -322,6 +357,8 @@ export function buildPerformanceScoreFromApplicationProfile(
     riskLevel,
     scoreSource: 'APPLICATION_PROFILE' as const,
     applicationProfileFactors: profile.factors,
+    externalCreditSource: profile.externalCreditSource ?? null,
+    externalProviderScore: profile.externalProviderScore,
   };
 }
 

@@ -996,7 +996,7 @@ class ApplicationControls {
     recordApplicationCreditScreeningResult = async (req: CustomRequest, res: Response) => {
         try {
             const applicationId = req.params.id;
-            const { status, reason, providerReferenceId } = req.body;
+            const { status, reason, providerReferenceId, providerScore, providerName } = req.body;
             const validStatuses = ["YES", "NO", "PENDING"];
 
             if (!applicationId) {
@@ -1023,6 +1023,11 @@ class ApplicationControls {
                 status,
                 reason,
                 providerReferenceId,
+                providerScore:
+                    providerScore != null && Number.isFinite(Number(providerScore))
+                        ? Number(providerScore)
+                        : undefined,
+                providerName: typeof providerName === 'string' ? providerName.trim() : undefined,
                 triggeredByUserId: req.user?.id,
             });
 

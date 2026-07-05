@@ -75,6 +75,9 @@ export type CreditScreeningResultInput = {
   status: "YES" | "NO" | "PENDING";
   reason: string;
   providerReferenceId?: string;
+  /** Optional bureau score (300–850) — stored for starter profile until live API integration. */
+  providerScore?: number;
+  providerName?: string;
   triggeredByUserId?: string;
 };
 
@@ -550,6 +553,25 @@ class ScreeningService {
             field: "providerReferenceId",
             value: input.providerReferenceId,
           },
+          ...(input.providerScore != null
+            ? [
+                {
+                  source: "creditProvider",
+                  field: "providerScore",
+                  value: input.providerScore,
+                  providerName: input.providerName ?? "Credit provider",
+                },
+              ]
+            : []),
+          ...(input.providerName
+            ? [
+                {
+                  source: "creditProvider",
+                  field: "providerName",
+                  value: input.providerName,
+                },
+              ]
+            : []),
         ],
         checkedAt: triggeredAt.toISOString(),
       },
