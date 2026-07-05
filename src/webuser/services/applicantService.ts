@@ -160,11 +160,6 @@ class ApplicantService {
         externalLandlord: true,
       },
     },
-    guarantorAgreement: {
-      include: {
-        documents: true,
-      },
-    },
     employeeReference: true,
     referee: true,
   }
@@ -1368,13 +1363,34 @@ class ApplicantService {
     return updatedTenant;
   }
 
+  /** Strip guarantor-submitted files from tenant profile payloads (landlord-only). */
+  private sanitizeApplicationForTenantProfile = <T extends Record<string, any>>(application: T): T => {
+    const sanitized = { ...application } as T & {
+      documents?: Array<{ agreementId?: string | null; docType?: string | null }>;
+      guarantorAgreement?: unknown;
+    };
+
+    if (Array.isArray(sanitized.documents)) {
+      sanitized.documents = sanitized.documents.filter(
+        (doc) => !doc.agreementId && doc.docType !== 'GUARANTOR_INCOME' && doc.docType !== 'GUARANTOR_EMPLOYMENT'
+      ) as T['documents'];
+    }
+
+    delete sanitized.guarantorAgreement;
+
+    return sanitized as T;
+  };
+
   getTenantProfileBundle = async (tenantId: string) => {
     const tenant = await this.getTenantWithApplicationData(tenantId);
     if (!tenant) return null;
 
     let application = null;
     if (tenant.applicationId) {
-      application = await this.getApplicationForProfileBundle(tenant.applicationId);
+      const rawApplication = await this.getApplicationForProfileBundle(tenant.applicationId);
+      application = rawApplication
+        ? this.sanitizeApplicationForTenantProfile(rawApplication)
+        : null;
     }
 
     return { tenant, application };

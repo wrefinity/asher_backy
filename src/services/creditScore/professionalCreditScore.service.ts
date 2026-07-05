@@ -2,6 +2,9 @@ import { Rating, TransactionReference, TransactionStatus, PaymentFrequency, Pric
 import { prismaClient } from "../..";
 import { Decimal } from "@prisma/client/runtime/library";
 import logger from "../../utils/loggers";
+import ApplicationCreditScoreService, {
+    MIN_MONTHS_FOR_BEHAVIORAL_SCORE,
+} from "./applicationCreditScore.service";
 
 interface CreditScoreType {
     score: number;
@@ -14,7 +17,7 @@ interface CreditScoreType {
     communication: number;
     bonusPoints: number;
     penaltyPoints: number;
-    dataQuality: 'SUFFICIENT' | 'INSUFFICIENT' | 'EXCELLENT';
+    dataQuality: 'SUFFICIENT' | 'INSUFFICIENT' | 'EXCELLENT' | 'APPLICATION_PROFILE';
     scoreBreakdown: {
         paymentHistory: {
             score: number;
@@ -104,9 +107,9 @@ class ProfessionalCreditScoreService {
             // Check data quality
             const dataQuality = await this.assessDataQuality(userId, user);
 
-            // If insufficient data, return base score
+            // Starter profile score until 6+ months of behavioural data exists
             if (dataQuality === 'INSUFFICIENT') {
-                return this.getInsufficientDataScore();
+                return this.getApplicationProfileScore(userId);
             }
 
             // Calculate each component
@@ -963,9 +966,12 @@ class ProfessionalCreditScoreService {
         return months * 4; // Assume weekly payments max
     }
 
-    private getInsufficientDataScore(): CreditScoreType {
+    /** Separate from behavioural scoring — default 650, adjusted by application completeness only. */
+    private async getApplicationProfileScore(userId: string): Promise<CreditScoreType> {
+        const profile = await ApplicationCreditScoreService.calculateApplicationProfileScore(userId);
+
         return {
-            score: 400, // Below average for insufficient data
+            score: profile.score,
             paymentHistory: 0,
             reviewScore: 0,
             rentalHistory: 0,
@@ -973,40 +979,48 @@ class ProfessionalCreditScoreService {
             financialBehavior: 0,
             propertyCare: 0,
             communication: 0,
-            bonusPoints: 0,
+            bonusPoints: profile.bonusPoints,
             penaltyPoints: 0,
-            dataQuality: 'INSUFFICIENT',
+            dataQuality: 'APPLICATION_PROFILE',
             scoreBreakdown: {
                 paymentHistory: {
                     score: 0,
                     maxScore: 350,
                     percentage: 0,
-                    factors: ['Insufficient payment history (minimum 6 months required)'],
+                    factors: [`Behavioural payment history unlocks after ${MIN_MONTHS_FOR_BEHAVIORAL_SCORE}+ months`],
                 },
                 rentalHistory: {
                     score: 0,
                     maxScore: 150,
                     percentage: 0,
-                    factors: ['Insufficient rental history'],
+                    factors: [`Behavioural rental history unlocks after ${MIN_MONTHS_FOR_BEHAVIORAL_SCORE}+ months`],
                 },
                 financialBehavior: {
                     score: 0,
                     maxScore: 100,
                     percentage: 0,
-                    factors: ['Insufficient financial data'],
+                    factors: ['Using application profile score until sufficient on-platform history exists'],
                 },
                 propertyCare: {
                     score: 0,
                     maxScore: 50,
                     percentage: 0,
-                    factors: ['Insufficient property care data'],
+                    factors: ['Not yet measured — new to platform'],
                 },
                 communication: {
                     score: 0,
                     maxScore: 50,
                     percentage: 0,
-                    factors: ['Insufficient communication data'],
+                    factors: ['Not yet measured — new to platform'],
                 },
+                applicationProfile: profile.scoreBreakdown.applicationProfile,
+            } as CreditScoreType['scoreBreakdown'] & {
+                applicationProfile?: {
+                    score: number;
+                    maxScore: number;
+                    percentage: number;
+                    factors: string[];
+                };
             },
         };
     }

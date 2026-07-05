@@ -1,6 +1,7 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import { prismaClient } from "..";
 import { maintenanceStatus, TransactionReference, SeverityLevel, TransactionStatus, PaymentFrequency, inspection } from '@prisma/client';
+import ApplicationCreditScoreService from './creditScore/applicationCreditScore.service';
 
 class PerformanceCalculator {
 
@@ -900,6 +901,15 @@ private async calculateRentToIncomeRatio(userId: string): Promise<number> {
     // -------------------
 
     async calculateOverallScore(userId: string) {
+        const hasBehavioralHistory =
+            await ApplicationCreditScoreService.userHasBehavioralScoreEligibility(userId);
+
+        if (!hasBehavioralHistory) {
+            const profile =
+                await ApplicationCreditScoreService.calculateApplicationProfileScore(userId);
+            return ApplicationCreditScoreService.buildPerformanceScoreFromApplicationProfile(profile);
+        }
+
         const [
             rentPaymentScore,        // 20%
             tenancyStabilityScore,   // 10%
@@ -960,7 +970,8 @@ private async calculateRentToIncomeRatio(userId: string): Promise<number> {
             overdueScore,
             rentToIncomeScore,
             overallScore,
-            riskLevel
+            riskLevel,
+            scoreSource: 'BEHAVIORAL' as const,
         };
     }
     
