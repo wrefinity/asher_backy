@@ -11,7 +11,7 @@ export const renewalSchema = Joi.object({
         startDate: dateJoiRequired,
         endDate: dateJoiRequired
       }).required(),
-      message: stringJoiRequired
+      message: Joi.string().optional().allow('', null)
     });
 
 export const responseSchema = Joi.object({

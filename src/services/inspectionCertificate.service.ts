@@ -1,6 +1,7 @@
 import { prismaClient } from '..';
 import { supabase, STORAGE_BUCKET } from '../configs/supabase';
 import jsPDF from 'jspdf';
+import InspectionDocumentService from './inspectionDocument.service';
 
 interface CertificateData {
     inspection: any;
@@ -22,6 +23,15 @@ class InspectionCertificateService {
         userId: string
     ) {
         try {
+            const existing = await prismaClient.inspectionCertificate.findFirst({
+                where: { inspectionId, type },
+                orderBy: { generatedAt: 'desc' },
+            });
+
+            if (existing) {
+                return existing;
+            }
+
             // Get complete inspection data
             const inspection = await prismaClient.inspection.findUnique({
                 where: { id: inspectionId },
@@ -102,6 +112,17 @@ class InspectionCertificateService {
                     generatedBy: userId,
                 },
             });
+
+            try {
+                await InspectionDocumentService.saveCertificateDocument({
+                    inspectionId,
+                    pdfUrl: urlData.publicUrl,
+                    certificateType: type,
+                    generatedByUserId: userId,
+                });
+            } catch (docErr) {
+                console.warn('Failed to save inspection certificate to documents library', docErr);
+            }
 
             return certificate;
         } catch (error) {

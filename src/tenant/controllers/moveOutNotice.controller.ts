@@ -5,6 +5,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { ApiError } from '../../utils/ApiError';
 import moveOutNoticeService from '../../services/moveOutNotice.service';
+import InspectionMoveOutService from '../../services/inspectionMoveOut.service';
 
 class MoveOutNoticeController {
   create = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -30,7 +31,7 @@ class MoveOutNoticeController {
     }
 
     try {
-      const notice = await moveOutNoticeService.createNotice({
+      const result = await moveOutNoticeService.createNotice({
         tenantId: tenant.id,
         intendedMoveOutDate: new Date(intendedMoveOutDate),
         reason,
@@ -39,10 +40,20 @@ class MoveOutNoticeController {
         searchCriteria: searchCriteria as Prisma.InputJsonValue | undefined,
       });
 
-      return res.status(201).json(ApiResponse.created(notice, 'Move-out notice submitted'));
+      return res.status(201).json(
+        ApiResponse.created(
+          {
+            notice: result.notice,
+            inspection: result.inspection,
+          },
+          result.inspection
+            ? 'Move-out notice submitted and move-out inspection scheduled'
+            : 'Move-out notice submitted'
+        )
+      );
     } catch (error) {
       if (error instanceof Error && error.message === 'ACTIVE_MOVE_OUT_NOTICE_EXISTS') {
-        throw ApiError.badRequest('You already have a pending move-out notice');
+        throw ApiError.badRequest('You already have an active move-out notice');
       }
       throw error;
     }
@@ -58,7 +69,15 @@ class MoveOutNoticeController {
     }
 
     const notice = await moveOutNoticeService.getActiveNoticeForTenant(tenant.id);
-    return res.status(200).json(ApiResponse.success(notice));
+    const inspection = notice
+      ? await InspectionMoveOutService.findInspectionForNotice(notice.id, tenant.id)
+      : null;
+
+    return res.status(200).json(
+      ApiResponse.success(
+        notice ? { ...notice, inspection } : null
+      )
+    );
   });
 }
 

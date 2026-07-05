@@ -23,6 +23,10 @@ class InspectionRoutes {
     // POST /api/landlord/inspections - Create new inspection
     this.router.post('/', InspectionController.createInspection.bind(InspectionController));
 
+    // Dispute chat (must stay before generic /:id routes)
+    this.router.get('/:id/dispute-chat', InspectionController.getDisputeChat.bind(InspectionController));
+    this.router.post('/:id/dispute-chat', InspectionController.sendDisputeMessage.bind(InspectionController));
+
     // GET /api/landlord/inspections/:id/complete - Get complete inspection with all details
     this.router.get('/:id/complete', InspectionController.getCompleteInspection.bind(InspectionController));
 

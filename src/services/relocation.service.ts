@@ -84,7 +84,7 @@ class RelocationService {
     let moveOutNotice = await moveOutNoticeService.getActiveNoticeForTenant(input.tenantId);
     if (!moveOutNotice) {
       try {
-        moveOutNotice = await moveOutNoticeService.createNotice({
+        const created = await moveOutNoticeService.createNotice({
           tenantId: input.tenantId,
           intendedMoveOutDate: input.intendedMoveOutDate,
           reason: input.reason || 'Relocating to a new property',
@@ -92,6 +92,7 @@ class RelocationService {
           type: MoveOutNoticeType.RELOCATING,
           searchCriteria: input.criteria as Prisma.InputJsonValue,
         });
+        moveOutNotice = created.notice;
       } catch (err) {
         if (err instanceof Error && err.message === 'ACTIVE_MOVE_OUT_NOTICE_EXISTS') {
           moveOutNotice = await moveOutNoticeService.getActiveNoticeForTenant(input.tenantId);

@@ -7,10 +7,24 @@ class StateController {
 
   public getAllStates = async (req: Request, res: Response) => {
     try {
-      const states = await StateService.getAllState();
+      const country =
+        (typeof req.query.country === "string" && req.query.country) ||
+        (typeof req.query.marketCountry === "string" && req.query.marketCountry) ||
+        null;
+      const states = await StateService.getAllState(country);
       return res.status(200).json(states);
     } catch (error) {
       ErrorService.handleError(error, res)
+    }
+  };
+
+  public getCitiesByStateId = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const cities = await StateService.getCitiesByStateId(id);
+      return res.status(200).json({ data: cities });
+    } catch (error) {
+      ErrorService.handleError(error, res);
     }
   };
 

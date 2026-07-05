@@ -6,6 +6,8 @@ import { ApiError } from '../../utils/ApiError';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { prismaClient } from '../..';
 import { enrichLeaseRenewal } from '../../utils/leaseRenewalHelpers';
+import { attachRenewalWorkflow } from '../../services/renewalWorkflow.service';
+import { attachRenewalWorkflowBatch } from '../../services/renewalWorkflow.service';
 import LandlordSettingsService from '../services/propertySetting.service';
 import { getLeaseRenewalThresholds } from '../../utils/globalSettingsMarketRules';
 
@@ -134,10 +136,41 @@ class LandlordLeaseRenewalController {
       }
     });
 
+    const enriched = renewals.map((renewal) => enrichLeaseRenewal(renewal));
+    const withWorkflow = await attachRenewalWorkflowBatch(enriched);
+
     return res.status(200).json(
       ApiResponse.success(
-        renewals.map((renewal) => enrichLeaseRenewal(renewal)),
+        withWorkflow,
         "Lease renewals retrieved successfully"
+      )
+    );
+  });
+
+  sendRenewalAgreement = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const userId = req.user.id;
+    const { proposalId } = req.params;
+
+    const result = await LeaseRenewalService.sendRenewalAgreement(proposalId, userId);
+
+    const proposal = await prismaClient.leaseRenewal.findUnique({
+      where: { id: proposalId },
+      include: {
+        tenant: { include: { user: true } },
+        property: { include: { landlord: { select: { id: true, userId: true } } } },
+      },
+    });
+
+    if (!proposal) {
+      throw ApiError.badRequest('Renewal proposal not found');
+    }
+
+    const enriched = await attachRenewalWorkflow(enrichLeaseRenewal(proposal));
+
+    return res.status(200).json(
+      ApiResponse.success(
+        { ...enriched, renewalAgreement: result.renewalAgreement },
+        'Renewal agreement sent successfully'
       )
     );
   });
@@ -177,7 +210,7 @@ class LandlordLeaseRenewalController {
 
     return res.status(200).json(
       ApiResponse.success(
-        enrichLeaseRenewal(updatedProposal),
+        await attachRenewalWorkflow(enrichLeaseRenewal(updatedProposal)),
         "Renewal proposal response sent successfully"
       )
     );

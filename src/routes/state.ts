@@ -14,6 +14,7 @@ class StateRoutes {
     }
     private initializeRoutes(): void {
         this.router.get('/', StateControls.getAllStates);
+        this.router.get('/:id/cities', StateControls.getCitiesByStateId);
         this.router.get('/:id', StateControls.getStateById);
         this.router.post('/', this.authenticateService.authorize, StateControls.createState);
         this.router.patch('/:id', StateControls.updateState);

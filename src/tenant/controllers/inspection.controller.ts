@@ -6,8 +6,29 @@ import { ApiError } from '../../utils/ApiError';
 import { prismaClient } from '../..';
 import InspectionService from '../../services/inspection.services';
 import InspectionCertificateService from '../../services/inspectionCertificate.service';
+import NotificationService from '../../services/notification.service';
+import InspectionChatService from '../../services/inspectionChat.service';
+import {
+  mapInspectionForTenant,
+  normalizeInspectionStatus,
+} from '../../utils/inspectionTenantMapper.util';
+
+const STATUS_FILTER_MAP: Record<string, string[]> = {
+  pending: ['Scheduled', 'Not Started'],
+  in_progress: ['In Progress'],
+  completed: ['Completed'],
+  cancelled: ['Cancelled'],
+};
 
 class TenantInspectionController {
+  private resolveTenant = async (userId: string) =>
+    prismaClient.tenants.findFirst({
+      where: {
+        userId,
+        isCurrentLease: true,
+      },
+    });
+
   /**
    * Get all inspections for the authenticated tenant
    */
@@ -15,31 +36,24 @@ class TenantInspectionController {
     const userId = req.user.id;
     const { status } = req.query;
 
-    // Get tenant record for this user
-    const tenant = await prismaClient.tenants.findFirst({
-      where: {
-        userId: userId,
-        isCurrentLease: true,
-      },
-    });
+    const tenant = await this.resolveTenant(userId);
 
     if (!tenant) {
       return res.status(200).json(
-        ApiResponse.success(
-          { inspections: [] },
-          'No active tenant found'
-        )
+        ApiResponse.success({ inspections: [] }, 'No active tenant found')
       );
     }
 
-    // Build where clause
     const whereClause: any = {
       tenantId: tenant.id,
     };
 
-    // Filter by status if provided
-    if (status) {
-      whereClause.status = status;
+    if (typeof status === 'string' && status.trim()) {
+      const normalizedStatus = status.trim().toLowerCase();
+      const mappedStatuses = STATUS_FILTER_MAP[normalizedStatus];
+      if (mappedStatuses?.length) {
+        whereClause.status = { in: mappedStatuses };
+      }
     }
 
     const inspections = await prismaClient.inspection.findMany({
@@ -70,22 +84,7 @@ class TenantInspectionController {
       },
     });
 
-    // Map to frontend expected format
-    const mappedInspections = inspections.map((inspection) => ({
-      ...inspection,
-      inspectionType: inspection.type,
-      completedDate: inspection.completedAt,
-      inspectionSections: inspection.sections,
-      inspectionCertificates: inspection.certificates.map(cert => ({
-        ...cert,
-        certificateType: cert.type,
-        certificateUrl: cert.pdfUrl
-      })),
-      inspectionAcknowledgment: inspection.acknowledgment ? {
-        ...inspection.acknowledgment,
-        hasDisputes: inspection.acknowledgment.disputed
-      } : null,
-    }));
+    const mappedInspections = inspections.map(mapInspectionForTenant);
 
     return res.status(200).json(
       ApiResponse.success(
@@ -100,31 +99,25 @@ class TenantInspectionController {
    */
   getTenantInspectionStats = asyncHandler(async (req: CustomRequest, res: Response) => {
     const userId = req.user.id;
-
-    // Get tenant record
-    const tenant = await prismaClient.tenants.findFirst({
-      where: {
-        userId: userId,
-        isCurrentLease: true,
-      },
-    });
+    const tenant = await this.resolveTenant(userId);
 
     if (!tenant) {
       return res.status(200).json(
         ApiResponse.success(
           {
-            total: 0,
-            pending: 0,
-            completed: 0,
-            needsAcknowledgment: 0,
-            withDisputes: 0,
+            stats: {
+              total: 0,
+              pending: 0,
+              completed: 0,
+              needsAcknowledgment: 0,
+              withDisputes: 0,
+            },
           },
           'No active tenant found'
         )
       );
     }
 
-    // Get all inspections for this tenant
     const inspections = await prismaClient.inspection.findMany({
       where: {
         tenantId: tenant.id,
@@ -136,10 +129,18 @@ class TenantInspectionController {
 
     const stats = {
       total: inspections.length,
-      pending: inspections.filter((i) => i.status === 'Scheduled' || i.status === 'In Progress').length,
-      completed: inspections.filter((i) => i.status === 'Completed').length,
+      pending: inspections.filter((i) => {
+        const status = normalizeInspectionStatus(i.status);
+        return status === 'pending' || status === 'in_progress';
+      }).length,
+      completed: inspections.filter(
+        (i) => normalizeInspectionStatus(i.status) === 'completed'
+      ).length,
       needsAcknowledgment: inspections.filter(
-        (i) => i.acknowledgment && !i.acknowledgment.acknowledged
+        (i) =>
+          normalizeInspectionStatus(i.status) === 'completed' &&
+          i.acknowledgment &&
+          !i.acknowledgment.acknowledged
       ).length,
       withDisputes: inspections.filter(
         (i) => i.acknowledgment && i.acknowledgment.disputed === true
@@ -147,10 +148,7 @@ class TenantInspectionController {
     };
 
     return res.status(200).json(
-      ApiResponse.success(
-        { stats },
-        'Inspection statistics retrieved successfully'
-      )
+      ApiResponse.success({ stats }, 'Inspection statistics retrieved successfully')
     );
   });
 
@@ -160,51 +158,25 @@ class TenantInspectionController {
   getInspectionById = asyncHandler(async (req: CustomRequest, res: Response) => {
     const userId = req.user.id;
     const { id } = req.params;
-
-    // Get tenant record
-    const tenant = await prismaClient.tenants.findFirst({
-      where: {
-        userId: userId,
-        isCurrentLease: true,
-      },
-    });
+    const tenant = await this.resolveTenant(userId);
 
     if (!tenant) {
       throw ApiError.badRequest('No active tenant found');
     }
 
-    // Get inspection with full details
     const inspection = await InspectionService.getCompleteInspection(id);
 
     if (!inspection) {
       throw ApiError.notFound('Inspection not found');
     }
 
-    // Verify tenant has access to this inspection
     if (inspection.tenantId !== tenant.id) {
       throw ApiError.forbidden('You do not have access to this inspection');
     }
 
-    // Map to frontend expected format
-    const mappedInspection = {
-      ...inspection,
-      inspectionType: inspection.type,
-      completedDate: (inspection as any).completedAt,
-      inspectionSections: (inspection as any).sections,
-      inspectionCertificates: (inspection as any).certificates?.map((cert: any) => ({
-        ...cert,
-        certificateType: cert.type,
-        certificateUrl: cert.pdfUrl
-      })),
-      inspectionAcknowledgment: inspection.acknowledgment ? {
-        ...inspection.acknowledgment,
-        hasDisputes: (inspection.acknowledgment as any).disputed
-      } : null,
-    };
-
     return res.status(200).json(
       ApiResponse.success(
-        { inspection: mappedInspection },
+        { inspection: mapInspectionForTenant(inspection) },
         'Inspection retrieved successfully'
       )
     );
@@ -218,31 +190,22 @@ class TenantInspectionController {
     const { id } = req.params;
     const { signature, comments, hasDisputes } = req.body;
 
-    // Get tenant record
-    const tenant = await prismaClient.tenants.findFirst({
-      where: {
-        userId: userId,
-        isCurrentLease: true,
-      },
-    });
+    const tenant = await this.resolveTenant(userId);
 
     if (!tenant) {
       throw ApiError.badRequest('No active tenant found');
     }
 
-    // Get inspection
     const inspection = await InspectionService.getInspectionById(id);
 
     if (!inspection) {
       throw ApiError.notFound('Inspection not found');
     }
 
-    // Verify tenant has access
     if (inspection.tenantId !== tenant.id) {
       throw ApiError.forbidden('You do not have access to this inspection');
     }
 
-    // Check if acknowledgment exists
     const existingAcknowledgment = await prismaClient.inspectionAcknowledgment.findUnique({
       where: { inspectionId: id },
     });
@@ -255,7 +218,10 @@ class TenantInspectionController {
       throw ApiError.badRequest('Inspection already acknowledged');
     }
 
-    // Update acknowledgment
+    if (normalizeInspectionStatus(inspection.status) !== 'completed') {
+      throw ApiError.badRequest('Inspection must be completed before acknowledgment');
+    }
+
     const updatedAcknowledgment = await prismaClient.inspectionAcknowledgment.update({
       where: { inspectionId: id },
       data: {
@@ -285,11 +251,68 @@ class TenantInspectionController {
       },
     });
 
+    try {
+      await InspectionCertificateService.generateCertificate(id, 'tenant', userId);
+    } catch (certErr) {
+      console.warn('Failed to generate tenant certificate after acknowledgment', certErr);
+    }
+
+    if (hasDisputes) {
+      try {
+        await InspectionChatService.ensureDisputeChatRoom(id);
+      } catch (chatErr) {
+        console.warn('Failed to open inspection dispute chat', chatErr);
+      }
+    }
+
+    const property = inspection.propertyId
+      ? await prismaClient.properties.findUnique({
+          where: { id: inspection.propertyId },
+          select: { name: true, landlordId: true },
+        })
+      : null;
+
+    if (property?.landlordId) {
+      const landlord = await prismaClient.landlords.findUnique({
+        where: { id: property.landlordId },
+        select: { userId: true },
+      });
+
+      if (landlord?.userId) {
+        try {
+          await NotificationService.createNotification(
+            {
+              sourceId: userId,
+              destId: landlord.userId,
+              title: hasDisputes
+                ? 'Inspection Acknowledged With Disputes'
+                : 'Inspection Acknowledged',
+              message: hasDisputes
+                ? `The tenant acknowledged the inspection for ${property.name} but raised disputes. Please review their comments.`
+                : `The tenant has acknowledged the inspection report for ${property.name}.`,
+              notificationType: hasDisputes
+                ? 'inspection_disputed'
+                : 'inspection_acknowledged',
+              route: hasDisputes
+                ? `/service/inspections/${id}`
+                : `/service/inspections/${id}`,
+            },
+            'COMMUNICATION'
+          );
+        } catch (notifErr) {
+          console.warn('Failed to notify landlord about inspection acknowledgment', notifErr);
+        }
+      }
+    }
+
     return res.status(200).json(
       ApiResponse.success(
         {
           message: 'Inspection acknowledged successfully',
-          acknowledgment: updatedAcknowledgment,
+          acknowledgment: {
+            ...updatedAcknowledgment,
+            hasDisputes: updatedAcknowledgment.disputed,
+          },
         },
         'Inspection acknowledged successfully'
       )
@@ -304,43 +327,102 @@ class TenantInspectionController {
     const { id } = req.params;
     const { type = 'tenant' } = req.query;
 
-    // Get tenant record
-    const tenant = await prismaClient.tenants.findFirst({
-      where: {
-        userId: userId,
-        isCurrentLease: true,
-      },
-    });
+    const tenant = await this.resolveTenant(userId);
 
     if (!tenant) {
       throw ApiError.badRequest('No active tenant found');
     }
 
-    // Get inspection
     const inspection = await InspectionService.getInspectionById(id);
 
     if (!inspection) {
       throw ApiError.notFound('Inspection not found');
     }
 
-    // Verify tenant has access
     if (inspection.tenantId !== tenant.id) {
       throw ApiError.forbidden('You do not have access to this inspection');
     }
 
-    // Generate or get certificate
+    const certificateType = type as 'tenant' | 'landlord';
+    if (certificateType === 'tenant') {
+      const acknowledgment = await prismaClient.inspectionAcknowledgment.findUnique({
+        where: { inspectionId: id },
+      });
+
+      if (!acknowledgment?.acknowledged) {
+        throw ApiError.badRequest(
+          'Inspection must be acknowledged before downloading the tenant certificate'
+        );
+      }
+    }
+
     const certificate = await InspectionCertificateService.generateCertificate(
       id,
-      type as 'tenant' | 'landlord',
+      certificateType,
       userId
     );
 
     return res.status(200).json(
       ApiResponse.success(
-        { certificate },
+        {
+          certificate: {
+            ...certificate,
+            certificateType: certificate.type,
+            certificateUrl: certificate.pdfUrl,
+          },
+        },
         'Certificate retrieved successfully'
       )
     );
+  });
+
+  getDisputeChat = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    try {
+      const chat = await InspectionChatService.getDisputeChat(id, userId);
+      return res.status(200).json(ApiResponse.success(chat, 'Dispute chat retrieved'));
+    } catch (error: any) {
+      if (error.message === 'DISPUTE_CHAT_NOT_AVAILABLE') {
+        return res.status(200).json(
+          ApiResponse.success(
+            { available: false, messages: [], chatRoomId: null },
+            'Dispute chat is not available for this inspection'
+          )
+        );
+      }
+      if (error.statusCode === 403) throw ApiError.forbidden('You do not have access to this chat');
+      if (error.statusCode === 404) throw ApiError.notFound('Inspection not found');
+      throw error;
+    }
+  });
+
+  sendDisputeMessage = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { content } = req.body as { content?: string };
+
+    try {
+      const message = await InspectionChatService.sendDisputeMessage(
+        id,
+        userId,
+        content || ''
+      );
+      return res.status(201).json(
+        ApiResponse.success({ message }, 'Dispute message sent')
+      );
+    } catch (error: any) {
+      if (error.message === 'DISPUTE_CHAT_NOT_AVAILABLE') {
+        throw ApiError.badRequest('Dispute chat is only available when a dispute has been raised');
+      }
+      if (error.message === 'MESSAGE_REQUIRED') {
+        throw ApiError.badRequest('Message content is required');
+      }
+      if (error.statusCode === 403) throw ApiError.forbidden('You do not have access to this chat');
+      if (error.statusCode === 404) throw ApiError.notFound('Inspection not found');
+      throw error;
+    }
   });
 }
 

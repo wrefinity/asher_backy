@@ -134,6 +134,41 @@ class ApplicantService {
     // agreementDocumentUrl: true,
   }
 
+  /** Lighter application payload for tenant profile/documents screens (no property media, logs, or side effects). */
+  private applicationProfileInclusion = {
+    user: this.userInclusion,
+    residentialInfo: {
+      include: {
+        prevAddresses: true,
+      },
+    },
+    employmentInfo: true,
+    documents: true,
+    personalDetails: {
+      include: {
+        nextOfKin: true,
+      },
+    },
+    guarantorInformation: true,
+    applicationQuestions: true,
+    declaration: true,
+    agreementDocument: true,
+    referenceForm: {
+      include: {
+        tenancyReferenceHistory: true,
+        conduct: true,
+        externalLandlord: true,
+      },
+    },
+    guarantorAgreement: {
+      include: {
+        documents: true,
+      },
+    },
+    employeeReference: true,
+    referee: true,
+  }
+
   updateLastStepStop = async (applicationId: string, lastStep: ApplicationSaveState) => {
     if (!applicationId) return;
     await prismaClient.application.update({
@@ -1146,6 +1181,13 @@ class ApplicantService {
       agreementId
     );
 
+    try {
+      const { finalizeRenewalAfterCounterSign } = await import('../../services/renewalWorkflow.service');
+      await finalizeRenewalAfterCounterSign(agreementId);
+    } catch (finalizeError) {
+      console.error('Failed to finalize renewal after landlord counter-sign:', finalizeError);
+    }
+
     return updated;
   }
 
@@ -1332,10 +1374,17 @@ class ApplicantService {
 
     let application = null;
     if (tenant.applicationId) {
-      application = await this.getApplicationById(tenant.applicationId);
+      application = await this.getApplicationForProfileBundle(tenant.applicationId);
     }
 
     return { tenant, application };
+  }
+
+  getApplicationForProfileBundle = async (applicationId: string) => {
+    return await prismaClient.application.findUnique({
+      where: { id: applicationId },
+      include: this.applicationProfileInclusion,
+    });
   }
 
   // Get tenant with application data

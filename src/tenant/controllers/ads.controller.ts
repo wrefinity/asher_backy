@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { CustomRequest } from "../../utils/types";
 import { adSchema } from "../schema/adShema";
+import { normalizeAdCreatePayload } from "../utils/normalizeAdPayload";
 import adsServices from "../services/ads.services";
 import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
@@ -11,25 +12,37 @@ class AdController {
   constructor() {}
 
   createAd = asyncHandler(async (req: CustomRequest, res: Response) => {
-    if (typeof req.body.bussinessDetails === "string") {
-      req.body.bussinessDetails = JSON.parse(req.body.bussinessDetails);
-    }
+    const normalizedBody = normalizeAdCreatePayload(req.body);
 
-    const { value, error } = adSchema.validate(req.body);
+    const imageUrls = Array.isArray(req.body.cloudinaryUrls) ? req.body.cloudinaryUrls : [];
+    const videoUrls = Array.isArray(req.body.cloudinaryVideoUrls) ? req.body.cloudinaryVideoUrls : [];
+    normalizedBody.cloudinaryUrls = imageUrls.length > 0 ? imageUrls : undefined;
+    normalizedBody.cloudinaryVideoUrls = videoUrls.length > 0 ? videoUrls : undefined;
+
+    const { value, error } = adSchema.validate(normalizedBody);
     if (error) {
       throw ApiError.validationError(error.details.map((d) => d.message));
     }
 
     const userId = String(req.user.id);
-    const data = { ...value };
-    const attachment = req.body.cloudinaryUrls;
-    delete data["cloudinaryUrls"];
-    delete data["cloudinaryVideoUrls"];
-    delete data["cloudinaryDocumentUrls"];
-    delete data["cloudinaryAudioUrls"];
+    const attachment = [
+      ...(imageUrls ?? []),
+      ...(videoUrls ?? []),
+    ];
 
     const ad = await adsServices.createAd(
-      { ...data, attachment },
+      {
+        title: value.title,
+        description: value.description,
+        amountPaid: value.amountPaid,
+        locations: value.locations,
+        bussinessDetails: value.bussinessDetails,
+        contactInfo: value.contactInfo ?? "",
+        startedDate: value.startedDate,
+        endDate: value.endDate,
+        attachment,
+        isListed: value.isListed ?? true,
+      },
       userId,
       value.currency
     );

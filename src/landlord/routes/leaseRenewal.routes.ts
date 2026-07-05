@@ -21,6 +21,7 @@ class LandlordLeaseRenewalRouter {
     this.router.get("/expiry-report", landlordLeaseRenewalController.getLeaseExpiryReport);
     this.router.post("/initiate", validateBody(renewalSchema), landlordLeaseRenewalController.initiateLeaseRenewal);
     this.router.post("/:proposalId/respond", validateBody(responseSchema), landlordLeaseRenewalController.respondToRenewalProposal);
+    this.router.post("/:proposalId/send-agreement", landlordLeaseRenewalController.sendRenewalAgreement);
     this.router.post("/check-reminders", landlordLeaseRenewalController.checkRenewalReminders);
   }
 }

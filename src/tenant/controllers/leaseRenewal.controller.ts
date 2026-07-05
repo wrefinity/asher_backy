@@ -7,6 +7,8 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import Joi from 'joi';
 import { prismaClient } from '../..';
 import { enrichLeaseRenewal } from '../../utils/leaseRenewalHelpers';
+import { attachRenewalWorkflow } from '../../services/renewalWorkflow.service';
+import { attachRenewalWorkflowBatch } from '../../services/renewalWorkflow.service';
 
 
 class TenantLeaseRenewalController {
@@ -45,6 +47,13 @@ class TenantLeaseRenewalController {
     const renewals = await prismaClient.leaseRenewal.findMany({
       where: whereClause,
       include: {
+        tenant: {
+          select: {
+            id: true,
+            userId: true,
+            applicationId: true,
+          },
+        },
         property: {
           include: {
             landlord: {
@@ -60,9 +69,12 @@ class TenantLeaseRenewalController {
       }
     });
 
+    const enriched = renewals.map((renewal) => enrichLeaseRenewal(renewal));
+    const withWorkflow = await attachRenewalWorkflowBatch(enriched);
+
     return res.status(200).json(
       ApiResponse.success(
-        renewals.map((renewal) => enrichLeaseRenewal(renewal)),
+        withWorkflow,
         "Lease renewals retrieved successfully"
       )
     );
@@ -117,7 +129,7 @@ class TenantLeaseRenewalController {
 
     return res.status(200).json(
       ApiResponse.success(
-        enrichLeaseRenewal(updatedProposal),
+        await attachRenewalWorkflow(enrichLeaseRenewal(updatedProposal)),
         "Renewal proposal response sent successfully"
       )
     );
@@ -197,16 +209,32 @@ class TenantLeaseRenewalController {
       reminderStatus = 'FIRST_REMINDER';
     }
 
-    // Get any pending renewal proposals
-    const pendingRenewals = await prismaClient.leaseRenewal.findMany({
+    // Active renewal proposals (negotiation + post-accept workflow)
+    const activeRenewals = await prismaClient.leaseRenewal.findMany({
       where: {
         tenantId: tenant.id,
-        status: 'PENDING'
+        status: { in: ['PENDING', 'COUNTER_OFFER', 'ACCEPTED'] },
+      },
+      include: {
+        tenant: { select: { applicationId: true } },
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
+
+    const pendingRenewals = await attachRenewalWorkflowBatch(
+      activeRenewals.map((renewal) => enrichLeaseRenewal(renewal))
+    ).then((withWorkflow) =>
+      withWorkflow.filter(
+        (renewal) =>
+          ['PENDING', 'COUNTER_OFFER'].includes(renewal.status) ||
+          (renewal.status === 'ACCEPTED' &&
+            renewal.workflowPhase !== 'completed' &&
+            renewal.workflowPhase !== 'rejected' &&
+            renewal.workflowPhase !== 'expired')
+      )
+    );
 
     const leaseInfo = {
       ...tenant,
@@ -216,7 +244,7 @@ class TenantLeaseRenewalController {
       reminderStatus,
       reminderDates,
       config,
-      pendingRenewals: pendingRenewals.map((renewal) => enrichLeaseRenewal(renewal)),
+      pendingRenewals,
     };
 
     return res.status(200).json(

@@ -8,6 +8,7 @@ import { prismaClient } from '../db/prismaClient';
 import NotificationService from './notification.service';
 import LogsServices from './logs.services';
 import { LogType } from '@prisma/client';
+import InspectionMoveOutService from './inspectionMoveOut.service';
 
 export interface CreateMoveOutNoticeInput {
   tenantId: string;
@@ -39,7 +40,9 @@ class MoveOutNoticeService {
     return prismaClient.moveOutNotice.findFirst({
       where: {
         tenantId,
-        status: MoveOutNoticeStatus.PENDING,
+        status: {
+          in: [MoveOutNoticeStatus.PENDING, MoveOutNoticeStatus.ACKNOWLEDGED],
+        },
       },
       include: {
         relocationInterest: true,
@@ -110,11 +113,60 @@ class MoveOutNoticeService {
       subjects: 'Move-out notice submitted',
     });
 
-    return notice;
+    let inspection = null;
+    try {
+      inspection = await InspectionMoveOutService.createMoveOutInspection({
+        tenantId: tenant.id,
+        propertyId: tenant.propertyId,
+        landlordId: tenant.landlordId,
+        noticeId: notice.id,
+        intendedMoveOutDate: input.intendedMoveOutDate,
+        reason: input.reason,
+        comments: input.comments,
+      });
+
+      await NotificationService.createNotification(
+        {
+          sourceId: tenant.userId,
+          destId: tenant.landlord.userId,
+          title: 'Move-Out Inspection Scheduled',
+          message: `${tenantName} submitted a move-out notice. A move-out inspection has been scheduled for ${moveOutDateStr}.`,
+          notificationType: 'inspection_scheduled',
+          route: `/service/inspections/${inspection.id}`,
+        },
+        NotificationCategory.MOVE_OUT
+      );
+
+      if (tenant.userId) {
+        await NotificationService.createNotification(
+          {
+            sourceId: tenant.landlord.userId,
+            destId: tenant.userId,
+            title: 'Move-Out Inspection Scheduled',
+            message: `Your landlord will conduct a move-out inspection around ${moveOutDateStr}.`,
+            notificationType: 'inspection_scheduled',
+            route: `/inspections/${inspection.id}`,
+          },
+          NotificationCategory.MOVE_OUT
+        );
+      }
+
+      await LogsServices.createLog({
+        events: `Move-out inspection scheduled for ${moveOutDateStr}`,
+        type: LogType.ACTIVITY,
+        propertyId: tenant.propertyId,
+        createdById: tenant.userId,
+        subjects: 'Move-out inspection scheduled',
+      });
+    } catch (inspectionErr) {
+      console.warn('Failed to auto-create move-out inspection', inspectionErr);
+    }
+
+    return { notice, inspection };
   }
 
   async listForLandlord(landlordId: string, status?: MoveOutNoticeStatus) {
-    return prismaClient.moveOutNotice.findMany({
+    const notices = await prismaClient.moveOutNotice.findMany({
       where: {
         tenant: { landlordId, isDeleted: false },
         ...(status ? { status } : {}),
@@ -136,6 +188,16 @@ class MoveOutNoticeService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return Promise.all(
+      notices.map(async (notice) => {
+        const inspection = await InspectionMoveOutService.findInspectionForNotice(
+          notice.id,
+          notice.tenantId
+        );
+        return { ...notice, inspection };
+      })
+    );
   }
 
   async countPendingForLandlord(landlordId: string) {

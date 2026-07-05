@@ -1,10 +1,47 @@
 import { prismaClient } from "..";
 import { ConflictError, NotFoundError } from "./error.service";
+import { canonicalizeListingMarketCountry } from "../utils/listingMarketCountries";
 
 
 class StateService {
-  public async getAllState(){
-    return await prismaClient.state.findMany({where:{isDeleted:false}});
+  public async getAllState(country?: string | null){
+    if (country?.trim()) {
+      const canonical = canonicalizeListingMarketCountry(country.trim());
+      const aliases = [canonical, country.trim()];
+      if (canonical === "United Kingdom") {
+        aliases.push("UK", "Great Britain", "England", "Scotland", "Wales", "Northern Ireland");
+      }
+      if (canonical === "Nigeria") {
+        aliases.push("NG");
+      }
+
+      return await prismaClient.state.findMany({
+        where: {
+          isDeleted: false,
+          OR: Array.from(new Set(aliases)).map((alias) => ({
+            country: { equals: alias, mode: "insensitive" as const },
+          })),
+        },
+        orderBy: { name: "asc" },
+      });
+    }
+
+    return await prismaClient.state.findMany({ where: { isDeleted: false }, orderBy: { name: "asc" } });
+  }
+
+  public async getCitiesByStateId(stateId: string) {
+    const rows = await prismaClient.properties.findMany({
+      where: {
+        stateId,
+        isDeleted: false,
+        city: { not: "" },
+      },
+      select: { city: true },
+      distinct: ["city"],
+      orderBy: { city: "asc" },
+    });
+
+    return rows.map((row) => row.city).filter(Boolean);
   }
 
   public async getStateById(id: string){

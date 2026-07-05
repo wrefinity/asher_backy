@@ -2,6 +2,7 @@ import { Response } from 'express';
 import InspectionService from '../../services/inspection.services';
 import InspectionPhotoService from '../../services/inspectionPhoto.service';
 import InspectionCertificateService from '../../services/inspectionCertificate.service';
+import InspectionChatService from '../../services/inspectionChat.service';
 import NotificationService from '../../services/notification.service';
 import {
   createInspectionSchema,
@@ -80,7 +81,7 @@ class InspectionController {
               title: 'Inspection Scheduled',
               message: `An inspection has been scheduled for ${property.name} on ${inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'TBD'}.`,
               notificationType: 'inspection_scheduled',
-              route: '/profile/TenantActivity',
+              route: '/inspections',
             }, 'COMMUNICATION');
           }
         } catch (notifError) {
@@ -276,9 +277,9 @@ class InspectionController {
             await NotificationService.createNotification({
               destId: tenant.userId,
               title: 'Inspection Completed',
-              message: `The inspection for ${property.name} has been completed. You will receive the report shortly.`,
+              message: `The inspection for ${property.name} has been completed. Your landlord will share the report for review shortly.`,
               notificationType: 'inspection_completed',
-              route: '/profile/TenantActivity',
+              route: '/inspections',
             }, 'COMMUNICATION');
           }
         }
@@ -507,19 +508,23 @@ class InspectionController {
         return res.status(400).json({ error: 'No tenant assigned to this inspection' });
       }
 
+      if (inspection.status !== 'Completed') {
+        return res.status(400).json({ error: 'Inspection must be completed before sharing with tenant' });
+      }
+
       const acknowledgment = await InspectionService.shareWithTenant(
         id,
         inspection.tenantId
       );
 
       // Send notification to tenant
-      if (acknowledgment.tenant.user) {
+      if (acknowledgment.tenant?.userId) {
         await NotificationService.createNotification({
           destId: acknowledgment.tenant.userId,
           title: 'New Inspection Report',
           message: `Your landlord has shared an inspection report for ${property.name}. Please review and acknowledge.`,
           notificationType: 'inspection_report',
-          route: '/profile/Documents',
+          route: `/inspections/acknowledge/${id}`,
         }, 'COMMUNICATION');
       }
 
@@ -541,6 +546,74 @@ class InspectionController {
     } catch (error) {
       console.error('Error fetching inspection statistics:', error);
       res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+  }
+
+  getDisputeChat = async (req: CustomRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const inspection = await InspectionService.getInspectionById(id);
+      if (!inspection) {
+        return res.status(404).json({ error: 'Inspection not found' });
+      }
+
+      const landlordId = req.user.landlords?.id || req.user.id;
+      const property = await propertyServices.getPropertyById(inspection.propertyId);
+      if (!property || property.landlordId !== landlordId) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      const chat = await InspectionChatService.getDisputeChat(id, userId);
+      return res.json(chat);
+    } catch (error: any) {
+      if (error.message === 'DISPUTE_CHAT_NOT_AVAILABLE') {
+        return res.json({ available: false, messages: [], chatRoomId: null });
+      }
+      console.error('Error fetching inspection dispute chat:', error);
+      return res.status(error.statusCode || 500).json({
+        error: error.message || 'Failed to fetch dispute chat',
+      });
+    }
+  }
+
+  sendDisputeMessage = async (req: CustomRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { content } = req.body as { content?: string };
+      const userId = req.user.id;
+
+      const inspection = await InspectionService.getInspectionById(id);
+      if (!inspection) {
+        return res.status(404).json({ error: 'Inspection not found' });
+      }
+
+      const landlordId = req.user.landlords?.id || req.user.id;
+      const property = await propertyServices.getPropertyById(inspection.propertyId);
+      if (!property || property.landlordId !== landlordId) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      const message = await InspectionChatService.sendDisputeMessage(
+        id,
+        userId,
+        content || ''
+      );
+      return res.status(201).json({ message });
+    } catch (error: any) {
+      if (error.message === 'DISPUTE_CHAT_NOT_AVAILABLE') {
+        return res.status(400).json({
+          error: 'Dispute chat is only available when a dispute has been raised',
+        });
+      }
+      if (error.message === 'MESSAGE_REQUIRED') {
+        return res.status(400).json({ error: 'Message content is required' });
+      }
+      console.error('Error sending inspection dispute message:', error);
+      return res.status(error.statusCode || 500).json({
+        error: error.message || 'Failed to send dispute message',
+      });
     }
   }
 }
