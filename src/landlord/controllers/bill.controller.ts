@@ -181,6 +181,7 @@ class BillController {
             page = '1',
             limit = '10',
             propertyId,
+            tenantId,
             billId,
             billCategoryId,
             payableBy,
@@ -200,6 +201,7 @@ class BillController {
                 {
                     landlordId,
                     propertyId,
+                    tenantId,
                     billId,
                     billCategoryId,
                     payableBy: payableBy as PayableBy,
@@ -213,7 +215,8 @@ class BillController {
                 {
                     includeTenant: true,
                     includeProperty: true,
-                    includeBillCategory: true
+                    includeBillCategory: true,
+                    includeTransactions: true,
                 }
             );
 

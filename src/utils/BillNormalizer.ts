@@ -4,6 +4,8 @@
 
 export type BillScope = 'TENANT_SPECIFIC' | 'PROPERTY_ALL_TENANTS' | 'LANDLORD_ALL_TENANTS';
 
+export type BillPaymentStatus = 'PAID' | 'PENDING' | 'OVERDUE';
+
 export interface NormalizedBill {
   id: string;
   billId: string;
@@ -27,18 +29,64 @@ export interface NormalizedBill {
   transactions?: any[];
   billScope: BillScope;
   scopeDescription: string;
+  paidAmount: number;
+  remainingAmount: number;
+  status: BillPaymentStatus;
 }
 
 export class BillNormalizer {
   static normalize(bill: any): NormalizedBill {
     const { billScope, scopeDescription } = this.computeBillScope(bill);
+    const amountStr = this.convertDecimalToString(bill.amount) || '0';
+    const billAmount = parseFloat(amountStr);
+    const paidAmount = this.getBillPaidAmount(bill);
+    const remainingAmount =
+      Number.isFinite(billAmount) && billAmount > 0
+        ? Math.max(0, billAmount - paidAmount)
+        : 0;
+    const status = this.resolveBillPaymentStatus(bill, billAmount, paidAmount);
 
     return {
       ...bill,
-      amount: this.convertDecimalToString(bill.amount) || '0',
+      amount: amountStr,
       billScope,
       scopeDescription,
+      paidAmount,
+      remainingAmount,
+      status,
     };
+  }
+
+  /** Sum of completed tenant debit payments applied to this bill. */
+  static getBillPaidAmount(bill: { transactions?: any[] }): number {
+    if (!Array.isArray(bill.transactions)) return 0;
+
+    return bill.transactions
+      .filter((tx) => tx.status === 'COMPLETED' && tx.type === 'DEBIT')
+      .reduce((total, tx) => {
+        const amount =
+          typeof tx.amount === 'string' ? parseFloat(tx.amount) : Number(tx.amount);
+        return total + (Number.isFinite(amount) ? amount : 0);
+      }, 0);
+  }
+
+  static resolveBillPaymentStatus(
+    bill: { dueDate?: string | Date },
+    billAmount: number,
+    paidAmount: number
+  ): BillPaymentStatus {
+    if (billAmount > 0 && paidAmount >= billAmount) {
+      return 'PAID';
+    }
+
+    if (bill.dueDate) {
+      const due = new Date(bill.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (due < today) return 'OVERDUE';
+    }
+
+    return 'PENDING';
   }
 
   static normalizeMany(bills: any[]): NormalizedBill[] {

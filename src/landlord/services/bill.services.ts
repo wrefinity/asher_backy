@@ -22,6 +22,7 @@ export interface BillQueryParams {
     page?: string;
     limit?: string;
     propertyId?: string;
+    tenantId?: string;
     billId?: string;
     billCategoryId?: string;
     payableBy?: PayableBy;
@@ -404,7 +405,8 @@ class BillService {
                             }
                         }
                     }
-                }
+                },
+                transactions: true,
             }
         });
         
