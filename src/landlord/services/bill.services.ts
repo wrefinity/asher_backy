@@ -506,28 +506,19 @@ class BillService {
         return BillNormalizer.normalizeMany(bills);
     }
 
-    /** Bills visible to a tenant: tenant-specific, property-wide, or landlord-wide (tenant-payable only). */
-    /** Resolve a tenant-payable bill the same way listing endpoints do (tenant / property / landlord scope). */
+    /** Bills assigned directly to this tenant (tenant-payable only). */
     findBillAccessibleToTenant = async (
         billId: string,
         tenantId: string,
-        propertyId: string | null,
-        landlordId: string | null
+        _propertyId: string | null,
+        _landlordId: string | null
     ) => {
-        const scopeConditions: any[] = [{ tenantId }];
-        if (propertyId) {
-            scopeConditions.push({ tenantId: null, propertyId });
-        }
-        if (landlordId) {
-            scopeConditions.push({ tenantId: null, propertyId: null, landlordId });
-        }
-
         return prismaClient.billsSubCategory.findFirst({
             where: {
                 id: billId,
+                tenantId,
                 isDeleted: false,
                 payableBy: PayableBy.TENANT,
-                OR: scopeConditions,
             },
             include: {
                 property: true,
@@ -551,20 +542,11 @@ class BillService {
             billId?: string;
         } = {}
     ) => {
-        const scopeConditions: any[] = [{ tenantId }];
-        if (propertyId) {
-            scopeConditions.push({ tenantId: null, propertyId });
-        }
-        if (landlordId) {
-            scopeConditions.push({ tenantId: null, propertyId: null, landlordId });
-        }
-
         const where: any = {
             isDeleted: false,
-            OR: scopeConditions,
+            tenantId,
+            payableBy: PayableBy.TENANT,
         };
-
-        if (options.payableBy) where.payableBy = options.payableBy;
         if (options.billId) where.billId = options.billId;
         if (options.dateRange) {
             where.dueDate = {};
@@ -608,30 +590,18 @@ class BillService {
         };
     };
 
-    private buildTenantBillScopeWhere(
-        tenantId: string,
-        propertyId: string | null,
-        landlordId: string | null
-    ) {
-        const scopeConditions: any[] = [{ tenantId }];
-        if (propertyId) {
-            scopeConditions.push({ tenantId: null, propertyId });
-        }
-        if (landlordId) {
-            scopeConditions.push({ tenantId: null, propertyId: null, landlordId });
-        }
-
+    private buildTenantBillScopeWhere(tenantId: string) {
         return {
             isDeleted: false,
+            tenantId,
             payableBy: PayableBy.TENANT,
-            OR: scopeConditions,
         };
     }
 
     getUpcomingBillsForTenant = async (
         tenantId: string,
-        propertyId: string | null,
-        landlordId: string | null,
+        _propertyId: string | null,
+        _landlordId: string | null,
         days = 30
     ) => {
         const today = new Date();
@@ -640,7 +610,7 @@ class BillService {
 
         const bills = await prismaClient.billsSubCategory.findMany({
             where: {
-                ...this.buildTenantBillScopeWhere(tenantId, propertyId, landlordId),
+                ...this.buildTenantBillScopeWhere(tenantId),
                 dueDate: { gte: today, lte: futureDate },
                 transactions: { none: {} },
             },
@@ -657,15 +627,15 @@ class BillService {
 
     getOverdueBillsForTenant = async (
         tenantId: string,
-        propertyId: string | null,
-        landlordId: string | null
+        _propertyId: string | null,
+        _landlordId: string | null
     ) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const bills = await prismaClient.billsSubCategory.findMany({
             where: {
-                ...this.buildTenantBillScopeWhere(tenantId, propertyId, landlordId),
+                ...this.buildTenantBillScopeWhere(tenantId),
                 dueDate: { lt: today },
                 transactions: { none: {} },
             },
