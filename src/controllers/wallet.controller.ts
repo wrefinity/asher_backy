@@ -8,6 +8,7 @@ import { getClientIpFromRequest, resolveViewerCurrency } from "../utils/currency
 import paystackServices from "../services/paystack.services";
 import stripeService from "../services/stripe.service";
 import { validateFundAmount, isSupportedFundCurrency } from "../utils/moneyAmount";
+import { resolvePaymentGatewayForCurrency } from "../utils/paymentGateway.util";
 import transactionServices from "../services/transaction.services";
 
 class WalletController {
@@ -58,7 +59,7 @@ class WalletController {
 
     async fundWallet(req: CustomRequest, res: Response) {
         const userId = String(req.user.id)
-        const { amount, paymentGateway, currency, payment_method } = req.body
+        const { amount, paymentGateway, currency, payment_method, callbackUrl } = req.body
 
 
         const supportedCurrencies = [Currency.NGN, Currency.GBP, Currency.USD, Currency.EUR];
@@ -84,6 +85,14 @@ class WalletController {
             });
         }
 
+        const expectedGateway = resolvePaymentGatewayForCurrency(currency);
+        if (paymentGateway !== expectedGateway) {
+            return res.status(400).json({
+                message: `Use ${expectedGateway} for ${currency.toUpperCase()} payments (NGN → Paystack, GBP/UK → Stripe).`,
+                expectedGateway,
+            });
+        }
+
         let validAmount: number;
         try {
             validAmount = validateFundAmount(amount, currency);
@@ -103,7 +112,8 @@ class WalletController {
                 currency.toString().toUpperCase() as Currency,
                 countryCode,
                 paymentGateway,
-                payment_method
+                payment_method,
+                typeof callbackUrl === 'string' ? callbackUrl : undefined
             )
             res.status(200).json(fundWallet)
         } catch (error) {

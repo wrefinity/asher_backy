@@ -6,7 +6,7 @@ import ApplicationService from "../../webuser/services/applicantService"
 import ApplicationInvitesService from '../../services/application.services';
 import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
-import { ApplicationStatus, LogType } from "@prisma/client"
+import { ApplicationStatus, LogType, EnquireStatus, EnquiryStatus } from "@prisma/client"
 import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, agreementDocumentSchema, updateApplicationStatusSchema, updateAgreementSchema } from '../validations/schema/applicationInvitesSchema';
 import Emailer, { sendApplicationCompletionEmails } from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
@@ -338,7 +338,8 @@ class ApplicationControls {
                 logger.error('Failed to send invitation email:', emailError);
             });
 
-            await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED })
+            await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED });
+            await propertyServices.syncEnquiryStatusByLogId(enquiryId, EnquiryStatus.RESPONDED);
             return res.status(201).json({ invite });
         } catch (error) {
             errorService.handleError(error, res)
@@ -553,7 +554,12 @@ class ApplicationControls {
     getEnquiredProps = async (req: CustomRequest, res: Response) => {
         try {
             const landlordId = req.user.landlords.id;
-            const leasing = await logsServices.getLogs(landlordId, LogType.ENQUIRED, logTypeStatus.PENDING);
+            const leasing = await logsServices.getLogs(
+                landlordId,
+                LogType.ENQUIRED,
+                logTypeStatus.PENDING,
+                { excludeEnquireStatus: EnquireStatus.EXISTING_TENANT }
+            );
             return res.status(200).json({ leasing });
         } catch (error) {
             errorService.handleError(error, res)
@@ -567,6 +573,7 @@ class ApplicationControls {
             const enquiry = await logsServices.getLogsById(enquireId);
 
             const leasingUpdated = await logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED });
+            await propertyServices.syncEnquiryStatusByLogId(enquireId, EnquiryStatus.CLOSED);
 
             let applicationFeeRefund = null;
             if (landlordId && enquiry?.propertyId) {

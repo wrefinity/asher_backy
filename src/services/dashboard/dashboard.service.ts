@@ -307,7 +307,6 @@ async calculateRentStatus(tenant: any, latestTransaction: Transaction | undefine
 
     async getDashboardData(userId: string): Promise<DashboardData> {
         try {
-            // Try to get cached data, but don't fail if Redis is unavailable
             let cachedData = null;
             try {
                 if (this.redisService) {
@@ -324,7 +323,6 @@ async calculateRentStatus(tenant: any, latestTransaction: Transaction | undefine
             console.log(`Cache miss for user ${userId} - fetching fresh data`);
             const dashboardData = await this.dashboardDetails(userId);
 
-            // Try to cache data, but don't fail if Redis is unavailable
             try {
                 if (this.redisService) {
                     await this.redisService.set(`dashboard:${userId}`, JSON.stringify(dashboardData), DashboardService.CACHE_TTL);
@@ -337,6 +335,16 @@ async calculateRentStatus(tenant: any, latestTransaction: Transaction | undefine
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
             throw error;
+        }
+    }
+
+    async invalidateUserDashboard(userId: string): Promise<void> {
+        try {
+            if (this.redisService) {
+                await this.redisService.del(`dashboard:${userId}`);
+            }
+        } catch (redisError) {
+            console.warn('Redis dashboard cache invalidation failed:', redisError);
         }
     }
 

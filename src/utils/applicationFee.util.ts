@@ -5,6 +5,7 @@ import {
   resolveFinancialRules,
   ResolvedFinancialRules,
 } from './globalSettings.util';
+import { resolvePaymentGatewayForCurrency } from './paymentGateway.util';
 
 export type ApplicationFeeContext = {
   required: boolean;
@@ -39,7 +40,7 @@ type ApplicationFeeSource = {
 };
 
 export function selectApplicationFeeGateway(currency: string): 'STRIPE' | 'PAYSTACK' {
-  return currency.toUpperCase() === 'NGN' ? 'PAYSTACK' : 'STRIPE';
+  return resolvePaymentGatewayForCurrency(currency) as 'STRIPE' | 'PAYSTACK';
 }
 
 function parsePositiveAmount(raw: unknown): number | null {

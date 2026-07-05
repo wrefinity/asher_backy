@@ -28,7 +28,13 @@ class RedisService {
     }
 
     async set(key: string, value: string, expires: number): Promise<void> {
+        if (!this.client) return;
         await this.client.set(key, value, 'EX', expires);
+    }
+
+    async del(key: string): Promise<void> {
+        if (!this.client) return;
+        await this.client.del(key);
     }
 }
 

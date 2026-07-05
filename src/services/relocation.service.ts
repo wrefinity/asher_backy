@@ -15,6 +15,7 @@ import NotificationService from './notification.service';
 import logsServices from './logs.services';
 import moveOutNoticeService from './moveOutNotice.service';
 import { PropertySearchDto } from '../validations/interfaces/properties.interface';
+import { computeListingMatchScore } from '../utils/listingMatchScore';
 
 /** Display score = overallScore × 10; premium relocate requires ≥ 850 */
 export const PREMIUM_RELOCATE_MIN_DISPLAY_SCORE = 850;
@@ -147,11 +148,17 @@ class RelocationService {
       return landlordId && landlordId !== currentLandlordId;
     });
 
-    const byLandlord = new Map<string, (typeof filtered)[0]>();
+    const bestByLandlord = new Map<
+      string,
+      { listing: (typeof filtered)[0]; matchScore: number }
+    >();
     for (const listing of filtered) {
       const landlordId = listing.property?.landlord?.id;
-      if (landlordId && !byLandlord.has(landlordId)) {
-        byLandlord.set(landlordId, listing);
+      if (!landlordId) continue;
+      const matchScore = computeListingMatchScore(input.criteria, listing);
+      const current = bestByLandlord.get(landlordId);
+      if (!current || matchScore > current.matchScore) {
+        bestByLandlord.set(landlordId, { listing, matchScore });
       }
     }
 
@@ -161,9 +168,9 @@ class RelocationService {
       'An existing tenant';
 
     let newMatches = 0;
-    const enquiryResults: Array<{ landlordId: string; enquiryId: string; listingId: string }> = [];
+    const enquiryResults: Array<{ landlordId: string; enquiryId: string; listingId: string; matchScore: number }> = [];
 
-    for (const [landlordId, listing] of byLandlord.entries()) {
+    for (const [landlordId, { listing, matchScore }] of bestByLandlord.entries()) {
       const listingId = listing.listingId;
       const propertyId = listing.hierarchy?.propertyId;
       const unitId = listing.hierarchy?.unitId || undefined;
@@ -176,9 +183,44 @@ class RelocationService {
           status: { not: EnquiryStatus.CLOSED },
         },
       });
-      if (existingEnquiry) continue;
 
-      const message = `${tenantName} is relocating and matches your listing criteria. Asher score: ${displayScore}/1000.`;
+      const message = `${tenantName} is relocating and matches your listing (${matchScore}% match). Asher score: ${displayScore}/1000.`;
+
+      if (existingEnquiry) {
+        const existingScore = existingEnquiry.matchScore ?? 0;
+        if (existingScore >= matchScore) continue;
+
+        if (existingEnquiry.logId) {
+          await logsServices.updateLog(existingEnquiry.logId, {
+            propertyId,
+            events: message,
+            unitId,
+            roomId,
+            propertyListingId: listingId,
+          });
+        }
+
+        await prismaClient.propertyEnquiry.update({
+          where: { id: existingEnquiry.id },
+          data: {
+            message,
+            propertyId,
+            unitId,
+            roomId,
+            propertyListingId: listingId,
+            matchScore,
+          },
+        });
+
+        enquiryResults.push({
+          landlordId,
+          enquiryId: existingEnquiry.id,
+          listingId,
+          matchScore,
+        });
+        continue;
+      }
+
       const log = await logsServices.createLog({
         propertyId,
         events: message,
@@ -200,6 +242,8 @@ class RelocationService {
         unitId,
         roomId,
         logId: log.id,
+        propertyListingId: listingId,
+        matchScore,
       });
 
       const landlord = await prismaClient.landlords.findUnique({
@@ -213,7 +257,7 @@ class RelocationService {
             sourceId: input.userId,
             destId: landlord.userId,
             title: 'Property Match — Relocating Tenant',
-            message: `${tenantName} (${displayScore}/1000 Asher score) is interested in properties matching their criteria. Review under Leasing → Existing Tenants.`,
+            message: `${tenantName} (${displayScore}/1000 Asher score, ${matchScore}% listing match) is interested in your property. Review under Leasing → Existing Tenants.`,
             category: NotificationCategory.PROPERTY_MATCH,
           },
           NotificationCategory.PROPERTY_MATCH
@@ -221,7 +265,7 @@ class RelocationService {
       }
 
       newMatches += 1;
-      enquiryResults.push({ landlordId, enquiryId: enquiry.id, listingId });
+      enquiryResults.push({ landlordId, enquiryId: enquiry.id, listingId, matchScore });
     }
 
     const totalMatchCount = await this.countTotalMatches(input.tenantId);

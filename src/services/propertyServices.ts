@@ -1,4 +1,4 @@
-import { IdType, ListingType, PriceFrequency, Prisma, PrismaClient, PropertySpecificationType } from "@prisma/client";
+import { IdType, ListingType, PriceFrequency, Prisma, PrismaClient, PropertySpecificationType, EnquiryStatus } from "@prisma/client";
 import { prismaClient } from "..";
 import { PropertyType, MediaType, PropsSettingType } from "@prisma/client"
 import { AvailabilityStatus } from "@prisma/client";
@@ -4598,8 +4598,20 @@ class PropertyService {
         unitId?: string;
         roomId?: string;
         logId?: string;
+        propertyListingId?: string;
+        matchScore?: number;
     }) => {
         return await prismaClient.propertyEnquiry.create({ data });
+    }
+
+    syncEnquiryStatusByLogId = async (logId: string, status: EnquiryStatus) => {
+        return prismaClient.propertyEnquiry.updateMany({
+            where: { logId },
+            data: {
+                status,
+                respondedAt: status === EnquiryStatus.PENDING ? null : new Date(),
+            },
+        });
     }
 
 

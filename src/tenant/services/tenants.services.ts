@@ -1,6 +1,6 @@
 import { prismaClient } from "../..";
 import PerformanceCalculator from "../../services/PerformanceCalculator";
-import { EnquireStatus } from "@prisma/client"
+import { EnquireStatus, EnquiryStatus, logTypeStatus } from "@prisma/client"
 class TenantService {
     protected inclusion: object;
     constructor() {
@@ -96,23 +96,22 @@ class TenantService {
 
 
     getTenantsWithEnquiries = async (landlordId: string, enquireStatus?: EnquireStatus) => {
+        const logFilter = {
+            status: logTypeStatus.PENDING,
+            ...(enquireStatus ? { enquireStatus } : {}),
+        };
+
         const tenants = await prismaClient.tenants.findMany({
             where: {
+                isDeleted: false,
                 landlord: {
                     isDeleted: false,
                 },
                 PropertyEnquiry: {
                     some: {
-                        landlordId: landlordId,
-                        ...(enquireStatus
-                            ? {
-                                logs: {
-                                    is: {
-                                        enquireStatus: enquireStatus,
-                                    },
-                                },
-                            }
-                            : {}),
+                        landlordId,
+                        status: EnquiryStatus.PENDING,
+                        logs: { is: logFilter },
                     },
                 },
             },
@@ -120,17 +119,11 @@ class TenantService {
                 user: true,
                 PropertyEnquiry: {
                     where: {
-                        landlordId: landlordId,
-                        ...(enquireStatus
-                            ? {
-                                logs: {
-                                    is: {
-                                        enquireStatus: enquireStatus,
-                                    },
-                                },
-                            }
-                            : {}),
+                        landlordId,
+                        status: EnquiryStatus.PENDING,
+                        logs: { is: logFilter },
                     },
+                    orderBy: [{ matchScore: 'desc' }, { createdAt: 'desc' }],
                     include: {
                         property: true,
                         unit: true,
@@ -159,7 +152,8 @@ class TenantService {
                 }
             })
         );
-        return tenantsWithScores;
+
+        return tenantsWithScores.filter((tenant) => tenant.PropertyEnquiry.length > 0);
     };
 
     getCurrentTenantsGeneric = async () => {

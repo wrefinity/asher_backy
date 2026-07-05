@@ -6,9 +6,12 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import transferServices from "../../services/transfer.services";
 import walletService from "../../services/wallet.service";
 import transactionServices from "../../services/transaction.services";
+import landlordBillsService from "../../landlord/services/bill.services";
+import tenantsServices from "../../services/tenant.service";
 import { Currency, TransactionReference, TransactionType, TransactionStatus } from "@prisma/client";
 import { prismaClient } from "../../index";
 import { serverInstance } from "../../index";
+import dashboardService from "../../services/dashboard/dashboard.service";
 import {
   getClientIpFromRequest,
   resolveViewerCurrency,
@@ -33,30 +36,29 @@ class TenantPaymentController {
       throw ApiError.badRequest("Valid amount is required");
     }
 
-    // Get the bill details
-    const bill = await prismaClient.billsSubCategory.findFirst({
-      where: {
-        id: billId,
-        tenantId: tenantId,
-        isDeleted: false
-      },
-      include: {
-        property: true,
-        landlord: true,
-        tenants: true
-      }
-    });
+    // Get the bill details (tenant-specific, property-wide, or landlord-wide)
+    const tenant = await tenantsServices.getTenantById(tenantId);
+    const propertyId = tenant?.propertyId || null;
+    const landlordId = tenant?.landlordId || null;
+
+    const bill = await landlordBillsService.findBillAccessibleToTenant(
+      billId,
+      tenantId,
+      propertyId,
+      landlordId
+    );
 
     if (!bill) {
       throw ApiError.notFound("Bill not found or you don't have access to it");
     }
 
-    // Check if bill is already paid
-    const existingTransaction = await prismaClient.transaction.findFirst({
+    // Block only when the bill is already fully paid
+    const completedPayments = await prismaClient.transaction.findMany({
       where: {
         reference: TransactionReference.BILL_PAYMENT,
         propertyId: bill.propertyId,
         userId: userId,
+        status: TransactionStatus.COMPLETED,
         metadata: {
           path: ["billId"],
           equals: billId
@@ -64,7 +66,13 @@ class TenantPaymentController {
       }
     });
 
-    if (existingTransaction && existingTransaction.status === TransactionStatus.COMPLETED) {
+    const totalPaid = completedPayments.reduce(
+      (sum, tx) => sum + Number(tx.amount),
+      0
+    );
+    const billTotal = Number(bill.amount);
+
+    if (totalPaid >= billTotal && billTotal > 0) {
       throw ApiError.badRequest("This bill has already been paid");
     }
 
@@ -151,6 +159,8 @@ class TenantPaymentController {
             bill.billName
           );
         }
+
+        await dashboardService.invalidateUserDashboard(userId);
       }
 
       return res.status(200).json(

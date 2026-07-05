@@ -143,15 +143,27 @@ class LogService {
   };
 
   // Get all logs by types, status, etc.
-  getLogs = async (landlordId: string, type: LogType, status: logTypeStatus = null) => {
+  getLogs = async (
+    landlordId: string,
+    type: LogType,
+    status: logTypeStatus = null,
+    options?: { excludeEnquireStatus?: EnquireStatus }
+  ) => {
     return await prismaClient.log.findMany({
       where: {
         type,
         property: { landlordId },
-        ...(status ? { status } : {}) // Apply status condition only if it's provided
+        ...(status ? { status } : {}),
+        ...(options?.excludeEnquireStatus
+          ? {
+              OR: [
+                { enquireStatus: null },
+                { enquireStatus: { not: options.excludeEnquireStatus } },
+              ],
+            }
+          : {}),
       },
-      include: this.inclusion
-
+      include: this.inclusion,
     });
   };
   getLogCounts = async (landlordId: string, type: LogType, status: logTypeStatus = null) => {

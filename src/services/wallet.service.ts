@@ -4,7 +4,7 @@ import { prismaClient } from "..";
 import { v4 as uuidv4 } from 'uuid';
 import transactionService from "./transaction.services";
 import stripeService from "./stripe.service";
-import paymentGatewayService from "./paymentGateway.service";
+import { resolvePaymentGatewayForCurrency } from "../utils/paymentGateway.util";
 import flutterWaveService from "./flutterWave.service";
 import { generateIDs } from "../utils/helpers";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -212,7 +212,15 @@ class WalletService {
         return await paystackServices.verifyPayment(paymentIntent);
     }
 
-    fundWalletGeneral = async (userId: string, amount: number, currency: Currency = Currency.USD, countryCode: string, paymentGateway: PaymentGateway, payment_method?: string) => {
+    fundWalletGeneral = async (
+        userId: string,
+        amount: number,
+        currency: Currency = Currency.USD,
+        countryCode: string,
+        paymentGateway: PaymentGateway,
+        payment_method?: string,
+        paystackCallbackUrl?: string
+    ) => {
         const normalizedAmount = validateFundAmount(amount, currency);
         const wallet = await this.getOrCreateWallet(userId, currency);
 
@@ -231,7 +239,7 @@ class WalletService {
         if (!user) {
             throw new Error("User not found.");
         }
-        const gateway = paymentGateway ? paymentGateway : paymentGatewayService.selectGateway(countryCode);
+        const gateway = resolvePaymentGatewayForCurrency(currency);
         console.log(gateway);
 
         let paymentResponse;
@@ -278,9 +286,10 @@ class WalletService {
                     currency,
                     user.email,
                     TransactionReference.FUND_WALLET,
-                    wallet.id
-                )
-                ;
+                    wallet.id,
+                    undefined,
+                    paystackCallbackUrl ? { callbackUrl: paystackCallbackUrl } : undefined
+                );
                 paymentResponse = paystackPayment;
                 referenceId = paystackPayment.reference;
                 paymentUrl = paystackPayment.authorizationUrl;

@@ -18,9 +18,8 @@ function makeToken(userId: string, email: string, role: string, tenantId: string
 
 async function main() {
   const tenant = await prisma.tenants.findFirst({
-    where: { isCurrentLease: true, isDeleted: false },
+    where: { user: { email: 'john.smith.tenant22@example.com' } },
     include: { user: true, landlord: true },
-    orderBy: { updatedAt: 'desc' },
   });
   if (!tenant?.user) throw new Error('No tenant found');
 
@@ -36,13 +35,11 @@ async function main() {
   console.log(`Active listings in DB: ${listingCount}`);
   console.log(`Test tenant: ${tenant.user.email} (landlordId=${tenant.landlordId})\n`);
 
+  // Omit moveInDate — null availableTo on listings excludes matches when moveInDate is set
   const criteria = {
     propertyCategory: 'RESIDENTIAL',
-    bedrooms: 1,
-    bathrooms: 1,
     minRent: 0,
     maxRent: 999999,
-    moveInDate: moveIn.toISOString().slice(0, 10),
   };
 
   const res = await fetch(`${BASE}/api/tenants/relocation/post-interest`, {

@@ -67,7 +67,8 @@ class ProperyController {
         const newEnquiry = await propertyServices.createEnquiry({ 
             ...enquiryData,
             tenantId, 
-            logId: log.id
+            logId: log.id,
+            propertyListingId,
         });
         res.status(201).json(
             ApiResponse.success(newEnquiry)

@@ -292,7 +292,11 @@ class PayStackService {
         });
 
         if (!transaction) {
-            throw new Error('Transaction not found');
+            const settled = await this.handleSuccessfulPayment(paystackData);
+            if (!settled) {
+                throw new Error('Transaction not found');
+            }
+            return settled;
         }
 
         // Prevent re-processing

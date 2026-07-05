@@ -507,6 +507,37 @@ class BillService {
     }
 
     /** Bills visible to a tenant: tenant-specific, property-wide, or landlord-wide (tenant-payable only). */
+    /** Resolve a tenant-payable bill the same way listing endpoints do (tenant / property / landlord scope). */
+    findBillAccessibleToTenant = async (
+        billId: string,
+        tenantId: string,
+        propertyId: string | null,
+        landlordId: string | null
+    ) => {
+        const scopeConditions: any[] = [{ tenantId }];
+        if (propertyId) {
+            scopeConditions.push({ tenantId: null, propertyId });
+        }
+        if (landlordId) {
+            scopeConditions.push({ tenantId: null, propertyId: null, landlordId });
+        }
+
+        return prismaClient.billsSubCategory.findFirst({
+            where: {
+                id: billId,
+                isDeleted: false,
+                payableBy: PayableBy.TENANT,
+                OR: scopeConditions,
+            },
+            include: {
+                property: true,
+                landlord: true,
+                tenants: true,
+                transactions: true,
+            },
+        });
+    };
+
     getBillsForTenant = async (
         tenantId: string,
         propertyId: string | null,

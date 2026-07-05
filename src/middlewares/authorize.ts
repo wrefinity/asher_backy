@@ -74,7 +74,14 @@ export class Authorize {
                 return res.status(401).json({ message: "Invalid or expired token" });
             }
 
-            const user = await UserService.findAUserById(String(decoded.id));
+            let user;
+            try {
+                user = await UserService.findAUserById(String(decoded.id));
+            } catch (lookupError) {
+                console.error("Auth user lookup failed:", lookupError);
+                return res.status(401).json({ message: "User not found" });
+            }
+
             if (!user) {
                 return res.status(401).json({ message: "User not found" });
             }
@@ -83,12 +90,15 @@ export class Authorize {
             req.user = this.buildUserWithContext(user, decoded);
             this.backfillLoginSession(req);
             return next();
-        } catch (error) {
-
-            if (error.name === "TokenExpiredError") {
+        } catch (error: any) {
+            if (error?.name === "TokenExpiredError") {
                 return this.handleTokenRefresh(req, res, next);
             }
-            return res.status(401).json({ message: "Token verification failed" });
+            if (error?.name === "JsonWebTokenError") {
+                return res.status(401).json({ message: "Invalid or expired token" });
+            }
+            console.error("Auth middleware error:", error);
+            return res.status(500).json({ message: "Authentication service temporarily unavailable" });
         }
     }
 

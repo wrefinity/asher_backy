@@ -19,6 +19,7 @@ model propertyListingHistory {
   availableTo          DateTime?
   applicationFeeAmount Decimal?                   @default(0.00) @db.Decimal(18, 2)
   Log                  Log[]
+  PropertyEnquiry      PropertyEnquiry[]
   applicationInvites   applicationInvites[]
   applications         application[]
   tenants              tenants[]

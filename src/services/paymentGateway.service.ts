@@ -1,25 +1,27 @@
 import { PaymentGateway } from '@prisma/client';
-
+import { resolvePaymentGatewayForCurrency } from '../utils/paymentGateway.util';
 
 type CountryCode = string;
 
-const STRIPE_SUPPORTED_COUNTRIES: CountryCode[] = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'NL', 'IE', 'IT', 'ES', 'CH', 'AT', 'BE', 'DK', 'FI', 'NO', 'SE', 'NZ', 'SG', 'HK', 'JP'];
-const FLUTTERWAVE_SUPPORTED_COUNTRIES: CountryCode[] = ['NG', 'GH', 'KE', 'UG', 'ZA', 'TZ', 'RW'];
-const PAYSTACK_SUPPORTED_COUNTRIES: CountryCode[] = ['NG', 'GH', 'ZA'];
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  NG: 'NGN',
+  GB: 'GBP',
+  UK: 'GBP',
+};
 
 class PaymentGatewaySelector {
-    selectGateway(countryCode: CountryCode): PaymentGateway {
-        if (STRIPE_SUPPORTED_COUNTRIES.includes(countryCode)) {
-            return PaymentGateway.STRIPE;
-        } else if (FLUTTERWAVE_SUPPORTED_COUNTRIES.includes(countryCode)) {
-            return PaymentGateway.FLUTTERWAVE;
-        } else if (PAYSTACK_SUPPORTED_COUNTRIES.includes(countryCode)) {
-            return PaymentGateway.PAYSTACK;
-        } else {
-            // Default to Flutterwave
-            return PaymentGateway.FLUTTERWAVE;
-        }
+  /** Prefer currency when known; NGN → Paystack, GBP/UK → Stripe. */
+  selectGateway(countryCode: CountryCode): PaymentGateway {
+    const currency = CURRENCY_BY_COUNTRY[countryCode?.toUpperCase()];
+    if (currency) {
+      return resolvePaymentGatewayForCurrency(currency);
     }
+    return PaymentGateway.STRIPE;
+  }
+
+  selectGatewayByCurrency(currency: string): PaymentGateway {
+    return resolvePaymentGatewayForCurrency(currency);
+  }
 }
 
 export default new PaymentGatewaySelector();
