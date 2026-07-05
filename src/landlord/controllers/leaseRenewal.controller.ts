@@ -121,7 +121,13 @@ class LandlordLeaseRenewalController {
             user: true
           }
         },
-        property: true
+        property: {
+          include: {
+            landlord: {
+              select: { id: true, userId: true },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc'

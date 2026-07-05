@@ -13,8 +13,10 @@ export function resolveRenewalInitiator(
 }
 
 export function enrichLeaseRenewal<T extends Record<string, unknown>>(renewal: T): T & { initiatedBy: RenewalInitiator } {
-  const tenantUserId = (renewal as any).tenant?.userId ?? (renewal as any).tenant?.user?.id;
-  const landlordUserId = (renewal as any).property?.landlord?.userId ?? (renewal as any).property?.landlord?.user?.id;
+  const tenantUserId =
+    (renewal as any).tenant?.userId ?? (renewal as any).tenant?.user?.id;
+  const landlordUserId =
+    (renewal as any).property?.landlord?.userId ?? (renewal as any).property?.landlord?.user?.id;
   const proposedBy = (renewal as any).proposedBy as string;
 
   return {
