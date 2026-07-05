@@ -22,6 +22,7 @@ import { sendApplicationCompletionEmails } from "../../utils/emailer";
 import propertyServices from '../../services/propertyServices';
 import moveOutNoticeService from '../../services/moveOutNotice.service';
 import asherReferenceService from '../../services/asherReference.service';
+import { pickBestEnquiry } from '../../utils/pickBestEnquiry';
 import LandlordSettingsService from '../services/propertySetting.service';
 import {
   parseGracePeriodDays,
@@ -33,7 +34,7 @@ import {
   PROPERTY_ID_NOT_FOUND_MESSAGE,
   PROPERTY_ID_PLACEHOLDER_MESSAGE,
 } from '../../utils/tenantBulkUploadErrors';
-import { resolveTenantMilestoneTimeline } from '../../utils/tenantMilestoneTimeline';
+import TenantJourneyService from '../../tenant/services/tenantJourney.service';
 
 
 
@@ -74,14 +75,6 @@ class TenantControls {
             errorService.handleError(error, res)
         }
     }
-    // getCurrentTenant = async (req: CustomRequest, res: Response) => {
-    //     const landlordId = req.user?.landlords?.id;
-    //     if (!landlordId) {
-    //         return res.status(404).json({ error: 'kindly login as landlord' });
-    //     }
-    //     const currentTenants = await TenantService.getCurrenntTenantsForLandlord(landlordId);
-    //     return res.status(200).json({ currentTenants });
-    // }
     getCurrentTenant = async (req: CustomRequest, res: Response) => {
         const landlordId = req.user?.landlords?.id;
         if (!landlordId) {
@@ -89,33 +82,28 @@ class TenantControls {
         }
         const rawTenants = await TenantService.getTenantsWithEnquiries(landlordId, EnquireStatus.EXISTING_TENANT);
         
-        // Normalize PropertyEnquiry listings for each tenant
         const normalizedTenants = await Promise.all(
             rawTenants.map(async (tenant: any) => {
                 let enriched = tenant;
 
                 if (tenant.PropertyEnquiry && tenant.PropertyEnquiry.length > 0) {
+                    const bestEnquiry = pickBestEnquiry(tenant.PropertyEnquiry);
+                    if (!bestEnquiry) return enriched;
+
                     const normalizedEnquiries = await Promise.all(
-                        tenant.PropertyEnquiry.map(async (enquiry: any) => {
+                        [bestEnquiry].map(async (enquiry: any) => {
                             const log = enquiry.logs;
-                            if (!log) return enquiry;
+                            const propertyListingId =
+                                enquiry.propertyListingId || log?.propertyListingId;
                             
-                            // Get propertyListingId, roomId, unitId from logs
-                            const propertyListingId = log.propertyListingId;
-                            const roomId = log.roomId;
-                            const unitId = log.unitId;
-                            
-                            // If no propertyListingId, return enquiry as-is
                             if (!propertyListingId) {
                                 return enquiry;
                             }
                             
                             try {
-                                // Fetch the listing using propertyListingId (same method as ViewingInviteNormalizer)
                                 const normalizedListing = await propertyServices.getPropertyListingByListingIdNew(propertyListingId);
                                 
                                 if (normalizedListing) {
-                                    // Add normalized listing to enquiry
                                     return {
                                         ...enquiry,
                                         listing: normalizedListing
@@ -136,7 +124,19 @@ class TenantControls {
                 }
 
                 try {
-                    const asherReference = await asherReferenceService.buildForTenantId(tenant.id, landlordId);
+                    const userId = tenant.user?.id || tenant.userId;
+                    const tenantName =
+                        tenant.user?.profile?.fullname ||
+                        [tenant.user?.profile?.firstName, tenant.user?.profile?.lastName]
+                            .filter(Boolean)
+                            .join(' ') ||
+                        undefined;
+                    const asherReference = userId
+                        ? await asherReferenceService.buildForUserId(userId, {
+                              fullName: tenantName,
+                              currentProperty: tenant.property?.name,
+                          })
+                        : null;
                     if (asherReference) {
                         enriched = {
                             ...enriched,
@@ -400,25 +400,11 @@ class TenantControls {
             if (!landlordId) {
                 return res.status(404).json({ error: 'kindly login as landlord' });
             }
-            const tenantId = req.params.tenantId
-            // const tenantUserId = req.params.tenantUserId
-            // const userExist = UserServices.getUserById(String(tenantUserId));
-            // if (!userExist)
-            //     return res.status(404).json({ error: `tenant with the userId :  ${tenantUserId} doesnot exist` });
-            // get the property attached to current tenant
-            // const tenant = await TenantService.getTenantByUserIdAndLandlordId(tenantUserId, landlordId)
-            const tenant = await TenantService.getTenantWithUserAndProfile(tenantId)
-
-            if (!tenant?.propertyId)
-                return res.status(404).json({ error: `tenant with the id :  ${tenantId} is not connected to a property` });
-
-            const milestones = await resolveTenantMilestoneTimeline({
-                propertyId: tenant.propertyId,
-                userId: tenant.userId,
-                landlordId,
-                tenantId: tenant.id,
-                applicationId: tenant.applicationId,
-            });
+            const tenantId = req.params.tenantId;
+            const milestones = await TenantJourneyService.getMilestonesForLandlordTenant(
+                tenantId,
+                landlordId
+            );
             return res.status(200).json({ milestones });
         } catch (error) {
             errorService.handleError(error, res)
@@ -1116,10 +1102,44 @@ class TenantControls {
             const { tenantId } = req.params;
             if (!landlordId) return res.status(401).json({ error: 'Please login as landlord' });
 
+            const { prismaClient } = await import('../..');
             const tenant = await TenantService.getTenantByUserIdAndLandlordId(undefined, landlordId, tenantId);
-            if (!tenant) return res.status(404).json({ error: 'Tenant not found or does not belong to you' });
+            const hasEnquiry = await prismaClient.propertyEnquiry.findFirst({
+                where: { tenantId, landlordId },
+            });
 
-            const asherReference = await asherReferenceService.buildForTenantId(tenantId, landlordId);
+            if (!tenant && !hasEnquiry) {
+                return res.status(404).json({ error: 'Tenant not found or no enquiry with this tenant' });
+            }
+
+            const tenantRecord = tenant || (await prismaClient.tenants.findUnique({
+                where: { id: tenantId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            profile: { select: { fullname: true, firstName: true, lastName: true } },
+                        },
+                    },
+                    property: { select: { name: true } },
+                },
+            }));
+
+            if (!tenantRecord?.user?.id) {
+                return res.status(404).json({ error: 'Tenant user not found' });
+            }
+
+            const tenantName =
+                tenantRecord.user.profile?.fullname ||
+                [tenantRecord.user.profile?.firstName, tenantRecord.user.profile?.lastName]
+                    .filter(Boolean)
+                    .join(' ');
+
+            const asherReference = await asherReferenceService.buildForUserId(tenantRecord.user.id, {
+                fullName: tenantName,
+                currentProperty: tenantRecord.property?.name,
+            });
+
             if (!asherReference) {
                 return res.status(403).json({
                     error: 'Tenant does not qualify for Asher vouched reference',

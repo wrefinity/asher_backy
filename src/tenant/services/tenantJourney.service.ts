@@ -12,6 +12,14 @@ import {
 } from '../../utils/tenantActivityTimeline.util';
 import { ApiError } from '../../utils/ApiError';
 
+/**
+ * Single timeline engine for tenant journey data.
+ *
+ * Routes:
+ * - GET /api/tenants/profile/:tenantId/journey → getJourneyFeed (mobile Activity)
+ * - GET /api/landlord/tenants/milestones/:tenantId → getMilestonesForLandlordTenant
+ * - GET /api/application/milestones/:propertyId/:applicationId → getMilestonesForApplication (web applicants)
+ */
 export type TenantJourneyFeed = {
   items: TenantActivityItem[];
   milestones: Awaited<ReturnType<typeof resolveTenantMilestoneTimeline>>;
@@ -22,6 +30,16 @@ export type TenantJourneyFeed = {
 };
 
 class TenantJourneyService {
+  private async resolveTimeline(params: {
+    propertyId: string;
+    userId: string;
+    landlordId: string;
+    tenantId?: string | null;
+    applicationId?: string | null;
+  }) {
+    return resolveTenantMilestoneTimeline(params);
+  }
+
   private async loadTenantForUser(tenantId: string, userId: string) {
     const tenant = await prismaClient.tenants.findFirst({
       where: {
@@ -70,7 +88,7 @@ class TenantJourneyService {
       inspections,
       applicationRecord,
     ] = await Promise.all([
-      resolveTenantMilestoneTimeline({
+      this.resolveTimeline({
         propertyId,
         userId,
         landlordId,
@@ -123,7 +141,39 @@ class TenantJourneyService {
     };
   }
 
-  /** Shared milestone resolver for legacy application route (pre-tenant applicants). */
+  /** Landlord portal: milestone timeline for a tenant on the landlord's portfolio. */
+  async getMilestonesForLandlordTenant(tenantId: string, landlordId: string) {
+    const tenant = await prismaClient.tenants.findFirst({
+      where: {
+        id: tenantId,
+        isDeleted: false,
+        property: { landlordId },
+      },
+      select: {
+        id: true,
+        userId: true,
+        propertyId: true,
+        applicationId: true,
+      },
+    });
+
+    if (!tenant?.propertyId) {
+      throw ApiError.notFound('Tenant not found or not linked to a property');
+    }
+
+    return this.resolveTimeline({
+      propertyId: tenant.propertyId,
+      userId: tenant.userId,
+      landlordId,
+      tenantId: tenant.id,
+      applicationId: tenant.applicationId,
+    });
+  }
+
+  /**
+   * Web applicant route (pre-tenant): milestones by property + application.
+   * Kept for AsherWebUser — onboarded tenants should use getJourneyFeed instead.
+   */
   async getMilestonesForApplication(params: {
     userId: string;
     propertyId: string;
@@ -152,7 +202,7 @@ class TenantJourneyService {
       params.applicationId ?? tenant?.applicationId ?? null;
 
     const [milestones, application] = await Promise.all([
-      resolveTenantMilestoneTimeline({
+      this.resolveTimeline({
         propertyId: params.propertyId,
         userId: params.userId,
         landlordId: property.landlordId,
