@@ -753,16 +753,25 @@ class MaintenanceService {
     const propertyExist = await propertyServices.searchPropertyUnitRoom(propertyId);
     if (!propertyExist) throw new Error(`property with the id : ${propertyId} doesn't exist`);
 
+    const targetUnitId = propertyExist?.type === 'unit' ? propertyExist?.data.id : null;
+    const targetRoomId = propertyExist?.type === 'room' ? propertyExist?.data.id : null;
+    const targetPropertyId = propertyExist?.type === 'property' ? propertyExist?.data.id : null;
+
+    // Whitelist entries created from the general Maintenance Settings page have
+    // no property/unit/room attached (landlord-wide default). A specific
+    // property/unit/room scoped entry, if one exists, takes precedence over it.
     return await prismaClient.maintenanceWhitelist.findFirst({
       where: {
         landlordId,
         categoryId,
         isActive,
         subcategoryId: subcategoryId ? subcategoryId : undefined,
-        unitId: propertyExist?.type === 'unit' ? propertyExist?.data.id : null,
-        roomId: propertyExist?.type === 'room' ? propertyExist?.data.id : null,
-        propertyId: propertyExist?.type === 'property' ? propertyExist?.data.id : null,
+        OR: [
+          { propertyId: targetPropertyId, unitId: targetUnitId, roomId: targetRoomId },
+          { propertyId: null, unitId: null, roomId: null },
+        ],
       },
+      orderBy: [{ propertyId: 'desc' }, { unitId: 'desc' }, { roomId: 'desc' }],
     });
   }
 
