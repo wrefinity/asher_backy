@@ -196,6 +196,7 @@ class ServiceService {
         where: {
           isDeleted: false,
           status: maintenanceStatus.UNASSIGNED,
+          postedForVendorSearch: true,
           OR: [
             { categoryId: { in: vendorCategoryIds } },
             ...(vendorSubcategoryIds.length > 0

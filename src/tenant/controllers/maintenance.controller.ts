@@ -51,6 +51,11 @@ class MaintenanceControls {
       landlordDecision: requiresLandlordApproval
         ? maintenanceDecisionStatus.PENDING
         : undefined,
+      // Whitelisted (tenant self-service) requests are postable immediately.
+      // Landlord-liable ones stay hidden from vendors until the landlord
+      // posts them (repair-myself) or the tenant sets a price after their
+      // offer is accepted.
+      postedForVendorSearch: !requiresLandlordApproval,
       tenantId,
     });
 
@@ -189,13 +194,23 @@ class MaintenanceControls {
         "Your landlord needs to approve your offer before you can set a price"
       );
     }
+    // The landlord may have approved to repair it themselves instead of
+    // accepting the tenant's offer - in that case pricing was never unlocked.
+    if (maintenance.landlordWillRepair) {
+      throw ApiError.badRequest(
+        "Your landlord chose to handle this repair themselves"
+      );
+    }
     if (maintenance.amount) {
       throw ApiError.badRequest("A price offer has already been submitted for this request");
     }
 
+    // Setting a price is the tenant's final step - the job is now ready for
+    // vendor search, same as a whitelisted request would be immediately.
     const updated = await MaintenanceService.updateMaintenance(maintenanceId, {
       amount: value.amount,
       selectedPackage: value.selectedPackage,
+      postedForVendorSearch: true,
     });
 
     return res.status(200).json(

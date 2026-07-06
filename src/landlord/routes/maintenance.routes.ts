@@ -19,6 +19,8 @@ class LandlordMaintenanceRoute {
         this.router.get('/property/:propertyId', LandlordMaintenanceControls.getPropertyMaintenance);
 
         this.router.post('/accept/:maintenanceId', LandlordMaintenanceControls.acceptMaintenaceRequest);
+        this.router.post('/approve-repair/:maintenanceId', LandlordMaintenanceControls.approveRepairMyself);
+        this.router.post('/post-job/:maintenanceId', LandlordMaintenanceControls.postJobForVendorSearch);
         this.router.post('/accept-quotation/:quoteId', LandlordMaintenanceControls.acceptQuote);
         this.router.post('/reject-quotation/:quoteId', LandlordMaintenanceControls.rejectQuote);
         this.router.post('/decline/:maintenanceId', LandlordMaintenanceControls.declineMaintenaceRequest);

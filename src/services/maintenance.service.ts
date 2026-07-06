@@ -308,6 +308,10 @@ class MaintenanceService {
     // Base where clause
     const where: any = {
       isDeleted: false,
+      // Landlord-liable jobs aren't postable until the landlord (or the
+      // tenant, once accepted) posts them - already-assigned/resolved jobs
+      // were backfilled to true so this doesn't hide a vendor's own history.
+      postedForVendorSearch: true,
       OR: [
         { categoryId: { in: vendorCategoryIds } },
         ...(vendorSubcategoryIds.length > 0

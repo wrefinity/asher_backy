@@ -16,6 +16,8 @@ export interface MaintenanceIF {
   serviceId?: string;
   selectedPackage?: string;
   tenantWantsToPay?: boolean;
+  landlordWillRepair?: boolean;
+  postedForVendorSearch?: boolean;
   handleByLandlord: boolean;
   amount: number;
   flagCancellation?: boolean,

@@ -173,6 +173,14 @@ class MaintenanceController {
       );
     }
 
+    // Landlord-liable jobs stay invisible to vendors until the landlord (or
+    // the tenant, once their offer is accepted) explicitly posts them.
+    if (!maintenanceRequest.postedForVendorSearch) {
+      return res.status(400).json(
+        ApiError.badRequest("This job has not been posted for vendors yet")
+      );
+    }
+
     const vendorService = await ServiceServices.getSpecificVendorService(vendorId, maintenanceRequest.categoryId);
     if (!vendorService) {
       return res.status(400).json(

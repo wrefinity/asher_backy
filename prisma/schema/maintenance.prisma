@@ -11,6 +11,17 @@ model maintenance {
   isDeleted                    Boolean                        @default(false)
   handleByLandlord             Boolean                        @default(false)
   landlordDecision             maintenanceDecisionStatus?
+  // When landlordDecision is APPROVED, this distinguishes *which* approval it
+  // was: true = landlord will handle/pay for the repair themselves (tenant's
+  // offer, if any, was not taken); false = the tenant's offer to pay was
+  // accepted, so the tenant proceeds to set a price. Same landlordDecision
+  // value previously meant both, with no way to tell them apart afterward.
+  landlordWillRepair           Boolean?
+  // Gates vendor visibility. Whitelisted (tenant self-service) requests are
+  // posted immediately. Landlord-liable requests are NOT posted until the
+  // landlord explicitly posts them (repair-myself path) or the tenant
+  // finishes setting a price after their offer is accepted.
+  postedForVendorSearch        Boolean                        @default(false)
   cancelReason                 String?
   flagCancellation             Boolean?                       @default(false)
   vendorConsentCancellation    Boolean?

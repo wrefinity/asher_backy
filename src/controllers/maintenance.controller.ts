@@ -189,6 +189,7 @@ class MaintenanceController {
         landlordDecision: requiresLandlordApproval
           ? maintenanceDecisionStatus.PENDING
           : undefined,
+        postedForVendorSearch: !requiresLandlordApproval,
         tenantId: tenantId || undefined,
         landlordId: landlordId || propertyLandlordId || undefined,
       });
