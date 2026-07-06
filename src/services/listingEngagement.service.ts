@@ -5,7 +5,11 @@ import {
   logTypeStatus,
 } from "@prisma/client";
 import { prismaClient } from "..";
-import { propertyEngagementUrl } from "../utils/propertyEngagementUrl";
+import {
+  applicationApplyUrl,
+  propertyEngagementUrl,
+  viewingInviteUrl,
+} from "../utils/propertyEngagementUrl";
 
 export type ListingEngagementStage =
   | "none"
@@ -191,10 +195,10 @@ function resolveFromApplication(
         date,
         canEnquire: false,
         actionLabel: inProgress ? "Continue application" : "Start application",
-        actionHref: propertyEngagementUrl(listingId, {
-          focus: "apply",
+        actionHref: applicationApplyUrl({
           applicationId: appId,
-          status: inProgress ? "resume" : undefined,
+          listingId,
+          resume: inProgress,
         }),
         applicationStatus: application.status,
       };
@@ -239,10 +243,7 @@ function resolveFromInvite(
     invite.reScheduleDate || invite.scheduleDate || invite.updatedAt
   );
   const inviteDate = formatDateIso(invite.createdAt);
-  const viewingUrl = propertyEngagementUrl(listingId, {
-    focus: "viewing",
-    invitationId: invite.id,
-  });
+  const viewingUrl = viewingInviteUrl(invite.id, { listingId });
 
   switch (invite.response) {
     case InvitedResponse.AWAITING_FEEDBACK:
@@ -255,10 +256,7 @@ function resolveFromInvite(
         date: viewingDate,
         canEnquire: false,
         actionLabel: "Leave feedback",
-        actionHref: propertyEngagementUrl(listingId, {
-          focus: "feedback",
-          invitationId: invite.id,
-        }),
+        actionHref: viewingInviteUrl(invite.id, { listingId }),
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
@@ -291,9 +289,9 @@ function resolveFromInvite(
         date: inviteDate,
         canEnquire: false,
         actionLabel: "Start application",
-        actionHref: propertyEngagementUrl(listingId, {
-          focus: "apply",
+        actionHref: applicationApplyUrl({
           applicationInviteId: invite.id,
+          listingId,
         }),
         enquiryId,
         inviteId: invite.id,
@@ -311,11 +309,11 @@ function resolveFromInvite(
         date: inviteDate,
         canEnquire: false,
         actionLabel: "Continue application",
-        actionHref: propertyEngagementUrl(listingId, {
-          focus: "apply",
-          applicationId: appId ?? undefined,
+        actionHref: applicationApplyUrl({
+          applicationId: appId,
           applicationInviteId: invite.id,
-          status: "resume",
+          listingId,
+          resume: true,
         }),
         enquiryId,
         inviteId: invite.id,
@@ -441,7 +439,7 @@ function resolveFromEnquiry(
       date,
       canEnquire: false,
       actionLabel: "View invites",
-      actionHref: propertyEngagementUrl(listingId, { focus: "viewing" }),
+      actionHref: "/dashboard/property-viewings",
       enquiryId: enquiry.id,
       logStatus: enquiry.status,
       propertyListingId: listingId,

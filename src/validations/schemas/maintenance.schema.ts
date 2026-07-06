@@ -15,6 +15,13 @@ export const maintenanceSchema = Joi.object({
   // videos: Joi.array().items(Joi.string().uri()).optional(),
   // documents: Joi.array().items(Joi.string().uri()).optional(),
   serviceId: Joi.string().optional(),
+  selectedPackage: Joi.string().optional(),
+  tenantWantsToPay: Joi.boolean().optional(),
+});
+
+export const submitPriceOfferSchema = Joi.object({
+  amount: Joi.number().greater(0).required(),
+  selectedPackage: Joi.string().optional(),
 });
 
 export const maintenanceCancelSchema = Joi.object({
@@ -22,7 +29,7 @@ export const maintenanceCancelSchema = Joi.object({
 });
 
 export const checkWhitelistedSchema = Joi.object({
-  propertyId: stringJoiOptional,
+  propertyId: stringJoiRequired,
   categoryId: stringJoiRequired,
   subcategoryId: stringJoiOptional,
 });

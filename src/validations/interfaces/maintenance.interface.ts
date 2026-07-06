@@ -14,6 +14,8 @@ export interface MaintenanceIF {
   subcategoryIds: string[];
   status: string;
   serviceId?: string;
+  selectedPackage?: string;
+  tenantWantsToPay?: boolean;
   handleByLandlord: boolean;
   amount: number;
   flagCancellation?: boolean,

@@ -1,4 +1,4 @@
-import { TransactionReference, maintenanceStatus, chatType, TransactionStatus, Currency, properties, UnitConfiguration, RoomDetail, Prisma } from "@prisma/client";
+import { TransactionReference, maintenanceStatus, chatType, TransactionStatus, Currency, properties, UnitConfiguration, RoomDetail, Prisma, vendorAvailability } from "@prisma/client";
 import { prismaClient } from "..";
 import { MaintenanceIF, RescheduleMaintenanceDTO } from '../validations/interfaces/maintenance.interface';
 import transferServices from "./transfer.services";
@@ -229,7 +229,8 @@ class MaintenanceService {
           }
         }
       },
-      reScheduleHistory: true
+      reScheduleHistory: true,
+      review: true
     };
   }
 
@@ -436,6 +437,34 @@ class MaintenanceService {
       where: { id, isDeleted: false },
       include: this.inclusion,
     });
+  }
+
+  // Sums the real elapsed time the job has spent in IN_PROGRESS, based on status
+  // history, so the tenant's job timer survives app reopen/reload instead of
+  // resetting to the moment the screen happened to mount.
+  getJobTimeSpentSeconds = async (maintenanceId: string): Promise<number> => {
+    const history = await prismaClient.maintenanceStatusHistory.findMany({
+      where: { maintenanceId },
+      orderBy: { changedAt: 'asc' },
+    });
+
+    let totalMs = 0;
+    let activeStart: Date | null = null;
+
+    for (const entry of history) {
+      if (entry.newStatus === maintenanceStatus.IN_PROGRESS) {
+        if (!activeStart) activeStart = entry.changedAt;
+      } else if (activeStart) {
+        totalMs += entry.changedAt.getTime() - activeStart.getTime();
+        activeStart = null;
+      }
+    }
+
+    if (activeStart) {
+      totalMs += Date.now() - activeStart.getTime();
+    }
+
+    return Math.max(0, Math.floor(totalMs / 1000));
   }
 
   rescheduleMaintenance = async (data: RescheduleMaintenanceDTO) => {
@@ -740,7 +769,8 @@ class MaintenanceService {
   processPayment = async (maintenanceId: string, amount: number, userId: string, receiverId: string, currency: Currency) => {
 
     // Deduct amount from user's wallet -> Also add transaction type to track expenses
-    await transferServices.transferFunds(userId, { receiverId, amount, reference: TransactionReference.MAINTENANCE_FEE, description: `Payment for maintenance #${maintenanceId}` }, currency);
+    // Note: transferFunds reads `recieiverId` (its established, if misspelled, contract).
+    await transferServices.transferFunds(userId, { recieiverId: receiverId, amount, reference: TransactionReference.MAINTENANCE_FEE, description: `Payment for maintenance #${maintenanceId}` }, currency);
 
     // Update maintenance record to reflect payment
     return await prismaClient.maintenance.update({
@@ -1192,7 +1222,7 @@ class MaintenanceService {
     });
   }
 
-  async rescheduleMaintenanceDate(maintenanceId: string, newDate: Date) {
+  async rescheduleMaintenanceDate(maintenanceId: string, newDate: Date, reason?: string) {
     const maintenance = await prismaClient.maintenance.findUnique({
       where: { id: maintenanceId }
     });
@@ -1201,22 +1231,15 @@ class MaintenanceService {
       throw ApiError.notFound("Maintenance not found");
     }
 
-    // Create reschedule history entry
-    await prismaClient.maintenanceRescheduleHistory.create({
-      data: {
-        maintenanceId,
-        oldDate: maintenance.scheduleDate || new Date(),
-        newDate: new Date(newDate),
-      }
-    });
-
-    // Update maintenance with reschedule request
+    // Update maintenance with a pending reschedule request. The actual
+    // scheduleDate is only updated once the tenant approves it (see
+    // resolveRescheduleRequest), so this alone must not change the schedule.
     const updated = await prismaClient.maintenance.update({
       where: { id: maintenanceId },
       data: {
         rescheduleRequestDate: new Date(newDate),
         rescheduleRequestStatus: 'PENDING',
-        scheduleDate: new Date(newDate), // Update the actual schedule date
+        rescheduleReason: reason,
       },
       include: {
         // Include necessary relations
@@ -1228,6 +1251,47 @@ class MaintenanceService {
     });
 
     return updated;
+  }
+
+  async resolveRescheduleRequest(maintenanceId: string, tenantId: string, approve: boolean) {
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId }
+    });
+
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance not found");
+    }
+    if (maintenance.tenantId !== tenantId) {
+      throw ApiError.forbidden("You do not have access to this maintenance request");
+    }
+    if (maintenance.rescheduleRequestStatus !== 'PENDING' || !maintenance.rescheduleRequestDate) {
+      throw ApiError.badRequest("There is no pending reschedule request for this job");
+    }
+
+    if (approve) {
+      await prismaClient.maintenanceRescheduleHistory.create({
+        data: {
+          maintenanceId,
+          oldDate: maintenance.scheduleDate || new Date(),
+          newDate: maintenance.rescheduleRequestDate,
+        }
+      });
+    }
+
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        rescheduleRequestStatus: approve ? 'APPROVED' : 'DECLINED',
+        scheduleDate: approve ? maintenance.rescheduleRequestDate : maintenance.scheduleDate,
+        reScheduleMax: approve ? { decrement: maintenance.reScheduleMax > 0 ? 1 : 0 } : undefined,
+      },
+      include: {
+        tenant: true,
+        vendor: true,
+        property: true,
+        category: true,
+      }
+    });
   }
 
   async pauseMaintenance(maintenanceId: string, resumeDate: Date, vendorId?: string) {
@@ -1373,6 +1437,23 @@ class MaintenanceService {
         },
       });
 
+      // Release the vendor's job slot so cancellations don't permanently
+      // inflate their active job count and lock them out of new work.
+      if (vendorId && maintenance.serviceId) {
+        const vendorService = await tx.services.findUnique({
+          where: { id: maintenance.serviceId },
+        });
+        if (vendorService) {
+          await tx.services.update({
+            where: { id: vendorService.id },
+            data: {
+              currentJobs: Math.max(0, vendorService.currentJobs - 1),
+              availability: vendorAvailability.YES,
+            },
+          });
+        }
+      }
+
       //  Update the maintenance main record
       const updatedMaintenance = await tx.maintenance.update({
         where: { id: maintenanceId },
@@ -1382,6 +1463,7 @@ class MaintenanceService {
           cancelReason,
           vendorConsentCancellation: true,
           vendorId: null, // vendor released
+          serviceId: null,
           updatedAt: new Date(),
         },
         include: this.inclusion,

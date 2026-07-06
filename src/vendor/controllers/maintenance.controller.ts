@@ -5,7 +5,7 @@ import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import ServiceServices from "../services/vendor.services";
-import { maintenanceStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
+import { maintenanceStatus, TransactionStatus, vendorAvailability, Currency } from '@prisma/client';
 import { CreateQuoteInput, quoteService, UpdateQuoteInput } from "../../services/quote.service";
 import { stat } from "fs";
 class MaintenanceController {
@@ -198,6 +198,38 @@ class MaintenanceController {
       },
       maintenanceRequest.status,
     );
+
+    // Charge the tenant's wallet now that a vendor has picked up the job,
+    // mirroring the "fare locked in on driver acceptance" model. Requests
+    // with no amount (e.g. pure landlord-covered repairs) are skipped.
+    const tenantUserId = (maintenanceRequest as any).tenant?.userId;
+    const propertyCurrency = (maintenanceRequest as any).property?.currency;
+    if (
+      updated.amount &&
+      updated.paymentStatus === TransactionStatus.PENDING &&
+      tenantUserId
+    ) {
+      try {
+        await MaintenanceService.processPayment(
+          maintenanceId,
+          Number(updated.amount),
+          tenantUserId,
+          req.user.id,
+          propertyCurrency || Currency.NGN
+        );
+      } catch (paymentError) {
+        // Roll back the assignment (including job-count decrement and history)
+        // so the job isn't stuck ASSIGNED with no payment taken.
+        await MaintenanceService.unassignVendorFromMaintenance(
+          maintenanceId,
+          "Payment failed on acceptance"
+        );
+        throw ApiError.badRequest(
+          paymentError instanceof Error ? paymentError.message : "Failed to charge tenant for this job"
+        );
+      }
+    }
+
     return res
       .status(200)
       .json(ApiResponse.success(updated, "Job successfully accepted by vendor"));
@@ -221,16 +253,16 @@ class MaintenanceController {
   // Reschedule maintenance
   rescheduleMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const { newDate } = req.body;
+    const { newDate, reason } = req.body;
 
     if (!newDate) {
       throw ApiError.badRequest("New date is required");
     }
 
-    const updated = await MaintenanceService.rescheduleMaintenanceDate(maintenanceId, newDate);
+    const updated = await MaintenanceService.rescheduleMaintenanceDate(maintenanceId, newDate, reason);
     return res
       .status(200)
-      .json(ApiResponse.success(updated, "Reschedule request sent successfully"));
+      .json(ApiResponse.success(updated, "Reschedule request sent, waiting for tenant approval"));
   });
 
   // Pause maintenance
@@ -288,6 +320,12 @@ class MaintenanceController {
     if (maintenance.vendorId !== vendorId) {
       throw new Error("Unauthorized: Only the assigned vendor can consent to cancellation.");
     }
+    // Release the vendor's job slot so cancellations don't permanently
+    // inflate their active job count and lock them out of new work.
+    if (maintenance.serviceId) {
+      await ServiceServices.decrementJobCount(maintenance.serviceId, vendorId);
+    }
+
     // Update the maintenance record to reflect vendor consent
     const updated = await MaintenanceService.updateMaintenance(
       maintenanceId,

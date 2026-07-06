@@ -12,6 +12,8 @@ import { maintenanceDecisionStatus} from '@prisma/client';
 import tenantsServices from "../services/tenants.services";
 import tenantService from "../../services/tenant.service";
 import maintenanceService from "../../services/maintenance.service";
+import { submitPriceOfferSchema } from "../../validations/schemas/maintenance.schema";
+import reviewService from "../../services/review.service";
 class MaintenanceControls {
 
  public createMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -97,9 +99,11 @@ class MaintenanceControls {
       throw ApiError.forbidden("You do not have access to this maintenance request");
     }
 
+    const timeSpentSeconds = await MaintenanceService.getJobTimeSpentSeconds(maintenanceId);
+
     return res
       .status(200)
-      .json(ApiResponse.success(maintenance, "Tenant maintenance record retrieved successfully"));
+      .json(ApiResponse.success({ ...maintenance, timeSpentSeconds }, "Tenant maintenance record retrieved successfully"));
   });
 
   verifyMaintenanceCompletion = asyncHandler(async (req: CustomRequest, res: Response) => {
@@ -136,6 +140,113 @@ class MaintenanceControls {
 
     return res.status(200).json(
       ApiResponse.success(verified, "Maintenance completion verified successfully")
+    );
+  });
+
+  resolveReschedule = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    if (!tenantId) {
+      throw ApiError.unauthorized("Kindly log in as a tenant");
+    }
+
+    const { approve } = req.body as { approve?: boolean };
+    if (typeof approve !== "boolean") {
+      throw ApiError.badRequest("approve (true/false) is required");
+    }
+
+    const maintenanceId = req.params.id;
+    const updated = await MaintenanceService.resolveRescheduleRequest(maintenanceId, tenantId, approve);
+
+    return res.status(200).json(
+      ApiResponse.success(updated, approve ? "Reschedule approved" : "Reschedule declined")
+    );
+  });
+
+  submitPriceOffer = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    if (!tenantId) {
+      throw ApiError.unauthorized("Kindly log in as a tenant");
+    }
+
+    const { error, value } = submitPriceOfferSchema.validate(req.body);
+    if (error) {
+      throw ApiError.badRequest(error.details[0].message);
+    }
+
+    const maintenanceId = req.params.id;
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance record not found");
+    }
+    if (maintenance.tenantId !== tenantId) {
+      throw ApiError.forbidden("You do not have access to this maintenance request");
+    }
+    if (!maintenance.handleByLandlord || !maintenance.tenantWantsToPay) {
+      throw ApiError.badRequest("This request does not require a price offer");
+    }
+    if (maintenance.landlordDecision !== maintenanceDecisionStatus.APPROVED) {
+      throw ApiError.badRequest(
+        "Your landlord needs to approve your offer before you can set a price"
+      );
+    }
+    if (maintenance.amount) {
+      throw ApiError.badRequest("A price offer has already been submitted for this request");
+    }
+
+    const updated = await MaintenanceService.updateMaintenance(maintenanceId, {
+      amount: value.amount,
+      selectedPackage: value.selectedPackage,
+    });
+
+    return res.status(200).json(
+      ApiResponse.success(updated, "Price offer submitted successfully")
+    );
+  });
+
+  rateVendor = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    const userId = req.user?.id;
+    if (!tenantId || !userId) {
+      throw ApiError.unauthorized("Kindly log in as a tenant");
+    }
+
+    const { rating, comment } = req.body as { rating?: number; comment?: string };
+    if (typeof rating !== "number" || rating < 1 || rating > 5) {
+      throw ApiError.badRequest("A rating between 1 and 5 is required");
+    }
+
+    const maintenanceId = req.params.id;
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance record not found");
+    }
+    if (maintenance.tenantId !== tenantId) {
+      throw ApiError.forbidden("You do not have access to this maintenance request");
+    }
+    if (maintenance.status !== maintenanceStatus.COMPLETED) {
+      throw ApiError.badRequest("You can only rate a vendor after the job is completed");
+    }
+    if (!maintenance.vendorId) {
+      throw ApiError.badRequest("No vendor is assigned to this job");
+    }
+
+    const existing = await reviewService.getReviewByMaintenanceId(maintenanceId);
+    if (existing) {
+      throw ApiError.badRequest("You have already rated this job");
+    }
+
+    const review = await reviewService.createReview({
+      rating,
+      comment,
+      vendorId: maintenance.vendorId,
+      tenantId,
+      propertyId: maintenance.propertyId || undefined,
+      maintenanceId,
+      reviewById: userId,
+    });
+
+    return res.status(201).json(
+      ApiResponse.success(review, "Vendor rated successfully")
     );
   });
 

@@ -21,6 +21,9 @@ class MaintenanceRouter {
         this.router.post('/requests', this.authenticateService.requireTenantContext(), validateBody(maintenanceSchema), MaintenanceController.createMaintenance);
         this.router.get('/requests', this.authenticateService.requireTenantContext(), MaintenanceController.getMaintenances);
         this.router.get('/requests/:id', this.authenticateService.requireTenantContext(), MaintenanceController.getMaintenancesById);
+        this.router.post('/requests/:id/price-offer', this.authenticateService.requireTenantContext(), MaintenanceController.submitPriceOffer);
+        this.router.post('/requests/:id/reschedule-response', this.authenticateService.requireTenantContext(), MaintenanceController.resolveReschedule);
+        this.router.post('/requests/:id/review', this.authenticateService.requireTenantContext(), MaintenanceController.rateVendor);
         this.router.post('/requests/:id/verify', this.authenticateService.requireTenantContext(), MaintenanceController.verifyMaintenanceCompletion);
         this.router.post('/requests/:id/comment', this.authenticateService.requireTenantContext(), MaintenanceController.postMaintenanceComment);
     }

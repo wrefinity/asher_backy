@@ -72,10 +72,10 @@ class MaintenanceController {
       }
 
       const checkPropertyExist = await propertyService.getPropertiesById(value.propertyId)
-      if (checkPropertyExist) return res.status(400).json({ message: "propery doesnt exist" })
+      if (!checkPropertyExist) return res.status(400).json({ message: "property doesn't exist" })
 
       const isWhitelisted = await maintenanceService.checkWhitelist(
-        checkPropertyExist?.landlordId,
+        checkPropertyExist.landlordId,
         value.categoryId,
         value.subcategoryId,
         value.propertyId,
@@ -89,23 +89,48 @@ class MaintenanceController {
   };
 
   public requestMaintenanceCancellation = async (req: CustomRequest, res: Response) => {
-    const maintenanceId = req.params.maintenanceId;
-    const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
-    const tenantId = req.user.tenant?.id;
+    try {
+      const maintenanceId = req.params.maintenanceId;
+      const tenantId = req.user?.tenant?.id;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Please log in as a tenant" });
+      }
 
-    const { error, value } = maintenanceCancelSchema.validate(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
+      const maintenance = await maintenanceService.getMaintenanceById(maintenanceId);
+      if (!maintenance) {
+        return res.status(404).json({ message: `Maintenance with id: ${maintenanceId} doesn't exist` });
+      }
 
-    // Only the assigned tenant can initiate the cancellation request
-    if (maintenance.tenantId !== tenantId) {
-      throw new Error("Unauthorized: Only the assigned tenant can request cancellation.");
+      const { error, value } = maintenanceCancelSchema.validate(req.body);
+      if (error) return res.status(400).json({ message: error.details[0].message });
+
+      // Only the assigned tenant can initiate the cancellation request
+      if (maintenance.tenantId !== tenantId) {
+        return res.status(403).json({ message: "Unauthorized: Only the assigned tenant can request cancellation." });
+      }
+
+      if (maintenance.status === maintenanceStatus.COMPLETED || maintenance.status === maintenanceStatus.CANCEL) {
+        return res.status(400).json({ message: `Cannot cancel a request that is already ${maintenance.status.toLowerCase()}` });
+      }
+
+      // No vendor assigned yet, so there's no one whose consent is needed - cancel immediately.
+      const noVendorAssigned = !maintenance.vendorId;
+
+      const updated = await maintenanceService.updateMaintenance(maintenanceId, {
+        flagCancellation: true,
+        cancelReason: value.reason,
+        status: noVendorAssigned ? maintenanceStatus.CANCEL : maintenanceStatus.CANCELLATION_REQUEST
+      });
+
+      return res.status(200).json({
+        message: noVendorAssigned
+          ? "Request cancelled successfully"
+          : "Cancellation request submitted, waiting for vendor confirmation",
+        maintenance: updated
+      });
+    } catch (error) {
+      ErrorService.handleError(error, res);
     }
-    // Update the maintenance record with cancellation flag and reason
-    await maintenanceService.updateMaintenance(maintenanceId, {
-      flagCancellation: true,
-      cancelReason: value.reason,
-      status: maintenanceStatus.CANCELLATION_REQUEST
-    });
   }
 
   public rescheduleMaintenanceController = async (req: CustomRequest, res: Response) => {

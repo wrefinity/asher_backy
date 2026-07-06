@@ -22,6 +22,8 @@ model maintenance {
   chatRoomId                   String?                        @unique
   status                       maintenanceStatus              @default(UNASSIGNED)
   serviceId                    String?
+  selectedPackage              String?
+  tenantWantsToPay             Boolean?
   paymentStatus                TransactionStatus              @default(PENDING)
   amount                       Decimal?                       @db.Decimal(18, 2)
   roomId                       String?
@@ -53,6 +55,7 @@ model maintenance {
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
   MaintenanceQuote             MaintenanceQuote[]
   MaintenanceNote              MaintenanceNote[]
+  review                       reviews?
 
   @@index([vendorId])
   @@index([status])
