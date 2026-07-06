@@ -7,6 +7,7 @@ import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import tenantsServices from "../../services/tenant.service";
+import { resolveTenantBillAccessScope } from "../../utils/billScope.util";
 
 interface TenantBillQueryParams {
   page?: string;
@@ -30,11 +31,11 @@ class TenantBillController {
 
     const tenant = await tenantsServices.getTenantById(tenantId);
     const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
-    const landlordId = tenant?.landlordId || null;
+    const billScope = await resolveTenantBillAccessScope(tenantId);
 
     const {
       page = "1",
-      limit = "10",
+      limit = "100",
       billId,
       payableBy,
       status,
@@ -54,7 +55,7 @@ class TenantBillController {
     const result = await landlordBillsService.getBillsForTenant(
       tenantId,
       propertyId ? String(propertyId) : null,
-      landlordId ? String(landlordId) : null,
+      billScope.includePropertyWideBills,
       {
         pagination: {
           page: parseInt(page, 10),
@@ -84,14 +85,12 @@ class TenantBillController {
     }
 
     const days = req.query.days ? Number(req.query.days) : 30;
-    const tenant = await tenantsServices.getTenantById(tenantId);
-    const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
-    const landlordId = tenant?.landlordId || null;
+    const billScope = await resolveTenantBillAccessScope(tenantId);
 
     const tenantBills = await landlordBillsService.getUpcomingBillsForTenant(
       tenantId,
-      propertyId ? String(propertyId) : null,
-      landlordId ? String(landlordId) : null,
+      billScope.propertyId,
+      billScope.includePropertyWideBills,
       days
     );
 
@@ -106,15 +105,13 @@ class TenantBillController {
       throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    const tenant = await tenantsServices.getTenantById(tenantId);
-    const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
-    const landlordId = tenant?.landlordId || null;
+    const billScope = await resolveTenantBillAccessScope(tenantId);
 
     const [tenantBills, analysis] = await Promise.all([
       landlordBillsService.getOverdueBillsForTenant(
         tenantId,
-        propertyId ? String(propertyId) : null,
-        landlordId ? String(landlordId) : null
+        billScope.propertyId,
+        billScope.includePropertyWideBills
       ),
       tenantBillsService.getTenantOverdueAnalysis(tenantId),
     ]);

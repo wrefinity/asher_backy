@@ -227,7 +227,7 @@ export function mergeFinancialRules(
 
   return {
     ...base,
-    lateFeeEnabled: override.lateFeeEnabled ?? base.lateFeeEnabled,
+    lateFeeEnabled: base.lateFeeEnabled,
     lateFeePercent,
     lateFeeFixed,
     lateFeeAmount: lateFeeFixed > 0 ? lateFeeFixed : base.lateFeeAmount,
@@ -239,7 +239,7 @@ export function mergeFinancialRules(
 export function propertySettingsToOverride(record: {
   lateFee?: { toNumber?: () => number } | number | null;
   lateFeePercentage?: number | null;
-  gracePeriodDays?: number | null;
+  gracePeriodDays?: number | string | null;
   lateFeeFrequency?: LatePaymentFeeType | null;
 } | null): PropertyFinancialOverride | null {
   if (!record) return null;
@@ -251,12 +251,33 @@ export function propertySettingsToOverride(record: {
         : record.lateFee.toNumber?.() ?? Number(record.lateFee)
       : 0;
 
+  const parsedGrace = parseGracePeriodDays(record.gracePeriodDays);
+
   return {
     lateFeeEnabled: (record.lateFeePercentage ?? 0) > 0 || fixed > 0,
     lateFeePercent: record.lateFeePercentage ?? null,
     lateFeeFixed: fixed > 0 ? fixed : null,
-    graceDays: record.gracePeriodDays ?? null,
+    graceDays: parsedGrace,
     lateFeeFrequency: mapFromPropertyLateFeeFrequency(record.lateFeeFrequency),
+  };
+}
+
+/** Re-apply global late-fee cap after property overrides are merged. */
+export function capMergedLateFeePercent(
+  rules: ResolvedFinancialRules,
+  baseAmount = 0
+): ResolvedFinancialRules {
+  if (rules.lateFeeMaxPercent == null || rules.lateFeePercent <= rules.lateFeeMaxPercent) {
+    return rules;
+  }
+  const lateFeePercent = rules.lateFeeMaxPercent;
+  return {
+    ...rules,
+    lateFeePercent,
+    lateFeeAmount:
+      rules.lateFeeFixed > 0
+        ? rules.lateFeeFixed
+        : amountFromRentPercent(baseAmount, lateFeePercent),
   };
 }
 

@@ -16,6 +16,12 @@ import LogsServices from '../../services/logs.services';
 import InspectionActivityLogService from '../../services/inspectionActivityLog.service';
 import { appendActivityLogRef } from '../../utils/activityLogRef.util';
 import { LogType } from '@prisma/client';
+import LandlordSettingsService from '../services/propertySetting.service';
+import { resolveFinancialRules } from '../../utils/globalSettings.util';
+import {
+  resolveInspectionScheduledAt,
+  validateInspectionNotice,
+} from '../../utils/settingsEnforcement.util';
 
 
 class InspectionController {
@@ -45,6 +51,26 @@ class InspectionController {
       if (property.landlordId !== landlordId) {
         console.error('❌ Unauthorized: Property landlordId:', property.landlordId, 'User landlordId:', landlordId);
         return res.status(403).json({ error: 'Unauthorized: You do not own this property' });
+      }
+
+      const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+      const rules = resolveFinancialRules(
+        globalSettings,
+        Number(property.price ?? 0),
+        property.priceFrequency
+      );
+      const scheduledAt = resolveInspectionScheduledAt(
+        req.body.scheduledDate,
+        req.body.scheduledTime
+      );
+      if (scheduledAt) {
+        const noticeCheck = validateInspectionNotice(
+          scheduledAt,
+          rules.inspectionNoticeHours
+        );
+        if (!noticeCheck.valid) {
+          return res.status(400).json({ error: noticeCheck.error });
+        }
       }
 
       console.log('✅ Property verified, creating inspection...');
@@ -244,6 +270,28 @@ class InspectionController {
       );
       if (!property || property.landlordId !== landlordId) {
         return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      if (req.body.scheduledDate !== undefined) {
+        const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+        const rules = resolveFinancialRules(
+          globalSettings,
+          Number(property.price ?? 0),
+          property.priceFrequency
+        );
+        const scheduledAt = resolveInspectionScheduledAt(
+          req.body.scheduledDate,
+          req.body.scheduledTime ?? inspection.scheduledTime
+        );
+        if (scheduledAt) {
+          const noticeCheck = validateInspectionNotice(
+            scheduledAt,
+            rules.inspectionNoticeHours
+          );
+          if (!noticeCheck.valid) {
+            return res.status(400).json({ error: noticeCheck.error });
+          }
+        }
       }
 
       const updatedInspection = await InspectionService.updateInspection(

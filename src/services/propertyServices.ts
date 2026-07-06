@@ -7,6 +7,12 @@ import { AdditionalRule, Booking, ICommercialDTO, IResidentialDTO, SeasonalPrici
 import { PropertyListingDTO } from "../landlord/validations/interfaces/propsSettings"
 import LandlordSettingsService from "../landlord/services/propertySetting.service";
 import { resolveFinancialRules } from "../utils/globalSettings.util";
+import {
+  frequencyTypeToPriceFrequency,
+  startOfCalendarDay,
+  validateRentIncreaseNotice,
+} from "../utils/settingsEnforcement.util";
+import pendingRentAdjustmentService from "./pendingRentAdjustment.service";
 import { ListingNormalizer, NormalizedListing } from "../utils/ListingNormalizer";
 import { getCurrencyConversionRate, resolveCurrencyFromRegion } from "../utils/helpers";
 import { ConflictError, NotFoundError } from "./error.service";
@@ -236,6 +242,20 @@ class PropertyService {
     uploadedFiles: any[] = [],
     userId?: string
   ) {
+    const beforeUpdate = await prismaClient.properties.findUnique({
+      where: { id: propertyId },
+      select: {
+        price: true,
+        securityDeposit: true,
+        currency: true,
+        landlordId: true,
+      },
+    });
+
+    if (!beforeUpdate) {
+      throw new Error('Property not found');
+    }
+
     const existingProperty = await prismaClient.properties.findUnique({
       where: { id: propertyId },
       select: {
@@ -248,6 +268,60 @@ class PropertyService {
 
     if (!existingProperty) {
       throw new Error('Property not found');
+    }
+
+    let deferPriceUpdate = false;
+    let scheduledRentPayload: {
+      oldRent: number;
+      newRent: number;
+      effectiveDate: Date;
+    } | null = null;
+
+    if (data.price != null && beforeUpdate) {
+      const oldRent = Number(beforeUpdate.price ?? 0);
+      const newRent = Number(data.price);
+      if (newRent > oldRent) {
+        const globalSettings = await LandlordSettingsService.getAllGlobalSettings(
+          beforeUpdate.landlordId
+        );
+        const priceFreqRow = await prismaClient.properties.findUnique({
+          where: { id: propertyId },
+          select: { priceFrequency: true },
+        });
+        const rules = resolveFinancialRules(
+          globalSettings,
+          newRent,
+          priceFreqRow?.priceFrequency
+        );
+
+        const activeTenants = await prismaClient.tenants.count({
+          where: { propertyId, isCurrentLease: true, isDeleted: false },
+        });
+
+        if (activeTenants > 0 && rules.rentIncreaseNoticeDays != null && rules.rentIncreaseNoticeDays > 0) {
+          const effectiveDate = data.priceEffectiveDate
+            ? new Date(data.priceEffectiveDate as string | Date)
+            : null;
+          if (!effectiveDate || Number.isNaN(effectiveDate.getTime())) {
+            throw new Error(
+              `Rent increases require ${rules.rentIncreaseNoticeDays} days notice when tenants are in place. Provide priceEffectiveDate or adjust rent per tenant.`
+            );
+          }
+          const noticeCheck = validateRentIncreaseNotice(
+            effectiveDate,
+            rules.rentIncreaseNoticeDays
+          );
+          if (!noticeCheck.valid) {
+            throw new Error(noticeCheck.error ?? 'Rent increase notice requirement not met');
+          }
+
+          if (startOfCalendarDay(effectiveDate).getTime() > startOfCalendarDay(new Date()).getTime()) {
+            deferPriceUpdate = true;
+            scheduledRentPayload = { oldRent, newRent, effectiveDate };
+            delete data.price;
+          }
+        }
+      }
     }
 
     const result = await prismaClient.$transaction(async (tx) => {
@@ -293,11 +367,15 @@ class PropertyService {
         deleteDocuments = [],
         uploadedFiles: _,
         virtualTourUrl: virtualTourUrlRaw,
+        priceEffectiveDate: _priceEffectiveDate,
         ...propertyData 
       } = data;
 
       // Handle decimal fields
       if (propertyData.price) propertyData.price = new Prisma.Decimal(propertyData.price);
+      if (propertyData.securityDeposit != null && propertyData.securityDeposit !== '') {
+        propertyData.securityDeposit = new Prisma.Decimal(propertyData.securityDeposit);
+      }
       if (propertyData.marketValue) propertyData.marketValue = new Prisma.Decimal(propertyData.marketValue);
       if (propertyData.propertyValue) propertyData.propertyValue = new Prisma.Decimal(propertyData.propertyValue);
 
@@ -462,6 +540,55 @@ class PropertyService {
             result.country || existingProperty.country || "",
             result.cachedNearbyPlacesFetchedAt ?? existingProperty.cachedNearbyPlacesFetchedAt
           );
+        }
+      }
+    }
+
+    if (result && beforeUpdate) {
+      if (scheduledRentPayload) {
+        const tenants = await prismaClient.tenants.findMany({
+          where: { propertyId, isCurrentLease: true, isDeleted: false },
+          select: { id: true },
+        });
+        for (const tenant of tenants) {
+          await pendingRentAdjustmentService.scheduleAdjustment({
+            tenantId: tenant.id,
+            propertyId,
+            landlordId: beforeUpdate.landlordId,
+            oldRent: scheduledRentPayload.oldRent,
+            newRent: scheduledRentPayload.newRent,
+            effectiveDate: scheduledRentPayload.effectiveDate,
+            createdById: userId,
+          });
+        }
+      }
+
+      const oldRent = Number(beforeUpdate.price ?? 0);
+      const newRent = Number(result.price ?? 0);
+      const oldDeposit = Number(beforeUpdate.securityDeposit ?? 0);
+      const newDeposit = Number(result.securityDeposit ?? 0);
+      const rentChanged =
+        !deferPriceUpdate && data.price != null && newRent !== oldRent;
+      const depositChanged =
+        data.securityDeposit != null && newDeposit !== oldDeposit;
+
+      if (rentChanged || depositChanged) {
+        try {
+          const tenancyChangeNotification = (
+            await import('./tenancyChangeNotification.service')
+          );
+          await tenancyChangeNotification.notifyPropertyTenancyFinancialChanges({
+            propertyId,
+            landlordId: beforeUpdate.landlordId,
+            landlordUserId: userId,
+            currency: result.currency ? String(result.currency) : beforeUpdate.currency,
+            oldRent: rentChanged ? oldRent : undefined,
+            newRent: rentChanged ? newRent : undefined,
+            oldDeposit: depositChanged ? oldDeposit : undefined,
+            newDeposit: depositChanged ? newDeposit : undefined,
+          });
+        } catch (notifyError) {
+          console.error('Failed to notify tenants of property financial change:', notifyError);
         }
       }
     }
@@ -1552,20 +1679,32 @@ class PropertyService {
         })
     }
 
-    getPropertyGlobalFees = async (landlordId: string, _settingType?: PropsSettingType) => {
+    getPropertyGlobalFees = async (landlordId: string, propertyId?: string) => {
         const settings = await prismaClient.settings.findFirst({
             where: { landlordId, isDeleted: false },
         });
         if (!settings) return null;
 
+        const property = propertyId
+            ? await prismaClient.properties.findUnique({
+                where: { id: propertyId },
+                select: { price: true, priceFrequency: true },
+              })
+            : null;
+        const rent = Number(property?.price ?? 0);
+        const rules = resolveFinancialRules(settings, rent, property?.priceFrequency);
+
         return {
-            applicationFee: settings.applicationFeePercentage,
-            depositPercentage: settings.depositPercentage,
-            lateFeePercentage: settings.lateFeePercentage,
+            applicationFee: rules.applicationFeePercent,
+            depositPercentage: rules.depositPercent,
+            lateFeePercentage: rules.lateFeePercent,
             lateFeeFrequency: settings.lateFeeFrequency,
-            gracePeriodDays: settings.lateFeeGracePeriod,
-            refundPolicy: settings.refundPolicy,
-            refundTimeframe: settings.refundTimeframe,
+            gracePeriodDays: rules.graceDays,
+            refundPolicy: rules.refundPolicy,
+            refundTimeframe: rules.refundTimeframe,
+            rentIncreaseNoticeDays: rules.rentIncreaseNoticeDays,
+            depositReturnTimeframeDays: rules.depositReturnTimeframeDays,
+            inspectionNoticeHours: rules.inspectionNoticeHours,
         };
     }
     // property listings
@@ -3516,12 +3655,26 @@ class PropertyService {
                       ? initNum
                       : undefined;
 
+            const propertyRest = rest as { priceFrequency?: PriceFrequency };
+            if (!propertyRest.priceFrequency && landlordId) {
+                const globalSettingsForFreq =
+                    await LandlordSettingsService.getAllGlobalSettings(landlordId);
+                if (globalSettingsForFreq?.defaultRentCollectionFrequency) {
+                    const mapped = frequencyTypeToPriceFrequency(
+                        globalSettingsForFreq.defaultRentCollectionFrequency
+                    );
+                    if (mapped) {
+                        propertyRest.priceFrequency = mapped;
+                    }
+                }
+            }
+
             if ((!depositAmount || Number(depositAmount) <= 0) && price && landlordId) {
                 const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
                 const rules = resolveFinancialRules(
                     globalSettings,
                     Number(price),
-                    (rest as { priceFrequency?: PriceFrequency }).priceFrequency
+                    propertyRest.priceFrequency
                 );
                 if (rules.depositAmount > 0) {
                     depositAmount = rules.depositAmount;
@@ -3596,6 +3749,7 @@ class PropertyService {
             const property = await tx.properties.create({
                 data: {
                     ...(rest as Prisma.propertiesCreateInput),
+                    priceFrequency: propertyRest.priceFrequency ?? undefined,
                     price: price ? new Prisma.Decimal(price) : null, // Convert to Decimal
                     marketValue:
                         marketValue != null && !Number.isNaN(Number(marketValue))

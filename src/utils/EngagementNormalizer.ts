@@ -116,7 +116,9 @@ export class EngagementNormalizer {
     const propertyId = raw.propertyId || null;
     let listing: NormalizedListing | null = null;
 
-    if (listingId) {
+    if (raw.property || raw.propertyListing) {
+      listing = this.minimalListingFromEnquiryRaw(raw);
+    } else if (listingId) {
       try {
         listing =
           await propertyServices.getPropertyListingByListingIdNew(listingId);
@@ -219,5 +221,43 @@ export class EngagementNormalizer {
     }
 
     return results;
+  }
+
+  /** Lightweight listing shape for enquiry lists — avoids full listing hydration. */
+  private static minimalListingFromEnquiryRaw(raw: any): NormalizedListing | null {
+    const property = raw.property;
+    const listingRow = raw.propertyListing;
+    const listingId = raw.propertyListingId || listingRow?.id || null;
+    if (!listingId && !property) return null;
+
+    const propertyId = raw.propertyId || property?.id || null;
+    const activeSpec = property?.specification?.[0];
+    const residential = activeSpec?.residential;
+
+    return {
+      id: listingId,
+      propertyId,
+      price: listingRow?.price ?? property?.price ?? null,
+      property: property
+        ? {
+            id: property.id,
+            name: property.name,
+            address: property.address,
+            city: property.city,
+            state: property.state,
+            country: property.country,
+            zipcode: property.zipcode,
+            images: property.images,
+            price: property.price,
+            currency: property.currency,
+          }
+        : undefined,
+      listingEntity: {
+        id: listingId,
+        name: residential?.name || property?.name || 'Property',
+        entityPrice: listingRow?.price ?? property?.price ?? null,
+        images: property?.images,
+      },
+    } as unknown as NormalizedListing;
   }
 }

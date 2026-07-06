@@ -5,6 +5,7 @@ import {
   logTypeStatus,
 } from "@prisma/client";
 import { prismaClient } from "..";
+import { propertyEngagementUrl } from "../utils/propertyEngagementUrl";
 
 export type ListingEngagementStage =
   | "none"
@@ -38,6 +39,7 @@ export interface ListingEngagementResult {
   inviteResponse: string | null;
   applicationStatus: string | null;
   logStatus: string | null;
+  propertyListingId: string | null;
 }
 
 const NO_ENGAGEMENT: ListingEngagementResult = {
@@ -55,6 +57,7 @@ const NO_ENGAGEMENT: ListingEngagementResult = {
   inviteResponse: null,
   applicationStatus: null,
   logStatus: null,
+  propertyListingId: null,
 };
 
 function formatDateIso(value?: Date | string | null): string | null {
@@ -70,31 +73,38 @@ function resolveFromApplication(
     createdAt: Date;
     updatedAt: Date;
     stepCompleted?: number | null;
-  } | null | undefined
+  } | null | undefined,
+  listingId: string
 ): ListingEngagementResult | null {
   if (!application) return null;
 
   const date = formatDateIso(application.updatedAt || application.createdAt);
   const appId = application.id;
+  const base = { propertyListingId: listingId, applicationId: appId };
 
   switch (application.status) {
     case ApplicationStatus.DECLINED:
       return {
         ...NO_ENGAGEMENT,
+        ...base,
         hasEngagement: true,
         stage: "application_declined",
         label: "Application declined",
         description: "The landlord declined your application for this property.",
         date,
         canEnquire: false,
-        actionLabel: "View application",
-        actionHref: `/dashboard/applications/${appId}/declined?applicationId=${appId}`,
-        applicationId: appId,
+        actionLabel: "View details",
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "status",
+          applicationId: appId,
+          status: "declined",
+        }),
         applicationStatus: application.status,
       };
     case ApplicationStatus.SUBMITTED:
       return {
         ...NO_ENGAGEMENT,
+        ...base,
         hasEngagement: true,
         stage: "application_submitted",
         label: "Application submitted",
@@ -102,13 +112,17 @@ function resolveFromApplication(
         date,
         canEnquire: false,
         actionLabel: "Track application",
-        actionHref: `/dashboard/applications/${appId}/submitted?applicationId=${appId}`,
-        applicationId: appId,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "status",
+          applicationId: appId,
+          status: "submitted",
+        }),
         applicationStatus: application.status,
       };
     case ApplicationStatus.MAKEPAYMENT:
       return {
         ...NO_ENGAGEMENT,
+        ...base,
         hasEngagement: true,
         stage: "application_payment",
         label: "Payment required",
@@ -116,14 +130,18 @@ function resolveFromApplication(
         date,
         canEnquire: false,
         actionLabel: "Complete payment",
-        actionHref: `/dashboard/applications/${appId}/makepayment?applicationId=${appId}`,
-        applicationId: appId,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "payment",
+          applicationId: appId,
+          status: "makepayment",
+        }),
         applicationStatus: application.status,
       };
     case ApplicationStatus.APPROVED:
     case ApplicationStatus.ACCEPTED:
       return {
         ...NO_ENGAGEMENT,
+        ...base,
         hasEngagement: true,
         stage: "application_approved",
         label: "Application approved",
@@ -131,8 +149,11 @@ function resolveFromApplication(
         date,
         canEnquire: false,
         actionLabel: "View details",
-        actionHref: `/dashboard/applications/${appId}/approved?applicationId=${appId}`,
-        applicationId: appId,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "status",
+          applicationId: appId,
+          status: "approved",
+        }),
         applicationStatus: application.status,
       };
     case ApplicationStatus.COMPLETED:
@@ -140,6 +161,7 @@ function resolveFromApplication(
     case ApplicationStatus.AGREEMENTS_SIGNED:
       return {
         ...NO_ENGAGEMENT,
+        ...base,
         hasEngagement: true,
         stage: "application_completed",
         label: "Application completed",
@@ -147,8 +169,11 @@ function resolveFromApplication(
         date,
         canEnquire: false,
         actionLabel: "View application",
-        actionHref: `/dashboard/applications/${appId}/completed?applicationId=${appId}`,
-        applicationId: appId,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "status",
+          applicationId: appId,
+          status: "completed",
+        }),
         applicationStatus: application.status,
       };
     case ApplicationStatus.PENDING:
@@ -156,6 +181,7 @@ function resolveFromApplication(
       const inProgress = (application.stepCompleted ?? 1) > 1;
       return {
         ...NO_ENGAGEMENT,
+        ...base,
         hasEngagement: true,
         stage: inProgress ? "application_in_progress" : "application_available",
         label: inProgress ? "Application in progress" : "Ready to apply",
@@ -165,10 +191,11 @@ function resolveFromApplication(
         date,
         canEnquire: false,
         actionLabel: inProgress ? "Continue application" : "Start application",
-        actionHref: inProgress
-          ? `/dashboard/applications/${appId}/progress?applicationId=${appId}`
-          : `/dashboard/applications/${appId}/apply?applicationId=${appId}`,
-        applicationId: appId,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "apply",
+          applicationId: appId,
+          status: inProgress ? "resume" : undefined,
+        }),
         applicationStatus: application.status,
       };
     }
@@ -193,11 +220,12 @@ function resolveFromInvite(
       stepCompleted?: number | null;
     } | null;
   } | null | undefined,
-  enquiryId: string | null
+  enquiryId: string | null,
+  listingId: string
 ): ListingEngagementResult | null {
   if (!invite) return null;
 
-  const fromApp = resolveFromApplication(invite.application);
+  const fromApp = resolveFromApplication(invite.application, listingId);
   if (fromApp) {
     return {
       ...fromApp,
@@ -211,6 +239,10 @@ function resolveFromInvite(
     invite.reScheduleDate || invite.scheduleDate || invite.updatedAt
   );
   const inviteDate = formatDateIso(invite.createdAt);
+  const viewingUrl = propertyEngagementUrl(listingId, {
+    focus: "viewing",
+    invitationId: invite.id,
+  });
 
   switch (invite.response) {
     case InvitedResponse.AWAITING_FEEDBACK:
@@ -223,10 +255,14 @@ function resolveFromInvite(
         date: viewingDate,
         canEnquire: false,
         actionLabel: "Leave feedback",
-        actionHref: `/dashboard/property-viewings/${invite.id}`,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "feedback",
+          invitationId: invite.id,
+        }),
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
     case InvitedResponse.FEEDBACK:
       return {
@@ -237,16 +273,15 @@ function resolveFromInvite(
         description: "Thanks for your feedback — the landlord will review and may invite you to apply.",
         date: viewingDate,
         canEnquire: false,
-        actionLabel: "View viewing",
-        actionHref: `/dashboard/property-viewings/${invite.id}`,
+        actionLabel: "View property",
+        actionHref: viewingUrl,
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
     case InvitedResponse.APPLY:
-    case InvitedResponse.APPLICATION_NOT_STARTED: {
-      const applyPathId =
-        invite.propertiesId || invite.propertyListingId || "start";
+    case InvitedResponse.APPLICATION_NOT_STARTED:
       return {
         ...NO_ENGAGEMENT,
         hasEngagement: true,
@@ -256,12 +291,15 @@ function resolveFromInvite(
         date: inviteDate,
         canEnquire: false,
         actionLabel: "Start application",
-        actionHref: `/dashboard/applications/${applyPathId}/apply?applicationInviteId=${invite.id}`,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "apply",
+          applicationInviteId: invite.id,
+        }),
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
-    }
     case InvitedResponse.APPLICATION_STARTED: {
       const appId = invite.application?.id;
       return {
@@ -273,13 +311,17 @@ function resolveFromInvite(
         date: inviteDate,
         canEnquire: false,
         actionLabel: "Continue application",
-        actionHref: appId
-          ? `/dashboard/applications/${appId}/apply?applicationId=${appId}`
-          : `/dashboard/applications/${invite.propertiesId || invite.propertyListingId || "start"}/apply?applicationInviteId=${invite.id}`,
+        actionHref: propertyEngagementUrl(listingId, {
+          focus: "apply",
+          applicationId: appId ?? undefined,
+          applicationInviteId: invite.id,
+          status: "resume",
+        }),
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
         applicationId: appId ?? null,
+        propertyListingId: listingId,
       };
     }
     case InvitedResponse.SCHEDULED:
@@ -292,10 +334,11 @@ function resolveFromInvite(
         date: viewingDate,
         canEnquire: false,
         actionLabel: "View schedule",
-        actionHref: `/dashboard/property-viewings/${invite.id}`,
+        actionHref: viewingUrl,
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
     case InvitedResponse.ACCEPTED:
     case InvitedResponse.RESCHEDULED_ACCEPTED:
@@ -309,10 +352,11 @@ function resolveFromInvite(
         date: viewingDate,
         canEnquire: false,
         actionLabel: "View details",
-        actionHref: `/dashboard/property-viewings/${invite.id}`,
+        actionHref: viewingUrl,
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
     case InvitedResponse.REJECTED:
     case InvitedResponse.CANCELLED:
@@ -325,11 +369,12 @@ function resolveFromInvite(
         description: "You declined or cancelled the viewing invite for this property.",
         date: inviteDate,
         canEnquire: false,
-        actionLabel: "View viewings",
-        actionHref: "/dashboard/property-viewings",
+        actionLabel: "View history",
+        actionHref: "/dashboard/property-viewings?tab=history",
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
     case InvitedResponse.PENDING:
     case InvitedResponse.RE_INVITED:
@@ -344,10 +389,11 @@ function resolveFromInvite(
         date: inviteDate,
         canEnquire: false,
         actionLabel: "Respond to invite",
-        actionHref: `/dashboard/property-viewings/${invite.id}`,
+        actionHref: viewingUrl,
         enquiryId,
         inviteId: invite.id,
         inviteResponse: invite.response,
+        propertyListingId: listingId,
       };
   }
 }
@@ -357,11 +403,13 @@ function resolveFromEnquiry(
     id: string;
     status: logTypeStatus | null;
     createdAt: Date;
-  } | null | undefined
+  } | null | undefined,
+  listingId: string
 ): ListingEngagementResult | null {
   if (!enquiry) return null;
 
   const date = formatDateIso(enquiry.createdAt);
+  const propertyUrl = propertyEngagementUrl(listingId);
 
   if (enquiry.status === logTypeStatus.REJECTED) {
     return {
@@ -372,8 +420,11 @@ function resolveFromEnquiry(
       description: "The landlord is not proceeding with your enquiry for this property.",
       date,
       canEnquire: false,
+      actionLabel: "View history",
+      actionHref: "/dashboard/property-viewings?tab=history",
       enquiryId: enquiry.id,
       logStatus: enquiry.status,
+      propertyListingId: listingId,
     };
   }
 
@@ -390,9 +441,10 @@ function resolveFromEnquiry(
       date,
       canEnquire: false,
       actionLabel: "View invites",
-      actionHref: "/dashboard/property-viewings",
+      actionHref: propertyEngagementUrl(listingId, { focus: "viewing" }),
       enquiryId: enquiry.id,
       logStatus: enquiry.status,
+      propertyListingId: listingId,
     };
   }
 
@@ -404,10 +456,11 @@ function resolveFromEnquiry(
     description: "Awaiting landlord response.",
     date,
     canEnquire: false,
-    actionLabel: "View in dashboard",
-    actionHref: "/dashboard/applications",
+    actionLabel: "View property",
+    actionHref: propertyUrl,
     enquiryId: enquiry.id,
     logStatus: enquiry.status,
+    propertyListingId: listingId,
   };
 }
 
@@ -451,16 +504,15 @@ class ListingEngagementService {
       });
     }
 
-    const fromInvite = resolveFromInvite(invite, enquiry?.id ?? null);
+    const fromInvite = resolveFromInvite(invite, enquiry?.id ?? null, listingId);
     if (fromInvite?.hasEngagement) return fromInvite;
 
-    const fromEnquiry = resolveFromEnquiry(enquiry);
+    const fromEnquiry = resolveFromEnquiry(enquiry, listingId);
     if (fromEnquiry?.hasEngagement) return fromEnquiry;
 
-    return NO_ENGAGEMENT;
+    return { ...NO_ENGAGEMENT, propertyListingId: listingId };
   }
 
-  /** True when the user has an enquiry, invite, or application for this listing. */
   async userCanAccessListing(userId: string, listingId: string): Promise<boolean> {
     const engagement = await this.getForUserAndListing(userId, listingId);
     return engagement.hasEngagement;

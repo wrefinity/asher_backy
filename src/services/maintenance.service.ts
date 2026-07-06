@@ -1442,6 +1442,33 @@ class MaintenanceService {
     });
   }
 
+  verifyTenantCompletion = async (maintenanceId: string, tenantId: string) => {
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId },
+    });
+    if (!maintenance) throw new Error('Maintenance not found');
+    if (maintenance.tenantId !== tenantId) {
+      throw new Error('Unauthorized action');
+    }
+    if (maintenance.status !== maintenanceStatus.COMPLETED) {
+      throw new Error('Maintenance must be marked complete before verification');
+    }
+    if (maintenance.tenantVerified) {
+      return prismaClient.maintenance.findUnique({
+        where: { id: maintenanceId },
+        include: this.inclusion,
+      });
+    }
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        tenantVerified: true,
+        tenantVerifiedAt: new Date(),
+      },
+      include: this.inclusion,
+    });
+  }
+
   // Create a new note for a maintenance
   addNote = async (maintenanceId: string, userId: string, note: string, attachments?: string[]) => {
     const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });

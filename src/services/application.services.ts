@@ -233,7 +233,9 @@ class ApplicationInvitesService {
             recentSavedProperties,
             scheduledInvite,
             activeApplications,
-            completedApplications
+            completedApplications,
+            cancelledApplications,
+            declinedApplications,
         ] = await Promise.all([
 
             prismaClient.applicationInvites.findMany({
@@ -319,6 +321,21 @@ class ApplicationInvitesService {
                     },
                 },
             }),
+
+            prismaClient.application.count({
+                where: {
+                    userId,
+                    isDeleted: true,
+                },
+            }),
+
+            prismaClient.application.count({
+                where: {
+                    userId,
+                    isDeleted: false,
+                    status: ApplicationStatus.DECLINED,
+                },
+            }),
         ]);
 
         const [
@@ -350,6 +367,8 @@ class ApplicationInvitesService {
             applications: {
                 activeApplications,
                 completedApplications,
+                cancelledApplications,
+                declinedApplications,
             },
         };
     }

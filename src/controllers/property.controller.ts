@@ -193,7 +193,9 @@ class PropertyController {
 
             const [propertyListing, { marketCountry }] = await Promise.all([
                 PropertyServices.getPropertyListingByListingId(propertyListingId),
-                resolveViewerMarketFromRequest(req),
+                resolveViewerMarketFromRequest(req, req.query as Record<string, unknown>, {
+                    preferUserPreferences: true,
+                }),
             ]);
             if(!propertyListing) return res.status(400).json({ message: "propertylisting is not found" });
 

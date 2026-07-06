@@ -16,7 +16,15 @@ import {
   resolveApplicationFeeContext,
   selectApplicationFeeGateway,
   ApplicationFeeContext,
+  assertApplicationFeeWithinHoldingCap,
 } from '../utils/applicationFee.util';
+import {
+  calculateApplicationFeeRefundAmount,
+  getApplicationFeeRefundInfo,
+  resolveFinancialRules,
+} from '../utils/globalSettings.util';
+import LandlordSettingsService from '../landlord/services/propertySetting.service';
+import { isWithinRefundTimeframe } from '../utils/settingsEnforcement.util';
 
 const APPLICATION_FEE_INCLUDE = {
   applicationInvites: true,
@@ -119,6 +127,19 @@ class ApplicationFeeService {
   async payFromWallet(applicationId: string, userId: string) {
     const application = await this.loadApplication(applicationId, userId);
     const context = await resolveApplicationFeeContext(application);
+
+    const globalSettings = application.properties?.landlordId
+      ? await LandlordSettingsService.getAllGlobalSettings(application.properties.landlordId)
+      : null;
+    const rules =
+      globalSettings && application.properties?.price != null
+        ? resolveFinancialRules(
+            globalSettings,
+            Number(application.properties.price),
+            application.properties.priceFrequency
+          )
+        : null;
+    await assertApplicationFeeWithinHoldingCap(application, rules, globalSettings);
 
     if (!context.required || context.amount <= 0) {
       throw new Error('No application fee is required for this application');
@@ -224,6 +245,19 @@ class ApplicationFeeService {
   ) {
     const application = await this.loadApplication(applicationId, userId);
     const context = await resolveApplicationFeeContext(application);
+
+    const globalSettings = application.properties?.landlordId
+      ? await LandlordSettingsService.getAllGlobalSettings(application.properties.landlordId)
+      : null;
+    const rules =
+      globalSettings && application.properties?.price != null
+        ? resolveFinancialRules(
+            globalSettings,
+            Number(application.properties.price),
+            application.properties.priceFrequency
+          )
+        : null;
+    await assertApplicationFeeWithinHoldingCap(application, rules, globalSettings);
 
     if (!context.required || context.amount <= 0) {
       throw new Error('No application fee is required for this application');
@@ -575,6 +609,148 @@ class ApplicationFeeService {
     });
 
     return tenantTx;
+  }
+
+  async processRefundForRejectedApplication(params: {
+    applicationId: string;
+    propertyId: string;
+    landlordId: string;
+  }) {
+    const paidTx = await prismaClient.transaction.findFirst({
+      where: {
+        applicationId: params.applicationId,
+        reference: TransactionReference.APPLICATION_FEE,
+        status: TransactionStatus.COMPLETED,
+        type: TransactionType.DEBIT,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!paidTx) {
+      return { refunded: false, reason: 'No completed application fee payment found' };
+    }
+
+    const existingRefund = await prismaClient.transaction.findFirst({
+      where: {
+        applicationId: params.applicationId,
+        reference: TransactionReference.APPLICATION_FEE,
+        type: TransactionType.CREDIT,
+        status: TransactionStatus.COMPLETED,
+        metadata: { path: ['refund'], equals: true },
+      },
+    });
+    if (existingRefund) {
+      return { refunded: false, reason: 'Refund already processed', transaction: existingRefund };
+    }
+
+    const property = await prismaClient.properties.findUnique({
+      where: { id: params.propertyId },
+      select: { price: true, priceFrequency: true, currency: true, landlord: { select: { userId: true } } },
+    });
+    if (!property?.landlord?.userId) {
+      return { refunded: false, reason: 'Landlord not found for refund' };
+    }
+
+    const globalSettings = await LandlordSettingsService.getAllGlobalSettings(params.landlordId);
+    const rules = resolveFinancialRules(
+      globalSettings,
+      Number(property.price ?? 0),
+      property.priceFrequency
+    );
+    const refundInfo = getApplicationFeeRefundInfo(rules);
+    if (!refundInfo.isRefundable) {
+      return { refunded: false, reason: 'Application fee is non-refundable per landlord policy' };
+    }
+
+    if (!isWithinRefundTimeframe(paidTx.createdAt, rules.refundTimeframeDays)) {
+      return {
+        refunded: false,
+        reason: `Refund window of ${rules.refundTimeframeDays} day(s) has passed`,
+      };
+    }
+
+    const feePaid = Number(paidTx.amount);
+    const refundAmount = calculateApplicationFeeRefundAmount(feePaid, rules);
+    if (refundAmount <= 0) {
+      return { refunded: false, reason: 'Calculated refund amount is zero' };
+    }
+
+    const currency = (paidTx.currency as Currency) || property.currency || Currency.GBP;
+    const tenantUserId = paidTx.userId;
+    const landlordUserId = property.landlord.userId;
+
+    const tenantWallet = await walletService.getOrCreateWallet(tenantUserId, currency);
+    const landlordWallet = await walletService.getOrCreateWallet(landlordUserId, currency);
+
+    await walletService.ensureSufficientBalance(
+      landlordWallet.id,
+      landlordUserId,
+      new Decimal(refundAmount)
+    );
+
+    const referenceBase = `APPFEE-REF-${Date.now()}-${randomBytes(4).toString('hex')}`;
+    const tenantReferenceId = `${referenceBase}-tenant`;
+    const landlordReferenceId = `${referenceBase}-landlord`;
+
+    await prismaClient.$transaction(async (prisma) => {
+      await prisma.wallet.update({
+        where: { id: landlordWallet.id },
+        data: { balance: { decrement: refundAmount } },
+      });
+      await prisma.wallet.update({
+        where: { id: tenantWallet.id },
+        data: { balance: { increment: refundAmount } },
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId: tenantUserId,
+          walletId: tenantWallet.id,
+          amount: refundAmount,
+          currency,
+          description: `Application fee refund for application ${params.applicationId}`,
+          type: TransactionType.CREDIT,
+          reference: TransactionReference.APPLICATION_FEE,
+          status: TransactionStatus.COMPLETED,
+          referenceId: tenantReferenceId,
+          propertyId: params.propertyId,
+          applicationId: params.applicationId,
+          metadata: {
+            refund: true,
+            originalReferenceId: paidTx.referenceId,
+            refundPercent: refundInfo.refundPercent,
+          },
+        },
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId: landlordUserId,
+          walletId: landlordWallet.id,
+          amount: refundAmount,
+          currency,
+          description: `Application fee refund issued for application ${params.applicationId}`,
+          type: TransactionType.DEBIT,
+          reference: TransactionReference.APPLICATION_FEE,
+          status: TransactionStatus.COMPLETED,
+          referenceId: landlordReferenceId,
+          propertyId: params.propertyId,
+          applicationId: params.applicationId,
+          metadata: {
+            refund: true,
+            originalReferenceId: paidTx.referenceId,
+            tenantUserId,
+          },
+        },
+      });
+    });
+
+    return {
+      refunded: true,
+      refundAmount,
+      currency,
+      refundPercent: refundInfo.refundPercent,
+    };
   }
 }
 

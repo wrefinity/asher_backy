@@ -5,6 +5,10 @@ import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { prismaClient } from "../../index";
 import { TransactionType, TransactionStatus, TransactionReference } from "@prisma/client";
+import {
+  buildTenantAccessibleBillWhere,
+  resolveTenantBillAccessScope,
+} from "../../utils/billScope.util";
 
 class TenantFinancialAnalyticsController {
   constructor() {}
@@ -24,6 +28,13 @@ class TenantFinancialAnalyticsController {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
+      const billScope = await resolveTenantBillAccessScope(tenantId);
+      const accessibleBillsWhere = buildTenantAccessibleBillWhere(
+        billScope.tenantId,
+        billScope.propertyId,
+        billScope.includePropertyWideBills
+      );
+
       const [wallet, monthlySpending, upcomingBills, currentLease, creditScore] = await Promise.all([
         prismaClient.wallet.findFirst({
           where: { userId },
@@ -40,9 +51,7 @@ class TenantFinancialAnalyticsController {
         }),
         prismaClient.billsSubCategory.findMany({
           where: {
-            tenantId,
-            payableBy: 'TENANT',
-            isDeleted: false,
+            ...accessibleBillsWhere,
             dueDate: { gte: now }
           },
           select: {
@@ -515,6 +524,13 @@ class TenantFinancialAnalyticsController {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+      const billScope = await resolveTenantBillAccessScope(tenantId);
+      const accessibleBillsWhere = buildTenantAccessibleBillWhere(
+        billScope.tenantId,
+        billScope.propertyId,
+        billScope.includePropertyWideBills
+      );
+
       const [
         creditScore,
         totalPayments,
@@ -572,9 +588,7 @@ class TenantFinancialAnalyticsController {
         }),
         prismaClient.billsSubCategory.count({
           where: {
-            tenantId,
-            payableBy: 'TENANT',
-            isDeleted: false,
+            ...accessibleBillsWhere,
             dueDate: {
               gte: now,
               lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)

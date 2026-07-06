@@ -29,6 +29,7 @@ import { resolveApplicationMarketFromRecord } from '../../utils/applicationCompl
 import { resolveApplicationMarket } from '../../utils/applicationAddressFields';
 import { validateLandlordInviteUpdate } from "../../utils/InviteStateMachine";
 import LandlordSettingsService from "../services/propertySetting.service";
+import applicationFeeService from "../../services/applicationFee.service";
 import {
   calculateApplicationFeeRefundAmount,
   resolveFinancialRules,
@@ -605,6 +606,32 @@ class ApplicationControls {
                     applicationFeePaid: feePaid,
                     propertyApplicationSettings: appSettings,
                 };
+
+                if (enquiry?.applicationId) {
+                    try {
+                        const refundResult =
+                            await applicationFeeService.processRefundForRejectedApplication({
+                                applicationId: enquiry.applicationId,
+                                propertyId: enquiry.propertyId,
+                                landlordId,
+                            });
+                        applicationFeeRefund = {
+                            ...applicationFeeRefund,
+                            refundProcessed: refundResult.refunded,
+                            refundResult,
+                        };
+                    } catch (refundError) {
+                        logger.warn('Application fee refund failed on enquiry rejection', refundError);
+                        applicationFeeRefund = {
+                            ...applicationFeeRefund,
+                            refundProcessed: false,
+                            refundError:
+                                refundError instanceof Error
+                                    ? refundError.message
+                                    : 'Refund processing failed',
+                        };
+                    }
+                }
             }
 
             return res.status(200).json({ leasingUpdated, applicationFeeRefund });

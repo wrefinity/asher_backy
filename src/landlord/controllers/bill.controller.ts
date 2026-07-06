@@ -41,7 +41,9 @@ class BillController {
         try {
             const { notify, ...data } = value;
             const bill = await billServices.createSubBills(data, landlordId);
-            if (notify && serverInstance.paymentNotificationService) {
+            const shouldNotify =
+                data.payableBy === PayableBy.TENANT && notify !== false;
+            if (shouldNotify && serverInstance.paymentNotificationService) {
                 await serverInstance.paymentNotificationService.sendNewBillNotification(bill.id);
             }
             return res.status(201).json({ bill });
@@ -75,7 +77,7 @@ class BillController {
         const defaultCategoryId = await billServices.ensureDefaultBillCategory();
 
         const errors: { index: number; message: string }[] = [];
-        const validatedBills: { index: number; data: any }[] = [];
+        const validatedBills: { index: number; data: any; notify: boolean }[] = [];
 
         for (let index = 0; index < bills.length; index++) {
             const row = {
@@ -88,7 +90,11 @@ class BillController {
                 continue;
             }
             const { notify, ...data } = value;
-            validatedBills.push({ index, data });
+            validatedBills.push({
+                index,
+                data,
+                notify: data.payableBy === PayableBy.TENANT && notify !== false,
+            });
         }
 
         const referenceErrors = await billServices.validateBulkBillReferences(
@@ -105,14 +111,22 @@ class BillController {
             | { index: number; bill: unknown; error?: undefined }
             | { index: number; error: string; bill?: undefined };
 
-        const creationResults = await mapWithConcurrency<{ index: number; data: any }, BillCreationResult>(
+        const creationResults = await mapWithConcurrency<
+            { index: number; data: any; notify: boolean },
+            BillCreationResult
+        >(
             creatableBills,
             BULK_BILL_CONCURRENCY,
-            async ({ index, data }): Promise<BillCreationResult> => {
+            async ({ index, data, notify }): Promise<BillCreationResult> => {
                 try {
                     const bill = await billServices.createSubBills(data, landlordId, {
                         skipReferenceValidation: true,
                     });
+                    if (notify && serverInstance.paymentNotificationService) {
+                        await serverInstance.paymentNotificationService.sendNewBillNotification(
+                            bill.id
+                        );
+                    }
                     return { index, bill };
                 } catch (err: any) {
                     return {
@@ -150,7 +164,9 @@ class BillController {
         try {
             const {notify, ...data} = value
             const bill = await billServices.updateBill(billId, data);
-            if (notify && serverInstance.paymentNotificationService) {
+            const shouldNotify =
+                data.payableBy === PayableBy.TENANT && notify !== false;
+            if (shouldNotify && serverInstance.paymentNotificationService) {
                 await serverInstance.paymentNotificationService.sendNewBillNotification(bill.id);
             }
             return res.status(201).json({ bill });
@@ -290,7 +306,7 @@ class BillController {
                 notify,
             });
 
-            if (notify && serverInstance.paymentNotificationService) {
+            if (notify !== false && serverInstance.paymentNotificationService) {
                 await serverInstance.paymentNotificationService.sendNewBillNotification(bill.id);
             }
 

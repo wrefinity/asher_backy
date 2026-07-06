@@ -1,5 +1,6 @@
 import { Router } from "express";
 import ComplainControls from '../controllers/complaint.controller';
+import GlobalComplaintControls from '../../controllers/complaint.controller';
 import { Authorize } from "../../middlewares/authorize";
 
 class ComplaintRoute {
@@ -16,6 +17,8 @@ class ComplaintRoute {
         this.router.get('/all', ComplainControls.getAllComplaints);
         this.router.get('/statistics', ComplainControls.getComplaintStatistics);
         this.router.patch('/complain/:id', ComplainControls.updateComplaint);
+        this.router.get('/:complaintId/messages', GlobalComplaintControls.getMessages.bind(GlobalComplaintControls));
+        this.router.post('/:complaintId/messages', GlobalComplaintControls.postMessage.bind(GlobalComplaintControls));
     }
 
 }

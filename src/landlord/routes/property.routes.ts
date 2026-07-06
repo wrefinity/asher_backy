@@ -40,6 +40,7 @@ class ApartmentLandlordRouter {
         this.router.post('/property/:propertyId/duplicate', PropertyController.duplicateProperty)
         this.router.delete('/property/:propertyId', PropertyController.deleteLandlordProperties)
         this.router.patch('/property/status/:propertyId', PropertyController.updatePropertyAvailability)
+        this.router.get('/property/:propertyId/scheduled-rent-changes', PropertyController.getScheduledRentChanges)
         this.router.patch('/property/:propertyId', validateBody(updatePropertySchemaNew), PropertyController.updateProperty)
         this.router.get('/property/:propertyId/operational-profile', PropertyOperationalController.getOperationalProfile)
         this.router.put('/property/:propertyId/operational-profile', validateBody(upsertOperationalProfileSchema), PropertyOperationalController.upsertOperationalProfile)

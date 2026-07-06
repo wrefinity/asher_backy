@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { maintenanceStatus } from "@prisma/client";
 import { CustomRequest } from "../../utils/types";
 import MaintenanceService from "../../services/maintenance.service";
 import { ApiResponse } from "../../utils/ApiResponse";
@@ -81,16 +82,93 @@ class MaintenanceControls {
   });
 
     getMaintenancesById = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    if (!tenantId) {
+      throw ApiError.unauthorized("Kindly log in as a tenant");
+    }
+
     const maintenanceId = req.params.id;
     const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
 
     if (!maintenance) {
       throw ApiError.notFound("Maintenance record not found");
     }
+    if (maintenance.tenantId !== tenantId) {
+      throw ApiError.forbidden("You do not have access to this maintenance request");
+    }
 
     return res
       .status(200)
       .json(ApiResponse.success(maintenance, "Tenant maintenance record retrieved successfully"));
+  });
+
+  verifyMaintenanceCompletion = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    const userId = req.user?.id;
+    if (!tenantId || !userId) {
+      throw ApiError.unauthorized("Kindly log in as a tenant");
+    }
+
+    const maintenanceId = req.params.id;
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance record not found");
+    }
+    if (maintenance.tenantId !== tenantId) {
+      throw ApiError.forbidden("You do not have access to this maintenance request");
+    }
+    if (maintenance.status !== maintenanceStatus.COMPLETED) {
+      throw ApiError.badRequest(
+        "Maintenance must be marked complete before you can verify it"
+      );
+    }
+
+    if (maintenance.tenantVerified) {
+      return res.status(200).json(
+        ApiResponse.success(maintenance, "Maintenance completion already verified")
+      );
+    }
+
+    const verified = await MaintenanceService.verifyTenantCompletion(
+      maintenanceId,
+      tenantId
+    );
+
+    return res.status(200).json(
+      ApiResponse.success(verified, "Maintenance completion verified successfully")
+    );
+  });
+
+  postMaintenanceComment = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const tenantId = req.user?.tenant?.id;
+    const userId = req.user?.id;
+    if (!tenantId || !userId) {
+      throw ApiError.unauthorized("Kindly log in as a tenant");
+    }
+
+    const maintenanceId = req.params.id;
+    const { comment } = req.body as { comment?: string };
+    if (!comment || typeof comment !== "string" || !comment.trim()) {
+      throw ApiError.badRequest("Comment is required");
+    }
+
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+    if (!maintenance) {
+      throw ApiError.notFound("Maintenance record not found");
+    }
+    if (maintenance.tenantId !== tenantId) {
+      throw ApiError.forbidden("You do not have access to this maintenance request");
+    }
+
+    const note = await MaintenanceService.addNote(
+      maintenanceId,
+      userId,
+      comment.trim()
+    );
+
+    return res.status(201).json(
+      ApiResponse.success(note, "Comment added successfully")
+    );
   });
 }
 

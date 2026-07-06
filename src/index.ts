@@ -390,6 +390,36 @@ class Server {
             }
         }, 24 * 60 * 60 * 1000);
 
+        // Apply scheduled rent adjustments from landlord settings enforcement
+        setInterval(async () => {
+            try {
+                const pendingRentAdjustmentService = (await import('./services/pendingRentAdjustment.service')).default;
+                await pendingRentAdjustmentService.applyDueAdjustments();
+            } catch (error) {
+                loggers.error('Error applying scheduled rent adjustments:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
+
+        // Auto-charge late fees on overdue tenant bills
+        setInterval(async () => {
+            try {
+                const lateFeeChargeService = (await import('./services/lateFeeCharge.service')).default;
+                await lateFeeChargeService.chargeOverdueLateFees();
+            } catch (error) {
+                loggers.error('Error charging overdue late fees:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
+
+        // Deposit return deadline reminders — daily
+        setInterval(async () => {
+            try {
+                const depositReturnReminderService = (await import('./services/depositReturnReminder.service')).default;
+                await depositReturnReminderService.checkDepositReturnDeadlines();
+            } catch (error) {
+                loggers.error('Error in deposit return reminder check:', error);
+            }
+        }, 24 * 60 * 60 * 1000);
+
         // Compliance certificate & insurance renewal reminders — daily
         setInterval(async () => {
             try {

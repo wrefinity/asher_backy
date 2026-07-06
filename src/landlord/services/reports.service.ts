@@ -583,6 +583,307 @@ class ReportsService {
         };
     }
 
+    async getRiskAssessmentReport(landlordId: string) {
+        const now = new Date();
+        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const [properties, openMaintenance, tenants, violations] = await Promise.all([
+            prismaClient.properties.findMany({
+                where: { landlordId, isDeleted: false },
+                include: {
+                    complianceRecords: { where: { isDeleted: false } },
+                    insurancePolicies: { where: { isDeleted: false } },
+                    tenants: { where: { isCurrentLease: true } },
+                },
+            }),
+            prismaClient.maintenance.findMany({
+                where: {
+                    property: { landlordId },
+                    status: { not: 'COMPLETED' },
+                },
+                include: { property: true, category: true },
+                orderBy: { createdAt: 'desc' },
+                take: 100,
+            }),
+            prismaClient.tenants.findMany({
+                where: { landlordId, isCurrentLease: true },
+                include: { property: true },
+            }),
+            prismaClient.violation.findMany({
+                where: {
+                    isDeleted: false,
+                    tenant: { landlordId },
+                },
+                include: { property: true, tenant: true },
+                orderBy: { createdAt: 'desc' },
+                take: 50,
+            }),
+        ]);
+
+        type RiskAssessmentRow = {
+            property: string;
+            riskType: string;
+            description: string;
+            likelihood: string;
+            impact: string;
+            riskLevel: 'High' | 'Medium' | 'Low';
+            mitigationStatus: string;
+            estimatedCost: string | null;
+            targetDate: string | null;
+        };
+
+        const riskAssessments: RiskAssessmentRow[] = [];
+
+        for (const property of properties) {
+            for (const cert of property.complianceRecords) {
+                if (cert.expiryDate && new Date(cert.expiryDate) < now) {
+                    riskAssessments.push({
+                        property: property.name,
+                        riskType: 'Compliance',
+                        description: `Expired ${cert.certType} certificate`,
+                        likelihood: 'High',
+                        impact: 'High',
+                        riskLevel: 'High',
+                        mitigationStatus: 'Not Started',
+                        estimatedCost: null,
+                        targetDate: cert.expiryDate?.toISOString?.() ?? null,
+                    });
+                }
+            }
+
+            if (property.insurancePolicies.length === 0) {
+                riskAssessments.push({
+                    property: property.name,
+                    riskType: 'Insurance',
+                    description: 'No insurance policy on file',
+                    likelihood: 'Medium',
+                    impact: 'High',
+                    riskLevel: 'High',
+                    mitigationStatus: 'Planned',
+                    estimatedCost: null,
+                    targetDate: null,
+                });
+            }
+
+            if (property.tenants.length === 0) {
+                riskAssessments.push({
+                    property: property.name,
+                    riskType: 'Financial',
+                    description: 'Vacant property — lost rental income',
+                    likelihood: 'High',
+                    impact: 'Medium',
+                    riskLevel: 'Medium',
+                    mitigationStatus: 'Monitoring',
+                    estimatedCost: null,
+                    targetDate: null,
+                });
+            }
+        }
+
+        for (const request of openMaintenance) {
+            const riskLevel: RiskAssessmentRow['riskLevel'] =
+                request.status === 'UNASSIGNED' ? 'High' : 'Medium';
+            riskAssessments.push({
+                property: request.property?.name || 'Unknown',
+                riskType: request.category?.name || 'Maintenance',
+                description: request.description || 'Open maintenance request',
+                likelihood: 'Medium',
+                impact: riskLevel === 'High' ? 'High' : 'Medium',
+                riskLevel,
+                mitigationStatus: 'In Progress',
+                estimatedCost: request.amount ? String(request.amount) : null,
+                targetDate: request.scheduleDate?.toISOString?.() ?? null,
+            });
+        }
+
+        for (const tenant of tenants) {
+            const leaseEnd = tenant.leaseEndDate
+                ? new Date(tenant.leaseEndDate)
+                : null;
+            if (
+                leaseEnd &&
+                leaseEnd <= thirtyDaysFromNow &&
+                leaseEnd > now
+            ) {
+                riskAssessments.push({
+                    property: tenant.property?.name || 'Unknown',
+                    riskType: 'Lease',
+                    description: 'Lease expiring within 30 days',
+                    likelihood: 'High',
+                    impact: 'Medium',
+                    riskLevel: 'Medium',
+                    mitigationStatus: 'Monitoring',
+                    estimatedCost: null,
+                    targetDate: leaseEnd.toISOString(),
+                });
+            }
+        }
+
+        for (const violation of violations) {
+            const severity = violation.severityLevel || 'LOW';
+            const riskLevel: RiskAssessmentRow['riskLevel'] =
+                severity === 'CRITICAL' || severity === 'EXTREME'
+                    ? 'High'
+                    : severity === 'SEVERE' || severity === 'MODERATE'
+                      ? 'Medium'
+                      : 'Low';
+            riskAssessments.push({
+                property: violation.property?.name || 'Unknown',
+                riskType: 'Legal',
+                description: violation.description,
+                likelihood: 'Medium',
+                impact: riskLevel === 'High' ? 'High' : 'Medium',
+                riskLevel,
+                mitigationStatus:
+                    violation.status === 'PENDING' ? 'Not Started' : 'In Progress',
+                estimatedCost: violation.amount ? String(violation.amount) : null,
+                targetDate: violation.dueDate?.toISOString?.() ?? null,
+            });
+        }
+
+        const highRisks = riskAssessments.filter((r) => r.riskLevel === 'High').length;
+        const mediumRisks = riskAssessments.filter((r) => r.riskLevel === 'Medium').length;
+        const lowRisks = riskAssessments.filter((r) => r.riskLevel === 'Low').length;
+        const mitigatedRisks = await prismaClient.maintenance.count({
+            where: {
+                property: { landlordId },
+                status: 'COMPLETED',
+                updatedAt: { gte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) },
+            },
+        });
+
+        const propertyCount = Math.max(properties.length, 1);
+        const rawScore =
+            10 - (highRisks * 1.5 + mediumRisks * 0.75 + lowRisks * 0.25) / propertyCount;
+        const overallRiskScore = `${Math.max(1, Math.min(10, rawScore)).toFixed(1)}/10`;
+
+        return {
+            riskMetrics: {
+                totalRisks: String(riskAssessments.length),
+                highRisks: String(highRisks),
+                mediumRisks: String(mediumRisks),
+                lowRisks: String(lowRisks),
+                mitigatedRisks: String(mitigatedRisks),
+                overallRiskScore,
+            },
+            riskAssessments,
+            generatedAt: new Date().toISOString(),
+        };
+    }
+
+    async getTaxComplianceReport(
+        landlordId: string,
+        userId: string,
+        year?: number
+    ) {
+        const filterYear = year || new Date().getFullYear();
+        const startDate = new Date(filterYear, 0, 1);
+        const endDate = new Date(filterYear + 1, 0, 1);
+
+        const FinanceService = (await import('../services/finance.service')).default;
+        const PropertyOperationalService = (await import('../../services/propertyOperational.service')).default;
+
+        const [stats, properties, documents, compliance, incomeTransactions, expenseTransactions] =
+            await Promise.all([
+                FinanceService.getStats(userId, filterYear),
+                prismaClient.properties.findMany({
+                    where: { landlordId, isDeleted: false },
+                    select: { id: true, name: true },
+                }),
+                prismaClient.propertyDocument.findMany({
+                    where: {
+                        deletedAt: null,
+                        purgedAt: null,
+                        properties: { landlordId },
+                    },
+                    include: {
+                        properties: { select: { id: true, name: true } },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: 100,
+                }),
+                PropertyOperationalService.getLandlordComplianceSummary(landlordId),
+                prismaClient.transaction.findMany({
+                    where: {
+                        userId,
+                        type: 'CREDIT',
+                        status: 'COMPLETED',
+                        createdAt: { gte: startDate, lt: endDate },
+                        propertyId: { not: null },
+                    },
+                    select: { propertyId: true, amount: true },
+                }),
+                prismaClient.transaction.findMany({
+                    where: {
+                        userId,
+                        type: 'DEBIT',
+                        status: 'COMPLETED',
+                        createdAt: { gte: startDate, lt: endDate },
+                    },
+                    select: { reference: true, amount: true },
+                }),
+            ]);
+
+        const incomeByProperty: Record<
+            string,
+            { total: number; propertyName: string }
+        > = {};
+        for (const property of properties) {
+            incomeByProperty[property.id] = {
+                total: 0,
+                propertyName: property.name,
+            };
+        }
+        for (const tx of incomeTransactions) {
+            if (!tx.propertyId || !incomeByProperty[tx.propertyId]) continue;
+            incomeByProperty[tx.propertyId].total += Number(tx.amount) || 0;
+        }
+
+        const expensesByCategory: Record<string, { total: number }> = {};
+        for (const tx of expenseTransactions) {
+            const category = tx.reference || 'OTHER';
+            if (!expensesByCategory[category]) {
+                expensesByCategory[category] = { total: 0 };
+            }
+            expensesByCategory[category].total += Number(tx.amount) || 0;
+        }
+
+        const complianceScore = compliance.summary?.complianceScore ?? 0;
+        const complianceStatus =
+            complianceScore >= 80
+                ? 'Compliant'
+                : complianceScore >= 50
+                  ? 'Pending'
+                  : 'At Risk';
+
+        const mappedDocuments = documents.map((doc) => ({
+            id: doc.id,
+            docTitle: doc.documentName,
+            documentName: doc.documentName,
+            docType: doc.docType,
+            type: doc.type,
+            createdAt: doc.createdAt,
+            properties: doc.properties,
+        }));
+
+        return {
+            summary: {
+                totalIncome: stats.totalRevenue,
+                totalExpenses: stats.totalExpenses,
+                netIncome: stats.netIncome,
+                complianceScore,
+                complianceStatus,
+                outstandingRent: stats.outstandingRent,
+            },
+            incomeByProperty,
+            expensesByCategory,
+            complianceChecks: compliance.complianceChecks,
+            documents: mappedDocuments,
+            year: filterYear,
+            generatedAt: new Date().toISOString(),
+        };
+    }
+
     // Helper Methods
     private getPeriodStartDate(period: string): Date {
         const now = new Date();

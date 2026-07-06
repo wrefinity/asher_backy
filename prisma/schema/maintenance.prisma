@@ -32,6 +32,8 @@ model maintenance {
   timeSpent                    String?
   destinationReached           Boolean                        @default(false)
   jobStarted                   Boolean                        @default(false)
+  tenantVerified               Boolean                        @default(false)
+  tenantVerifiedAt             DateTime?
   pauseResumeDate              DateTime?
   rescheduleReason             String?
   rescheduleRequestDate        DateTime?

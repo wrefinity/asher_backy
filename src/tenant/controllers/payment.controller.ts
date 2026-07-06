@@ -16,6 +16,7 @@ import {
   getClientIpFromRequest,
   resolveViewerCurrency,
 } from "../../utils/currencyContext";
+import { resolveTenantBillAccessScope } from "../../utils/billScope.util";
 
 class TenantPaymentController {
   constructor() {}
@@ -39,13 +40,13 @@ class TenantPaymentController {
     // Get the bill details (tenant-specific, property-wide, or landlord-wide)
     const tenant = await tenantsServices.getTenantById(tenantId);
     const propertyId = tenant?.propertyId || null;
-    const landlordId = tenant?.landlordId || null;
+    const billScope = await resolveTenantBillAccessScope(tenantId);
 
     const bill = await landlordBillsService.findBillAccessibleToTenant(
       billId,
       tenantId,
       propertyId,
-      landlordId
+      billScope.includePropertyWideBills
     );
 
     if (!bill) {
@@ -380,44 +381,14 @@ class TenantPaymentController {
 
     const { days = "30" } = req.query;
     const daysAhead = parseInt(days as string);
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + daysAhead);
+    const billScope = await resolveTenantBillAccessScope(tenantId);
 
-    const upcomingBills = await prismaClient.billsSubCategory.findMany({
-      where: {
-        tenantId,
-        isDeleted: false,
-        dueDate: {
-          lte: futureDate,
-          gte: new Date() // Only future bills
-        },
-        // Only bills that haven't been paid
-        transactions: {
-          none: {
-            reference: TransactionReference.BILL_PAYMENT,
-            status: TransactionStatus.COMPLETED
-          }
-        }
-      },
-      include: {
-        property: {
-          select: {
-            id: true,
-            name: true,
-            address: true
-          }
-        },
-        bills: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        dueDate: 'asc'
-      }
-    });
+    const upcomingBills = await landlordBillsService.getUpcomingBillsForTenant(
+      tenantId,
+      billScope.propertyId,
+      billScope.includePropertyWideBills,
+      daysAhead
+    );
 
     return res.status(200).json(
       ApiResponse.success(upcomingBills, "Upcoming bills retrieved successfully")

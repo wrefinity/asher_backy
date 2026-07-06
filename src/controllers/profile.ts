@@ -21,7 +21,12 @@ class ProfileControls {
     const data = { ...req.body };
     console.log("validationsss");
     console.log(data);
-    const profileUrl = req.body.cloudinaryUrls?.[0];
+    const profileUrlFromUpload = req.body.cloudinaryUrls?.[0];
+    const profileUrlFromBody =
+      typeof data.profileUrl === 'string' && data.profileUrl.trim()
+        ? data.profileUrl.trim()
+        : undefined;
+    const profileUrl = profileUrlFromUpload ?? profileUrlFromBody;
 
     // Stored on landlords table, not profile — handled below
     const businessName =
@@ -37,10 +42,11 @@ class ProfileControls {
     delete data.uploadedDocuments;
     delete data.id;
     delete data.businessName;
+    delete data.profileUrl;
 
     const updatedUser = await ProfileServices.updateUserProfile(profileInfo.id, {
       ...data,
-      profileUrl,
+      ...(profileUrl ? { profileUrl } : {}),
     });
 
     const landlordId = profileInfo.users?.landlords?.id;

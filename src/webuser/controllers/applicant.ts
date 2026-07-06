@@ -99,20 +99,23 @@ class ApplicantControls {
         ApplicationStatus.PENDING,
         ApplicationStatus.SUBMITTED,
         ApplicationStatus.MAKEPAYMENT,
-        ApplicationStatus.ACCEPTED
       ];
       const completedStatuses = [
         ApplicationStatus.COMPLETED,
         ApplicationStatus.DECLINED,
         ApplicationStatus.APPROVED,
+        ApplicationStatus.ACCEPTED,
         ApplicationStatus.AGREEMENTS,
         ApplicationStatus.AGREEMENTS_SIGNED,
+        ApplicationStatus.PAYMENT_COMPLETED,
+        ApplicationStatus.TENANT_CREATED,
       ];
       const applicationStatuses = [...new Set([...activeStatuses, ...completedStatuses])];
 
-      const [applications, allInvites] = await Promise.all([
+      const [applications, allInvites, cancelledApplications] = await Promise.all([
         ApplicantService.getApplicationBasedOnStatus(userId, applicationStatuses),
         ApplicantService.getInvite({ userInvitedId: userId }, false),
+        ApplicantService.getCancelledApplications(userId),
       ]);
 
       const applicationsByStatus = (status: ApplicationStatus) =>
@@ -172,6 +175,7 @@ class ApplicantControls {
         ...activeApps,
         ...completedApps,
         ...approvedApplications,
+        ...cancelledApplications,
       ]);
 
       res.status(200).json({
@@ -184,6 +188,7 @@ class ApplicantControls {
           submittedApplications,
           activeApps,
           completedApps,
+          cancelledApplications,
           invites,
           approvedApplications,
           inviteEngagements,
@@ -814,6 +819,19 @@ class ApplicantControls {
   deleteApplicant = async (req: CustomRequest, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const application = await ApplicantService.getApplicationById(id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      if (application.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
       const applicant = await ApplicantService.deleteApplicant(id);
       return res.status(200).json({ applicant });
     } catch (error: unknown) {

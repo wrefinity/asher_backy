@@ -12,6 +12,13 @@ import {
 } from "../utils/leaseRenewalHelpers";
 import LandlordSettingsService from "../landlord/services/propertySetting.service";
 import { getLeaseRenewalThresholds } from "../utils/globalSettingsMarketRules";
+import {
+  normalizeReminderMethods,
+  resolveFinancialRules,
+} from "../utils/globalSettings.util";
+import { ReminderMethodType } from "@prisma/client";
+import expoPushService from "./expoPush.service";
+import NotificationService from "./notification.service";
 
 export interface LeaseRenewalData {
   tenantId: string;
@@ -157,7 +164,7 @@ class LeaseRenewalService {
       }
 
       if (reminderType) {
-        await this.sendRenewalReminder(lease, reminderType, frequency);
+        await this.sendRenewalReminder(lease, reminderType, frequency, landlordSettings);
       }
     }
   }
@@ -168,11 +175,26 @@ class LeaseRenewalService {
   private async sendRenewalReminder(
     lease: any,
     reminderType: 'first' | 'second' | 'final',
-    frequency: 'WEEKLY' | 'MONTHLY' | 'ANNUAL'
+    frequency: 'WEEKLY' | 'MONTHLY' | 'ANNUAL',
+    landlordSettings?: Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>
   ) {
     const tenant = lease.user;
     const landlord = lease.property.landlord.user;
     const property = lease.property;
+
+    if (!landlordSettings?.notificationEnabled) {
+      return;
+    }
+
+    const rules = resolveFinancialRules(
+      landlordSettings,
+      Number(property.price ?? 0),
+      property.priceFrequency
+    );
+    const methods = normalizeReminderMethods(rules.reminderMethods);
+    const wantsEmail = methods.includes(ReminderMethodType.EMAIL);
+    const wantsPush = methods.includes(ReminderMethodType.PUSH);
+    const wantsInApp = methods.includes(ReminderMethodType.IN_APP);
 
     // Check if reminder already sent today
     const today = new Date().toISOString().split('T')[0];
@@ -213,45 +235,83 @@ class LeaseRenewalService {
 
     const message = reminderMessages[reminderType];
 
-    await Promise.all([
-      this.emailService.createEmail({
-        senderEmail: landlord.email,
-        receiverEmail: tenant.email,
-        attachment: [],
-        subject: `Asher - ${message.title}`,
-        body: this.generateRenewalEmailBody(tenant, property, message.tenantMessage, frequency),
-        senderId: landlord.id,
-        receiverId: tenant.id
-      }),
-      this.emailService.createEmail({
-        senderEmail: tenant.email,
-        receiverEmail: landlord.email,
-        attachment: [],
-        subject: `Asher - ${message.title}`,
-        body: this.generateRenewalEmailBody(landlord, property, message.landlordMessage, frequency),
-        senderId: tenant.id,
-        receiverId: landlord.id
-      }),
-    ]);
+    const emailTasks: Promise<unknown>[] = [];
+    if (wantsEmail) {
+      emailTasks.push(
+        this.emailService.createEmail({
+          senderEmail: landlord.email,
+          receiverEmail: tenant.email,
+          attachment: [],
+          subject: `Asher - ${message.title}`,
+          body: this.generateRenewalEmailBody(tenant, property, message.tenantMessage, frequency),
+          senderId: landlord.id,
+          receiverId: tenant.id
+        }),
+        this.emailService.createEmail({
+          senderEmail: tenant.email,
+          receiverEmail: landlord.email,
+          attachment: [],
+          subject: `Asher - ${message.title}`,
+          body: this.generateRenewalEmailBody(landlord, property, message.landlordMessage, frequency),
+          senderId: tenant.id,
+          receiverId: landlord.id
+        })
+      );
+    }
+    if (emailTasks.length > 0) {
+      await Promise.all(emailTasks);
+    }
 
-    // Send real-time notifications
-    this.sendRealtimeNotification(tenant.id, {
-      type: 'LEASE_RENEWAL_REMINDER',
-      title: message.title,
-      message: message.tenantMessage,
-      reminderType,
-      propertyId: property.id,
-      leaseEndDate: lease.leaseEndDate
-    });
+    if (wantsInApp) {
+      this.sendRealtimeNotification(tenant.id, {
+        type: 'LEASE_RENEWAL_REMINDER',
+        title: message.title,
+        message: message.tenantMessage,
+        reminderType,
+        propertyId: property.id,
+        leaseEndDate: lease.leaseEndDate
+      });
 
-    this.sendRealtimeNotification(landlord.id, {
-      type: 'LEASE_RENEWAL_REMINDER',
-      title: message.title,
-      message: message.landlordMessage,
-      reminderType,
-      propertyId: property.id,
-      leaseEndDate: lease.leaseEndDate
-    });
+      this.sendRealtimeNotification(landlord.id, {
+        type: 'LEASE_RENEWAL_REMINDER',
+        title: message.title,
+        message: message.landlordMessage,
+        reminderType,
+        propertyId: property.id,
+        leaseEndDate: lease.leaseEndDate
+      });
+
+      try {
+        await NotificationService.createNotification(
+          {
+            sourceId: landlord.id,
+            destId: tenant.id,
+            title: message.title,
+            message: message.tenantMessage,
+            notificationType: 'LEASE_RENEWAL_REMINDER',
+            route: '/profile/TenancyInfo',
+            skipPush: !wantsPush,
+          },
+          'ONLINE_PAYMENTS'
+        );
+      } catch (notifyError) {
+        console.warn('Failed to persist lease renewal notification', notifyError);
+      }
+    } else if (wantsPush) {
+      try {
+        await expoPushService.sendToUser(tenant.id, {
+          title: message.title,
+          body: message.tenantMessage,
+          data: {
+            type: 'LEASE_RENEWAL_REMINDER',
+            propertyId: property.id,
+            route: '/profile/TenancyInfo',
+          },
+        });
+      } catch (pushError) {
+        console.warn('Failed to send lease renewal push', pushError);
+      }
+    }
 
     // Log the reminder
     await prismaClient.log.create({

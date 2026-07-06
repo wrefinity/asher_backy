@@ -485,10 +485,36 @@ export async function finalizeRenewalAfterCounterSign(agreementId: string): Prom
     }
 
     if (Number.isFinite(effectiveRent)) {
+      const propertyBefore = await prismaClient.properties.findUnique({
+        where: { id: proposal.propertyId },
+        select: { price: true, currency: true, landlordId: true },
+      });
+      const oldRent = Number(propertyBefore?.price ?? proposal.currentRent ?? 0);
+
       await prismaClient.properties.update({
         where: { id: proposal.propertyId },
         data: { price: effectiveRent },
       });
+
+      if (oldRent !== Number(effectiveRent) && proposal.tenant?.userId) {
+        try {
+          const tenancyChangeNotification = (
+            await import('./tenancyChangeNotification.service')
+          );
+          await tenancyChangeNotification.notifyPropertyTenancyFinancialChanges({
+            propertyId: proposal.propertyId,
+            landlordId: propertyBefore?.landlordId ?? proposal.property.landlordId,
+            landlordUserId: undefined,
+            currency: proposal.property?.currency ? String(proposal.property.currency) : null,
+            oldRent,
+            newRent: Number(effectiveRent),
+            effectiveDate: startDate,
+            reason: 'renewal agreement',
+          });
+        } catch (notifyError) {
+          console.error('Failed to notify tenant of immediate renewal rent:', notifyError);
+        }
+      }
     }
 
     await prismaClient.agreementDocument.update({
@@ -527,6 +553,30 @@ export async function finalizeRenewalAfterCounterSign(agreementId: string): Prom
       },
     },
   });
+
+  try {
+    const tenantUser = await prismaClient.tenants.findUnique({
+      where: { id: proposal.tenantId },
+      select: {
+        userId: true,
+        property: { select: { price: true, currency: true, landlordId: true } },
+      },
+    });
+    if (tenantUser?.userId) {
+      const oldRent = Number(tenantUser.property?.price ?? proposal.currentRent ?? 0);
+      const tenancyChangeNotification = (await import('./tenancyChangeNotification.service'));
+      await tenancyChangeNotification.notifyTenantScheduledRentChange({
+        tenantUserId: tenantUser.userId,
+        landlordId: tenantUser.property?.landlordId ?? proposal.property.landlordId,
+        oldRent,
+        newRent: Number(effectiveRent),
+        effectiveDate: startDate ?? new Date(pendingLeaseUpdate.startDate),
+        currency: proposal.property?.currency ? String(proposal.property.currency) : null,
+      });
+    }
+  } catch (notifyError) {
+    console.error('Failed to notify tenant of scheduled rent change:', notifyError);
+  }
 }
 
 /** Apply renewal rent and lease dates once the agreed start date is reached. */
@@ -565,10 +615,37 @@ export async function applyPendingRenewalLeaseUpdates(): Promise<number> {
     });
 
     if (Number.isFinite(pending.rent)) {
+      const propertyBefore = await prismaClient.properties.findUnique({
+        where: { id: pending.propertyId },
+        select: { price: true, currency: true, landlordId: true },
+      });
+      const oldRent = Number(propertyBefore?.price ?? 0);
+
       await prismaClient.properties.update({
         where: { id: pending.propertyId },
         data: { price: pending.rent },
       });
+
+      const tenantUser = await prismaClient.tenants.findUnique({
+        where: { id: pending.tenantId },
+        select: { userId: true },
+      });
+      if (tenantUser?.userId && propertyBefore?.landlordId) {
+        try {
+          const tenancyChangeNotification = (
+            await import('./tenancyChangeNotification.service')
+          );
+          await tenancyChangeNotification.notifyAppliedScheduledRentChange({
+            tenantUserId: tenantUser.userId,
+            landlordId: propertyBefore.landlordId,
+            oldRent,
+            newRent: Number(pending.rent),
+            currency: propertyBefore.currency ? String(propertyBefore.currency) : null,
+          });
+        } catch (notifyError) {
+          console.error('Failed to notify tenant of applied scheduled rent:', notifyError);
+        }
+      }
     }
 
     const existingMetadata =

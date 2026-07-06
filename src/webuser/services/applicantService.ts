@@ -835,6 +835,19 @@ class ApplicantService {
     return this.normalizeApplications(applications);
   }
 
+  getCancelledApplications = async (userId: string) => {
+    const applications = await prismaClient.application.findMany({
+      where: {
+        userId,
+        isDeleted: true,
+      },
+      include: this.applicationInclusion,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return this.normalizeApplications(applications);
+  }
+
   /**
    * Normalize applications to include listing hierarchy
    */

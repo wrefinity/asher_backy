@@ -7,8 +7,12 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import Joi from 'joi';
 import { prismaClient } from '../..';
 import { enrichLeaseRenewal } from '../../utils/leaseRenewalHelpers';
-import { attachRenewalWorkflow } from '../../services/renewalWorkflow.service';
-import { attachRenewalWorkflowBatch } from '../../services/renewalWorkflow.service';
+import {
+  attachRenewalWorkflow,
+  attachRenewalWorkflowBatch,
+  getRenewalRentEffectiveMessage,
+} from '../../services/renewalWorkflow.service';
+import { getTenantPendingRentChange } from '../../services/tenancyChangeNotification.service';
 
 
 class TenantLeaseRenewalController {
@@ -236,6 +240,8 @@ class TenantLeaseRenewalController {
       )
     );
 
+    const pendingRentChange = await getTenantPendingRentChange(tenant.id);
+
     const leaseInfo = {
       ...tenant,
       frequency,
@@ -245,6 +251,22 @@ class TenantLeaseRenewalController {
       reminderDates,
       config,
       pendingRenewals,
+      pendingRentChange,
+      currentRent: tenant.property?.price ? Number(tenant.property.price) : 0,
+      renewalRentMessages: pendingRenewals.map((renewal) => ({
+        renewalId: renewal.id,
+        status: renewal.status,
+        currentRent: renewal.currentRent,
+        proposedRent: renewal.proposedRent,
+        message: getRenewalRentEffectiveMessage(renewal.renewalTerms),
+        effectiveFrom:
+          renewal.renewalTerms &&
+          typeof renewal.renewalTerms === 'object' &&
+          renewal.renewalTerms !== null &&
+          'startDate' in renewal.renewalTerms
+            ? String((renewal.renewalTerms as { startDate?: unknown }).startDate ?? '')
+            : undefined,
+      })),
     };
 
     return res.status(200).json(

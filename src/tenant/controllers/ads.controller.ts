@@ -63,7 +63,8 @@ class AdController {
 
   getAdsById = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { adsId } = req.params;
-    const ads = await adsServices.getAdById(adsId);
+    const viewerUserId = req.user?.id != null ? String(req.user.id) : undefined;
+    const ads = await adsServices.getAdById(adsId, viewerUserId);
     if (!ads) {
       throw ApiError.notFound("Ad not found");
     }
@@ -140,8 +141,12 @@ class AdController {
   incrementAdsStats = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { adsId } = req.params;
     const { statType } = req.body;
+    const viewerUserId = req.user?.id != null ? String(req.user.id) : undefined;
 
-    const ads = await adsServices.increamentAdStats(adsId, statType);
+    const ads = await adsServices.increamentAdStats(adsId, statType, viewerUserId);
+    if (!ads) {
+      throw ApiError.notFound("Ad not found");
+    }
 
     return res
       .status(200)
@@ -150,7 +155,8 @@ class AdController {
 
   getAdStats = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { adsId } = req.params;
-    const ads = await adsServices.getAdStats(adsId);
+    const viewerUserId = req.user?.id != null ? String(req.user.id) : undefined;
+    const ads = await adsServices.getAdStats(adsId, viewerUserId);
 
     if (!ads) {
       throw ApiError.notFound("Ad not found");

@@ -110,7 +110,8 @@ export function applyListingMarketGateToFilters(
  */
 export async function resolveViewerMarketFromRequest(
   req: CustomRequest,
-  query: Record<string, unknown> = req.query as Record<string, unknown>
+  query: Record<string, unknown> = req.query as Record<string, unknown>,
+  opts?: { preferUserPreferences?: boolean }
 ) {
   const ipAddress = getClientIpFromRequest(req);
 
@@ -123,11 +124,15 @@ export async function resolveViewerMarketFromRequest(
   const countryCodeHint =
     typeof query.countryCode === 'string' ? query.countryCode : undefined;
 
-  // Never pass userId, currency, or displayCurrency — those are landlord/dashboard concerns.
+  const userId =
+    opts?.preferUserPreferences && req.user?.id ? req.user.id : undefined;
+
+  // Listing browse stays geo-only; authenticated actions (e.g. enquire) may use saved prefs.
   const geoContext = await resolveViewerCurrency({
+    userId,
     country: marketHint,
     countryCode: countryCodeHint,
-    ipAddress,
+    ipAddress: userId ? undefined : ipAddress,
   });
 
   const marketCountry = resolveViewerMarketCountry({

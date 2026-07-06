@@ -58,6 +58,9 @@ export const mapNotificationToPreferenceField = (
       if (typeLower.includes('message')) return 'notifyOnNewMessages';
       break;
     case 'ONLINE_PAYMENTS':
+      if (typeLower.includes('bill_created') || typeLower.includes('new bill')) {
+        return null;
+      }
       if (typeLower.includes('payment_success') || typeLower.includes('success')) {
         return 'notifyPaymentSuccess';
       }

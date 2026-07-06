@@ -2,6 +2,7 @@ import { PayableBy } from "@prisma/client";
 import { prismaClient } from "../..";
 import { generateIDs } from "../../utils/helpers";
 import { BillNormalizer } from "../../utils/BillNormalizer";
+import { buildTenantAccessibleBillWhere } from "../../utils/billScope.util";
 
 interface BillFilterOptions {
     tenantId?: string;
@@ -508,19 +509,20 @@ class BillService {
         return BillNormalizer.normalizeMany(bills);
     }
 
-    /** Bills assigned directly to this tenant (tenant-payable only). */
     findBillAccessibleToTenant = async (
         billId: string,
         tenantId: string,
-        _propertyId: string | null,
-        _landlordId: string | null
+        propertyId: string | null,
+        includePropertyWideBills: boolean
     ) => {
         return prismaClient.billsSubCategory.findFirst({
             where: {
                 id: billId,
-                tenantId,
-                isDeleted: false,
-                payableBy: PayableBy.TENANT,
+                ...buildTenantAccessibleBillWhere(
+                    tenantId,
+                    propertyId,
+                    includePropertyWideBills
+                ),
             },
             include: {
                 property: true,
@@ -534,7 +536,7 @@ class BillService {
     getBillsForTenant = async (
         tenantId: string,
         propertyId: string | null,
-        landlordId: string | null,
+        includePropertyWideBills: boolean,
         options: {
             pagination?: PaginationOptions;
             includeOptions?: IncludeOptions;
@@ -545,9 +547,11 @@ class BillService {
         } = {}
     ) => {
         const where: any = {
-            isDeleted: false,
-            tenantId,
-            payableBy: PayableBy.TENANT,
+            ...buildTenantAccessibleBillWhere(
+                tenantId,
+                propertyId,
+                includePropertyWideBills
+            ),
         };
         if (options.billId) where.billId = options.billId;
         if (options.dateRange) {
@@ -559,7 +563,7 @@ class BillService {
         if (options.status === 'unpaid') where.transactions = { none: {} };
 
         const page = options.pagination?.page ?? 1;
-        const pageSize = options.pagination?.pageSize ?? 50;
+        const pageSize = options.pagination?.pageSize ?? 100;
         const includeOptions = options.includeOptions ?? {};
 
         const include: any = {
@@ -592,18 +596,10 @@ class BillService {
         };
     };
 
-    private buildTenantBillScopeWhere(tenantId: string) {
-        return {
-            isDeleted: false,
-            tenantId,
-            payableBy: PayableBy.TENANT,
-        };
-    }
-
     getUpcomingBillsForTenant = async (
         tenantId: string,
-        _propertyId: string | null,
-        _landlordId: string | null,
+        propertyId: string | null,
+        includePropertyWideBills: boolean,
         days = 30
     ) => {
         const today = new Date();
@@ -612,7 +608,11 @@ class BillService {
 
         const bills = await prismaClient.billsSubCategory.findMany({
             where: {
-                ...this.buildTenantBillScopeWhere(tenantId),
+                ...buildTenantAccessibleBillWhere(
+                    tenantId,
+                    propertyId,
+                    includePropertyWideBills
+                ),
                 dueDate: { gte: today, lte: futureDate },
                 transactions: { none: {} },
             },
@@ -629,15 +629,19 @@ class BillService {
 
     getOverdueBillsForTenant = async (
         tenantId: string,
-        _propertyId: string | null,
-        _landlordId: string | null
+        propertyId: string | null,
+        includePropertyWideBills: boolean
     ) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const bills = await prismaClient.billsSubCategory.findMany({
             where: {
-                ...this.buildTenantBillScopeWhere(tenantId),
+                ...buildTenantAccessibleBillWhere(
+                    tenantId,
+                    propertyId,
+                    includePropertyWideBills
+                ),
                 dueDate: { lt: today },
                 transactions: { none: {} },
             },

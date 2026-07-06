@@ -29,6 +29,11 @@ import {
   resolveFinancialRules,
 } from '../../utils/globalSettings.util';
 import {
+  startOfCalendarDay,
+  validateRentIncreaseNotice,
+} from '../../utils/settingsEnforcement.util';
+import pendingRentAdjustmentService from '../../services/pendingRentAdjustment.service';
+import {
   humanizeTenantBulkUploadError,
   isPlaceholderPropertyId,
   PROPERTY_ID_NOT_FOUND_MESSAGE,
@@ -649,6 +654,20 @@ class TenantControls {
                 parseGracePeriodDays(gracePeriod) ??
                 baseRules.graceDays;
 
+            const newRent = Number(scheduledRent);
+            const isIncrease = newRent > oldRent;
+            const effectiveDate = startDate ? new Date(startDate) : new Date();
+
+            if (isIncrease) {
+                const noticeCheck = validateRentIncreaseNotice(
+                    effectiveDate,
+                    baseRules.rentIncreaseNoticeDays
+                );
+                if (!noticeCheck.valid) {
+                    return res.status(400).json({ error: noticeCheck.error });
+                }
+            }
+
             const lateFeePercentage =
                 lateFeeType === 'percentage' && lateFeeAmount != null
                     ? Number(lateFeeAmount)
@@ -667,27 +686,55 @@ class TenantControls {
                 lateFeeFrequency: globalSettings?.lateFeeFrequency ?? baseRules.lateFeeFrequency,
             });
 
-            // Update property price (this affects the tenant's rent)
-            const updatedProperty = await prismaClient.properties.update({
+            const today = startOfCalendarDay(new Date());
+            const effectiveDay = startOfCalendarDay(effectiveDate);
+            const isScheduled = effectiveDay.getTime() > today.getTime();
+
+            let updatedProperty = await prismaClient.properties.findUnique({
                 where: { id: tenant.propertyId },
-                data: {
-                    price: scheduledRent,
-                }
             });
+
+            if (isScheduled) {
+                await pendingRentAdjustmentService.scheduleAdjustment({
+                    tenantId,
+                    propertyId: tenant.propertyId,
+                    landlordId,
+                    oldRent,
+                    newRent,
+                    effectiveDate: effectiveDay,
+                    createdById: req.user?.id,
+                });
+            } else {
+                updatedProperty = await prismaClient.properties.update({
+                    where: { id: tenant.propertyId },
+                    data: {
+                        price: scheduledRent,
+                    },
+                });
+            }
 
             // Create log entry to track rent adjustment history
             await LogsServices.createLog({
-                events: `Rent adjusted from ${oldRent} to ${scheduledRent} for tenant ${tenantId}. Late fee: ${lateFeeType === 'percentage' ? `${lateFeeAmount}%` : lateFeeFixed}, grace: ${graceDays} days.`,
+                events: isScheduled
+                    ? `Rent increase scheduled from ${oldRent} to ${scheduledRent} effective ${effectiveDay.toLocaleDateString('en-GB')} for tenant ${tenantId}.`
+                    : `Rent adjusted from ${oldRent} to ${scheduledRent} for tenant ${tenantId}. Late fee: ${lateFeeType === 'percentage' ? `${lateFeeAmount}%` : lateFeeFixed}, grace: ${graceDays} days.`,
                 type: LogType.ACTIVITY,
                 propertyId: tenant.propertyId,
                 createdById: req.user?.id,
-                subjects: `Rent Adjustment: ${oldRent} → ${scheduledRent}`,
+                subjects: isScheduled
+                    ? `Scheduled Rent: ${oldRent} → ${scheduledRent}`
+                    : `Rent Adjustment: ${oldRent} → ${scheduledRent}`,
             });
 
             let rentIncreaseBill = null;
-            const shouldCreateBill = createBill !== false;
+            const shouldCreateBill = createBill !== false && !isScheduled;
             const { serverInstance } = await import('../..');
-            if (shouldCreateBill && Number(scheduledRent) > oldRent) {
+            const currency = updatedProperty?.currency ? String(updatedProperty.currency) : undefined;
+
+            // Update property price (this affects the tenant's rent) — handled above when not scheduled
+            // Removed duplicate update block
+
+            if (shouldCreateBill && isIncrease) {
                 try {
                     const billTemplateService = (await import('../../services/billTemplate.service')).default;
                     rentIncreaseBill = await billTemplateService.createRentIncreaseBill({
@@ -699,12 +746,16 @@ class TenantControls {
                         dueDate: new Date(dueDate),
                     });
                     if (rentIncreaseBill && serverInstance.paymentNotificationService) {
-                        await serverInstance.paymentNotificationService.sendNewBillNotification(rentIncreaseBill.id);
+                        await serverInstance.paymentNotificationService.sendNewBillNotification(
+                            rentIncreaseBill.id
+                        );
                     }
                 } catch (billError) {
                     console.error('Failed to create rent increase bill:', billError);
                 }
-            } else if (
+            }
+
+            if (
                 Number(scheduledRent) !== oldRent &&
                 serverInstance.paymentNotificationService &&
                 tenant.userId
@@ -713,20 +764,25 @@ class TenantControls {
                     tenant.userId,
                     oldRent,
                     Number(scheduledRent),
-                    updatedProperty.currency ? String(updatedProperty.currency) : undefined,
+                    currency,
                     req.user?.id,
-                    landlordId
+                    landlordId,
+                    effectiveDate
                 );
             }
 
             return res.status(200).json({
                 success: true,
-                message: 'Rent adjusted successfully',
+                message: isScheduled
+                    ? 'Rent increase scheduled successfully'
+                    : 'Rent adjusted successfully',
                 data: {
                     tenantId,
                     propertyId: tenant.propertyId,
                     oldRent,
                     newRent: scheduledRent,
+                    scheduled: isScheduled,
+                    effectiveDate: effectiveDay.toISOString(),
                     property: updatedProperty,
                     rentIncreaseBill,
                     lateFeeSettings: {

@@ -6,6 +6,7 @@ import {
   ResolvedFinancialRules,
 } from './globalSettings.util';
 import { resolvePaymentGatewayForCurrency } from './paymentGateway.util';
+import { validateApplicationFeePercentAgainstHoldingCap } from './settingsEnforcement.util';
 
 export type ApplicationFeeContext = {
   required: boolean;
@@ -144,4 +145,43 @@ export async function resolveApplicationFeeContext(
     applicationId: record.id,
     tenantUserId: record.userId,
   };
+}
+
+export async function assertApplicationFeeWithinHoldingCap(
+  record: ApplicationFeeSource,
+  rules: ResolvedFinancialRules | null,
+  globalSettings?: Awaited<ReturnType<typeof LandlordSettingsService.getAllGlobalSettings>>
+): Promise<void> {
+  const amount = resolveApplicationFeeAmountFromRecord(record, rules);
+  if (!amount || amount <= 0) return;
+
+  let settings = globalSettings;
+  if (!settings && record.properties?.landlordId) {
+    settings = await LandlordSettingsService.getAllGlobalSettings(
+      record.properties.landlordId
+    );
+  }
+
+  const rent = Number(record.properties?.price ?? 0);
+  if (rent > 0 && settings?.holdingDepositMaxWeeks) {
+    const capCheck = validateApplicationFeePercentAgainstHoldingCap(
+      (amount / rent) * 100,
+      settings.holdingDepositMaxWeeks,
+      settings.defaultRentCollectionFrequency ?? null
+    );
+    if (!capCheck.valid) {
+      throw new Error(capCheck.error ?? 'Application fee exceeds holding deposit cap');
+    }
+  }
+
+  if (!rules || rules.applicationFeePercent <= 0) return;
+
+  const percentCheck = validateApplicationFeePercentAgainstHoldingCap(
+    rules.applicationFeePercent,
+    settings?.holdingDepositMaxWeeks,
+    settings?.defaultRentCollectionFrequency ?? null
+  );
+  if (!percentCheck.valid) {
+    throw new Error(percentCheck.error ?? 'Application fee exceeds holding deposit cap');
+  }
 }

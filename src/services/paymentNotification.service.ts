@@ -17,9 +17,10 @@ import {
 } from "../utils/globalSettings.util";
 import sendMail from "../utils/emailer";
 import type { IGlobalSetting } from "../landlord/validations/interfaces/propsSettings";
+import { resolveBillNotificationRecipientUserIds } from "../utils/billScope.util";
 
 export interface PaymentNotification {
-  type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder' | 'bill_created' | 'rent_adjusted';
+  type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder' | 'bill_created' | 'rent_adjusted' | 'deposit_adjusted';
   title: string;
   message: string;
   data: any;
@@ -31,6 +32,8 @@ type BillWithRelations = {
   billName: string;
   amount: { toNumber?: () => number } | number;
   dueDate: Date;
+  billFrequency?: string | null;
+  description?: string | null;
   landlordId?: string | null;
   tenantId?: string | null;
   property?: { name?: string | null; currency?: Currency | null } | null;
@@ -177,6 +180,20 @@ export class PaymentNotificationService {
     return bill.property?.currency ? String(bill.property.currency) : "NGN";
   }
 
+  private formatBillFrequency(frequency?: string | null): string {
+    const labels: Record<string, string> = {
+      ONE_TIME: "One-time",
+      DAILY: "Daily",
+      WEEKLY: "Weekly",
+      MONTHLY: "Monthly",
+      QUARTERLY: "Quarterly",
+      YEARLY: "Yearly",
+      ANNUALLY: "Annually",
+    };
+    if (!frequency) return "One-time";
+    return labels[String(frequency).toUpperCase()] || frequency;
+  }
+
   private resolveReminderMethods(
     settings?: Pick<IGlobalSetting, "reminderMethods"> | null
   ): ReminderMethodType[] {
@@ -255,6 +272,7 @@ export class PaymentNotificationService {
           data: {
             type: notification.type,
             billId: bill.id,
+            billFrequency: bill.billFrequency,
             route: pushRoute,
           },
         });
@@ -272,6 +290,34 @@ export class PaymentNotificationService {
         );
       } catch (emailError) {
         loggers.error("Failed to send bill email notification:", emailError);
+      }
+    }
+  }
+
+  private async deliverLandlordPaymentNotification(
+    landlordUser: { id: string; email?: string | null },
+    notification: PaymentNotification,
+    settings?: Pick<IGlobalSetting, "reminderMethods"> | null
+  ): Promise<void> {
+    const methods = this.resolveReminderMethods(settings);
+    const displayMessage = stripBillReminderMarker(notification.message);
+
+    if (this.shouldUseMethod(methods, ReminderMethodType.IN_APP)) {
+      this.io.to(`user:${landlordUser.id}`).emit("payment_notification", {
+        ...notification,
+        message: displayMessage,
+      });
+    }
+
+    if (this.wantsEmail(methods) && landlordUser.email) {
+      try {
+        await sendMail(
+          landlordUser.email,
+          notification.title,
+          `<p>${displayMessage}</p>`
+        );
+      } catch (emailError) {
+        loggers.error("Failed to send landlord bill email notification:", emailError);
       }
     }
   }
@@ -544,6 +590,14 @@ export class PaymentNotificationService {
       const settings = bill.landlordId
         ? await LandlordSettingsService.getAllGlobalSettings(bill.landlordId)
         : null;
+
+      if (!settings?.notificationEnabled) {
+        loggers.info(
+          `Skipping bill overdue notification — landlord notifications disabled: ${billId}`
+        );
+        return;
+      }
+
       const currency = this.resolveBillCurrency(bill);
       const amountLabel = this.formatAmount(bill.amount, currency);
       const daysOverdue = Math.ceil((new Date().getTime() - new Date(bill.dueDate).getTime()) / (1000 * 60 * 60 * 24));
@@ -573,7 +627,6 @@ export class PaymentNotificationService {
       );
       await this.deliverBillNotification(bill, tenantNotification, settings);
 
-      // Notify landlord
       if (bill.landlord?.user) {
         const landlordNotification: PaymentNotification = {
           type: 'bill_overdue',
@@ -592,7 +645,11 @@ export class PaymentNotificationService {
           timestamp: new Date()
         };
 
-        this.io.to(`user:${bill.landlord.user.id}`).emit('payment_notification', landlordNotification);
+        await this.deliverLandlordPaymentNotification(
+          bill.landlord.user,
+          landlordNotification,
+          settings
+        );
       }
 
       loggers.info(`Bill overdue notification sent to tenant ${bill.tenants.user.id} and landlord`);
@@ -623,23 +680,9 @@ export class PaymentNotificationService {
         return;
       }
 
-      const userIds = new Set<string>();
-
-      if (bill.tenantId && bill.tenants?.user?.id) {
-        userIds.add(bill.tenants.user.id);
-      } else if (bill.propertyId) {
-        const propertyTenants = await prismaClient.tenants.findMany({
-          where: { propertyId: bill.propertyId, isCurrentLease: true },
-          select: { userId: true },
-        });
-        propertyTenants.forEach((t) => userIds.add(t.userId));
-      } else if (bill.landlordId) {
-        const landlordTenants = await prismaClient.tenants.findMany({
-          where: { landlordId: bill.landlordId, isCurrentLease: true },
-          select: { userId: true },
-        });
-        landlordTenants.forEach((t) => userIds.add(t.userId));
-      }
+      const userIds = new Set<string>(
+        await resolveBillNotificationRecipientUserIds(bill)
+      );
 
       if (userIds.size === 0) {
         return;
@@ -655,6 +698,8 @@ export class PaymentNotificationService {
         month: 'short',
         year: 'numeric',
       });
+      const frequencyLabel = this.formatBillFrequency(bill.billFrequency);
+      const propertyLabel = bill.property?.name ? ` for ${bill.property.name}` : '';
 
       const users = await prismaClient.users.findMany({
         where: { id: { in: Array.from(userIds) } },
@@ -670,12 +715,15 @@ export class PaymentNotificationService {
           const notification: PaymentNotification = {
             type: 'bill_created',
             title: 'New Bill Added',
-            message: `A new bill "${bill.billName}" of ${amountLabel} is due on ${dueLabel}.`,
+            message: `A new ${frequencyLabel.toLowerCase()} bill "${bill.billName}" of ${amountLabel} is due on ${dueLabel}${propertyLabel}.`,
             data: {
               billId: bill.id,
               billName: bill.billName,
               amount: bill.amount,
               dueDate: bill.dueDate,
+              billFrequency: bill.billFrequency,
+              frequencyLabel,
+              description: bill.description,
               propertyName: bill.property?.name,
               currency,
               timestamp: new Date(),
@@ -874,6 +922,13 @@ export class PaymentNotificationService {
         NOTIFICATION_CONCURRENCY,
         async (bills) => {
           for (const bill of bills) {
+            if (!bill.landlordId) continue;
+
+            const settings = await LandlordSettingsService.getAllGlobalSettings(
+              bill.landlordId
+            );
+            if (!settings?.notificationEnabled) continue;
+
             await this.sendBillOverdueNotification(bill.id);
           }
         }
@@ -916,29 +971,80 @@ export class PaymentNotificationService {
   }
 
   /**
-   * Notify tenant when landlord adjusts rent (even if no bill is created).
+   * Notify tenant when rent or deposit changes (immediate or scheduled).
    */
-  async sendRentAdjustmentNotification(
-    tenantUserId: string,
-    oldRent: number,
-    newRent: number,
-    currency?: string | null,
-    landlordUserId?: string | null,
-    landlordId?: string | null
-  ): Promise<void> {
+  async sendTenancyFinancialChangeNotification(params: {
+    tenantUserId: string;
+    changeType: 'rent' | 'deposit';
+    oldAmount: number;
+    newAmount: number;
+    currency?: string | null;
+    effectiveDate?: Date | null;
+    scheduled?: boolean;
+    landlordUserId?: string | null;
+    landlordId?: string | null;
+    reason?: string;
+  }): Promise<void> {
+    const {
+      tenantUserId,
+      changeType,
+      oldAmount,
+      newAmount,
+      currency,
+      effectiveDate,
+      scheduled,
+      landlordUserId,
+      landlordId,
+      reason,
+    } = params;
+
     try {
       const code = currency ? String(currency) : 'NGN';
       const format = (value: number) =>
-        `${code} ${value.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+        `${code} ${value.toLocaleString('en-GB', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        })}`;
+
+      const label = changeType === 'deposit' ? 'Security deposit' : 'Rent';
+      const effectiveLabel = effectiveDate
+        ? effectiveDate.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : null;
+
+      let message: string;
+      if (scheduled && effectiveLabel) {
+        message = `From ${effectiveLabel}, your ${label.toLowerCase()} will change from ${format(oldAmount)} to ${format(newAmount)}${reason ? ` under your ${reason}` : ' per your signed agreement'}.`;
+      } else if (effectiveLabel && !scheduled) {
+        message = `Your ${label.toLowerCase()} has been updated from ${format(oldAmount)} to ${format(newAmount)} effective ${effectiveLabel}.`;
+      } else {
+        message = `Your ${label.toLowerCase()} has been updated from ${format(oldAmount)} to ${format(newAmount)}.`;
+      }
+
+      const notificationType = changeType === 'deposit' ? 'deposit_adjusted' : 'rent_adjusted';
+      const title =
+        changeType === 'deposit'
+          ? scheduled
+            ? 'Deposit change scheduled'
+            : 'Deposit updated'
+          : scheduled
+            ? 'Rent change scheduled'
+            : 'Rent updated';
 
       const notification: PaymentNotification = {
-        type: 'rent_adjusted',
-        title: 'Rent updated',
-        message: `Your rent has been updated from ${format(oldRent)} to ${format(newRent)}.`,
+        type: notificationType,
+        title,
+        message,
         data: {
-          oldRent,
-          newRent,
+          changeType,
+          oldAmount,
+          newAmount,
           currency: code,
+          effectiveDate: effectiveDate?.toISOString(),
+          scheduled: Boolean(scheduled),
           timestamp: new Date(),
           route: '/profile/TenancyInfo',
         },
@@ -955,14 +1061,14 @@ export class PaymentNotificationService {
             destId: tenantUserId,
             title: notification.title,
             message: notification.message,
-            notificationType: 'rent_adjusted',
+            notificationType,
             route: '/profile/TenancyInfo',
             skipPush: true,
           },
           'ONLINE_PAYMENTS'
         );
       } catch (persistError) {
-        loggers.error('Failed to persist rent adjustment notification:', persistError);
+        loggers.error('Failed to persist tenancy financial change notification:', persistError);
       }
 
       const settings = landlordId
@@ -975,19 +1081,60 @@ export class PaymentNotificationService {
           const expoPushService = (await import('./expoPush.service')).default;
           await expoPushService.sendToUser(tenantUserId, {
             title: notification.title,
-            body: notification.message,
+            body: message,
             data: {
-              type: notification.type,
+              type: notificationType,
               route: '/profile/TenancyInfo',
             },
           });
         } catch (pushError) {
-          loggers.error('Failed to send rent adjustment push:', pushError);
+          loggers.error('Failed to send tenancy financial change push:', pushError);
+        }
+      }
+
+      if (this.wantsEmail(methods)) {
+        const user = await prismaClient.users.findUnique({
+          where: { id: tenantUserId },
+          select: { email: true },
+        });
+        if (user?.email) {
+          try {
+            await sendMail(user.email, title, `<p>${message}</p>`);
+          } catch (emailError) {
+            loggers.error('Failed to send tenancy financial change email:', emailError);
+          }
         }
       }
     } catch (error) {
-      loggers.error('Error sending rent adjustment notification:', error);
+      loggers.error('Error sending tenancy financial change notification:', error);
     }
+  }
+
+  /**
+   * Notify tenant when landlord adjusts rent (even if no bill is created).
+   */
+  async sendRentAdjustmentNotification(
+    tenantUserId: string,
+    oldRent: number,
+    newRent: number,
+    currency?: string | null,
+    landlordUserId?: string | null,
+    landlordId?: string | null,
+    effectiveDate?: Date | null
+  ): Promise<void> {
+    await this.sendTenancyFinancialChangeNotification({
+      tenantUserId,
+      changeType: 'rent',
+      oldAmount: oldRent,
+      newAmount: newRent,
+      currency,
+      effectiveDate,
+      scheduled:
+        effectiveDate != null &&
+        effectiveDate.getTime() > Date.now(),
+      landlordUserId,
+      landlordId,
+    });
   }
 }
 

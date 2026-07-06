@@ -10,6 +10,9 @@ import LogsServices from './logs.services';
 import { LogType } from '@prisma/client';
 import InspectionMoveOutService from './inspectionMoveOut.service';
 import { appendActivityLogRef } from '../utils/activityLogRef.util';
+import LandlordSettingsService from '../landlord/services/propertySetting.service';
+import { resolveFinancialRules } from '../utils/globalSettings.util';
+import { computeDepositReturnDeadline } from '../utils/settingsEnforcement.util';
 
 export interface CreateMoveOutNoticeInput {
   tenantId: string;
@@ -21,6 +24,33 @@ export interface CreateMoveOutNoticeInput {
 }
 
 class MoveOutNoticeService {
+  private async resolveDepositReturnDeadline(
+    landlordId: string,
+    moveOutDate: Date
+  ): Promise<{ deadline: Date; days: number } | null> {
+    const settings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+    const rules = resolveFinancialRules(settings, 0, null);
+    if (!rules.depositReturnTimeframeDays || rules.depositReturnTimeframeDays <= 0) {
+      return null;
+    }
+    return {
+      days: rules.depositReturnTimeframeDays,
+      deadline: computeDepositReturnDeadline(moveOutDate, rules.depositReturnTimeframeDays),
+    };
+  }
+
+  private enrichNoticeWithDepositReturn<T extends { intendedMoveOutDate: Date }>(
+    notice: T,
+    depositReturn: { deadline: Date; days: number } | null
+  ) {
+    if (!depositReturn) return notice;
+    return {
+      ...notice,
+      depositReturnDeadline: depositReturn.deadline.toISOString(),
+      depositReturnDays: depositReturn.days,
+    };
+  }
+
   async getCurrentTenantForUser(userId: string) {
     return prismaClient.tenants.findFirst({
       where: { userId, isCurrentLease: true, isDeleted: false },
@@ -202,7 +232,14 @@ class MoveOutNoticeService {
           notice.id,
           notice.tenantId
         );
-        return { ...notice, inspection };
+        const depositReturn = await this.resolveDepositReturnDeadline(
+          landlordId,
+          notice.intendedMoveOutDate
+        );
+        return this.enrichNoticeWithDepositReturn(
+          { ...notice, inspection },
+          depositReturn
+        );
       })
     );
   }
@@ -239,12 +276,28 @@ class MoveOutNoticeService {
       throw new Error('NOTICE_ALREADY_ACKNOWLEDGED');
     }
 
+    const depositReturn = await this.resolveDepositReturnDeadline(
+      landlordId,
+      notice.intendedMoveOutDate
+    );
+
     const updated = await prismaClient.moveOutNotice.update({
       where: { id: noticeId },
       data: {
         status: MoveOutNoticeStatus.ACKNOWLEDGED,
         acknowledgedBy: acknowledgedByUserId,
         acknowledgedAt: new Date(),
+        ...(depositReturn
+          ? {
+              searchCriteria: {
+                ...(typeof notice.searchCriteria === 'object' && notice.searchCriteria
+                  ? (notice.searchCriteria as Record<string, unknown>)
+                  : {}),
+                depositReturnDeadline: depositReturn.deadline.toISOString(),
+                depositReturnDays: depositReturn.days,
+              },
+            }
+          : {}),
       },
       include: {
         tenant: {
@@ -268,7 +321,9 @@ class MoveOutNoticeService {
         sourceId: acknowledgedByUserId,
         destId: notice.tenant.userId,
         title: 'Move-Out Notice Acknowledged',
-        message: `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
+        message: depositReturn
+          ? `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}. Security deposit must be returned by ${depositReturn.deadline.toLocaleDateString('en-GB')} (${depositReturn.days} day${depositReturn.days === 1 ? '' : 's'} after move-out).`
+          : `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
         notificationType: 'move_out_acknowledged',
         route: '/profile/TenancyInfo',
       },
@@ -286,7 +341,7 @@ class MoveOutNoticeService {
       subjects: 'Move-out notice acknowledged',
     });
 
-    return updated;
+    return this.enrichNoticeWithDepositReturn(updated, depositReturn);
   }
 }
 

@@ -3,11 +3,31 @@ import { ApiResponse } from '../../utils/ApiResponse';
 import ReportsService from '../services/reports.service';
 import { CustomRequest } from '../../utils/types';
 
+function resolveReportContext(req: CustomRequest): {
+    landlordId: string;
+    userId: string;
+} | null {
+    const landlordId = req.user?.landlords?.id;
+    const userId = req.user?.id;
+    if (!landlordId || !userId) return null;
+    return { landlordId, userId };
+}
+
+function requireLandlordId(req: CustomRequest, res: Response): string | null {
+    const context = resolveReportContext(req);
+    if (!context) {
+        res.status(403).json(new ApiResponse(403, null, 'Landlord account required'));
+        return null;
+    }
+    return context.landlordId;
+}
+
 class ReportsController {
     // Financial Reports
     async getFinancialReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const { startDate, endDate } = req.query;
             const data = await ReportsService.getFinancialReport(landlordId, startDate as string, endDate as string);
             res.status(200).json(new ApiResponse(200, data, 'Financial report generated successfully'));
@@ -18,7 +38,8 @@ class ReportsController {
 
     async getRentCollectionReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const period = req.query.period as string;
             const data = await ReportsService.getRentCollectionReport(landlordId, period);
             res.status(200).json(new ApiResponse(200, data, 'Rent collection report generated successfully'));
@@ -29,7 +50,8 @@ class ReportsController {
 
     async getRentRollReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getRentRollReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Rent roll report generated successfully'));
         } catch (error) {
@@ -40,7 +62,8 @@ class ReportsController {
     // Operational Reports
     async getOccupancyReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const period = req.query.period as string;
             const data = await ReportsService.getOccupancyReport(landlordId, period);
             res.status(200).json(new ApiResponse(200, data, 'Occupancy report generated successfully'));
@@ -51,7 +74,8 @@ class ReportsController {
 
     async getMaintenanceReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const period = req.query.period as string;
             const data = await ReportsService.getMaintenanceReport(landlordId, period);
             res.status(200).json(new ApiResponse(200, data, 'Maintenance report generated successfully'));
@@ -62,7 +86,8 @@ class ReportsController {
 
     async getTenantSatisfactionReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getTenantSatisfactionReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Tenant satisfaction report generated successfully'));
         } catch (error) {
@@ -72,7 +97,8 @@ class ReportsController {
 
     async getLeaseExpirationReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getLeaseExpirationReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Lease expiration report generated successfully'));
         } catch (error) {
@@ -83,7 +109,8 @@ class ReportsController {
     // Business Intelligence Reports
     async getComplianceReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getComplianceReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Compliance report generated successfully'));
         } catch (error) {
@@ -93,7 +120,8 @@ class ReportsController {
 
     async getMarketingReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const period = req.query.period as string;
             const data = await ReportsService.getMarketingReport(landlordId, period);
             res.status(200).json(new ApiResponse(200, data, 'Marketing report generated successfully'));
@@ -104,7 +132,8 @@ class ReportsController {
 
     async getKPIReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const period = req.query.period as string;
             const data = await ReportsService.getKPIReport(landlordId, period);
             res.status(200).json(new ApiResponse(200, data, 'KPI report generated successfully'));
@@ -115,7 +144,8 @@ class ReportsController {
 
     async getPortfolioPerformanceReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getPortfolioPerformanceReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Portfolio performance report generated successfully'));
         } catch (error) {
@@ -126,7 +156,8 @@ class ReportsController {
     // Property Reports
     async getTenantReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getTenantReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Tenant report generated successfully'));
         } catch (error) {
@@ -136,7 +167,8 @@ class ReportsController {
 
     async getPropertyConditionReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getPropertyConditionReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Property condition report generated successfully'));
         } catch (error) {
@@ -146,9 +178,41 @@ class ReportsController {
 
     async getLeasingVacancyReport(req: CustomRequest, res: Response) {
         try {
-            const landlordId = req.user?.id;
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
             const data = await ReportsService.getLeasingVacancyReport(landlordId);
             res.status(200).json(new ApiResponse(200, data, 'Leasing vacancy report generated successfully'));
+        } catch (error) {
+            res.status(500).json(new ApiResponse(500, null, error.message));
+        }
+    }
+
+    async getRiskAssessmentReport(req: CustomRequest, res: Response) {
+        try {
+            const landlordId = requireLandlordId(req, res);
+            if (!landlordId) return;
+            const data = await ReportsService.getRiskAssessmentReport(landlordId);
+            res.status(200).json(new ApiResponse(200, data, 'Risk assessment report generated successfully'));
+        } catch (error) {
+            res.status(500).json(new ApiResponse(500, null, error.message));
+        }
+    }
+
+    async getTaxComplianceReport(req: CustomRequest, res: Response) {
+        try {
+            const context = resolveReportContext(req);
+            if (!context) {
+                return res.status(403).json(new ApiResponse(403, null, 'Landlord account required'));
+            }
+            const year = req.query.year
+                ? parseInt(String(req.query.year), 10)
+                : undefined;
+            const data = await ReportsService.getTaxComplianceReport(
+                context.landlordId,
+                context.userId,
+                Number.isFinite(year) ? year : undefined
+            );
+            res.status(200).json(new ApiResponse(200, data, 'Tax compliance report generated successfully'));
         } catch (error) {
             res.status(500).json(new ApiResponse(500, null, error.message));
         }

@@ -1139,12 +1139,37 @@ class PropertyController {
                 return res.status(404).json({ message: "Property not found or access denied" });
             }
 
-            const updatedProperty = await PropertyServices.updateProperty(propertyId, req.body);
+            const updatedProperty = await PropertyServices.updateProperty(propertyId, req.body, [], req.user?.id);
 
             return res.status(200).json({ property: updatedProperty });
 
         } catch (err) {
             // Handle any errors
+            ErrorService.handleError(err, res);
+        }
+    }
+
+    getScheduledRentChanges = async (req: CustomRequest, res: Response) => {
+        try {
+            const propertyId = req.params.propertyId;
+            const landlordId = req.user?.landlords?.id;
+
+            if (!landlordId) {
+                return res.status(400).json({ message: "Landlord not found" });
+            }
+
+            const property = await PropertyServices.getPropertyById(propertyId);
+            if (!property || property.landlordId !== landlordId) {
+                return res.status(404).json({ message: "Property not found or access denied" });
+            }
+
+            const { getPropertyScheduledRentChanges } = await import(
+                '../../services/tenancyChangeNotification.service'
+            );
+            const scheduled = await getPropertyScheduledRentChanges(propertyId);
+
+            return res.status(200).json({ scheduledRentChanges: scheduled });
+        } catch (err) {
             ErrorService.handleError(err, res);
         }
     }

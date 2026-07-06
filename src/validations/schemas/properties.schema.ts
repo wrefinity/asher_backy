@@ -26,6 +26,7 @@ export const updatePropertySchemaNew = Joi.object({
   // Pricing
   marketValue: Joi.number().optional(),
   price: Joi.number().optional(),
+  priceEffectiveDate: Joi.date().iso().optional(),
   securityDeposit: Joi.number().optional(),
 
   // Location

@@ -4,6 +4,7 @@ import { IPropApartmentSettings, IGlobalSetting } from '../validations/interface
 import {
   mapToPropertyLateFeeFrequency,
   normalizeReminderMethods,
+  parseGracePeriodDays,
   reminderMethodsNeedMigration,
   resolveFinancialRules,
 } from '../../utils/globalSettings.util';
@@ -11,18 +12,22 @@ import {
 class LandlordSettingsService {
 
     createOrUpdate = async (data: IPropApartmentSettings) => {
+        const payload = { ...data };
+        if (payload.gracePeriodDays != null) {
+            payload.gracePeriodDays = parseGracePeriodDays(payload.gracePeriodDays) ?? 0;
+        }
         return prismaClient.propertySettings.upsert({
             where: {
                 propertyId_settingType: {
-                    propertyId: data.propertyId,
-                    settingType: data.settingType,
+                    propertyId: payload.propertyId,
+                    settingType: payload.settingType,
                 },
             },
             update: {
-                ...data,
+                ...payload,
             },
             create: {
-                ...data,
+                ...payload,
             },
         });
     };
@@ -137,11 +142,14 @@ class LandlordSettingsService {
         propertyId: string;
         lateFeePercentage?: number;
         lateFeeFixed?: number;
-        gracePeriodDays?: number;
+        gracePeriodDays?: number | string;
         lateFeeFrequency?: IGlobalSetting['lateFeeFrequency'];
     }) => {
         const { landlordId, propertyId, lateFeePercentage, lateFeeFixed, gracePeriodDays, lateFeeFrequency } =
             params;
+
+        const parsedGrace =
+            parseGracePeriodDays(gracePeriodDays) ?? 0;
 
         return prismaClient.propertySettings.upsert({
             where: {
@@ -153,7 +161,7 @@ class LandlordSettingsService {
             update: {
                 lateFeePercentage: lateFeePercentage ?? 0,
                 lateFee: lateFeeFixed ?? 0,
-                gracePeriodDays: gracePeriodDays ?? 0,
+                gracePeriodDays: parsedGrace,
                 lateFeeFrequency: mapToPropertyLateFeeFrequency(lateFeeFrequency),
             },
             create: {
@@ -162,7 +170,7 @@ class LandlordSettingsService {
                 settingType: PropsSettingType.LATEFEE,
                 lateFeePercentage: lateFeePercentage ?? 0,
                 lateFee: lateFeeFixed ?? 0,
-                gracePeriodDays: gracePeriodDays ?? 0,
+                gracePeriodDays: parsedGrace,
                 lateFeeFrequency: mapToPropertyLateFeeFrequency(lateFeeFrequency),
             },
         });

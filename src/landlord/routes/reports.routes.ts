@@ -34,6 +34,8 @@ class ReportsRouter {
         this.router.get('/tenants', ReportsController.getTenantReport);
         this.router.get('/property-condition', ReportsController.getPropertyConditionReport);
         this.router.get('/leasing-vacancy', ReportsController.getLeasingVacancyReport);
+        this.router.get('/risk-assessment', ReportsController.getRiskAssessmentReport);
+        this.router.get('/tax-compliance', ReportsController.getTaxComplianceReport);
     }
 }
 

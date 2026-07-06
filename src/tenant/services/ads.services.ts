@@ -1,6 +1,11 @@
 import { prismaClient } from "../..";
 import transferServices from "../../services/transfer.services";
 import { Currency } from "@prisma/client";
+import {
+    isAdOwner,
+    sanitizeAdForViewer,
+    sanitizePublicAdListings,
+} from "../utils/adResponse";
 class AdService {
 
     private profileSelect = {
@@ -90,14 +95,14 @@ class AdService {
 
         // Filter out premium ads if excludePremium is true
         // Note: This is a temporary solution. Add isPremiumBanner field to schema for better performance
-        if (filters?.excludePremium) {
-            return ads.filter(ad => {
+        const filteredAds = filters?.excludePremium
+            ? ads.filter(ad => {
                 const businessDetails = ad.bussinessDetails as any;
                 return !businessDetails?.isPremiumBanner;
-            });
-        }
+            })
+            : ads;
 
-        return ads;
+        return sanitizePublicAdListings(filteredAds);
     }
 
     async getPremiumBannerAds() {
@@ -120,10 +125,12 @@ class AdService {
 
         // Filter only premium banner ads
         // Note: This is a temporary solution. Add isPremiumBanner field to schema for better performance
-        return ads.filter(ad => {
+        const premiumAds = ads.filter(ad => {
             const businessDetails = ad.bussinessDetails as any;
             return businessDetails?.isPremiumBanner === true;
         });
+
+        return sanitizePublicAdListings(premiumAds);
     }
 
     async getAllAds() {
@@ -158,7 +165,20 @@ class AdService {
         })
     }
 
-    async increamentAdStats(adId: string, statType: string) {
+    async increamentAdStats(adId: string, statType: string, viewerUserId?: string) {
+        const ad = await prismaClient.ads.findUnique({
+            where: { id: adId },
+            select: { userId: true },
+        });
+
+        if (!ad) {
+            return null;
+        }
+
+        if (viewerUserId && isAdOwner(ad, viewerUserId)) {
+            return ad;
+        }
+
         return prismaClient.ads.update({
             where: { id: adId },
             data: {
@@ -173,24 +193,37 @@ class AdService {
         })
     }
 
-    async getAdById(adId: string) {
-        return prismaClient.ads.findUnique({
+    async getAdById(adId: string, viewerUserId?: string) {
+        const ad = await prismaClient.ads.findUnique({
             where: { id: adId },
             include: {
                 user: this.userSelect,
             }
-        })
+        });
+
+        if (!ad) return null;
+        return sanitizeAdForViewer(ad, viewerUserId);
     }
 
-    async getAdStats(adId: string) {
-        return prismaClient.ads.findUnique({
+    async getAdStats(adId: string, viewerUserId?: string) {
+        const ad = await prismaClient.ads.findUnique({
             where: { id: adId },
             select: {
+                userId: true,
                 views: true,
                 reach: true,
                 clicks: true,
             }
-        })
+        });
+
+        if (!ad) return null;
+        if (!isAdOwner(ad, viewerUserId)) return null;
+
+        return {
+            views: ad.views,
+            reach: ad.reach,
+            clicks: ad.clicks,
+        };
     }
 
     async updateAd(adId: string, adData: any) {

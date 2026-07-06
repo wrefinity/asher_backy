@@ -12,6 +12,10 @@ import {
     getClientIpFromRequest,
     resolveViewerCurrency,
 } from "../../utils/currencyContext";
+import {
+    propertyCountryMatchesMarket,
+    resolveViewerMarketFromRequest,
+} from "../../utils/listingMarketGate";
 import LandlordSettingsService from "../../landlord/services/propertySetting.service";
 import { resolveFinancialRules, getApplicationFeeRefundInfo } from "../../utils/globalSettings.util";
 
@@ -41,12 +45,21 @@ class ProperyController {
         const tenantId = req.user?.tenant?.id;
         const createdById = req.user?.id;
 
-    
-        const propertyListing = await propertyServices.getPropertyListingByListingId(propertyListingId);
+        const [propertyListing, { marketCountry }] = await Promise.all([
+            propertyServices.getPropertyListingByListingId(propertyListingId),
+            resolveViewerMarketFromRequest(req, req.query as Record<string, unknown>, {
+                preferUserPreferences: true,
+            }),
+        ]);
         if (!propertyListing) {
             return res.status(400).json(ApiError.badRequest("propertylisting is not found"));
         }
-        
+
+        const listingCountry = propertyListing.property?.country;
+        if (!propertyCountryMatchesMarket(listingCountry, marketCountry)) {
+            return res.status(404).json({ message: "This property is not available in your region." });
+        }
+    
         const propsId = propertyListing.propertyId || undefined;
         const unitId = propertyListing.unitId || undefined;
         const roomId = propertyListing.roomId || undefined;

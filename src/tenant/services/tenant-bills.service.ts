@@ -3,12 +3,17 @@ import { PaymentFrequency, PriceFrequency } from '@prisma/client';
 import { prismaClient } from "../..";
 import LandlordSettingsService from '../../landlord/services/propertySetting.service';
 import {
+  buildTenantAccessibleBillWhere,
+  resolveTenantBillAccessScope,
+} from '../../utils/billScope.util';
+import {
   computeLateFee,
   mergeFinancialRules,
   PERIOD_DAYS,
   periodDaysForFrequency,
   propertySettingsToOverride,
   resolveFinancialRules,
+  capMergedLateFeePercent,
   type ResolvedFinancialRules,
 } from '../../utils/globalSettings.util';
 import { OverdueAnalysis, PaymentFrequencyCalc, OverdueBill, OverdueRent } from '../../validations/interfaces/bills.interface';
@@ -16,10 +21,13 @@ import { OverdueAnalysis, PaymentFrequencyCalc, OverdueBill, OverdueRent } from 
 
 class TenantBills {
     async getTenantBills(tenantId: string) {
+        const scope = await resolveTenantBillAccessScope(tenantId);
         return prismaClient.billsSubCategory.findMany({
-          where: {
-            tenantId
-          },
+          where: buildTenantAccessibleBillWhere(
+            scope.tenantId,
+            scope.propertyId,
+            scope.includePropertyWideBills
+          ),
           orderBy: {
             dueDate: 'asc'
           }
@@ -27,12 +35,17 @@ class TenantBills {
       }
     
       async getUpcomingBills(tenantId: string, days: number = 30) {
+        const scope = await resolveTenantBillAccessScope(tenantId);
         const today = new Date();
         const futureDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
     
         return prismaClient.billsSubCategory.findMany({
           where: {
-            tenantId,
+            ...buildTenantAccessibleBillWhere(
+              scope.tenantId,
+              scope.propertyId,
+              scope.includePropertyWideBills
+            ),
             dueDate: {
               gte: today,
               lte: futureDate
@@ -45,10 +58,15 @@ class TenantBills {
       }
     
       async getOverdueBills(tenantId: string) {
+        const scope = await resolveTenantBillAccessScope(tenantId);
         const today = new Date(); 
         return prismaClient.billsSubCategory.findMany({
           where: {
-            tenantId,
+            ...buildTenantAccessibleBillWhere(
+              scope.tenantId,
+              scope.propertyId,
+              scope.includePropertyWideBills
+            ),
             dueDate: {
               lt: today
             }
@@ -109,6 +127,7 @@ class TenantBills {
 
       const rentAmount = this.getRentAmount(tenant);
       const rentFrequency = this.getRentFrequency(tenant);
+      const billScope = await resolveTenantBillAccessScope(tenantId);
       const [
         globalSettings,
         propertyLateFee,
@@ -120,8 +139,11 @@ class TenantBills {
         LandlordSettingsService.getPropertyLateFeeOverride(tenant.property.id),
         prismaClient.billsSubCategory.findMany({
           where: {
-            tenantId,
-            isDeleted: false
+            ...buildTenantAccessibleBillWhere(
+              billScope.tenantId,
+              billScope.propertyId,
+              billScope.includePropertyWideBills
+            ),
           },
           include: {
             bills: true,
@@ -155,9 +177,12 @@ class TenantBills {
       ]);
 
       const baseRules = resolveFinancialRules(globalSettings, rentAmount, rentFrequency);
-      const rules = mergeFinancialRules(
-        baseRules,
-        propertySettingsToOverride(propertyLateFee)
+      const rules = capMergedLateFeePercent(
+        mergeFinancialRules(
+          baseRules,
+          propertySettingsToOverride(propertyLateFee)
+        ),
+        rentAmount
       );
 
       const overdueBills = this.analyzeOverdueBills(tenantBills, tenantTransactions, rules);
