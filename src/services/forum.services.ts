@@ -52,6 +52,22 @@ class ForumService {
             data: { ...forumData },
         });
 
+        await prismaClient.forumMember.upsert({
+            where: {
+                forumId_usersId: {
+                    forumId: forum.id,
+                    usersId: forum.ownerId,
+                },
+            },
+            update: { status: MembershipStatus.MEMBER, role: "OWNER" },
+            create: {
+                forumId: forum.id,
+                usersId: forum.ownerId,
+                status: MembershipStatus.MEMBER,
+                role: "OWNER",
+            },
+        });
+
         await prismaClient.community.update({
             where: { id: community.id },
             data: { forumCount: { increment: 1 } },

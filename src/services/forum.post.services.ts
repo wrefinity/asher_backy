@@ -33,7 +33,7 @@ class ForumThreadService {
 
         if (!forum) throw new Error('Forum not found');
 
-        if (forum.community.ownerId !== userId) {
+        if (forum.community.ownerId !== userId && forum.ownerId !== userId) {
             const membership = await prismaClient.forumMember.findUnique({
                 where: {
                     forumId_usersId: {

@@ -30,4 +30,13 @@ export async function ensureTenantInLandlordCommunity(
       role: "MEMBER",
     },
   });
+
+  const memberCount = await prismaClient.communityMember.count({
+    where: { communityId: community.id, status: MembershipStatus.MEMBER },
+  });
+
+  await prismaClient.community.update({
+    where: { id: community.id },
+    data: { memberCount },
+  });
 }

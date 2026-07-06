@@ -16,17 +16,24 @@ class ForumController {
 
     async createForum(req: CustomRequest, res: Response) {
         const userId = String(req.user.id);
-        const community = await communityServices.getOwnedCommunity(userId);
-        if (!community) {
-            return res.status(404).json({ message: "Create a community before adding forums." });
-        }
-
         const { error, value } = forumInformationSchema.validate(req.body)
         if (error) {
             return res.status(400).json({ message: error.details[0].message })
         }
         try {
-            const { cloudinaryImageUrls, cloudinaryAudioUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, memberUserIds, ...data } = value;
+            const { cloudinaryImageUrls, cloudinaryAudioUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, memberUserIds, communityId, ...data } = value;
+            const community = communityId
+                ? await communityServices.getCommunityById(communityId)
+                : await communityServices.getOwnedCommunity(userId);
+            if (!community) {
+                return res.status(404).json({ message: "Create or join a community before adding forums." });
+            }
+
+            const canAccessCommunity = await communityServices.canUserAccessCommunity(userId, community.id);
+            if (!canAccessCommunity) {
+                return res.status(403).json({ message: "You do not have access to create a forum in this community." });
+            }
+
             if (cloudinaryImageUrls && cloudinaryImageUrls.length > 0) {
                 data.imageUrl = cloudinaryImageUrls || [];
             }

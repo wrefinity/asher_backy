@@ -21,6 +21,7 @@ const toggleCommentLikeSchema = Joi.object({
 const forumInformationSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
+    communityId: Joi.string().optional(),
     isDiscoverable: Joi.boolean().optional(),
     memberUserIds: Joi.array().items(Joi.string()).optional(),
 }).concat(uploadSchema)

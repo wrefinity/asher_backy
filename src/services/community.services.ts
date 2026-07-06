@@ -1,5 +1,5 @@
 import { prismaClient } from "..";
-import { CommunityVisibility, CommunityInvitation, MembershipStatus, Community } from "@prisma/client";
+import { CommunityVisibility, CommunityInvitation, MembershipStatus, Community, CommunityOwnerType } from "@prisma/client";
 import users from "../routes/users";
 class CommunityService {
     constructor() { }
@@ -25,6 +25,64 @@ class CommunityService {
         },
     }
 
+  private async syncCurrentTenantsIntoLandlordCommunity(
+    ownerUserId: string,
+    communityId: string
+  ) {
+        const landlord = await prismaClient.landlords.findUnique({
+            where: { userId: ownerUserId },
+            select: { id: true },
+        });
+
+        if (!landlord) return;
+
+        const tenantUsers = await prismaClient.tenants.findMany({
+            where: {
+                landlordId: landlord.id,
+                isCurrentLease: true,
+                isDeleted: false,
+                isAppAccessSuspended: false,
+                userId: { not: ownerUserId },
+            },
+            distinct: ['userId'],
+            select: { userId: true },
+        });
+
+        const tenantUserIds = tenantUsers
+            .map(tenant => tenant.userId)
+            .filter(Boolean);
+
+        if (tenantUserIds.length > 0) {
+            await prismaClient.communityMember.createMany({
+                data: tenantUserIds.map(usersId => ({
+                    communityId,
+                    usersId,
+                    status: MembershipStatus.MEMBER,
+                    role: "MEMBER",
+                })),
+                skipDuplicates: true,
+            });
+
+            await prismaClient.communityMember.updateMany({
+                where: {
+                    communityId,
+                    usersId: { in: tenantUserIds },
+                    status: { not: MembershipStatus.MEMBER },
+                },
+                data: { status: MembershipStatus.MEMBER, role: "MEMBER" },
+            });
+        }
+
+        const memberCount = await prismaClient.communityMember.count({
+            where: { communityId, status: MembershipStatus.MEMBER },
+        });
+
+        await prismaClient.community.update({
+            where: { id: communityId },
+            data: { memberCount },
+        });
+    }
+
   async createCommunity(userId: string, data: any, ownerType: import("@prisma/client").CommunityOwnerType) {
         const existing = await prismaClient.community.findFirst({
             where: {
@@ -33,6 +91,9 @@ class CommunityService {
             },
         });
         if (existing) {
+            if (ownerType === CommunityOwnerType.LANDLORD) {
+                await this.syncCurrentTenantsIntoLandlordCommunity(userId, existing.id);
+            }
             return existing
         }
 
@@ -41,7 +102,7 @@ class CommunityService {
         const discoveryAudience = resolveDiscoveryAudience(visibility, ownerType);
         const joinApprovalMode = data.joinApprovalMode === "AUTO" ? "AUTO" : "MANUAL";
 
-        return prismaClient.community.create({
+        const community = await prismaClient.community.create({
             data: {
                 ...data,
                 visibility,
@@ -53,6 +114,16 @@ class CommunityService {
                 }
             }
         });
+
+        if (ownerType === CommunityOwnerType.LANDLORD) {
+            await this.syncCurrentTenantsIntoLandlordCommunity(userId, community.id);
+            return prismaClient.community.findUnique({
+                where: { id: community.id },
+                include: { members: { include: { users: this.userSelect } } },
+            });
+        }
+
+        return community;
     }
 
     async getOwnedCommunity(userId: string) {
