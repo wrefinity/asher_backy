@@ -284,6 +284,13 @@ export class Authorize {
         };
     }
 
+    authorizeAnyRole(...roles: userRoles[]) {
+        return (req: CustomRequest, res: Response, next: NextFunction) => {
+            if (roles.some((role) => req.user?.role.includes(role))) return next();
+            res.status(403).json({ message: "You are not authorized for this action" });
+        };
+    }
+
     /**
      * Middleware to ensure user is operating in tenant context
      */

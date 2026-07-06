@@ -5,6 +5,7 @@ const communityInformationSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
     visibility: Joi.string().valid('PUBLIC', 'PRIVATE').optional(),
+    joinApprovalMode: Joi.string().valid('MANUAL', 'AUTO').optional(),
 }).concat(
     uploadSchema
 )
@@ -20,6 +21,8 @@ const toggleCommentLikeSchema = Joi.object({
 const forumInformationSchema = Joi.object({
     name: Joi.string().required(),
     description: Joi.string().required(),
+    isDiscoverable: Joi.boolean().optional(),
+    memberUserIds: Joi.array().items(Joi.string()).optional(),
 }).concat(uploadSchema)
 
 

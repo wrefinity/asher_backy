@@ -28,6 +28,7 @@
     "db:tenant-management": "prisma db execute --schema prisma/schema --file prisma/sql/add_tenant_management_flags.sql",
     "db:tenant-mobile-onboarding": "prisma db execute --schema prisma/schema --file prisma/sql/add_tenant_mobile_onboarding.sql",
     "db:tenant-messaging": "prisma db execute --schema prisma/schema --file prisma/sql/add_tenant_messaging_privacy.sql",
+    "db:community-forum-model": "prisma db execute --schema prisma/schema --file prisma/sql/add_community_forum_membership_model.sql",
     "db:backfill-nearby-places": "tsx scripts/backfill-nearby-places-cache.ts",
     "db:backfill-nearby-places:dry": "tsx scripts/backfill-nearby-places-cache.ts --dry-run",
     "db:backfill-nearby-places:force": "tsx scripts/backfill-nearby-places-cache.ts --force",

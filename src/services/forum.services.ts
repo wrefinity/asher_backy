@@ -1,6 +1,6 @@
+import { CommunityOwnerType, MembershipStatus, Forum } from "@prisma/client";
 import { prismaClient } from "..";
-import { CommunityVisibility, CommunityInvitation, MembershipStatus, Community, Forum } from "@prisma/client";
-import users from "../routes/users";
+import { TENANT_MAX_FORUMS } from "./community.access.service";
 
 class ForumService {
     constructor() { }
@@ -33,10 +33,76 @@ class ForumService {
     }
 
     async createForum(forumData: any) {
+        const community = await prismaClient.community.findUnique({
+            where: { id: forumData.communityId, isDeleted: false },
+            select: { ownerType: true, id: true },
+        });
+        if (!community) throw new Error("Community not found");
+
+        if (community.ownerType === CommunityOwnerType.TENANT) {
+            const count = await prismaClient.forum.count({
+                where: { communityId: community.id, isDeleted: false },
+            });
+            if (count >= TENANT_MAX_FORUMS) {
+                throw new Error(`Tenant communities are limited to ${TENANT_MAX_FORUMS} forums`);
+            }
+        }
+
         const forum = await prismaClient.forum.create({
-            data: { ...forumData, }
-        })
-        return forum
+            data: { ...forumData },
+        });
+
+        await prismaClient.community.update({
+            where: { id: community.id },
+            data: { forumCount: { increment: 1 } },
+        });
+
+        return forum;
+    }
+
+    async getForumsVisibleToUser(communityId: string, userId: string, limit = 10) {
+        const community = await prismaClient.community.findUnique({
+            where: { id: communityId, isDeleted: false },
+            select: { ownerId: true },
+        });
+        if (!community) return [];
+
+        const isOwner = community.ownerId === userId;
+        const forums = await prismaClient.forum.findMany({
+            where: { communityId, isDeleted: false },
+            orderBy: { createdAt: "desc" },
+            take: limit,
+            include: {
+                community: { select: { id: true, name: true } },
+                owner: {
+                    select: {
+                        id: true,
+                        email: true,
+                        profile: { select: { firstName: true, lastName: true, profileUrl: true } },
+                    },
+                },
+                ForumMember: isOwner
+                    ? false
+                    : {
+                        where: { usersId: userId, status: MembershipStatus.MEMBER },
+                        select: { id: true },
+                    },
+            },
+        });
+
+        if (isOwner) return forums;
+
+        return forums
+            .map((forum) => {
+                const isMember = (forum as { ForumMember?: { id: string }[] }).ForumMember?.length;
+                const { ForumMember, ...rest } = forum as typeof forum & { ForumMember?: unknown };
+                return {
+                    ...rest,
+                    canAccess: Boolean(isMember),
+                    isDiscoverable: forum.isDiscoverable,
+                };
+            })
+            .filter((forum) => forum.canAccess || forum.isDiscoverable);
     }
 
     async getForumById(id: string): Promise<Forum | null> {
@@ -135,7 +201,79 @@ class ForumService {
                 skip,
                 take: limit,
             }),
-            prismaClient.community.count({ where: whereClause }),
+            prismaClient.forum.count({ where: whereClause }),
+        ]);
+
+        const totalPages = Math.ceil(totalItems / limit);
+        const hasNextPage = page < totalPages;
+        const hasPreviousPage = page > 1;
+
+        return {
+            data: forums,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage: page,
+                itemsPerPage: limit,
+                hasNextPage,
+                hasPreviousPage,
+            },
+        };
+    }
+
+    async getForumsForUser(
+        userId: string,
+        {
+            search = '',
+            page = 1,
+            limit = 10,
+        }: {
+            search?: string;
+            page?: number;
+            limit?: number;
+        }
+    ) {
+        const skip = (page - 1) * limit;
+
+        const whereClause: any = {
+            isDeleted: false,
+            OR: [
+                { ownerId: userId },
+                { community: { ownerId: userId } },
+                {
+                    ForumMember: {
+                        some: { usersId: userId, status: MembershipStatus.MEMBER },
+                    },
+                },
+            ],
+        };
+
+        if (search.trim() !== '') {
+            whereClause.AND = [
+                {
+                    OR: [
+                        { name: { contains: search, mode: 'insensitive' } },
+                        { description: { contains: search, mode: 'insensitive' } },
+                    ],
+                },
+            ];
+        }
+
+        const [forums, totalItems] = await Promise.all([
+            prismaClient.forum.findMany({
+                where: whereClause,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    ForumMember: {
+                        include: {
+                            users: this.userSelect,
+                        },
+                    },
+                },
+                skip,
+                take: limit,
+            }),
+            prismaClient.forum.count({ where: whereClause }),
         ]);
 
         const totalPages = Math.ceil(totalItems / limit);
@@ -283,15 +421,40 @@ class ForumService {
         })
     }
 
-    async addForumMembers(forumId: string, usersIds: string[]) {
-        const data = usersIds.map(usersId => ({
+    async addForumMembers(forumId: string, usersIds: string[], actorId: string) {
+        const forum = await prismaClient.forum.findUnique({
+            where: { id: forumId },
+            include: { community: true },
+        });
+        if (!forum) throw new Error("Forum not found");
+        if (forum.community.ownerId !== actorId && forum.ownerId !== actorId) {
+            throw new Error("Only the community or forum owner can add forum members");
+        }
+
+        const communityMembers = await prismaClient.communityMember.findMany({
+            where: {
+                communityId: forum.communityId,
+                usersId: { in: usersIds },
+                status: MembershipStatus.MEMBER,
+            },
+            select: { usersId: true },
+        });
+        const allowed = new Set(communityMembers.map((m) => m.usersId));
+        const eligible = usersIds.filter((id) => allowed.has(id));
+        if (eligible.length === 0) {
+            throw new Error("Users must be community members before joining a forum");
+        }
+
+        const data = eligible.map((usersId) => ({
             forumId,
-            usersId
+            usersId,
+            status: MembershipStatus.MEMBER,
+            role: "MEMBER",
         }));
 
         return await prismaClient.forumMember.createMany({
             data,
-            skipDuplicates: true // Skip duplicates to avoid errors if a user is already a member
+            skipDuplicates: true,
         });
     }
 

@@ -44,7 +44,7 @@ class ForumThreadService {
                 }
             });
 
-            if (!membership) throw new Error('User is not a community member');
+            if (!membership) throw new Error('User is not a forum member');
         }
 
         const thread = await prismaClient.discussionThread.create({

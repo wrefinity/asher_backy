@@ -3,8 +3,10 @@ import errorService from "../services/error.service";
 import { CustomRequest } from "../utils/types"
 import { Request, Response } from "express";
 import communityServices from "../services/community.services";
-import { CommunityVisibility } from "@prisma/client";
+import { CommunityVisibility, userRoles } from "@prisma/client";
 import { prismaClient } from "..";
+import communityJoinService from "../services/community.join.service";
+import { resolveOwnerTypeFromRoles } from "../services/community.access.service";
 
 class CommunityController {
     constructor() { }
@@ -35,7 +37,11 @@ class CommunityController {
                 return res.status(404).json({ message: 'User not found in database' });
             }
             
-            const community = await communityServices.createCommunity(ownerId, { ...data })
+            const community = await communityServices.createCommunity(
+                ownerId,
+                { ...data },
+                resolveOwnerTypeFromRoles(userExists.role)
+            )
             return res.status(200).json({ community});
 
         } catch (error) {
@@ -65,8 +71,7 @@ class CommunityController {
 
     async joinCommunityViaInviteLink(req: CustomRequest, res: Response) {
         const { inviteCode } = req.params;
-        // Standardized user ID extraction pattern
-        const userId = String(req.user?.landlords?.id || req.user?.id);
+        const userId = String(req.user?.id);
         if (!userId) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -79,7 +84,55 @@ class CommunityController {
         }
     }
 
-    async getFilteredCommunities(req: Request, res: Response) {
+    async discoverCommunities(req: CustomRequest, res: Response) {
+        try {
+            const userId = String(req.user?.id);
+            const page = parseInt(String(req.query.page)) || 1;
+            const limit = parseInt(String(req.query.limit)) || 20;
+            const search = String(req.query.search || "");
+            const result = await communityJoinService.discoverCommunities(userId, page, limit, search);
+            return res.status(200).json(result);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async requestCommunityJoin(req: CustomRequest, res: Response) {
+        try {
+            const userId = String(req.user?.id);
+            const { communityId } = req.params;
+            const { message } = req.body || {};
+            const request = await communityJoinService.requestCommunityJoin(userId, communityId, message);
+            return res.status(200).json({ request, message: "Join request submitted" });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async listCommunityJoinRequests(req: CustomRequest, res: Response) {
+        try {
+            const ownerId = String(req.user?.id);
+            const { communityId } = req.params;
+            const requests = await communityJoinService.listCommunityJoinRequests(ownerId, communityId);
+            return res.status(200).json(requests);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async reviewCommunityJoinRequest(req: CustomRequest, res: Response) {
+        try {
+            const ownerId = String(req.user?.id);
+            const { requestId } = req.params;
+            const approve = req.body?.approve !== false;
+            const updated = await communityJoinService.reviewCommunityJoinRequest(ownerId, requestId, approve);
+            return res.status(200).json(updated);
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async getFilteredCommunities(req: CustomRequest, res: Response) {
         try {
             const visibility = req.query.visibility as CommunityVisibility | undefined;
             if (visibility && ![CommunityVisibility.PUBLIC, CommunityVisibility.PRIVATE].includes(visibility)) {
@@ -88,12 +141,14 @@ class CommunityController {
             const search = String(req.query.search || '');
             const page = parseInt(String(req.query.page)) || 1;
             const limit = parseInt(String(req.query.limit)) || 10;
+            const userId = String(req.user?.id || '');
 
             const result = await communityServices.getCommunities({
                 visibility,
                 search,
                 page,
                 limit,
+                userId: userId || undefined,
             });
 
             res.status(200).json(result);
@@ -126,10 +181,9 @@ class CommunityController {
 
     async updateCommunity(req: CustomRequest, res: Response) {
         const { communityId } = req.params
-        // Standardized user ID extraction pattern
-        const communityOwnerId = String(req.user?.landlords?.id || req.user?.id);
+        const communityOwnerId = String(req.user?.id);
         if (!communityOwnerId) {
-            return res.status(404).json({ message: 'Landlord not found' });
+            return res.status(404).json({ message: 'User not found' });
         }
         const { error, value } = communityInformationSchema.validate(req.body)
         if (error) {
@@ -182,12 +236,59 @@ class CommunityController {
 
     async getCommunityMembers(req: CustomRequest, res: Response) {
         const { communityId } = req.params
+        const userId = String(req.user?.id);
         try {
+            const canAccess = await communityServices.canUserAccessCommunity(userId, communityId);
+            if (!canAccess) {
+                return res.status(403).json({
+                    message: 'You do not have access to this community. Only the landlord and their tenants can access it.',
+                });
+            }
             const members = await communityServices.getCommunityMembers(communityId)
             if (!members) return res.status(404).json({ message: "Community not found" })
             return res.status(200).json(members)
         } catch (error) {
             errorService.handleError(error, res)
+        }
+    }
+
+    async addCommunityMembers(req: CustomRequest, res: Response) {
+        const { communityId } = req.params;
+        const actorId = String(req.user?.id);
+        const { userIds } = req.body || {};
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({ message: "userIds must be a non-empty array" });
+        }
+
+        try {
+            const result = await communityServices.addCommunityMembers(communityId, userIds, actorId);
+            return res.status(200).json({
+                ...result,
+                message: "Members added successfully",
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
+        }
+    }
+
+    async removeCommunityMembers(req: CustomRequest, res: Response) {
+        const { communityId } = req.params;
+        const actorId = String(req.user?.id);
+        const { userIds } = req.body || {};
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({ message: "userIds must be a non-empty array" });
+        }
+
+        try {
+            const result = await communityServices.removeCommunityMembers(communityId, userIds, actorId);
+            return res.status(200).json({
+                ...result,
+                message: "Members removed successfully",
+            });
+        } catch (error) {
+            errorService.handleError(error, res);
         }
     }
 }

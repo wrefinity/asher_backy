@@ -550,9 +550,11 @@ class BillService {
             ...buildTenantAccessibleBillWhere(
                 tenantId,
                 propertyId,
-                includePropertyWideBills
+                includePropertyWideBills,
+                false
             ),
         };
+        if (options.payableBy) where.payableBy = options.payableBy;
         if (options.billId) where.billId = options.billId;
         if (options.dateRange) {
             where.dueDate = {};

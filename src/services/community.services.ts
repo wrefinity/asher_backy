@@ -25,7 +25,7 @@ class CommunityService {
         },
     }
 
-    async createCommunity(userId: string, data: any) {
+  async createCommunity(userId: string, data: any, ownerType: import("@prisma/client").CommunityOwnerType) {
         const existing = await prismaClient.community.findFirst({
             where: {
                 ownerId: userId,
@@ -35,14 +35,28 @@ class CommunityService {
         if (existing) {
             return existing
         }
+
+        const { resolveDiscoveryAudience } = await import("./community.access.service");
+        const visibility = data.visibility === "PRIVATE" ? "PRIVATE" : "PUBLIC";
+        const discoveryAudience = resolveDiscoveryAudience(visibility, ownerType);
+        const joinApprovalMode = data.joinApprovalMode === "AUTO" ? "AUTO" : "MANUAL";
+
         return prismaClient.community.create({
             data: {
                 ...data,
+                visibility,
+                ownerType,
+                discoveryAudience,
+                joinApprovalMode,
                 owner: {
                     connect: { id: userId }
                 }
             }
         });
+    }
+
+    async getOwnedCommunity(userId: string) {
+        return this.getLandlordCommunity(userId);
     }
 
     async getLandlordCommunity(userId: string) {
@@ -503,25 +517,46 @@ class CommunityService {
         search = '',
         page = 1,
         limit = 10,
+        userId,
     }: {
         visibility?: 'PUBLIC' | 'PRIVATE';
         search?: string;
         page?: number;
         limit?: number;
+        userId?: string;
     }) {
         const skip = (page - 1) * limit;
 
         const whereClause: any = { isDeleted: false };
+
+        if (userId) {
+            whereClause.OR = [
+                { ownerId: userId },
+                {
+                    members: {
+                        some: {
+                            usersId: userId,
+                            status: MembershipStatus.MEMBER,
+                        },
+                    },
+                },
+            ];
+        }
 
         if (visibility) {
             whereClause.visibility = visibility;
         }
 
         if (search.trim() !== '') {
-            whereClause.OR = [
-                { name: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } },
-            ];
+            const searchFilter = {
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } },
+                ],
+            };
+            whereClause.AND = whereClause.AND
+                ? [...whereClause.AND, searchFilter]
+                : [searchFilter];
         }
 
         const [communities, totalItems] = await Promise.all([
@@ -618,16 +653,65 @@ class CommunityService {
     }
 
     async addUserToCommunity(communityId: string, userId: string) {
-        return prismaClient.communityMember.create({
-            data: {
+        return prismaClient.communityMember.upsert({
+            where: {
+                communityId_usersId: { communityId, usersId: userId },
+            },
+            update: { status: MembershipStatus.MEMBER },
+            create: {
                 communityId,
                 usersId: userId,
-                status: MembershipStatus.MEMBER
+                status: MembershipStatus.MEMBER,
+                role: "MEMBER",
             },
             include: {
-                users: this.userSelect
+                users: this.userSelect,
+            },
+        });
+    }
+
+    async addCommunityMembers(communityId: string, userIds: string[], actorId: string) {
+        const community = await this.getCommunityById(communityId);
+        if (!community) throw new Error("Community not found");
+        if (community.ownerId !== actorId) {
+            throw new Error("Only the community owner can add members");
+        }
+
+        const addedMembers: string[] = [];
+        const failedUserIds: string[] = [];
+
+        for (const uid of userIds) {
+            try {
+                const user = await prismaClient.users.findUnique({ where: { id: uid } });
+                if (!user) {
+                    failedUserIds.push(uid);
+                    continue;
+                }
+                await this.addUserToCommunity(communityId, uid);
+                addedMembers.push(uid);
+            } catch {
+                failedUserIds.push(uid);
             }
-        })
+        }
+
+        return { addedMembers, failedUserIds };
+    }
+
+    async removeCommunityMembers(communityId: string, userIds: string[], actorId: string) {
+        const community = await this.getCommunityById(communityId);
+        if (!community) throw new Error("Community not found");
+        if (community.ownerId !== actorId) {
+            throw new Error("Only the community owner can remove members");
+        }
+
+        const result = await prismaClient.communityMember.deleteMany({
+            where: {
+                communityId,
+                usersId: { in: userIds },
+            },
+        });
+
+        return { removedCount: result.count, failedUserIds: [] as string[] };
     }
 
 
@@ -689,53 +773,10 @@ class CommunityService {
         const member = await this.getMemberInCommunity(communityId, userId);
         return member && member.status === MembershipStatus.MEMBER;
     }
-    // Check if user can access a community (landlord or their tenant)
+    // General community feed access (owner or community member)
     async canUserAccessCommunity(userId: string, communityId: string): Promise<boolean> {
-        const community = await prismaClient.community.findUnique({
-            where: { id: communityId },
-            include: {
-                owner: {
-                    include: {
-                        landlords: true
-                    }
-                }
-            }
-        });
-
-        if (!community) return false;
-
-        // Owner can always access
-        if (community.ownerId === userId) return true;
-
-        // Check if user is a member (tenant)
-        const membership = await prismaClient.communityMember.findUnique({
-            where: {
-                communityId_usersId: {
-                    communityId: communityId,
-                    usersId: userId
-                }
-            }
-        });
-
-        if (!membership) return false;
-
-        // Check if tenant is suspended (status is BANNED)
-        if (membership.status === MembershipStatus.BANNED) return false;
-
-        // Verify tenant belongs to the landlord who owns the community
-        const user = await prismaClient.users.findUnique({
-            where: { id: userId },
-            include: {
-                tenants: {
-                    where: {
-                        landlordId: community.owner?.landlords?.id,
-                        isCurrentLease: true
-                    }
-                }
-            }
-        });
-
-        return user?.tenants && user.tenants.length > 0;
+        const { canAccessCommunityFeed } = await import("./community.access.service");
+        return canAccessCommunityFeed(userId, communityId);
     }
 }
 

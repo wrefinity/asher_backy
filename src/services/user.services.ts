@@ -750,6 +750,23 @@ class UserService {
 
                 if (tenant) {
                     await this.updateUserRole(user.id, userRoles.TENANT);
+                    const isCurrentLease =
+                        userData.isCurrentLease !== undefined
+                            ? Boolean(userData.isCurrentLease)
+                            : true;
+                    if (isCurrentLease) {
+                        try {
+                            const { ensureTenantInLandlordCommunity } = await import(
+                                "./community.membership.service"
+                            );
+                            await ensureTenantInLandlordCommunity(landlord.id, user.id);
+                        } catch (membershipErr) {
+                            loggers.warn(
+                                "Failed to add tenant to landlord community",
+                                membershipErr
+                            );
+                        }
+                    }
                     const label = tenant.tenantCode || user.email;
                     try {
                         await LogsServices.createLog({

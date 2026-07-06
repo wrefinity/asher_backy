@@ -24,8 +24,13 @@ class CommunityRoutes {
         this.router.use(this.authenticateService.authorize);
         
         // Specific routes must come before parameterized routes to prevent route conflicts
-        this.router.post('/', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.createCommunity);
+        this.router.post(
+            '/',
+            this.authenticateService.authorizeAnyRole(userRoles.LANDLORD, userRoles.TENANT),
+            CommunityController.createCommunity
+        );
         this.router.get('/landlord', this.authenticateService.authorizeRole(userRoles.LANDLORD), CommunityController.getLandlordCommunities);
+        this.router.get('/discover', CommunityController.discoverCommunities);
         this.router.get('/', CommunityController.getFilteredCommunities);
         this.router.delete('/bulk', CommunityController.deleteCommunity);
         
@@ -34,7 +39,12 @@ class CommunityRoutes {
         
         // Owner and members routes - specific nested routes before general :communityId
         this.router.get('/owner/:communityId', CommunityController.getCommunityOwner);
+        this.router.get('/:communityId/join-requests', CommunityController.listCommunityJoinRequests);
+        this.router.post('/:communityId/join-requests', CommunityController.requestCommunityJoin);
+        this.router.patch('/join-requests/:requestId', CommunityController.reviewCommunityJoinRequest);
         this.router.get('/:communityId/members', CommunityController.getCommunityMembers);
+        this.router.post('/:communityId/members', CommunityController.addCommunityMembers);
+        this.router.delete('/:communityId/members', CommunityController.removeCommunityMembers);
 
         // Parameterized routes - must come after all specific routes
         this.router.get('/:communityId', CommunityController.getCommunityById);

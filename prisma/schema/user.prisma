@@ -19,6 +19,8 @@ model users {
   CommentLike              CommentLike[]
   Community                Community[]                @relation("CommunityOwner")
   CommunityMember          CommunityMember[]
+  CommunityJoinRequest     CommunityJoinRequest[]
+  ForumJoinRequest         ForumJoinRequest[]
   communityPost            CommunityPost[]
   communityPostLikes       CommunityPostLike[]
   CommunityPostPollVote    CommunityPostPollVote[]
