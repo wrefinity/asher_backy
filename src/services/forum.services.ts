@@ -81,16 +81,21 @@ class ForumService {
                         profile: { select: { firstName: true, lastName: true, profileUrl: true } },
                     },
                 },
-                ForumMember: isOwner
-                    ? false
-                    : {
-                        where: { usersId: userId, status: MembershipStatus.MEMBER },
-                        select: { id: true },
-                    },
+                ForumMember: {
+                    where: isOwner
+                        ? undefined
+                        : { usersId: userId, status: MembershipStatus.MEMBER },
+                    select: { id: true, role: true, users: this.userSelect },
+                },
             },
         });
 
-        if (isOwner) return forums;
+        if (isOwner) {
+            return forums.map((forum) => ({
+                ...forum,
+                ForumMember: Array.isArray(forum.ForumMember) ? forum.ForumMember : [],
+            }));
+        }
 
         return forums
             .map((forum) => {

@@ -8612,3 +8612,16 @@
 {"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:45:54"}
 {"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:46:54"}
 {"level":"info","message":"Redis retry attempt 780, waiting 10000ms","service":"api-service","timestamp":"2026-07-06 23:46:54"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:47:54"}
+{"level":"info","message":"Redis retry attempt 790, waiting 10000ms","service":"api-service","timestamp":"2026-07-06 23:48:34"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:48:54"}
+{"level":"info","message":"Scheduled bill checks initialized","service":"api-service","timestamp":"2026-07-06 23:49:11"}
+{"level":"info","message":"🔔 Notification queue initialized (Redis connection will be attempted)","service":"api-service","timestamp":"2026-07-06 23:49:11"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:49:11"}
+{"level":"info","message":"Redis retry attempt 10, waiting 10000ms","service":"api-service","timestamp":"2026-07-06 23:49:56"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:50:16"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:51:16"}
+{"level":"info","message":"Redis retry attempt 20, waiting 10000ms","service":"api-service","timestamp":"2026-07-06 23:51:36"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:52:16"}
+{"level":"warn","message":"⚠️ Redis not available - queue operations will fail. Using fallback scheduling.","service":"api-service","timestamp":"2026-07-06 23:53:16"}
+{"level":"info","message":"Redis retry attempt 30, waiting 10000ms","service":"api-service","timestamp":"2026-07-06 23:53:16"}
