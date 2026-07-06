@@ -149,6 +149,15 @@ class PropertyController {
                 .filter((property) => {
                     if (!property) return false;
                     return propertyCountryMatchesMarket(property.country as string, marketCountry);
+                })
+                .map((property) => {
+                    const listingHistory = (
+                        property as { propertyListingHistory?: Array<{ id?: string }> }
+                    ).propertyListingHistory;
+                    const propertyListingId = listingHistory?.[0]?.id;
+                    return propertyListingId
+                        ? { ...property, propertyListingId }
+                        : property;
                 });
             return res.status(200).json({ properties: properties })
         } catch (error) {

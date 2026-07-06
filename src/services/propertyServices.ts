@@ -3563,6 +3563,10 @@ class PropertyService {
                 property: {
                     include: {
                         images: true,
+                        propertyListingHistory: {
+                            where: { isActive: true, onListing: true },
+                            take: 1,
+                        },
                         landlord: {
                             include: {
                                 user: {
