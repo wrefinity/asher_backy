@@ -464,8 +464,10 @@ class MessagingCircleService {
       return new Set(all.map((u) => u.id));
     }
 
-    const viewerContext = await this.resolveViewerContext(viewerUserId);
-    const landlordIds = await this.getLandlordCircleIds(viewerUserId);
+    const [viewerContext, landlordIds] = await Promise.all([
+      this.resolveViewerContext(viewerUserId),
+      this.getLandlordCircleIds(viewerUserId),
+    ]);
     const ids = new Set<string>();
 
     const contactGroups = await Promise.all(
@@ -508,8 +510,10 @@ class MessagingCircleService {
       );
     }
 
-    const viewerContext = await this.resolveViewerContext(viewerUserId);
-    const landlordIds = await this.getLandlordCircleIds(viewerUserId);
+    const [viewerContext, landlordIds] = await Promise.all([
+      this.resolveViewerContext(viewerUserId),
+      this.getLandlordCircleIds(viewerUserId),
+    ]);
     const merged = new Map<string, MessagingContact>();
 
     const contactGroups = await Promise.all(

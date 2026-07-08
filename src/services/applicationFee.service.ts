@@ -679,8 +679,10 @@ class ApplicationFeeService {
     const tenantUserId = paidTx.userId;
     const landlordUserId = property.landlord.userId;
 
-    const tenantWallet = await walletService.getOrCreateWallet(tenantUserId, currency);
-    const landlordWallet = await walletService.getOrCreateWallet(landlordUserId, currency);
+    const [tenantWallet, landlordWallet] = await Promise.all([
+      walletService.getOrCreateWallet(tenantUserId, currency),
+      walletService.getOrCreateWallet(landlordUserId, currency),
+    ]);
 
     await walletService.ensureSufficientBalance(
       landlordWallet.id,

@@ -322,38 +322,46 @@ class InspectionController {
 
       // Send notification when inspection is marked as completed
       if (req.body.status === 'Completed' && inspection.status !== 'Completed') {
-        // Notify tenant
-        if (updatedInspection.tenantId) {
-          const tenant = await prismaClient.tenants.findUnique({
-            where: { id: updatedInspection.tenantId },
+        const [tenant, landlordUser] = await Promise.all([
+          updatedInspection.tenantId
+            ? prismaClient.tenants.findUnique({
+                where: { id: updatedInspection.tenantId },
+                select: { userId: true },
+              })
+            : Promise.resolve(null),
+          prismaClient.landlords.findUnique({
+            where: { id: landlordId },
             select: { userId: true },
-          });
+          }),
+        ]);
 
-          if (tenant?.userId) {
-            await NotificationService.createNotification({
-              destId: tenant.userId,
-              title: 'Inspection Completed',
-              message: `The inspection for ${property.name} has been completed. Your landlord will share the report for review shortly.`,
-              notificationType: 'inspection_completed',
-              route: '/inspections',
-            }, 'COMMUNICATION');
-          }
+        const notifications: Array<Promise<unknown>> = [];
+        if (tenant?.userId) {
+          notifications.push(
+            NotificationService.createNotification(
+              {
+                destId: tenant.userId,
+                title: 'Inspection Completed',
+                message: `The inspection for ${property.name} has been completed. Your landlord will share the report for review shortly.`,
+                notificationType: 'inspection_completed',
+                route: '/inspections',
+              },
+              'COMMUNICATION'
+            )
+          );
         }
-
-        // Notify landlord (the user who created/owns the inspection)
-        const landlordUser = await prismaClient.landlords.findUnique({
-          where: { id: landlordId },
-          select: { userId: true },
-        });
 
         if (landlordUser?.userId) {
-          await NotificationService.createNotification({
-            destId: landlordUser.userId,
-            title: 'Inspection Completed',
-            message: `The inspection for ${property.name} has been marked as completed.`,
-            category: 'COMMUNICATION',
-          });
+          notifications.push(
+            NotificationService.createNotification({
+              destId: landlordUser.userId,
+              title: 'Inspection Completed',
+              message: `The inspection for ${property.name} has been marked as completed.`,
+              category: 'COMMUNICATION',
+            })
+          );
         }
+        await Promise.all(notifications);
       }
 
       res.json(updatedInspection);
@@ -510,49 +518,51 @@ class InspectionController {
         return res.status(403).json({ error: 'Unauthorized' });
       }
 
-      const certificate = await InspectionCertificateService.generateCertificate(
-        id,
-        type as 'landlord' | 'tenant',
-        req.user.id
-      );
+      const [certificate, tenant] = await Promise.all([
+        InspectionCertificateService.generateCertificate(
+          id,
+          type as 'landlord' | 'tenant',
+          req.user.id
+        ),
+        inspection.tenantId
+          ? prismaClient.tenants.findUnique({
+              where: { id: inspection.tenantId },
+              select: { userId: true },
+            })
+          : Promise.resolve(null),
+      ]);
 
-      if (inspection.propertyId && inspection.tenantId) {
-        const tenant = await prismaClient.tenants.findUnique({
-          where: { id: inspection.tenantId },
-          select: { userId: true },
-        });
-        if (tenant?.userId) {
-          try {
-            await InspectionActivityLogService.logEvent({
-              propertyId: inspection.propertyId,
-              tenantUserId: tenant.userId,
-              inspectionId: id,
-              subjects: 'Inspection certificate generated',
-              events: `${type === 'tenant' ? 'Tenant' : 'Landlord'} inspection certificate generated for ${property.name}`,
-            });
-          } catch (logErr) {
+      const sideEffects: Array<Promise<unknown>> = [];
+      if (inspection.propertyId && tenant?.userId) {
+        sideEffects.push(
+          InspectionActivityLogService.logEvent({
+            propertyId: inspection.propertyId,
+            tenantUserId: tenant.userId,
+            inspectionId: id,
+            subjects: 'Inspection certificate generated',
+            events: `${type === 'tenant' ? 'Tenant' : 'Landlord'} inspection certificate generated for ${property.name}`,
+          }).catch((logErr) => {
             console.warn('Failed to write inspection certificate activity log', logErr);
-          }
-        }
+          })
+        );
       }
 
       // Send notification to tenant if tenant certificate was generated
-      if (type === 'tenant' && inspection.tenantId) {
-        const tenant = await prismaClient.tenants.findUnique({
-          where: { id: inspection.tenantId },
-          select: { userId: true },
-        });
-
-        if (tenant?.userId) {
-          await NotificationService.createNotification({
-            destId: tenant.userId,
-            title: 'Inspection Certificate Generated',
-            message: `Your inspection certificate for ${property.name} has been generated and is ready for download.`,
-            notificationType: 'inspection_certificate',
-            route: '/profile/Documents',
-          }, 'COMMUNICATION');
-        }
+      if (type === 'tenant' && tenant?.userId) {
+        sideEffects.push(
+          NotificationService.createNotification(
+            {
+              destId: tenant.userId,
+              title: 'Inspection Certificate Generated',
+              message: `Your inspection certificate for ${property.name} has been generated and is ready for download.`,
+              notificationType: 'inspection_certificate',
+              route: '/profile/Documents',
+            },
+            'COMMUNICATION'
+          )
+        );
       }
+      await Promise.all(sideEffects);
 
       res.json(certificate);
     } catch (error) {
@@ -594,30 +604,37 @@ class InspectionController {
       );
 
       const tenantUserId = acknowledgment.tenant?.userId;
+      const sideEffects: Array<Promise<unknown>> = [];
       if (inspection.propertyId && tenantUserId) {
-        try {
-          await InspectionActivityLogService.logEvent({
+        sideEffects.push(
+          InspectionActivityLogService.logEvent({
             propertyId: inspection.propertyId,
             tenantUserId,
             inspectionId: id,
             subjects: 'Inspection shared with tenant',
             events: `Inspection report shared with tenant for ${property.name}`,
-          });
-        } catch (logErr) {
-          console.warn('Failed to write inspection shared activity log', logErr);
-        }
+          }).catch((logErr) => {
+            console.warn('Failed to write inspection shared activity log', logErr);
+          })
+        );
       }
 
       // Send notification to tenant
       if (tenantUserId) {
-        await NotificationService.createNotification({
-          destId: tenantUserId,
-          title: 'New Inspection Report',
-          message: `Your landlord has shared an inspection report for ${property.name}. Please review and acknowledge.`,
-          notificationType: 'inspection_report',
-          route: `/inspections/acknowledge/${id}`,
-        }, 'COMMUNICATION');
+        sideEffects.push(
+          NotificationService.createNotification(
+            {
+              destId: tenantUserId,
+              title: 'New Inspection Report',
+              message: `Your landlord has shared an inspection report for ${property.name}. Please review and acknowledge.`,
+              notificationType: 'inspection_report',
+              route: `/inspections/acknowledge/${id}`,
+            },
+            'COMMUNICATION'
+          )
+        );
       }
+      await Promise.all(sideEffects);
 
       res.json(acknowledgment);
     } catch (error: any) {

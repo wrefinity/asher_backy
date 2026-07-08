@@ -484,24 +484,23 @@ class TransactionService {
             ];
         }
 
-        // Get total count for pagination
-        const total = await prismaClient.transaction.count({ where });
-
-        // Get paginated results
-        const transactions = await prismaClient.transaction.findMany({
-            where,
-            skip: (page - 1) * limit,
-            take: limit,
-            orderBy: {
-                [sortBy]: sortOrder
-            },
-            include: {
-                property: true,
-                wallet: true,
-                billsSubCategory: true,
-                unit: true,
-            }
-        });
+        const [total, transactions] = await Promise.all([
+            prismaClient.transaction.count({ where }),
+            prismaClient.transaction.findMany({
+                where,
+                skip: (page - 1) * limit,
+                take: limit,
+                orderBy: {
+                    [sortBy]: sortOrder
+                },
+                include: {
+                    property: true,
+                    wallet: true,
+                    billsSubCategory: true,
+                    unit: true,
+                }
+            }),
+        ]);
 
         return {
             data: transactions,
@@ -620,46 +619,45 @@ class TransactionService {
         //     };
         // }
 
-        // Get total count for pagination
-        const total = await prismaClient.transaction.count({ where });
-
-        // Get paginated results
-        const transactions = await prismaClient.transaction.findMany({
-            where,
-            skip: (page - 1) * limit,
-            take: limit,
-            orderBy: {
-                [sortBy]: sortOrder
-            },
-            include: {
-                property: propertyId ? {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                } : false,
-                wallet: {
-                    select: {
-                        id: true,
-                        currency: true
-                    }
+        const [total, transactions] = await Promise.all([
+            prismaClient.transaction.count({ where }),
+            prismaClient.transaction.findMany({
+                where,
+                skip: (page - 1) * limit,
+                take: limit,
+                orderBy: {
+                    [sortBy]: sortOrder
                 },
-                user: {
-                    select: {
-                        id: true,
-                        email: true,
-                        profile: true
-                    }
-                },
-                billsSubCategory: {
-                    select: {
-                        id: true,
-                        billName: true,
-                        billFrequency: true
+                include: {
+                    property: propertyId ? {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    } : false,
+                    wallet: {
+                        select: {
+                            id: true,
+                            currency: true
+                        }
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profile: true
+                        }
+                    },
+                    billsSubCategory: {
+                        select: {
+                            id: true,
+                            billName: true,
+                            billFrequency: true
+                        }
                     }
                 }
-            }
-        });
+            }),
+        ]);
 
         return {
             data: transactions,

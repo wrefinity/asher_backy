@@ -31,52 +31,47 @@ class LandlordMaintenanceService {
     }
   }
   getMaintenanceCounts = async (landlordId: string): Promise<MaintenanceCounts> => {
-    // Count maintenance records with status "PENDING"
-    const pendingCount = await prismaClient.maintenance.count({
-      where: {
-        OR: [
-          { landlordId: landlordId },
-          { property: { landlordId: landlordId } }
-        ],
-        status: maintenanceStatus.PENDING,
-        isDeleted: false,
-      },
-    });
-
-    // Count maintenance records with status "COMPLETED"
-    const completedCount = await prismaClient.maintenance.count({
-      where: {
-        OR: [
-          { landlordId: landlordId },
-          { property: { landlordId: landlordId } }
-        ],
-        status: maintenanceStatus.COMPLETED,
-        isDeleted: false,
-      },
-    });
-
-    // Count maintenance records with status "ASSIGNED" or "IN_PROGRESS"
-    const inProgressCount = await prismaClient.maintenance.count({
-      where: {
-        property: {
-          landlordId
+    const [pendingCount, completedCount, inProgressCount, tenantRequestCount] = await Promise.all([
+      prismaClient.maintenance.count({
+        where: {
+          OR: [
+            { landlordId: landlordId },
+            { property: { landlordId: landlordId } }
+          ],
+          status: maintenanceStatus.PENDING,
+          isDeleted: false,
         },
-        status: { in: ['ASSIGNED', 'UNASSIGNED'] },
-        isDeleted: false,
-      },
-    });
-
-    // Count maintenance records with status "CANCELLATION_REQUEST"
-    const tenantRequestCount = await prismaClient.maintenance.count({
-      where: {
-        OR: [
-          { landlordId: landlordId },
-          { property: { landlordId: landlordId } }
-        ],
-        handleByLandlord: false,
-        isDeleted: false,
-      },
-    });
+      }),
+      prismaClient.maintenance.count({
+        where: {
+          OR: [
+            { landlordId: landlordId },
+            { property: { landlordId: landlordId } }
+          ],
+          status: maintenanceStatus.COMPLETED,
+          isDeleted: false,
+        },
+      }),
+      prismaClient.maintenance.count({
+        where: {
+          property: {
+            landlordId
+          },
+          status: { in: ['ASSIGNED', 'UNASSIGNED'] },
+          isDeleted: false,
+        },
+      }),
+      prismaClient.maintenance.count({
+        where: {
+          OR: [
+            { landlordId: landlordId },
+            { property: { landlordId: landlordId } }
+          ],
+          handleByLandlord: false,
+          isDeleted: false,
+        },
+      }),
+    ]);
     return {
       pending: pendingCount,
       completed: completedCount,

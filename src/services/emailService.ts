@@ -460,42 +460,42 @@ class EmailService {
         }
         console.log('Final where clause:', where);
 
-        // Get total count
-        const totalItems = await prismaClient.email.count({ where });
+        const [totalItems, emails] = await Promise.all([
+            prismaClient.email.count({ where }),
+            prismaClient.email.findMany({
+                where,
+                include: {
+                    sender: userSelect,
+                    receiver: userSelect,
+                    states: {
+                        ...(baseConditions.isDraft !== true && {
+                            where: { userId },
+                        }),
+                        select: {
+                            isRead: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    email: true,
+                                    profile: profileSelect,
+                                },
+                            },
+                            isStarred: true,
+                            isArchived: true,
+                            isSpam: true,
+                            isDeleted: true,
+                        },
+                    },
+                    replies: true,
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (currentPage - 1) * itemsPerPage,
+                take: itemsPerPage,
+            }),
+        ]);
         const totalPages = Math.ceil(totalItems / itemsPerPage);
         const hasNextPage = currentPage < totalPages;
         const hasPreviousPage = currentPage > 1;
-
-        const emails = await prismaClient.email.findMany({
-            where,
-            include: {
-                sender: userSelect,
-                receiver: userSelect,
-                states: {
-                    ...(baseConditions.isDraft !== true && {
-                        where: { userId },
-                    }),
-                    select: {
-                        isRead: true,
-                        user: {
-                            select: {
-                                id: true,
-                                email: true,
-                                profile: profileSelect,
-                            },
-                        },
-                        isStarred: true,
-                        isArchived: true,
-                        isSpam: true,
-                        isDeleted: true,
-                    },
-                },
-                replies: true,
-            },
-            orderBy: { createdAt: 'desc' },
-            skip: (currentPage - 1) * itemsPerPage,
-            take: itemsPerPage,
-        });
 
         const view: 'inbox' | 'sent' = sent ? 'sent' : 'inbox';
         const transformedEmails = emails.map((email) =>

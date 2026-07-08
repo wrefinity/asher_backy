@@ -252,27 +252,26 @@ class TenantInspectionController {
       },
     });
 
-    try {
-      await InspectionCertificateService.generateCertificate(id, 'tenant', userId);
-    } catch (certErr) {
-      console.warn('Failed to generate tenant certificate after acknowledgment', certErr);
-    }
+    const [property] = await Promise.all([
+      inspection.propertyId
+        ? prismaClient.properties.findUnique({
+            where: { id: inspection.propertyId },
+            select: { name: true, landlordId: true },
+          })
+        : Promise.resolve(null),
+      InspectionCertificateService.generateCertificate(id, 'tenant', userId).catch((certErr) => {
+        console.warn('Failed to generate tenant certificate after acknowledgment', certErr);
+        return null;
+      }),
+      hasDisputes
+        ? InspectionChatService.ensureDisputeChatRoom(id).catch((chatErr) => {
+            console.warn('Failed to open inspection dispute chat', chatErr);
+            return null;
+          })
+        : Promise.resolve(null),
+    ]);
 
-    if (hasDisputes) {
-      try {
-        await InspectionChatService.ensureDisputeChatRoom(id);
-      } catch (chatErr) {
-        console.warn('Failed to open inspection dispute chat', chatErr);
-      }
-    }
-
-    const property = inspection.propertyId
-      ? await prismaClient.properties.findUnique({
-          where: { id: inspection.propertyId },
-          select: { name: true, landlordId: true },
-        })
-      : null;
-
+    const sideEffects: Array<Promise<unknown>> = [];
     if (property?.landlordId) {
       const landlord = await prismaClient.landlords.findUnique({
         where: { id: property.landlordId },
@@ -280,8 +279,8 @@ class TenantInspectionController {
       });
 
       if (landlord?.userId) {
-        try {
-          await NotificationService.createNotification(
+        sideEffects.push(
+          NotificationService.createNotification(
             {
               sourceId: userId,
               destId: landlord.userId,
@@ -299,16 +298,16 @@ class TenantInspectionController {
                 : `/service/inspections/${id}`,
             },
             'COMMUNICATION'
-          );
-        } catch (notifErr) {
-          console.warn('Failed to notify landlord about inspection acknowledgment', notifErr);
-        }
+          ).catch((notifErr) => {
+            console.warn('Failed to notify landlord about inspection acknowledgment', notifErr);
+          })
+        );
       }
     }
 
     if (inspection.propertyId) {
-      try {
-        await InspectionActivityLogService.logEvent({
+      sideEffects.push(
+        InspectionActivityLogService.logEvent({
           propertyId: inspection.propertyId,
           tenantUserId: userId,
           inspectionId: id,
@@ -318,11 +317,12 @@ class TenantInspectionController {
           events: hasDisputes
             ? `Tenant acknowledged the inspection with disputes for ${property?.name || 'the property'}`
             : `Tenant acknowledged the inspection for ${property?.name || 'the property'}`,
-        });
-      } catch (logErr) {
-        console.warn('Failed to write inspection acknowledgment activity log', logErr);
-      }
+        }).catch((logErr) => {
+          console.warn('Failed to write inspection acknowledgment activity log', logErr);
+        })
+      );
     }
+    await Promise.all(sideEffects);
 
     return res.status(200).json(
       ApiResponse.success(
@@ -509,6 +509,7 @@ class TenantInspectionController {
         })
       : null;
 
+    const sideEffects: Array<Promise<unknown>> = [];
     if (property?.landlordId) {
       const landlord = await prismaClient.landlords.findUnique({
         where: { id: property.landlordId },
@@ -516,8 +517,8 @@ class TenantInspectionController {
       });
 
       if (landlord?.userId) {
-        try {
-          await NotificationService.createNotification(
+        sideEffects.push(
+          NotificationService.createNotification(
             {
               sourceId: userId,
               destId: landlord.userId,
@@ -527,26 +528,27 @@ class TenantInspectionController {
               route: `/service/inspections/${id}`,
             },
             'COMMUNICATION'
-          );
-        } catch (notifyErr) {
-          console.warn('Failed to notify landlord of inspection dispute', notifyErr);
-        }
+          ).catch((notifyErr) => {
+            console.warn('Failed to notify landlord of inspection dispute', notifyErr);
+          })
+        );
       }
     }
 
     if (inspection.propertyId) {
-      try {
-        await InspectionActivityLogService.logEvent({
+      sideEffects.push(
+        InspectionActivityLogService.logEvent({
           propertyId: inspection.propertyId,
           tenantUserId: userId,
           inspectionId: id,
           subjects: 'Inspection dispute raised',
           events: `Tenant raised a dispute on the inspection for ${property?.name || 'the property'}`,
-        });
-      } catch (logErr) {
-        console.warn('Failed to write inspection dispute activity log', logErr);
-      }
+        }).catch((logErr) => {
+          console.warn('Failed to write inspection dispute activity log', logErr);
+        })
+      );
     }
+    await Promise.all(sideEffects);
 
     return res.status(200).json(
       ApiResponse.success(

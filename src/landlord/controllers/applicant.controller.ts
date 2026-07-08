@@ -573,29 +573,35 @@ class ApplicationControls {
             const landlordId = req.user?.landlords?.id;
             const enquiry = await logsServices.getLogsById(enquireId);
 
-            const leasingUpdated = await logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED });
-            await propertyServices.syncEnquiryStatusByLogId(enquireId, EnquiryStatus.CLOSED);
+            const [leasingUpdated] = await Promise.all([
+                logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED }),
+                propertyServices.syncEnquiryStatusByLogId(enquireId, EnquiryStatus.CLOSED),
+            ]);
 
             let applicationFeeRefund = null;
             if (landlordId && enquiry?.propertyId) {
-                const property = await propertyServices.getPropertiesById(enquiry.propertyId);
-                const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+                const [property, globalSettings] = await Promise.all([
+                    propertyServices.getPropertiesById(enquiry.propertyId),
+                    LandlordSettingsService.getAllGlobalSettings(landlordId),
+                ]);
                 const rent = Number(property?.price ?? 0);
                 const rules = resolveFinancialRules(
                     globalSettings,
                     rent,
                     property?.priceFrequency
                 );
-                const appSettings = await LandlordSettingsService.syncApplicationSettingsFromGlobal(
-                    landlordId,
-                    enquiry.propertyId,
-                    rent,
-                    property?.priceFrequency
-                );
-                const listing = await prismaClient.propertyListingHistory.findFirst({
-                    where: { propertyId: enquiry.propertyId, onListing: true, isActive: true },
-                    orderBy: { createdAt: 'desc' },
-                });
+                const [appSettings, listing] = await Promise.all([
+                    LandlordSettingsService.syncApplicationSettingsFromGlobal(
+                        landlordId,
+                        enquiry.propertyId,
+                        rent,
+                        property?.priceFrequency
+                    ),
+                    prismaClient.propertyListingHistory.findFirst({
+                        where: { propertyId: enquiry.propertyId, onListing: true, isActive: true },
+                        orderBy: { createdAt: 'desc' },
+                    }),
+                ]);
                 const feePaid = Number(
                     listing?.applicationFeeAmount ?? rules.applicationFeeAmount
                 );

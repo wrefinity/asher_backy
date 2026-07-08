@@ -213,36 +213,35 @@ export class SupportService {
       ];
     }
 
-    // Get total count
-    const totalItems = await prismaClient.supportTicket.count({ where });
-
-    // Get paginated data
-    const tickets = await prismaClient.supportTicket.findMany({
-      where,
-      skip,
-      take: itemsPerPage,
-      orderBy: { createdAt: "desc" },
-      include: {
-        raisedBy: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+    const [totalItems, tickets] = await Promise.all([
+      prismaClient.supportTicket.count({ where }),
+      prismaClient.supportTicket.findMany({
+        where,
+        skip,
+        take: itemsPerPage,
+        orderBy: { createdAt: "desc" },
+        include: {
+          raisedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
             },
           },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            profile: true,
+          assignedTo: {
+            select: {
+              id: true,
+              email: true,
+              profile: true,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -324,69 +323,68 @@ export class SupportService {
       }
     }
 
-    // Get total count
-    const totalItems = await prismaClient.supportTicket.count({ where });
-
-    // Get paginated data
-    const tickets = await prismaClient.supportTicket.findMany({
-      where,
-      skip,
-      take: itemsPerPage,
-      orderBy: { createdAt: "desc" },
-      include: {
-        raisedBy: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+    const [totalItems, tickets] = await Promise.all([
+      prismaClient.supportTicket.count({ where }),
+      prismaClient.supportTicket.findMany({
+        where,
+        skip,
+        take: itemsPerPage,
+        orderBy: { createdAt: "desc" },
+        include: {
+          raisedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
             },
           },
-        },
-        raisedByTenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+          raisedByTenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
-            },
-            landlord: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
+              landlord: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                    },
                   },
                 },
               },
             },
           },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            profile: true,
-          },
-        },
-        messages: {
-          include: {
-            sender: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
-                role: true,
-              },
+          assignedTo: {
+            select: {
+              id: true,
+              email: true,
+              profile: true,
             },
           },
-          orderBy: { createdAt: "asc" },
+          messages: {
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
         },
-      },
-    });
+      }),
+    ]);
 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -670,66 +668,67 @@ export class SupportService {
       ];
     }
 
-    const totalItems = await prismaClient.supportTicket.count({ where });
-
-    const tickets = await prismaClient.supportTicket.findMany({
-      where,
-      skip,
-      take: itemsPerPage,
-      orderBy: { createdAt: "desc" },
-      include: {
-        raisedBy: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+    const [totalItems, tickets] = await Promise.all([
+      prismaClient.supportTicket.count({ where }),
+      prismaClient.supportTicket.findMany({
+        where,
+        skip,
+        take: itemsPerPage,
+        orderBy: { createdAt: "desc" },
+        include: {
+          raisedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
             },
           },
-        },
-        raisedByTenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+          raisedByTenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
-            },
-            property: {
-              select: {
-                id: true,
-                address: true,
-              },
-            },
-          },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            profile: true,
-          },
-        },
-        messages: {
-          include: {
-            sender: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
-                role: true,
+              property: {
+                select: {
+                  id: true,
+                  address: true,
+                },
               },
             },
           },
-          orderBy: {
-            createdAt: 'asc',
+          assignedTo: {
+            select: {
+              id: true,
+              email: true,
+              profile: true,
+            },
+          },
+          messages: {
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 

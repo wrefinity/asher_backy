@@ -8,8 +8,10 @@ import transactionServices from "./transaction.services";
 class TransferService {
     
     transferFunds = async (senderId: string, data: any, currency: Currency) => {
-        const senderWallet = await walletService.getOrCreateWallet(senderId, currency);
-        const recieiverWallet = await walletService.getOrCreateWallet(data.recieiverId, currency);
+        const [senderWallet, recieiverWallet] = await Promise.all([
+            walletService.getOrCreateWallet(senderId, currency),
+            walletService.getOrCreateWallet(data.recieiverId, currency),
+        ]);
 
         // check that the receiver and the sender wallet has same currency type
         if (senderWallet.currency != recieiverWallet.currency)
@@ -76,8 +78,10 @@ class TransferService {
         if (!tenant) {
             throw new Error('Tenant not found');
         }
-        const tenantWallet = await walletService.getOrCreateWallet(tenant.userId, currency);
-        const landlordWallet = await walletService.getOrCreateWallet(tenant.landlord.userId, currency);
+        const [tenantWallet, landlordWallet] = await Promise.all([
+            walletService.getOrCreateWallet(tenant.userId, currency),
+            walletService.getOrCreateWallet(tenant.landlord.userId, currency),
+        ]);
 
         await walletService.ensureSufficientBalance(tenantWallet.id, tenantWallet.userId, data.amount);
 
