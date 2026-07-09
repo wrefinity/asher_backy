@@ -16,13 +16,13 @@ class EventRouter {
         this.router.post('/', EventController.createEvent);
         this.router.get('/', EventController.getVendorEvents);
         this.router.get('/range', EventController.getEventsByDateRange);
-        this.router.get('/:eventId', EventController.getEventById);
-        this.router.put('/:eventId', EventController.updateEvent);
-        this.router.delete('/:eventId', EventController.deleteEvent);
-
         // Availability routes
         this.router.post('/availability', EventController.setAvailability);
         this.router.get('/availability', EventController.getAvailability);
+
+        this.router.get('/:eventId', EventController.getEventById);
+        this.router.put('/:eventId', EventController.updateEvent);
+        this.router.delete('/:eventId', EventController.deleteEvent);
 
     }
 }

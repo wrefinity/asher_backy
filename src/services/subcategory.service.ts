@@ -47,9 +47,20 @@ class SubCategoryService {
     }
 
     // Other CRUD operations
-    getAllSubCategories = async () => {
+    getAllSubCategories = async (search?: string) => {
         return await prismaClient.subCategory.findMany({
-            where: { isDeleted: false }
+            where: {
+                isDeleted: false,
+                ...(search
+                    ? {
+                        OR: [
+                            { name: { contains: search, mode: 'insensitive' } },
+                            { description: { contains: search, mode: 'insensitive' } },
+                            { labels: { hasSome: [search] } },
+                        ],
+                    }
+                    : {}),
+            }
         });
     }
     // get all subcategories by type

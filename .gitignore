@@ -16,3 +16,4 @@ test.html
 tri.py
 items.txt
 FlaskLLmnewenv.env
+scripts/seed-demo-accounts.ts
