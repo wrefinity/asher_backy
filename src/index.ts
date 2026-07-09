@@ -430,6 +430,26 @@ class Server {
             }
         }, 24 * 60 * 60 * 1000);
 
+        // Weekly vendor payout batch (Part 2 §6 of VENDOR_APP_FLOW_SPEC.md) -
+        // checked hourly rather than daily since it must only fire on
+        // Fridays; a simple in-memory date guard stops it re-running once
+        // it's already fired that day.
+        let lastVendorPayoutRunDate: string | null = null;
+        setInterval(async () => {
+            try {
+                const now = new Date();
+                const isFriday = now.getDay() === 5;
+                const todayKey = now.toISOString().split('T')[0];
+                if (!isFriday || lastVendorPayoutRunDate === todayKey) return;
+
+                lastVendorPayoutRunDate = todayKey;
+                const { runWeeklyVendorPayoutBatch } = await import('./services/weeklyVendorPayout.service');
+                await runWeeklyVendorPayoutBatch();
+            } catch (error) {
+                loggers.error('Error running weekly vendor payout batch:', error);
+            }
+        }, 60 * 60 * 1000);
+
         loggers.info('Scheduled bill checks initialized');
     }
 

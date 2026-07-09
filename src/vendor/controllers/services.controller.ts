@@ -79,11 +79,11 @@ class ServiceControls {
     // Get Services by Category and Subcategories
     getServicesByCategoryAndSubcategories = async (req: CustomRequest, res: Response) => {
         try {
-            const { id } = req.params;
+            const { categoryId } = req.params;
             const { error, value } = applyOfferSchema.validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
-            const services = await serviceService.getServicesByCategoryAndSubcategories(id, value.subcategoryIds);
+            const services = await serviceService.getServicesByCategoryAndSubcategories(categoryId, value.subcategoryIds);
             res.status(200).json({ services });
         } catch (error) {
             res.status(500).json({ error: error.message });

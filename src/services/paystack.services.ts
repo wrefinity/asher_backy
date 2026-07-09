@@ -264,6 +264,27 @@ class PayStackService {
         });
     }
 
+    /**
+     * Vendor payout transfer (Part 2 §6 / Part 3 §5 of VENDOR_APP_FLOW_SPEC.md)
+     * - unlike processPaystackPayout above, this has no wallet/Transaction
+     * coupling since vendors aren't paid out of a landlord-style wallet;
+     * the caller (weeklyVendorPayout.service.ts) tracks what's been paid via
+     * Maintenance.vendorPaidOutAt instead.
+     */
+    async transferToVendor(amount: number, recipientCode: string, reference: string) {
+        const response = await axios.post(
+            `${this.payStackBaseUrl}/transfer`,
+            {
+                source: 'balance',
+                amount: Math.round(amount * 100),
+                recipient: recipientCode,
+                reference,
+            },
+            { headers: this.getHeaders() }
+        );
+        return response.data;
+    }
+
     async verifyPayment(referenceId: string) {
         // Verify payment with Paystack
         const response = await axios.get(

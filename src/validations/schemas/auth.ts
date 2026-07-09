@@ -223,5 +223,8 @@ export const RegisterVendorSchema = Joi.object({
     .required()
     .messages({
       'any.required': 'Profile information is required',
-    })
+    }),
+
+  businessName: Joi.string().optional().allow('', null),
+  businessRegistrationNumber: Joi.string().optional().allow('', null),
 }).concat(uploadSchema);

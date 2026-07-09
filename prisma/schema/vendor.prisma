@@ -1,16 +1,33 @@
+enum VendorVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model vendors {
-  id                 String               @id @default(cuid())
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  userId             String?              @unique
+  id                 String                   @id @default(cuid())
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  userId             String?                  @unique
   Event              Event[]
   VendorAvailability VendorAvailability[]
   bankInfo           bankInfo[]
-  maintenances       maintenance[]        @relation("vendorUser")
+  maintenances       maintenance[]            @relation("vendorUser")
   reviews            reviews[]
   services           services[]
-  documents          vendorDocument[]     @relation("VendorDocuments")
-  user               users?               @relation(fields: [userId], references: [id])
+  documents          vendorDocument[]         @relation("VendorDocuments")
+  user               users?                   @relation(fields: [userId], references: [id])
+
+  // Onboarding verification gate (Part 1 of VENDOR_APP_FLOW_SPEC.md) - a
+  // vendor cannot access the main app until this is APPROVED, regardless of
+  // how much of Session 2 (services setup) they've completed.
+  verificationStatus VendorVerificationStatus @default(PENDING)
+
+  // Business details, captured once during onboarding and reused wherever
+  // needed (invoices, quotations, receipts) instead of re-asking. Optional -
+  // a sole trader without a registered company is not blocked by this.
+  businessName               String?
+  businessRegistrationNumber String?
 
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
 
@@ -28,4 +45,16 @@ model vendorDocument {
   vendorId  String
   createdAt DateTime @default(now())
   vendor    vendors  @relation("VendorDocuments", fields: [vendorId], references: [id])
+}
+
+// Admin-controlled (AsherAdmin) list of document types required at vendor
+// onboarding - replaces the hardcoded ID_CARD/CERTIFICATION pair previously
+// baked into the Vendor app's documentUpload.tsx.
+model vendorDocumentRequirement {
+  id        String   @id @default(cuid())
+  type      String   @unique
+  label     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
