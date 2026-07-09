@@ -47,6 +47,8 @@ export interface RegisterVendorInput {
     title?: string;
   };
   uploadedDocuments?: UploadedDocumentInput[];
+  businessName?: string;
+  businessRegistrationNumber?: string;
 }
 
 export interface UpdateLandlordDTO {

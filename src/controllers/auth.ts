@@ -135,7 +135,9 @@ class AuthControls {
                 ...data.profile,
                 profileUrl
             },
-            uploadedDocuments: documents
+            uploadedDocuments: documents,
+            businessName: data.businessName,
+            businessRegistrationNumber: data.businessRegistrationNumber
         });
 
         return res

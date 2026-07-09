@@ -37,6 +37,10 @@ model maintenance {
   tenantWantsToPay             Boolean?
   paymentStatus                TransactionStatus              @default(PENDING)
   amount                       Decimal?                       @db.Decimal(18, 2)
+  // Set once this job's earnings have been included in a weekly vendor
+  // payout batch (Part 2 §6 of VENDOR_APP_FLOW_SPEC.md) - prevents paying
+  // the same completed job out twice across runs.
+  vendorPaidOutAt              DateTime?
   roomId                       String?
   unitId                       String?
   endAttachments               String[]

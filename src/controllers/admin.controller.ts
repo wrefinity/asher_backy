@@ -18,6 +18,17 @@ import {
   listPendingIdentityVerifications,
   rejectLandlordIdentityVerification,
 } from "../services/landlordIdentity.service";
+import {
+  approveVendorVerification,
+  listPendingVendorVerifications,
+  rejectVendorVerification,
+} from "../services/vendorVerification.service";
+import {
+  createDocumentRequirement,
+  deleteDocumentRequirement,
+  getAllDocumentRequirements,
+  updateDocumentRequirement,
+} from "../services/vendorDocumentRequirement.service";
 
 interface InviteLandlordData {
   email: string;
@@ -763,6 +774,180 @@ class AdminController {
     } catch (error: any) {
       console.error("Error getting all landlords:", error);
       ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Get all vendors (users) - mirrors getAllLandlords above, for the
+   * AsherAdmin "Vendors" section (Part 1 of VENDOR_APP_FLOW_SPEC.md).
+   */
+  getAllVendors = async (req: CustomRequest, res: Response) => {
+    try {
+      const { page = 1, limit = 1000, search = '' } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const where: any = {
+        role: { has: userRoles.VENDOR },
+      };
+
+      if (search) {
+        where.OR = [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { profile: { firstName: { contains: search as string, mode: 'insensitive' } } },
+          { profile: { lastName: { contains: search as string, mode: 'insensitive' } } },
+          { profile: { fullname: { contains: search as string, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [users, total] = await Promise.all([
+        prismaClient.users.findMany({
+          where,
+          skip,
+          take: Number(limit),
+          include: {
+            profile: true,
+            vendors: {
+              select: {
+                id: true,
+                verificationStatus: true,
+                businessName: true,
+                businessRegistrationNumber: true,
+                documents: { select: { id: true, type: true, url: true, createdAt: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prismaClient.users.count({ where }),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        data: users.map(user => ({
+          id: user.id,
+          name: user.profile?.fullname ||
+            (user.profile?.firstName && user.profile?.lastName
+              ? `${user.profile.firstName} ${user.profile.lastName}`.trim()
+              : user.profile?.firstName || user.email.split('@')[0]),
+          email: user.email,
+          role: 'Vendor',
+          systemId: '2', // Vendor App
+          status: user.isVerified ? 'Active' : 'Pending Invite',
+          lastActive: user.isVerified
+            ? (user.onlineStatus === onlineStatus.online ? 'Online' : 'Offline')
+            : 'Invitation sent',
+          phone: user.profile?.phoneNumber || '',
+          createdAt: user.createdAt,
+          vendorId: user.vendors?.id || null,
+          verificationStatus: user.vendors?.verificationStatus || null,
+          businessName: user.vendors?.businessName || null,
+          businessRegistrationNumber: user.vendors?.businessRegistrationNumber || null,
+          documents: user.vendors?.documents || [],
+        })),
+        total,
+        page: Number(page),
+        limit: Number(limit),
+      });
+    } catch (error: any) {
+      console.error("Error getting all vendors:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Vendor verification review (Part 1 of VENDOR_APP_FLOW_SPEC.md) - mirrors
+   * the landlord identity-verification endpoints above.
+   */
+  getPendingVendorVerifications = async (_req: CustomRequest, res: Response) => {
+    try {
+      const pending = await listPendingVendorVerifications();
+      return res.status(200).json({ success: true, data: pending });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  approveVendorVerification = async (req: CustomRequest, res: Response) => {
+    try {
+      const { vendorId } = req.params;
+      const vendor = await approveVendorVerification(vendorId);
+      return res.status(200).json({
+        success: true,
+        message: 'Vendor verification approved',
+        data: vendor,
+      });
+    } catch (error: any) {
+      const status = error?.statusCode ?? 500;
+      return res.status(status).json({
+        success: false,
+        message: error?.message ?? 'Failed to approve vendor verification',
+      });
+    }
+  };
+
+  rejectVendorVerification = async (req: CustomRequest, res: Response) => {
+    try {
+      const { vendorId } = req.params;
+      const vendor = await rejectVendorVerification(vendorId);
+      return res.status(200).json({
+        success: true,
+        message: 'Vendor verification rejected',
+        data: vendor,
+      });
+    } catch (error: any) {
+      const status = error?.statusCode ?? 500;
+      return res.status(status).json({
+        success: false,
+        message: error?.message ?? 'Failed to reject vendor verification',
+      });
+    }
+  };
+
+  /**
+   * Admin-controlled vendor document-requirements config (Part 1 of
+   * VENDOR_APP_FLOW_SPEC.md) - replaces the hardcoded ID_CARD/CERTIFICATION
+   * pair in the Vendor app's documentUpload.tsx.
+   */
+  getVendorDocumentRequirements = async (_req: CustomRequest, res: Response) => {
+    try {
+      const requirements = await getAllDocumentRequirements();
+      return res.status(200).json({ success: true, data: requirements });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  createVendorDocumentRequirement = async (req: CustomRequest, res: Response) => {
+    try {
+      const { type, label } = req.body;
+      if (!type || !label) {
+        return res.status(400).json({ success: false, message: 'type and label are required' });
+      }
+      const requirement = await createDocumentRequirement(type, label);
+      return res.status(201).json({ success: true, data: requirement });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message ?? 'Failed to create document requirement' });
+    }
+  };
+
+  updateVendorDocumentRequirement = async (req: CustomRequest, res: Response) => {
+    try {
+      const { requirementId } = req.params;
+      const { label, active } = req.body;
+      const requirement = await updateDocumentRequirement(requirementId, { label, active });
+      return res.status(200).json({ success: true, data: requirement });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message ?? 'Failed to update document requirement' });
+    }
+  };
+
+  deleteVendorDocumentRequirement = async (req: CustomRequest, res: Response) => {
+    try {
+      const { requirementId } = req.params;
+      await deleteDocumentRequirement(requirementId);
+      return res.status(200).json({ success: true, message: 'Document requirement deleted' });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message ?? 'Failed to delete document requirement' });
     }
   };
 

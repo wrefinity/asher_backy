@@ -17,7 +17,7 @@ class MaintenanceController {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {
       page, limit,
-      status: maintenanceStatus.UNASSIGNED || req.query.status as maintenanceStatus,
+      status: (req.query.status as maintenanceStatus) || maintenanceStatus.UNASSIGNED,
     });
     return res
       .status(200)
@@ -111,9 +111,11 @@ class MaintenanceController {
   // Upload start attachments
   uploadStartAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const files = req.body.uploadedFiles; // assume [{ url, type }]
+    // uploadToCloudinaryGeneric middleware sets req.body.uploadedDocuments,
+    // not uploadedFiles - this previously always 400'd regardless of upload.
+    const files = req.body.uploadedDocuments; // [{ url, type }]
 
-    if (!files || !Array.isArray(files)) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
       throw ApiError.badRequest("Files are required and must be an array");
     }
 
@@ -126,9 +128,9 @@ class MaintenanceController {
   // Upload end attachments
   uploadEndAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const files = req.body.uploadedFiles;
+    const files = req.body.uploadedDocuments;
 
-    if (!files || !Array.isArray(files)) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
       throw ApiError.badRequest("Files are required and must be an array");
     }
 
@@ -193,7 +195,7 @@ class MaintenanceController {
     if (vendorService.availability === vendorAvailability.NO) {
       return res.status(400).json({ message: 'Vendor is not available' });
     }
-    if (vendorService && vendorService.currentJobs > 2) {
+    if (vendorService && vendorService.currentJobs >= 2) {
       return res.status(400).json({ message: "job level exceeded" });
     }
 

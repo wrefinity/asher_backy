@@ -1,6 +1,7 @@
-import { maintenanceStatus } from "@prisma/client";
+import { maintenanceStatus, vendorAvailability } from "@prisma/client";
 import { prismaClient } from "..";
 import { ApiError } from '../utils/ApiError';
+import ServiceServices from "../vendor/services/vendor.services";
 
 export interface CreateQuoteInput {
   maintenanceId: string;
@@ -248,6 +249,20 @@ class QuoteService {
       throw ApiError.unauthorized('You are not authorized to accept quotes for this maintenance');
     }
 
+    // Same concurrent-job-cap rule enforced on the tenant-direct accept path
+    // (vendor/controllers/maintenance.controller.ts) must also apply here -
+    // quote acceptance is the landlord-sourced equivalent of a vendor "accepting" a job.
+    const vendorService = await ServiceServices.getSpecificVendorService(quote.vendorId, maintenance.categoryId);
+    if (!vendorService) {
+      throw ApiError.badRequest('Vendor is no longer subscribed to this service category');
+    }
+    if (vendorService.availability === vendorAvailability.NO) {
+      throw ApiError.badRequest('Vendor is not available');
+    }
+    if (vendorService.currentJobs >= 2) {
+      throw ApiError.badRequest('Vendor has reached the maximum number of active jobs');
+    }
+
     // Start transaction to update quote and maintenance
     const result = await prismaClient.$transaction(async (tx) => {
       // Update the accepted quote
@@ -256,14 +271,22 @@ class QuoteService {
         data: { status: 'ACCEPTED' }
       });
 
-      // Update maintenance with vendor and amount
+      // Update maintenance with vendor, service, and amount
       await tx.maintenance.update({
         where: { id: quote.maintenanceId },
         data: {
           vendorId: quote.vendorId,
+          serviceId: vendorService.id,
           amount: quote.amount,
           status: 'ASSIGNED'
         }
+      });
+
+      // Update vendor's current job count - mirrors assignMaintenance's
+      // increment on the tenant-direct accept path (maintenance.service.ts)
+      await tx.services.update({
+        where: { id: vendorService.id },
+        data: { currentJobs: { increment: 1 } }
       });
 
       // Reject all other quotes for this maintenance

@@ -28,6 +28,9 @@ export class PayoutController {
     if (!destination) {
       throw ApiError.badRequest('Destination (bank account) is required');
     }
+    if (!req.user?.vendors?.id) {
+      throw ApiError.badRequest('No vendor profile found for this user');
+    }
 
     const payout = await stripePayoutService.createPayout(
       {
@@ -36,8 +39,8 @@ export class PayoutController {
         destination,
         description,
         metadata,
-        userId: req.user?.id!,
-        vendorId: req.user?.vendors.id!
+        userId: req.user.id,
+        vendorId: req.user.vendors.id
       },
       connectedAccountId
     );
