@@ -249,9 +249,10 @@ class QuoteService {
       throw ApiError.unauthorized('You are not authorized to accept quotes for this maintenance');
     }
 
-    // Same concurrent-job-cap rule enforced on the tenant-direct accept path
-    // (vendor/controllers/maintenance.controller.ts) must also apply here -
-    // quote acceptance is the landlord-sourced equivalent of a vendor "accepting" a job.
+    // Courtesy pre-check so the landlord doesn't pick a vendor who can't
+    // take the job. The authoritative cap check re-runs when the vendor
+    // confirms (respondToAcceptedQuote), since capacity can change between
+    // the two consents.
     const vendorService = await ServiceServices.getSpecificVendorService(quote.vendorId, maintenance.categoryId);
     if (!vendorService) {
       throw ApiError.badRequest('Vendor is no longer subscribed to this service category');
@@ -263,33 +264,82 @@ class QuoteService {
       throw ApiError.badRequest('Vendor has reached the maximum number of active jobs');
     }
 
-    // Start transaction to update quote and maintenance
-    const result = await prismaClient.$transaction(async (tx) => {
-      // Update the accepted quote
+    // Second vendor consent gate (Part 16 of VENDOR_APP_FLOW_SPEC.md):
+    // landlord acceptance no longer assigns the job. The quote is marked
+    // ACCEPTED awaiting the vendor's explicit confirm/decline; assignment,
+    // job-count increment, and sibling-quote rejection all happen in
+    // respondToAcceptedQuote. Sibling quotes stay PENDING so the landlord
+    // can re-pick if this vendor declines.
+    return prismaClient.maintenanceQuote.update({
+      where: { id: quoteId },
+      data: { status: 'ACCEPTED', vendorAccepted: null, vendorRespondedAt: null }
+    });
+  }
+
+  // Vendor responds to a landlord-accepted quote ("You have been picked" -
+  // Accept/Decline). Accepting performs the actual assignment; declining
+  // releases the job back to the landlord's remaining PENDING quotes.
+  async respondToAcceptedQuote(quoteId: string, vendorId: string, accept: boolean) {
+    const quote = await prismaClient.maintenanceQuote.findFirst({
+      where: {
+        id: quoteId,
+        vendorId,
+        isDeleted: false,
+        status: 'ACCEPTED',
+        vendorAccepted: null,
+      },
+      include: { maintenance: true },
+    });
+
+    if (!quote) {
+      throw ApiError.notFound('No accepted quote awaiting your response was found');
+    }
+
+    if (!accept) {
+      return prismaClient.maintenanceQuote.update({
+        where: { id: quoteId },
+        data: {
+          status: 'REJECTED',
+          vendorAccepted: false,
+          vendorRespondedAt: new Date(),
+        },
+      });
+    }
+
+    // Authoritative cap/availability check at the moment of assignment.
+    const vendorService = await ServiceServices.getSpecificVendorService(vendorId, quote.maintenance.categoryId);
+    if (!vendorService) {
+      throw ApiError.badRequest('You are no longer subscribed to this service category');
+    }
+    if (vendorService.availability === vendorAvailability.NO) {
+      throw ApiError.badRequest('Your service is currently marked unavailable');
+    }
+    if (vendorService.currentJobs >= 2) {
+      throw ApiError.badRequest('You have reached the maximum number of active jobs - complete one first');
+    }
+
+    return prismaClient.$transaction(async (tx) => {
       const updatedQuote = await tx.maintenanceQuote.update({
         where: { id: quoteId },
-        data: { status: 'ACCEPTED' }
+        data: { vendorAccepted: true, vendorRespondedAt: new Date() }
       });
 
-      // Update maintenance with vendor, service, and amount
       await tx.maintenance.update({
         where: { id: quote.maintenanceId },
         data: {
-          vendorId: quote.vendorId,
+          vendorId,
           serviceId: vendorService.id,
           amount: quote.amount,
           status: 'ASSIGNED'
         }
       });
 
-      // Update vendor's current job count - mirrors assignMaintenance's
-      // increment on the tenant-direct accept path (maintenance.service.ts)
+      // Mirrors assignMaintenance's increment on the tenant-direct path.
       await tx.services.update({
         where: { id: vendorService.id },
         data: { currentJobs: { increment: 1 } }
       });
 
-      // Reject all other quotes for this maintenance
       await tx.maintenanceQuote.updateMany({
         where: {
           maintenanceId: quote.maintenanceId,
@@ -299,11 +349,10 @@ class QuoteService {
         data: { status: 'REJECTED' }
       });
 
-      // Create assignment history
       await tx.maintenanceAssignmentHistory.create({
         data: {
           maintenanceId: quote.maintenanceId,
-          vendorId: quote.vendorId,
+          vendorId,
           assignedAt: new Date(),
           state: 'ASSIGNED'
         }
@@ -311,8 +360,6 @@ class QuoteService {
 
       return updatedQuote;
     });
-
-    return result;
   }
 
   // Landlord rejects a quote

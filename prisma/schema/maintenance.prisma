@@ -41,6 +41,12 @@ model maintenance {
   // payout batch (Part 2 §6 of VENDOR_APP_FLOW_SPEC.md) - prevents paying
   // the same completed job out twice across runs.
   vendorPaidOutAt              DateTime?
+  // Live journey tracking (Part 18 of VENDOR_APP_FLOW_SPEC.md): the vendor
+  // app pushes its position while en route; the tenant app polls it for the
+  // Uber-style live map/ETA view. Cleared when the job leaves transit.
+  vendorLastLatitude           Decimal?                       @db.Decimal(18, 6)
+  vendorLastLongitude          Decimal?                       @db.Decimal(18, 6)
+  vendorLocationUpdatedAt      DateTime?
   roomId                       String?
   unitId                       String?
   endAttachments               String[]
@@ -151,6 +157,13 @@ model MaintenanceQuote {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   isDeleted     Boolean     @default(false)
+
+  // Second vendor consent gate (Part 16 of VENDOR_APP_FLOW_SPEC.md): after
+  // the landlord accepts a quote, the vendor must explicitly confirm
+  // ("You have been picked - Accept/Decline") before the job is actually
+  // assigned. Null = awaiting the vendor's response.
+  vendorAccepted    Boolean?
+  vendorRespondedAt DateTime?
 
   maintenance maintenance @relation(fields: [maintenanceId], references: [id])
   vendor      vendors     @relation(fields: [vendorId], references: [id])

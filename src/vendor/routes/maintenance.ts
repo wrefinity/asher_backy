@@ -40,11 +40,13 @@ class MaintenaceRoutes {
         this.router.post("/:maintenanceId/resume", MaintenanceController.resumeMaintenance);
         this.router.post("/:maintenanceId/cancel", MaintenanceController.cancelMaintenance);
         this.router.patch("/:maintenanceId/destination-reached", MaintenanceController.destinationReached);
+        this.router.post("/:maintenanceId/live-location", MaintenanceController.updateLiveLocation);
 
         // maintenance quotation
         this.router.post('/quotes', validateBody(createQuoteValidation), this.authenticateService.authorize, MaintenanceController.createQuote);
         this.router.get('/quotes/maintenance/:maintenanceId', this.authenticateService.authorize, MaintenanceController.getMaintenanceQuotes);
         this.router.get('/quotes/mine', this.authenticateService.authorize, MaintenanceController.getVendorQuotes);
+        this.router.post('/quotes/:quoteId/respond', this.authenticateService.authorize, MaintenanceController.respondToAcceptedQuote);
         this.router.patch('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.updateQuote);
         this.router.delete('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.deleteQuote);
 

@@ -6,6 +6,11 @@ import ServiceServices from "../vendor/services/vendor.services";
 import { subDays, addDays, isBefore, isAfter, isToday } from 'date-fns';
 import { ApiError } from "../utils/ApiError";
 import propertyServices from "./propertyServices";
+import { findPropertyIdsWithinRadiusMiles } from "../utils/geoLocation";
+
+// Part 16 of VENDOR_APP_FLOW_SPEC.md - open question whether this becomes
+// admin-configurable; a constant until then.
+const VENDOR_DISPATCH_RADIUS_MILES = 10;
 
 type SearchResult =
   | { type: "property"; data: properties }
@@ -329,6 +334,48 @@ class MaintenanceService {
     // Filter by status
     if (status) {
       where.status = status;
+    }
+
+    // Dispatch geography (Part 16 of VENDOR_APP_FLOW_SPEC.md): the discovery
+    // feed (UNASSIGNED jobs) is limited to properties in the vendor's own
+    // city OR within a 10-mile radius of the vendor's coordinates -
+    // whichever matches. Vendors with no city and no coordinates on file
+    // see everything (fail-open so pre-existing vendors aren't cut off).
+    // The vendor's own job history (other statuses) is never geo-filtered.
+    if (!status || status === maintenanceStatus.UNASSIGNED) {
+      const vendor = await prismaClient.vendors.findUnique({
+        where: { id: vendorId },
+        select: {
+          latitude: true,
+          longitude: true,
+          user: { select: { profile: { select: { city: true } } } },
+        },
+      });
+
+      const vendorCity = vendor?.user?.profile?.city?.trim();
+      const geoOr: any[] = [];
+
+      if (vendorCity) {
+        geoOr.push({
+          property: { city: { equals: vendorCity, mode: "insensitive" as const } },
+        });
+      }
+
+      if (vendor?.latitude != null && vendor?.longitude != null) {
+        const nearbyPropertyIds = await findPropertyIdsWithinRadiusMiles(
+          prismaClient,
+          Number(vendor.latitude),
+          Number(vendor.longitude),
+          VENDOR_DISPATCH_RADIUS_MILES
+        );
+        if (nearbyPropertyIds.length > 0) {
+          geoOr.push({ propertyId: { in: nearbyPropertyIds } });
+        }
+      }
+
+      if (geoOr.length > 0) {
+        where.AND = [...(where.AND ?? []), { OR: geoOr }];
+      }
     }
 
     // Filter by property state if provided
@@ -1107,6 +1154,24 @@ class MaintenanceService {
       maxWait: timeout,
       timeout: timeout,
       isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+    });
+  }
+
+  // Live journey tracking (Part 18 of VENDOR_APP_FLOW_SPEC.md).
+  async updateVendorLiveLocation(maintenanceId: string, latitude: number, longitude: number) {
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: {
+        vendorLastLatitude: latitude,
+        vendorLastLongitude: longitude,
+        vendorLocationUpdatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        vendorLastLatitude: true,
+        vendorLastLongitude: true,
+        vendorLocationUpdatedAt: true,
+      },
     });
   }
 

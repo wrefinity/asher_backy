@@ -308,6 +308,31 @@ class MaintenanceController {
       .status(200)
       .json(ApiResponse.success(updated, "Work started successfully"));
   });
+
+  // Live journey tracking (Part 18 of VENDOR_APP_FLOW_SPEC.md): the vendor
+  // app pushes its position while en route; the tenant app polls it.
+  updateLiveLocation = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const vendorId = req.user?.vendors?.id;
+    const { latitude, longitude } = req.body;
+
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      throw ApiError.badRequest("latitude and longitude (numbers) are required");
+    }
+
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+    if (!maintenance || maintenance.vendorId !== vendorId) {
+      throw ApiError.notFound("Maintenance not found or not assigned to you");
+    }
+
+    const updated = await MaintenanceService.updateVendorLiveLocation(
+      maintenanceId,
+      latitude,
+      longitude
+    );
+
+    return res.status(200).json(ApiResponse.success(updated, "Location updated"));
+  });
   cancelMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
     const vendorId = req.user?.vendors?.id;
@@ -424,6 +449,28 @@ class MaintenanceController {
       ApiResponse.success(
         {},
         'Quote deleted successfully'
+      )
+    );
+  });
+
+  // Second vendor consent gate (Part 16 of VENDOR_APP_FLOW_SPEC.md):
+  // "You have been picked" - vendor confirms or declines a
+  // landlord-accepted quote. Confirming performs the actual assignment.
+  respondToAcceptedQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const vendorId = req.user.vendors.id;
+    const { quoteId } = req.params;
+    const { accept } = req.body;
+
+    if (typeof accept !== 'boolean') {
+      throw ApiError.badRequest('accept (boolean) is required');
+    }
+
+    const quote = await quoteService.respondToAcceptedQuote(quoteId, vendorId, accept);
+
+    return res.status(200).json(
+      ApiResponse.success(
+        quote,
+        accept ? 'Job confirmed - it is now assigned to you' : 'Quote declined'
       )
     );
   });

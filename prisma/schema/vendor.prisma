@@ -29,6 +29,14 @@ model vendors {
   businessName               String?
   businessRegistrationNumber String?
 
+  // Dispatch geography (Part 16 of VENDOR_APP_FLOW_SPEC.md): jobs are only
+  // shown to vendors in the same city as the property OR within a 10-mile
+  // radius. City comes from the vendor's profile; these coords enable the
+  // radius half of the rule (populated by geocoding/app location - nullable
+  // until then, in which case only the city match applies).
+  latitude  Decimal? @db.Decimal(18, 6)
+  longitude Decimal? @db.Decimal(18, 6)
+
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
 
   maintenanceStatusHistory maintenanceStatusHistory[]
