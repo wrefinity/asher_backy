@@ -504,6 +504,29 @@ export class SupportService {
             },
           },
         },
+        // Kept identical to getTicketById's dispute includes so both
+        // lookups return the same shape.
+        raisedByVendor: {
+          include: {
+            user: { select: { id: true, email: true, profile: true } },
+          },
+        },
+        maintenance: {
+          select: {
+            id: true,
+            description: true,
+            status: true,
+            paymentStatus: true,
+            amount: true,
+            startAttachments: true,
+            endAttachments: true,
+            attachments: true,
+            scheduleDate: true,
+            createdAt: true,
+            tenantVerified: true,
+            property: { select: { name: true, address: true, city: true } },
+          },
+        },
         assignedTo: {
           select: {
             id: true,
