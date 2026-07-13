@@ -1044,7 +1044,7 @@ class ApplicantControls {
         </div>
       `;
 
-      // Send in-house inbox message
+      // Send in-house inbox message to the landlord (must match receiverEmail)
       const mailBox = await emailService.createEmail({
         senderEmail: user.email,
         receiverEmail: landlord.user.email,
@@ -1052,7 +1052,7 @@ class ApplicantControls {
         attachment: documentUrls,
         subject: `Asher - ${agreement?.application.properties?.name} Agreement Form SignUp`,
         senderId: req.user.id,
-        receiverId: agreement.application.user.id,
+        receiverId: landlord.user.id,
       });
 
       if (!mailBox) {

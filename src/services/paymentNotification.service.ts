@@ -307,6 +307,25 @@ export class PaymentNotificationService {
         ...notification,
         message: displayMessage,
       });
+
+      try {
+        const NotificationService = (await import("./notification.service")).default;
+        await NotificationService.createNotification(
+          {
+            destId: landlordUser.id,
+            title: notification.title,
+            message: displayMessage,
+            notificationType: notification.type,
+            route:
+              (notification.data?.route as string | undefined) ??
+              "/finances/bills",
+            skipPush: !this.shouldUseMethod(methods, ReminderMethodType.PUSH),
+          },
+          "ONLINE_PAYMENTS"
+        );
+      } catch (notifyError) {
+        loggers.error("Failed to persist landlord payment notification:", notifyError);
+      }
     }
 
     if (this.wantsEmail(methods) && landlordUser.email) {

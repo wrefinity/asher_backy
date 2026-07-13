@@ -407,7 +407,7 @@ export async function sendRenewalAgreement(
 
   if (proposal.tenant.user.id) {
     if (serverInstance?.io) {
-      serverInstance.io.to(`user_${proposal.tenant.user.id}`).emit('notification', {
+      serverInstance.io.to(`user:${proposal.tenant.user.id}`).emit('notification', {
         type: 'LEASE_AGREEMENT_PENDING',
         title: 'Sign your renewal lease',
         message: `Your renewal for ${proposal.property.name} is ready. Open Documents to sign.`,

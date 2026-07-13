@@ -130,7 +130,10 @@ export class Authorize {
                 ...baseUser,
                 tenantCode: decoded.tenantCode,
                 tenantId: decoded.tenantId,
-                tenant: { id: decoded.tenantId },
+                tenant: {
+                    id: decoded.tenantId,
+                    landlordId: user.tenants?.find((t: any) => t.id === decoded.tenantId)?.landlordId,
+                },
                 landlords: undefined,
                 vendors: undefined,
             };
@@ -157,7 +160,10 @@ export class Authorize {
             if (selectedTenant) {
                 return {
                     ...baseUser,
-                    tenant: { id: selectedTenant.id },
+                    tenant: {
+                        id: selectedTenant.id,
+                        landlordId: selectedTenant.landlordId,
+                    },
                     tenantCode: selectedTenant.tenantCode,
                     tenantId: selectedTenant.id,
                     landlords: user.landlords ? { id: user.landlords.id } : undefined,
@@ -306,6 +312,8 @@ export class Authorize {
             const tenant = await prismaClient.tenants.findUnique({
                 where: { id: tenantId },
                 select: {
+                    id: true,
+                    landlordId: true,
                     isDeleted: true,
                     isAppAccessSuspended: true,
                 },
@@ -322,6 +330,13 @@ export class Authorize {
                     message: "Your access to the tenant app has been suspended. Please contact your landlord."
                 });
             }
+
+            // Keep landlordId on tenant context for whitelist / vendor posting
+            req.user.tenant = {
+                id: tenant.id,
+                landlordId: tenant.landlordId,
+            };
+            req.user.tenantId = tenant.id;
 
             next();
         };

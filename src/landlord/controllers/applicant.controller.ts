@@ -8,7 +8,7 @@ import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType, EnquireStatus, EnquiryStatus } from "@prisma/client"
 import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, agreementDocumentSchema, updateApplicationStatusSchema, updateAgreementSchema } from '../validations/schema/applicationInvitesSchema';
-import Emailer, { sendApplicationCompletionEmails } from "../../utils/emailer";
+import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
@@ -807,16 +807,10 @@ class ApplicationControls {
             if (!applicationLandlord) {
                 return res.status(403).json({ error: "Unauthorized: Landlord not associated with this property application" });
             }
-            // Get recipient email
+            // Get recipient email — applicant for app/reference reminders; invitee for schedule
             let recipientEmail = null;
 
-            // TODO: why email reminder for employer and guarantor sents to the applicant email
             if (
-                value.status === ReminderType.REFERENCE_REMINDER ||
-                value.status === ReminderType.APPLICATION_REMINDER
-            ) {
-                recipientEmail = application.user.email;
-            } else if (
                 value.status === ReminderType.REFERENCE_REMINDER ||
                 value.status === ReminderType.APPLICATION_REMINDER
             ) {
@@ -878,11 +872,23 @@ class ApplicationControls {
                     break;
             }
 
-            // Send email in background - log is already created, so reminder is tracked even if email fails
-            // sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
-            //     logger.error('Failed to send reminder email:', emailError);
-            // });
-            await sendApplicationCompletionEmails(application);
+            // Reminder must go to applicant/invitee — not external guarantor/employer refs
+            if (userId) {
+                await sendPreferenceAwareMail({
+                    userId,
+                    category: NotificationCategory.COMMUNICATION,
+                    notificationType: value.status,
+                    to: recipientEmail,
+                    subject,
+                    html: htmlContent,
+                }).catch((emailError) => {
+                    logger.error('Failed to send reminder email:', emailError);
+                });
+            } else {
+                await sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
+                    logger.error('Failed to send reminder email:', emailError);
+                });
+            }
             return res.status(200).json({
                 message: "Reminder sent successfully",
                 details: { recipient: recipientEmail, type: value.status }

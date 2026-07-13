@@ -13,6 +13,10 @@ import {
   joinReferenceNameParts,
   notifyReferenceDeclined,
 } from "../utils/referenceNomination.utils";
+import {
+  applicationPropertyLandlordInclude,
+  resolveApplicationPropertyLandlordUser,
+} from "../utils/resolveApplicationLandlord";
 
 class LandlordReferenceService {
   respondToNomination = async (
@@ -25,8 +29,8 @@ class LandlordReferenceService {
         residentialInfo: true,
         personalDetails: true,
         user: true,
-        createdBy: true,
-        properties: true,
+        createdBy: { select: { id: true, email: true, role: true } },
+        properties: { include: applicationPropertyLandlordInclude },
       },
     });
 
@@ -94,11 +98,13 @@ class LandlordReferenceService {
 
     const message = `${refereeName || "The nominated landlord"} has declined to provide a landlord reference for ${tenantName}'s application (${propertyLabel}). The tenant will need to provide another previous landlord contact.`;
 
+    const propertyLandlord = await resolveApplicationPropertyLandlordUser(application);
+
     await notifyReferenceDeclined({
       tenantUserId: application.userId,
-      landlordUserId: application.createdById,
+      landlordUserId: propertyLandlord?.id,
       tenantEmail: application.user?.email,
-      propertyLandlordEmail: application.createdBy?.email,
+      propertyLandlordEmail: propertyLandlord?.email,
       title: "Landlord reference declined",
       message,
       tenantEmailSubject: "Previous landlord declined your reference request",

@@ -574,21 +574,24 @@ export class SupportService {
       data: { updatedAt: new Date() },
     });
 
-    // Emit Socket.IO event to landlord if message is not internal
+    // Emit Socket.IO event to ticket parties (landlord + tenant raiser), not the sender
     if (!isInternal) {
       try {
         const { serverInstance } = await import("../index");
-        let landlordUserId: string | null = null;
+        const recipients = new Set<string>();
 
-        // Get landlord's userId
-        if (ticket.raisedById && ticket.raisedBy?.user?.id) {
-          landlordUserId = ticket.raisedBy.user.id;
-        } else if (ticket.raisedByTenantId && ticket.raisedByTenant?.landlord?.user?.id) {
-          landlordUserId = ticket.raisedByTenant.landlord.user.id;
+        if (ticket.raisedBy?.user?.id) {
+          recipients.add(ticket.raisedBy.user.id);
         }
+        if (ticket.raisedByTenant?.user?.id) {
+          recipients.add(ticket.raisedByTenant.user.id);
+        }
+        if (ticket.raisedByTenant?.landlord?.user?.id) {
+          recipients.add(ticket.raisedByTenant.landlord.user.id);
+        }
+        recipients.delete(senderId);
 
-        if (landlordUserId) {
-          // Get full ticket with messages for the notification
+        if (recipients.size > 0) {
           const updatedTicket = await this.getTicketById(ticketId);
 
           const eventData = {
@@ -599,14 +602,16 @@ export class SupportService {
             timestamp: new Date(),
           };
 
-          // Emit to user room
-          serverInstance.io.to(`user:${landlordUserId}`).emit("ticket_message_added", eventData);
+          for (const userId of recipients) {
+            serverInstance.io.to(`user:${userId}`).emit("ticket_message_added", eventData);
+          }
 
-          // Also emit to ticket-specific room for real-time updates
           serverInstance.io.to(`ticket:${ticket.id}`).emit("ticket_message_added", eventData);
           serverInstance.io.to(`ticket:${ticket.ticketCode}`).emit("ticket_message_added", eventData);
 
-          console.log(`📩 Ticket message notification sent to landlord: ${landlordUserId} for ticket ${ticket.ticketCode}`);
+          console.log(
+            `📩 Ticket message notification sent to ${[...recipients].join(", ")} for ticket ${ticket.ticketCode}`
+          );
         }
       } catch (socketError) {
         // Log error but don't fail the message creation
@@ -845,19 +850,22 @@ export class SupportService {
       },
     });
 
-    // Emit Socket.IO event to landlord
+    // Emit Socket.IO event to ticket parties (landlord + tenant raiser)
     try {
       const { serverInstance } = await import("../index");
-      let landlordUserId: string | null = null;
+      const recipients = new Set<string>();
 
-      // Get landlord's userId
-      if (ticketBeforeUpdate.raisedById && ticketBeforeUpdate.raisedBy?.user?.id) {
-        landlordUserId = ticketBeforeUpdate.raisedBy.user.id;
-      } else if (ticketBeforeUpdate.raisedByTenantId && ticketBeforeUpdate.raisedByTenant?.landlord?.user?.id) {
-        landlordUserId = ticketBeforeUpdate.raisedByTenant.landlord.user.id;
+      if (ticketBeforeUpdate?.raisedBy?.user?.id) {
+        recipients.add(ticketBeforeUpdate.raisedBy.user.id);
+      }
+      if (ticketBeforeUpdate?.raisedByTenant?.user?.id) {
+        recipients.add(ticketBeforeUpdate.raisedByTenant.user.id);
+      }
+      if (ticketBeforeUpdate?.raisedByTenant?.landlord?.user?.id) {
+        recipients.add(ticketBeforeUpdate.raisedByTenant.landlord.user.id);
       }
 
-      if (landlordUserId) {
+      if (recipients.size > 0) {
         const eventData = {
           ticketId: updatedTicket.id,
           ticketCode: updatedTicket.ticketCode,
@@ -866,14 +874,16 @@ export class SupportService {
           timestamp: new Date(),
         };
 
-        // Emit to user room
-        serverInstance.io.to(`user:${landlordUserId}`).emit("ticket_status_updated", eventData);
+        for (const userId of recipients) {
+          serverInstance.io.to(`user:${userId}`).emit("ticket_status_updated", eventData);
+        }
 
-        // Also emit to ticket-specific room for real-time updates
         serverInstance.io.to(`ticket:${updatedTicket.id}`).emit("ticket_status_updated", eventData);
         serverInstance.io.to(`ticket:${updatedTicket.ticketCode}`).emit("ticket_status_updated", eventData);
 
-        console.log(`📢 Ticket status update notification sent to landlord: ${landlordUserId} for ticket ${updatedTicket.ticketCode}`);
+        console.log(
+          `📢 Ticket status update notification sent to ${[...recipients].join(", ")} for ticket ${updatedTicket.ticketCode}`
+        );
       }
     } catch (socketError) {
       // Log error but don't fail the status update

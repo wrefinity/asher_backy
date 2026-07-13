@@ -87,6 +87,12 @@ class DepositReturnReminderService {
           : kind === '1d'
             ? 'Deposit return due tomorrow'
             : 'Deposit return deadline approaching';
+      const landlordTitle =
+        kind === 'due'
+          ? 'Deposit return due today'
+          : kind === '1d'
+            ? 'Deposit return due tomorrow'
+            : 'Deposit return deadline approaching';
       const tenantMessage =
         kind === 'due'
           ? `Your security deposit for ${propertyName} should be returned by today (${deadlineLabel}) per your landlord's settings.`
@@ -113,7 +119,7 @@ class DepositReturnReminderService {
           {
             sourceId: tenantUserId,
             destId: landlordUserId,
-            title: tenantTitle,
+            title: landlordTitle,
             message: landlordMessage,
             notificationType: 'deposit_return_reminder',
             route: '/tenants/move-out-notices',

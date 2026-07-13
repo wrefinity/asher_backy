@@ -14,21 +14,65 @@ import tenantService from "../../services/tenant.service";
 import maintenanceService from "../../services/maintenance.service";
 import { submitPriceOfferSchema } from "../../validations/schemas/maintenance.schema";
 import reviewService from "../../services/review.service";
+import { prismaClient } from "../..";
+
+async function resolveLandlordIdForTenantRequest(params: {
+  tenantId: string;
+  jwtLandlordId?: string;
+  property: { type: string; data: Record<string, any> };
+}): Promise<string | undefined> {
+  const { tenantId, jwtLandlordId, property } = params;
+
+  if (jwtLandlordId) return jwtLandlordId;
+
+  if (property.type === "property" && property.data?.landlordId) {
+    return property.data.landlordId as string;
+  }
+
+  const parentPropertyId =
+    property.type === "unit" || property.type === "room"
+      ? (property.data?.propertyId as string | undefined)
+      : undefined;
+
+  if (parentPropertyId) {
+    const parent = await prismaClient.properties.findFirst({
+      where: { id: parentPropertyId, isDeleted: false },
+      select: { landlordId: true },
+    });
+    if (parent?.landlordId) return parent.landlordId;
+  }
+
+  const tenantRow = await prismaClient.tenants.findUnique({
+    where: { id: tenantId },
+    select: { landlordId: true },
+  });
+  return tenantRow?.landlordId || undefined;
+}
+
 class MaintenanceControls {
 
  public createMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const value = req.body;
     const tenantId = req.user.tenant?.id;
-    const landlordId = req.user.tenant?.landlordId;
 
     if (!tenantId) {
       throw ApiError.badRequest("Please log in as either a tenant or a landlord");
     }
 
-    const property = await MaintenanceService.searchPropertyUnitRoomForMaintenace(value?.propertyId);
+    if (!value?.propertyId) {
+      throw ApiError.badRequest("Property ID is required");
+    }
+
+    const property = await MaintenanceService.searchPropertyUnitRoomForMaintenace(value.propertyId);
     if (!property) {
       throw ApiError.notFound("Property not found");
     }
+
+    const landlordId = await resolveLandlordIdForTenantRequest({
+      tenantId,
+      jwtLandlordId: req.user.tenant?.landlordId,
+      property: property as { type: string; data: Record<string, any> },
+    });
 
     const subcategoryId =
       value.subcategoryIds?.[0] ?? value.subcategoryId ?? undefined;

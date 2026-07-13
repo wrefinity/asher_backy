@@ -2,11 +2,11 @@ import Joi from 'joi';
 import { stringJoiOptional, stringJoiRequired } from './base.schema';
 
 export const maintenanceSchema = Joi.object({
-  description: Joi.string().optional(),
+  description: Joi.string().trim().min(1).required(),
   scheduleDate: Joi.date().iso().optional(),
   offer: Joi.array().items(Joi.string()).optional(),
   amount: Joi.number().optional(),
-  propertyId: Joi.string().optional(),
+  propertyId: Joi.string().required(),
   categoryId: Joi.string().required(),
   vendorId: Joi.string().optional(),
   subcategoryIds: Joi.array().items(Joi.string()).required(),

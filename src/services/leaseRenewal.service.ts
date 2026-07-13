@@ -294,6 +294,18 @@ class LeaseRenewalService {
           },
           'ONLINE_PAYMENTS'
         );
+        await NotificationService.createNotification(
+          {
+            sourceId: tenant.id,
+            destId: landlord.id,
+            title: message.title,
+            message: message.landlordMessage,
+            notificationType: 'LEASE_RENEWAL_REMINDER',
+            route: '/tenants',
+            skipPush: !wantsPush,
+          },
+          'ONLINE_PAYMENTS'
+        );
       } catch (notifyError) {
         console.warn('Failed to persist lease renewal notification', notifyError);
       }
@@ -634,7 +646,7 @@ class LeaseRenewalService {
    */
   private sendRealtimeNotification(userId: string, notification: any) {
     if (serverInstance && serverInstance.io) {
-      serverInstance.io.to(`user_${userId}`).emit('notification', {
+      serverInstance.io.to(`user:${userId}`).emit('notification', {
         ...notification,
         timestamp: new Date(),
         userId

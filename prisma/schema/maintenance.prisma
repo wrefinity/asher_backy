@@ -113,6 +113,16 @@ model maintenanceAssignmentHistory {
   vendor        vendors?          @relation(fields: [vendorId], references: [id])
 }
 
+// Payment types a vendor can enable per service/category (Part 1 §5 of
+// VENDOR_APP_FLOW_SPEC.md, refined 2026-07-13): multi-select, not mutually
+// exclusive - a category can offer tenant-facing tiered pricing AND opt in
+// to landlord quotations at the same time.
+enum ServicePaymentType {
+  FIXED_TIERS
+  ONE_OFF
+  QUOTATION
+}
+
 model services {
   id                 String             @id @default(cuid())
   currentJobs        Int                @default(0)
@@ -125,6 +135,19 @@ model services {
   categoryId         String?
   subcategoryId      String?
   tenantId           String?
+
+  // Session-2 service storefront fields (Part 1 §4-5, refined 2026-07-13):
+  // the service page is the vendor's business page, so each entry carries a
+  // proper description of what's involved plus validation evidence - either
+  // a reference to the onboarding certificate (when it covers this trade)
+  // or portfolio photo URLs of real work. Defaults keep pre-existing rows
+  // behaving exactly as before (tiered pricing only).
+  paymentTypes                    ServicePaymentType[] @default([FIXED_TIERS])
+  oneOffPrice                     Decimal?             @db.Decimal(18, 2)
+  description                     String?
+  referencesOnboardingCertificate Boolean              @default(false)
+  proofUrls                       String[]             @default([])
+
   maintenance        maintenance[]
   category           category?          @relation(fields: [categoryId], references: [id])
   subcategory        subCategory?       @relation(fields: [subcategoryId], references: [id])
