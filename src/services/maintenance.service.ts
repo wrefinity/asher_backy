@@ -7,6 +7,7 @@ import { subDays, addDays, isBefore, isAfter, isToday } from 'date-fns';
 import { ApiError } from "../utils/ApiError";
 import propertyServices from "./propertyServices";
 import { findPropertyIdsWithinRadiusMiles } from "../utils/geoLocation";
+import { getVendorReputation, throttleKeepsJob } from "./vendorReputation.service";
 
 // Part 16 of VENDOR_APP_FLOW_SPEC.md - open question whether this becomes
 // admin-configurable; a constant until then.
@@ -336,6 +337,20 @@ class MaintenanceService {
       where.status = status;
     }
 
+    // Reputation gating (Part 5 of VENDOR_APP_FLOW_SPEC.md), discovery only:
+    // BLOCKED vendors get an empty feed; THROTTLED vendors get a stable
+    // reduced subset (filtered post-query below). History is never gated.
+    let reputationZone: "NORMAL" | "THROTTLED" | "BLOCKED" = "NORMAL";
+    if (!status || status === maintenanceStatus.UNASSIGNED) {
+      reputationZone = (await getVendorReputation(vendorId)).zone;
+      if (reputationZone === "BLOCKED") {
+        return {
+          data: [],
+          meta: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrevious: false },
+        };
+      }
+    }
+
     // Dispatch geography (Part 16 of VENDOR_APP_FLOW_SPEC.md): the discovery
     // feed (UNASSIGNED jobs) is limited to properties in the vendor's own
     // city OR within a 10-mile radius of the vendor's coordinates -
@@ -424,7 +439,7 @@ class MaintenanceService {
     }
 
     // Execute queries
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       prismaClient.maintenance.findMany({
         where,
         skip,
@@ -434,6 +449,12 @@ class MaintenanceService {
       }),
       prismaClient.maintenance.count({ where }),
     ]);
+
+    // THROTTLED zone (Part 5): keep a stable ~30% subset of discovery jobs.
+    const data =
+      reputationZone === "THROTTLED"
+        ? rawData.filter((job) => throttleKeepsJob(vendorId, job.id))
+        : rawData;
 
     const totalPages = Math.ceil(total / limit);
 

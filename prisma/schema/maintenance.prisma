@@ -77,6 +77,7 @@ model maintenance {
   MaintenanceQuote             MaintenanceQuote[]
   MaintenanceNote              MaintenanceNote[]
   review                       reviews?
+  supportTickets               SupportTicket[]
 
   @@index([vendorId])
   @@index([status])

@@ -19,8 +19,13 @@ class VendorAnalyticsController {
 
         const analytics = await serviceService.getVendorAnalytics(vendorId);
 
+        // Reputation zone (Part 5 of VENDOR_APP_FLOW_SPEC.md) rides along so
+        // the app can show the real rating and the warning/blocked banners.
+        const { getVendorReputation } = await import("../../services/vendorReputation.service");
+        const reputation = await getVendorReputation(vendorId);
+
         return res.status(200).json(
-            ApiResponse.success(analytics, "Vendor analytics retrieved successfully")
+            ApiResponse.success({ ...analytics, reputation }, "Vendor analytics retrieved successfully")
         );
     });
 

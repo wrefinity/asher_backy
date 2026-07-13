@@ -183,6 +183,16 @@ class MaintenanceController {
       );
     }
 
+    // Reputation gate (Part 5 of VENDOR_APP_FLOW_SPEC.md): blocked vendors
+    // cannot take new jobs anywhere in the system.
+    const { getVendorReputation } = await import("../../services/vendorReputation.service");
+    const reputation = await getVendorReputation(vendorId);
+    if (reputation.zone === "BLOCKED") {
+      return res.status(403).json({
+        message: "Your rating is below the minimum to receive jobs. Check your dashboard for how to rebuild your reputation."
+      });
+    }
+
     const vendorService = await ServiceServices.getSpecificVendorService(vendorId, maintenanceRequest.categoryId);
     if (!vendorService) {
       return res.status(400).json(

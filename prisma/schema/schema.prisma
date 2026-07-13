@@ -38,6 +38,9 @@ model bankInfo {
   vendorId           String?
   bankName           String
   stripeTokenId      String?    @unique
+  // Paystack transfer recipient for NGN payouts (Part 3 §5 of
+  // VENDOR_APP_FLOW_SPEC.md): UK/other -> Stripe, Nigeria -> Paystack.
+  paystackRecipientCode String?
   country            String?
   accountNumber      String
   currency           Currency?  @default(USD)

@@ -18,6 +18,8 @@ class VendorVerificationRoutes {
       uploadToCloudinaryGeneric,
       VendorVerificationController.resubmit
     );
+    // Disputes (Part 6 of VENDOR_APP_FLOW_SPEC.md) - vendor -> Asher admin.
+    this.router.post("/disputes", VendorVerificationController.raiseDispute);
   }
 }
 

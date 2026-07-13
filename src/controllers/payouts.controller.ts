@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { stripePayoutService } from '../services/stripe.payout.service';
+import paystackServices from '../services/paystack.services';
+import { prismaClient } from '..';
 import { ApiResponse } from '../utils/ApiResponse';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -30,6 +32,20 @@ export class PayoutController {
     }
     if (!req.user?.vendors?.id) {
       throw ApiError.badRequest('No vendor profile found for this user');
+    }
+
+    // Country-routed payout (Part 3 §5 of VENDOR_APP_FLOW_SPEC.md):
+    // NGN goes through Paystack, everything else through Stripe.
+    if (String(currency).toUpperCase() === 'NGN') {
+      const bank = await prismaClient.bankInfo.findFirst({
+        where: { vendorId: req.user.vendors.id, paystackRecipientCode: { not: null } },
+      });
+      if (!bank?.paystackRecipientCode) {
+        throw ApiError.badRequest('No Paystack transfer recipient on file - add your NGN bank account first');
+      }
+      const reference = `vendor-payout-${req.user.vendors.id}-${Date.now()}`;
+      const transfer = await paystackServices.transferToVendor(Number(amount), bank.paystackRecipientCode, reference);
+      return res.status(201).json(ApiResponse.created(transfer, 'Payout created successfully'));
     }
 
     const payout = await stripePayoutService.createPayout(

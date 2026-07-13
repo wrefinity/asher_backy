@@ -306,6 +306,13 @@ class QuoteService {
       });
     }
 
+    // Reputation gate (Part 5): blocked vendors can't take the job even if
+    // the landlord picked their quote before the block took effect.
+    const { getVendorReputation } = await import('./vendorReputation.service');
+    if ((await getVendorReputation(vendorId)).zone === 'BLOCKED') {
+      throw ApiError.forbidden('Your rating is below the minimum to receive jobs right now.');
+    }
+
     // Authoritative cap/availability check at the moment of assignment.
     const vendorService = await ServiceServices.getSpecificVendorService(vendorId, quote.maintenance.categoryId);
     if (!vendorService) {

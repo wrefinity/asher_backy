@@ -44,6 +44,8 @@ model vendors {
   MaintenanceQuote MaintenanceQuote[]
 
   payouts Payout[]
+
+  disputesRaised SupportTicket[] @relation("TicketVendorRaisedBy")
 }
 
 model vendorDocument {

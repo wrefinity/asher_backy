@@ -67,14 +67,19 @@ async function payOutVendor(earnings: VendorEarnings): Promise<{ success: boolea
 
   try {
     if (currency === "NGN") {
-      // Paystack requires a transfer recipient code, which isn't currently
-      // captured anywhere on bankInfo (only Stripe's stripeTokenId is) - a
-      // real gap flagged during Phase 3, not something to fake a success for.
-      return {
-        success: false,
-        reason:
-          "Paystack payout not yet wired - bankInfo has no stored transfer-recipient code (only stripeTokenId exists today)",
-      };
+      // Nigeria pays out via Paystack (Part 3 §5 of VENDOR_APP_FLOW_SPEC.md).
+      if (!fallbackBankInfo.paystackRecipientCode) {
+        return {
+          success: false,
+          reason: "No Paystack transfer-recipient code on file for vendor's NGN account",
+        };
+      }
+      await paystackServices.transferToVendor(
+        earnings.totalAmount,
+        fallbackBankInfo.paystackRecipientCode,
+        reference
+      );
+      return { success: true };
     }
 
     if (!fallbackBankInfo.stripeTokenId) {

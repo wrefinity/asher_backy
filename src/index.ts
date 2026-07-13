@@ -430,6 +430,18 @@ class Server {
             }
         }, 24 * 60 * 60 * 1000);
 
+        // Confirm-and-approve nudges for completed-but-unverified jobs
+        // (Part 18 of VENDOR_APP_FLOW_SPEC.md) - hourly; the service itself
+        // dedupes to one reminder per job per day.
+        setInterval(async () => {
+            try {
+                const { sendMaintenanceVerificationReminders } = await import('./services/maintenanceVerificationReminder.service');
+                await sendMaintenanceVerificationReminders();
+            } catch (error) {
+                loggers.error('Error sending maintenance verification reminders:', error);
+            }
+        }, 60 * 60 * 1000);
+
         // Weekly vendor payout batch (Part 2 §6 of VENDOR_APP_FLOW_SPEC.md) -
         // checked hourly rather than daily since it must only fire on
         // Fridays; a simple in-memory date guard stops it re-running once
