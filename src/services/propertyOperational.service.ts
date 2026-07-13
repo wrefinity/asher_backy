@@ -476,7 +476,7 @@ class PropertyOperationalService {
       const message = `${cert.certType.replace(/_/g, ' ')} for ${cert.property.name} expires on ${cert.expiryDate?.toISOString().slice(0, 10)}.`;
 
       await NotificationService.createNotification(
-        { destId: userId, title, message },
+        { destId: userId, title, message, emitRealtime: true, type: 'warning', notificationType: 'compliance_cert_expiring', route: '/properties' },
         'MAINTENANCE_REQUESTS'
       );
 
@@ -535,7 +535,7 @@ class PropertyOperationalService {
 
           const title = 'Insurance renewal due';
           await NotificationService.createNotification(
-            { destId: userId, title, message },
+            { destId: userId, title, message, emitRealtime: true, type: 'warning', notificationType: 'insurance_renewal_due', route: '/properties' },
             'MAINTENANCE_REQUESTS'
           );
 

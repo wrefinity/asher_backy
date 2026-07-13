@@ -1071,6 +1071,27 @@ class ApplicantControls {
         logger.error('Failed to send agreement signed email:', emailError);
       });
 
+      try {
+        if (landlord.user?.id) {
+          const NotificationService = (await import('../../services/notification.service')).default;
+          await NotificationService.createNotification(
+            {
+              sourceId: userId,
+              destId: landlord.user.id,
+              title: 'Agreement Signed by Applicant',
+              message: `An applicant signed the agreement for ${agreement.application?.properties?.name || 'a property'}. Please counter-sign.`,
+              notificationType: 'agreement_signed',
+              route: '/leasing',
+              emitRealtime: true,
+              type: 'success',
+            },
+            'WEBSITE_INQUIRY'
+          );
+        }
+      } catch (notifyError) {
+        console.error('Failed to notify landlord of agreement signature:', notifyError);
+      }
+
       // Agreement fully signed only after landlord counter-signs (see syncApplicationStatusAfterAgreementSign)
       await logsServices.createLog({
         applicationId: agreement.applicationId,

@@ -20,9 +20,12 @@ import type { IGlobalSetting } from "../landlord/validations/interfaces/propsSet
 import { resolveBillNotificationRecipientUserIds } from "../utils/billScope.util";
 
 export interface PaymentNotification {
+  id?: string;
   type: 'payment_success' | 'payment_failed' | 'bill_due' | 'bill_overdue' | 'payment_reminder' | 'bill_created' | 'rent_adjusted' | 'deposit_adjusted';
   title: string;
   message: string;
+  actionUrl?: string;
+  route?: string;
   data: any;
   timestamp: Date;
 }
@@ -239,14 +242,10 @@ export class PaymentNotificationService {
     const displayMessage = stripBillReminderMarker(notification.message);
 
     if (this.shouldUseMethod(methods, ReminderMethodType.IN_APP)) {
-      this.io.to(`user:${tenantUser.id}`).emit("payment_notification", {
-        ...notification,
-        message: displayMessage,
-      });
-
+      let persistedId: string | undefined;
       try {
         const NotificationService = (await import("./notification.service")).default;
-        await NotificationService.createNotification(
+        const created = await NotificationService.createNotification(
           {
             sourceId: landlordUserId,
             destId: tenantUser.id,
@@ -258,9 +257,18 @@ export class PaymentNotificationService {
           },
           "ONLINE_PAYMENTS"
         );
+        persistedId = created?.id;
       } catch (persistError) {
         loggers.error("Failed to persist bill notification:", persistError);
       }
+
+      this.io.to(`user:${tenantUser.id}`).emit("payment_notification", {
+        ...notification,
+        id: persistedId || `bill-${bill.id}-${notification.type}-${Date.now()}`,
+        message: displayMessage,
+        category: "ONLINE_PAYMENTS",
+        actionUrl: pushRoute,
+      });
     }
 
     if (this.shouldUseMethod(methods, ReminderMethodType.PUSH)) {
@@ -303,14 +311,10 @@ export class PaymentNotificationService {
     const displayMessage = stripBillReminderMarker(notification.message);
 
     if (this.shouldUseMethod(methods, ReminderMethodType.IN_APP)) {
-      this.io.to(`user:${landlordUser.id}`).emit("payment_notification", {
-        ...notification,
-        message: displayMessage,
-      });
-
+      let persistedId: string | undefined;
       try {
         const NotificationService = (await import("./notification.service")).default;
-        await NotificationService.createNotification(
+        const created = await NotificationService.createNotification(
           {
             destId: landlordUser.id,
             title: notification.title,
@@ -318,14 +322,24 @@ export class PaymentNotificationService {
             notificationType: notification.type,
             route:
               (notification.data?.route as string | undefined) ??
-              "/finances/bills",
+              "/finance",
             skipPush: !this.shouldUseMethod(methods, ReminderMethodType.PUSH),
           },
           "ONLINE_PAYMENTS"
         );
+        persistedId = created?.id;
       } catch (notifyError) {
         loggers.error("Failed to persist landlord payment notification:", notifyError);
       }
+
+      this.io.to(`user:${landlordUser.id}`).emit("payment_notification", {
+        ...notification,
+        id: persistedId || `landlord-bill-${notification.type}-${Date.now()}`,
+        message: displayMessage,
+        category: "ONLINE_PAYMENTS",
+        actionUrl:
+          (notification.data?.route as string | undefined) ?? "/finance",
+      });
     }
 
     if (this.wantsEmail(methods) && landlordUser.email) {
@@ -374,12 +388,10 @@ export class PaymentNotificationService {
         timestamp: new Date()
       };
 
-      // Send to tenant's socket
-      this.io.to(`user:${userId}`).emit('payment_notification', notification);
-
+      let tenantPersistedId: string | undefined;
       try {
         const NotificationService = (await import('./notification.service')).default;
-        await NotificationService.createNotification(
+        const created = await NotificationService.createNotification(
           {
             sourceId: bill?.landlord?.user?.id,
             destId: userId,
@@ -390,9 +402,18 @@ export class PaymentNotificationService {
           },
           'ONLINE_PAYMENTS'
         );
+        tenantPersistedId = created?.id;
       } catch (persistError) {
         loggers.error('Failed to persist payment success notification:', persistError);
       }
+
+      // Emit after persist so mobile/web list refetch sees the row
+      this.io.to(`user:${userId}`).emit('payment_notification', {
+        ...notification,
+        id: tenantPersistedId || `payment-success-tenant-${billId}-${Date.now()}`,
+        category: 'ONLINE_PAYMENTS',
+        actionUrl: '/bills/viewAllBills',
+      });
       
       if (bill?.landlord?.user) {
         const landlordNotification: PaymentNotification = {
@@ -409,7 +430,32 @@ export class PaymentNotificationService {
           timestamp: new Date()
         };
 
-        this.io.to(`user:${bill.landlord.user.id}`).emit('payment_notification', landlordNotification);
+        let persistedId: string | undefined;
+        try {
+          const NotificationService = (await import('./notification.service')).default;
+          const created = await NotificationService.createNotification(
+            {
+              sourceId: userId,
+              destId: bill.landlord.user.id,
+              title: landlordNotification.title,
+              message: landlordNotification.message,
+              notificationType: 'payment_success',
+              route: '/finance',
+              type: 'success',
+            },
+            'ONLINE_PAYMENTS'
+          );
+          persistedId = created?.id;
+        } catch (persistError) {
+          loggers.error('Failed to persist landlord payment success notification:', persistError);
+        }
+
+        this.io.to(`user:${bill.landlord.user.id}`).emit('payment_notification', {
+          ...landlordNotification,
+          id: persistedId || `payment-success-${billId}-${Date.now()}`,
+          category: 'ONLINE_PAYMENTS',
+          actionUrl: '/finance',
+        });
       }
 
       loggers.info(`Payment success notification sent to user ${userId}`);
@@ -450,11 +496,10 @@ export class PaymentNotificationService {
         timestamp: new Date()
       };
 
-      this.io.to(`user:${userId}`).emit('payment_notification', notification);
-
+      let persistedId: string | undefined;
       try {
         const NotificationService = (await import('./notification.service')).default;
-        await NotificationService.createNotification(
+        const created = await NotificationService.createNotification(
           {
             destId: userId,
             title: notification.title,
@@ -464,9 +509,17 @@ export class PaymentNotificationService {
           },
           'ONLINE_PAYMENTS'
         );
+        persistedId = created?.id;
       } catch (persistError) {
         loggers.error('Failed to persist payment failure notification:', persistError);
       }
+
+      this.io.to(`user:${userId}`).emit('payment_notification', {
+        ...notification,
+        id: persistedId || `payment-failed-${billId}-${Date.now()}`,
+        category: 'ONLINE_PAYMENTS',
+        actionUrl: '/bills/viewAllBills',
+      });
 
       loggers.info(`Payment failure notification sent to user ${userId}`);
     } catch (error) {
@@ -1053,10 +1106,35 @@ export class PaymentNotificationService {
             ? 'Rent change scheduled'
             : 'Rent updated';
 
+      const route = '/profile/TenancyInfo';
+      let notificationId: string | undefined;
+
+      try {
+        const NotificationService = (await import('./notification.service')).default;
+        const created = await NotificationService.createNotification(
+          {
+            sourceId: landlordUserId ?? undefined,
+            destId: tenantUserId,
+            title,
+            message,
+            notificationType,
+            route,
+            skipPush: true,
+          },
+          'COMMUNICATION'
+        );
+        notificationId = created?.id;
+      } catch (persistError) {
+        loggers.error('Failed to persist tenancy financial change notification:', persistError);
+      }
+
       const notification: PaymentNotification = {
+        id: notificationId,
         type: notificationType,
         title,
         message,
+        actionUrl: route,
+        route,
         data: {
           changeType,
           oldAmount,
@@ -1065,30 +1143,12 @@ export class PaymentNotificationService {
           effectiveDate: effectiveDate?.toISOString(),
           scheduled: Boolean(scheduled),
           timestamp: new Date(),
-          route: '/profile/TenancyInfo',
+          route,
         },
         timestamp: new Date(),
       };
 
       this.io.to(`user:${tenantUserId}`).emit('payment_notification', notification);
-
-      try {
-        const NotificationService = (await import('./notification.service')).default;
-        await NotificationService.createNotification(
-          {
-            sourceId: landlordUserId ?? undefined,
-            destId: tenantUserId,
-            title: notification.title,
-            message: notification.message,
-            notificationType,
-            route: '/profile/TenancyInfo',
-            skipPush: true,
-          },
-          'ONLINE_PAYMENTS'
-        );
-      } catch (persistError) {
-        loggers.error('Failed to persist tenancy financial change notification:', persistError);
-      }
 
       const settings = landlordId
         ? await LandlordSettingsService.getAllGlobalSettings(landlordId)

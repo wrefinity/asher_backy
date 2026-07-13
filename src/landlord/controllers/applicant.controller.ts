@@ -339,6 +339,27 @@ class ApplicationControls {
                 logger.error('Failed to send invitation email:', emailError);
             });
 
+            try {
+                const NotificationService = (await import('../../services/notification.service')).default;
+                await NotificationService.createNotification(
+                    {
+                        sourceId: req.user?.id,
+                        destId: value.userInvitedId,
+                        title: 'Property Viewing Invite',
+                        message: value?.scheduleDate
+                            ? `You have been invited to a property viewing on ${value.scheduleDate}.`
+                            : 'You have been invited to a property viewing. Please respond in your dashboard.',
+                        notificationType: 'viewing_invite',
+                        route: '/dashboard',
+                        emitRealtime: true,
+                        type: 'info',
+                    },
+                    'COMMUNICATION'
+                );
+            } catch (notifyError) {
+                console.error('Failed to notify invitee of viewing invite:', notifyError);
+            }
+
             await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED });
             await propertyServices.syncEnquiryStatusByLogId(enquiryId, EnquiryStatus.RESPONDED);
             return res.status(201).json({ invite });
@@ -424,6 +445,29 @@ class ApplicationControls {
                 logger.error('Failed to send invitation email:', emailError);
                 // Log the error but don't throw - invite creation should still succeed
             });
+
+            try {
+                if (userExist?.id) {
+                    const NotificationService = (await import('../../services/notification.service')).default;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: req.user?.id,
+                            destId: userExist.id,
+                            title: 'Property Viewing Invite',
+                            message: value?.scheduleDate
+                                ? `You have been invited to a property viewing on ${value.scheduleDate}.`
+                                : 'You have been invited to a property viewing. Please respond in your dashboard.',
+                            notificationType: 'viewing_invite',
+                            route: '/dashboard',
+                            emitRealtime: true,
+                            type: 'info',
+                        },
+                        'COMMUNICATION'
+                    );
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify invitee of viewing invite:', notifyError);
+            }
 
             return res.status(201).json({ invite });
         } catch (error) {
@@ -740,6 +784,39 @@ class ApplicationControls {
                 applicationId,
                 value.status
             );
+
+            try {
+                const applicantUserId = application?.userId || application?.user?.id;
+                if (
+                    applicantUserId &&
+                    (value.status === ApplicationStatus.APPROVED ||
+                        value.status === ApplicationStatus.DECLINED)
+                ) {
+                    const NotificationService = (await import('../../services/notification.service')).default;
+                    const approved = value.status === ApplicationStatus.APPROVED;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: req.user?.id,
+                            destId: applicantUserId,
+                            title: approved
+                                ? 'Application Approved'
+                                : 'Application Declined',
+                            message: approved
+                                ? 'Your property application was approved. Check your dashboard for next steps.'
+                                : 'Your property application was declined.',
+                            notificationType: approved
+                                ? 'application_approved'
+                                : 'application_declined',
+                            route: '/dashboard',
+                            emitRealtime: true,
+                            type: approved ? 'success' : 'error',
+                        },
+                        'COMMUNICATION'
+                    );
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of application status:', notifyError);
+            }
 
             const explicitMessage =
                 value.status === ApplicationStatus.APPROVED
@@ -1183,6 +1260,27 @@ class ApplicationControls {
             sendMail(recipientEmail, `${propertyName} Agreement Form`, htmlContent).catch((emailError) => {
                 logger.error('Failed to send agreement form email:', emailError);
             });
+
+            try {
+                if (application.user?.id) {
+                    const NotificationService = (await import('../../services/notification.service')).default;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: req.user.id,
+                            destId: application.user.id,
+                            title: 'Agreement Form Ready',
+                            message: `Please review and sign the agreement for ${propertyName}.`,
+                            notificationType: 'agreement_sent',
+                            route: '/dashboard',
+                            emitRealtime: true,
+                            type: 'info',
+                        },
+                        'COMMUNICATION'
+                    );
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of agreement form:', notifyError);
+            }
 
             await Promise.all([
                 logsServices.createLog({

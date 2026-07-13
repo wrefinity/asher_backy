@@ -6,6 +6,7 @@ import http from 'http';
 import { WebSocket, WebSocketServer } from "ws";
 import { Server as IOServer } from "socket.io";
 import { APP_SECRET, PORT } from "./secrets";
+import { socketAuthMiddleware, assertSocketOwnsUserId, AuthenticatedSocket } from "./middlewares/socketAuth";
 import swaggerUi from 'swagger-ui-express';
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/application";
@@ -249,26 +250,74 @@ class Server {
     private configureSocketIO() {
         const socketDebug = process.env.SOCKET_DEBUG === 'true';
 
-        this.io.on("connection", (socket) => {
+        this.io.use(socketAuthMiddleware);
+
+        this.io.on("connection", (socket: AuthenticatedSocket) => {
             if (socketDebug) {
-                console.log(`🔌 Socket connected: ${socket.id}`);
+                console.log(`🔌 Socket connected: ${socket.id} user=${socket.data.userId}`);
             }
 
-            socket.on("join", ({ senderId }) => {
-                socket.join(senderId);
-            });
+            // Auto-join only the namespaced room — all server emits use `user:{id}`
+            if (socket.data.userId) {
+                socket.join(`user:${socket.data.userId}`);
+            }
 
-            socket.on("privateMessage", ({ senderId, receiverId, message }) => {
-                const payload = { senderId, message, timestamp: new Date() };
-                this.io.to(receiverId).emit("privateMessage", payload);
-            });
-
-            socket.on('join_user_room', (userId: string) => {
+            socket.on("join", (payload: { senderId?: string } | undefined) => {
+                const userId = assertSocketOwnsUserId(socket, payload?.senderId);
+                if (!userId) {
+                    if (socketDebug) {
+                        console.warn(`🚫 Rejected join for socket ${socket.id}`);
+                    }
+                    return;
+                }
+                // Legacy bare room + namespaced room (emit paths prefer user:)
+                socket.join(userId);
                 socket.join(`user:${userId}`);
             });
 
+            socket.on("privateMessage", ({ senderId, receiverId, message }) => {
+                const authSenderId = assertSocketOwnsUserId(socket, senderId);
+                if (!authSenderId || typeof receiverId !== 'string' || !receiverId) {
+                    if (socketDebug) {
+                        console.warn(`🚫 Rejected privateMessage spoof from socket ${socket.id}`);
+                    }
+                    return;
+                }
+                const payload = {
+                    senderId: authSenderId,
+                    receiverId,
+                    message,
+                    timestamp: new Date(),
+                };
+                // Single room only — avoids duplicate when client has both bare + user: joins
+                this.io.to(`user:${receiverId}`).emit("privateMessage", payload);
+            });
+
+            socket.on('join_user_room', (userId: string) => {
+                const authUserId = assertSocketOwnsUserId(socket, userId);
+                if (!authUserId) {
+                    if (socketDebug) {
+                        console.warn(`🚫 Rejected join_user_room for socket ${socket.id}`);
+                    }
+                    return;
+                }
+                socket.join(`user:${authUserId}`);
+            });
+
             socket.on('leave_user_room', (userId: string) => {
-                socket.leave(`user:${userId}`);
+                const authUserId = assertSocketOwnsUserId(socket, userId);
+                if (!authUserId) return;
+                socket.leave(`user:${authUserId}`);
+            });
+
+            socket.on('join_ticket_room', (ticketKey: string) => {
+                if (typeof ticketKey !== 'string' || !ticketKey.trim()) return;
+                socket.join(`ticket:${ticketKey.trim()}`);
+            });
+
+            socket.on('leave_ticket_room', (ticketKey: string) => {
+                if (typeof ticketKey !== 'string' || !ticketKey.trim()) return;
+                socket.leave(`ticket:${ticketKey.trim()}`);
             });
 
             socket.on("disconnect", () => {

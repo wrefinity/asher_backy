@@ -168,6 +168,10 @@ class LoginSessionService {
         title,
         message,
         category: NotificationCategory.SECURITY,
+        notificationType: 'login_activity',
+        route: '/settings',
+        emitRealtime: true,
+        type: 'warning',
       },
       NotificationCategory.SECURITY
     );

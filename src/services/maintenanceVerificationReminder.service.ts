@@ -61,6 +61,9 @@ export async function sendMaintenanceVerificationReminders(): Promise<void> {
           title,
           message: `Your vendor marked "${job.description?.slice(0, 60)}" as completed. Please review the photos and confirm so it can be closed out. (ref: ${job.id})`,
           notificationType: "maintenance_verification_reminder",
+          emitRealtime: true,
+          type: "warning",
+          route: `/service/maintenance/landlord/${job.id}`,
         },
         "MAINTENANCE_REQUESTS"
       );

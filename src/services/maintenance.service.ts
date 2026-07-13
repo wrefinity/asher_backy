@@ -619,7 +619,42 @@ class MaintenanceService {
     }
 
     // Create maintenance request
-    return prismaClient.maintenance.create({ data: maintenancePayload });
+    const created = await prismaClient.maintenance.create({
+      data: maintenancePayload,
+      include: {
+        landlord: {
+          select: {
+            userId: true,
+            user: { select: { id: true } },
+          },
+        },
+        tenant: {
+          select: { userId: true },
+        },
+      },
+    });
+
+    try {
+      if (created.tenantId) {
+        const { notifyLandlordNewMaintenanceRequest } = await import(
+          './maintenanceNotification.service'
+        );
+        await notifyLandlordNewMaintenanceRequest(
+          {
+            id: created.id,
+            landlordId: created.landlordId,
+            tenantId: created.tenantId,
+            landlord: created.landlord,
+            tenant: created.tenant,
+          },
+          created.tenant?.userId
+        );
+      }
+    } catch (notifyError) {
+      console.error('Failed to notify landlord of new maintenance request:', notifyError);
+    }
+
+    return created;
   };
 
 
@@ -662,6 +697,38 @@ class MaintenanceService {
         },
       });
 
+      try {
+        const NotificationService = (await import('./notification.service')).default;
+        const parties = await prismaClient.maintenance.findUnique({
+          where: { id: maintenanceId },
+          select: {
+            landlord: { select: { userId: true } },
+          },
+        });
+        const receiverIsLandlord = Boolean(
+          parties?.landlord?.userId && receiverId === parties.landlord.userId
+        );
+        const route = receiverIsLandlord
+          ? `/service/maintenance/landlord/${maintenanceId}`
+          : `/settings/shared/MaintenanceStatusScreen?id=${maintenanceId}`;
+
+        await NotificationService.createNotification(
+          {
+            sourceId: senderId,
+            destId: receiverId,
+            title: 'Maintenance Message',
+            message: initialMessage.slice(0, 240),
+            notificationType: 'maintenance_request_message',
+            route,
+            type: 'info',
+            emitRealtime: true,
+          },
+          'MAINTENANCE_REQUESTS'
+        );
+      } catch (notifyError) {
+        console.error('Failed to notify maintenance chat recipient:', notifyError);
+      }
+
       return { chatRoom, message };
     } catch (error) {
       console.error("Error creating maintenance chat:", error.message);
@@ -690,7 +757,15 @@ class MaintenanceService {
         id: true,
         status: true,
         landlordDecision: true,
+        landlordId: true,
+        tenantId: true,
         tenant: { select: { userId: true } },
+        landlord: {
+          select: {
+            userId: true,
+            user: { select: { id: true } },
+          },
+        },
       },
     });
 
@@ -710,7 +785,33 @@ class MaintenanceService {
     if (existing) {
       try {
         const { notifyTenantMaintenanceUpdate } = await import('./maintenanceNotification.service');
-        await notifyTenantMaintenanceUpdate(existing, updated);
+        const updatedLandlord = (updated as any).landlord as
+          | { userId?: string | null; user?: { id?: string | null } | null }
+          | null
+          | undefined;
+        const updatedTenant = (updated as any).tenant as
+          | { userId?: string | null }
+          | null
+          | undefined;
+
+        await notifyTenantMaintenanceUpdate(existing, {
+          id: updated.id,
+          status: updated.status,
+          landlordDecision: updated.landlordDecision,
+          landlordId: updated.landlordId,
+          tenantId: updated.tenantId,
+          tenant: updatedTenant
+            ? { userId: updatedTenant.userId }
+            : existing.tenant,
+          landlord: updatedLandlord
+            ? {
+                userId: updatedLandlord.userId,
+                user: updatedLandlord.user
+                  ? { id: updatedLandlord.user.id }
+                  : undefined,
+              }
+            : existing.landlord,
+        });
       } catch (notifyError) {
         console.error('Failed to send maintenance notification:', notifyError);
       }
@@ -1220,10 +1321,26 @@ class MaintenanceService {
 
 
   async updateStatus(maintenanceId: string, newStatus: maintenanceStatus, vendorId?: string) {
-    const maintenance = await prismaClient.maintenance.findUnique({ where: { id: maintenanceId } });
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId },
+      select: {
+        id: true,
+        status: true,
+        landlordDecision: true,
+        landlordId: true,
+        tenantId: true,
+        tenant: { select: { userId: true } },
+        landlord: {
+          select: {
+            userId: true,
+            user: { select: { id: true } },
+          },
+        },
+      },
+    });
     if (!maintenance) throw new Error("Maintenance not found");
 
-    return await prismaClient.$transaction(async (tx) => {
+    const updated = await prismaClient.$transaction(async (tx) => {
       // Record history
       await tx.maintenanceStatusHistory.create({
         data: {
@@ -1254,12 +1371,53 @@ class MaintenanceService {
     }, {
       timeout: 30000,
       maxWait: 10000,
-    })
+    });
 
+    try {
+      const { notifyTenantMaintenanceUpdate } = await import('./maintenanceNotification.service');
+      const updatedLandlord = (updated as any).landlord as
+        | { userId?: string | null; user?: { id?: string | null } | null }
+        | null
+        | undefined;
+      const updatedTenant = (updated as any).tenant as
+        | { userId?: string | null }
+        | null
+        | undefined;
+      await notifyTenantMaintenanceUpdate(maintenance, {
+        id: updated.id,
+        status: updated.status,
+        landlordDecision: updated.landlordDecision,
+        landlordId: updated.landlordId,
+        tenantId: updated.tenantId,
+        tenant: updatedTenant ?? maintenance.tenant,
+        landlord: updatedLandlord ?? maintenance.landlord,
+      });
+    } catch (notifyError) {
+      console.error('Failed to notify parties of maintenance status update:', notifyError);
+    }
 
+    return updated;
   }
 
   assignMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>, oldStatus?: maintenanceStatus) => {
+    const existing = await prismaClient.maintenance.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        landlordDecision: true,
+        landlordId: true,
+        tenantId: true,
+        tenant: { select: { userId: true } },
+        landlord: {
+          select: {
+            userId: true,
+            user: { select: { id: true } },
+          },
+        },
+      },
+    });
+
     const { subcategoryIds, ...rest } = maintenanceData;
     const updateData: any = {
       ...rest,
@@ -1267,9 +1425,9 @@ class MaintenanceService {
         set: subcategoryIds.map(id => ({ id })),
       } : undefined,
     };
-    return await prismaClient.$transaction(async (tx) => {
+    const updatedMaintenance = await prismaClient.$transaction(async (tx) => {
       // Update maintenance with vendor assignment
-      const updatedMaintenance = await tx.maintenance.update({
+      const updated = await tx.maintenance.update({
         where: { id },
         data: {
           ...updateData,
@@ -1305,13 +1463,31 @@ class MaintenanceService {
           currentJobs: { increment: 1 },
         },
       });
-      return updatedMaintenance;
+      return updated;
     },
       {
         timeout: 30000,
         maxWait: 10000,
       });
 
+    if (existing) {
+      try {
+        const { notifyTenantMaintenanceUpdate } = await import('./maintenanceNotification.service');
+        await notifyTenantMaintenanceUpdate(existing, {
+          id: updatedMaintenance.id,
+          status: updatedMaintenance.status,
+          landlordDecision: updatedMaintenance.landlordDecision,
+          landlordId: updatedMaintenance.landlordId,
+          tenantId: updatedMaintenance.tenantId,
+          tenant: (updatedMaintenance as any).tenant ?? existing.tenant,
+          landlord: (updatedMaintenance as any).landlord ?? existing.landlord,
+        });
+      } catch (notifyError) {
+        console.error('Failed to notify parties of maintenance assignment:', notifyError);
+      }
+    }
+
+    return updatedMaintenance;
   }
 
   async getStatusHistory(maintenanceId: string) {
@@ -1483,15 +1659,29 @@ class MaintenanceService {
   }
 
   async destinationReached(maintenanceId: string, vendorId?: string) {
-    const maintenance = await prismaClient.maintenance.findUnique({
-      where: { id: maintenanceId }
+    const existing = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId },
+      select: {
+        id: true,
+        status: true,
+        landlordDecision: true,
+        landlordId: true,
+        tenantId: true,
+        tenant: { select: { userId: true } },
+        landlord: {
+          select: {
+            userId: true,
+            user: { select: { id: true } },
+          },
+        },
+      },
     });
 
-    if (!maintenance) {
+    if (!existing) {
       throw ApiError.notFound("Maintenance not found");
     }
 
-    return await prismaClient.maintenance.update({
+    const updated = await prismaClient.maintenance.update({
       where: { id: maintenanceId },
       data: {
         destinationReached: true,
@@ -1499,6 +1689,56 @@ class MaintenanceService {
       },
       include: this.inclusion,
     });
+
+    try {
+      const NotificationService = (await import('./notification.service')).default;
+      const landlordUserId =
+        (updated as any).landlord?.user?.id ||
+        (updated as any).landlord?.userId ||
+        existing.landlord?.user?.id ||
+        existing.landlord?.userId;
+      const tenantUserId =
+        (updated as any).tenant?.userId || existing.tenant?.userId;
+
+      const tasks: Promise<unknown>[] = [];
+      if (tenantUserId) {
+        tasks.push(
+          NotificationService.createNotification(
+            {
+              destId: tenantUserId,
+              title: 'Vendor Arrived',
+              message: 'Your maintenance vendor has arrived and started the job.',
+              notificationType: 'maintenance_status_change',
+              route: `/settings/shared/MaintenanceStatusScreen?id=${maintenanceId}`,
+              emitRealtime: true,
+              type: 'info',
+            },
+            'MAINTENANCE_REQUESTS'
+          )
+        );
+      }
+      if (landlordUserId && landlordUserId !== tenantUserId) {
+        tasks.push(
+          NotificationService.createNotification(
+            {
+              destId: landlordUserId,
+              title: 'Vendor Arrived',
+              message: 'A vendor has arrived at a maintenance job.',
+              notificationType: 'maintenance_status_change',
+              route: `/service/maintenance/landlord/${maintenanceId}`,
+              emitRealtime: true,
+              type: 'info',
+            },
+            'MAINTENANCE_REQUESTS'
+          )
+        );
+      }
+      await Promise.allSettled(tasks);
+    } catch (notifyError) {
+      console.error('Failed to notify parties of vendor arrival:', notifyError);
+    }
+
+    return updated;
   }
 
   async cancelMaintenance(maintenanceId: string, cancelReason: string, vendorId: string) {
@@ -1576,14 +1816,26 @@ class MaintenanceService {
   }
 
   async completeMaintenance(maintenanceId: string, vendorId: string) {
-    return await prismaClient.$transaction(async (tx) => {
-      // Find the current maintenance and vendor assignment
-      const maintenance = await tx.maintenance.findUnique({
-        where: { id: maintenanceId }
-      });
+    const existing = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId },
+      select: {
+        id: true,
+        status: true,
+        landlordDecision: true,
+        landlordId: true,
+        tenantId: true,
+        tenant: { select: { userId: true } },
+        landlord: {
+          select: {
+            userId: true,
+            user: { select: { id: true } },
+          },
+        },
+      },
+    });
+    if (!existing) throw ApiError.notFound('Maintenance not found');
 
-      if (!maintenance) throw ApiError.notFound('Maintenance not found');
-      // 2Update the current assignment history to CANCEL
+    const updatedMaintenance = await prismaClient.$transaction(async (tx) => {
       if (vendorId) {
         await tx.maintenanceAssignmentHistory.updateMany({
           where: {
@@ -1596,18 +1848,16 @@ class MaintenanceService {
         });
       }
 
-      // Record this transition in maintenanceStatusHistory
       await tx.maintenanceStatusHistory.create({
         data: {
           maintenanceId,
           vendorId: vendorId,
-          oldStatus: maintenance.status,
+          oldStatus: existing.status,
           newStatus: maintenanceStatus.COMPLETED,
         },
       });
 
-      //  Update the maintenance main record
-      const updatedMaintenance = await tx.maintenance.update({
+      return tx.maintenance.update({
         where: { id: maintenanceId },
         data: {
           status: maintenanceStatus.COMPLETED,
@@ -1615,12 +1865,27 @@ class MaintenanceService {
         },
         include: this.inclusion,
       });
-
-      return updatedMaintenance;
     }, {
       timeout: 30000,
       maxWait: 10000,
     });
+
+    try {
+      const { notifyTenantMaintenanceUpdate } = await import('./maintenanceNotification.service');
+      await notifyTenantMaintenanceUpdate(existing, {
+        id: updatedMaintenance.id,
+        status: updatedMaintenance.status,
+        landlordDecision: updatedMaintenance.landlordDecision,
+        landlordId: updatedMaintenance.landlordId,
+        tenantId: updatedMaintenance.tenantId,
+        tenant: (updatedMaintenance as any).tenant ?? existing.tenant,
+        landlord: (updatedMaintenance as any).landlord ?? existing.landlord,
+      });
+    } catch (notifyError) {
+      console.error('Failed to notify parties of maintenance completion:', notifyError);
+    }
+
+    return updatedMaintenance;
   }
 
   verifyTenantCompletion = async (maintenanceId: string, tenantId: string) => {

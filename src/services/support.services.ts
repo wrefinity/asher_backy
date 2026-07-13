@@ -650,6 +650,26 @@ export class SupportService {
 
           for (const userId of recipients) {
             serverInstance.io.to(`user:${userId}`).emit("ticket_message_added", eventData);
+
+            try {
+              const NotificationService = (await import("./notification.service")).default;
+              await NotificationService.createNotification(
+                {
+                  sourceId: senderId,
+                  destId: userId,
+                  title: "Support Ticket Update",
+                  message: `New message on support ticket ${ticket.ticketCode}`,
+                  notificationType: "support_ticket_message",
+                  route: "/service/support",
+                  type: "info",
+                  // ticket_message_added already delivers live UI — persist for bell only
+                  emitRealtime: false,
+                },
+                "SUPPORT_TICKET"
+              );
+            } catch (notifyError) {
+              console.error("Failed to persist support ticket message notification:", notifyError);
+            }
           }
 
           serverInstance.io.to(`ticket:${ticket.id}`).emit("ticket_message_added", eventData);
@@ -930,6 +950,24 @@ export class SupportService {
 
         for (const userId of recipients) {
           serverInstance.io.to(`user:${userId}`).emit("ticket_status_updated", eventData);
+
+          try {
+            const NotificationService = (await import("./notification.service")).default;
+            await NotificationService.createNotification(
+              {
+                destId: userId,
+                title: "Support Ticket Status Updated",
+                message: `Support ticket ${updatedTicket.ticketCode} is now ${status}`,
+                notificationType: "support_ticket_status",
+                route: "/service/support",
+                type: "info",
+                emitRealtime: true,
+              },
+              "SUPPORT_TICKET"
+            );
+          } catch (notifyError) {
+            console.error("Failed to persist support ticket status notification:", notifyError);
+          }
         }
 
         serverInstance.io.to(`ticket:${updatedTicket.id}`).emit("ticket_status_updated", eventData);

@@ -406,17 +406,47 @@ export async function sendRenewalAgreement(
   }
 
   if (proposal.tenant.user.id) {
-    if (serverInstance?.io) {
-      serverInstance.io.to(`user:${proposal.tenant.user.id}`).emit('notification', {
-        type: 'LEASE_AGREEMENT_PENDING',
-        title: 'Sign your renewal lease',
-        message: `Your renewal for ${proposal.property.name} is ready. Open Documents to sign.`,
-        applicationId: renewalAgreement.applicationId,
-        agreementDocumentId: renewalAgreement.agreementDocumentId,
-        propertyId: proposal.propertyId,
-        timestamp: new Date(),
-        userId: proposal.tenant.user.id,
-      });
+    const destId = proposal.tenant.user.id;
+    const title = 'Sign your renewal lease';
+    const message = `Your renewal for ${proposal.property.name} is ready. Open Documents to sign.`;
+    const route = '/profile/Documents';
+
+    try {
+      const NotificationService = (await import('./notification.service')).default;
+      const created = await NotificationService.createNotification(
+        {
+          destId,
+          title,
+          message,
+          notificationType: 'LEASE_AGREEMENT_PENDING',
+          route,
+          type: 'info',
+          // Enriched emit below carries renewal document ids
+          emitRealtime: false,
+        },
+        'COMMUNICATION'
+      );
+
+      if (serverInstance?.io) {
+        serverInstance.io.to(`user:${destId}`).emit('notification', {
+          id: created?.id,
+          type: 'LEASE_AGREEMENT_PENDING',
+          notificationType: 'LEASE_AGREEMENT_PENDING',
+          title,
+          message,
+          route,
+          actionUrl: route,
+          category: 'COMMUNICATION',
+          applicationId: renewalAgreement.applicationId,
+          agreementDocumentId: renewalAgreement.agreementDocumentId,
+          propertyId: proposal.propertyId,
+          timestamp: created?.createdAt || new Date(),
+          userId: destId,
+          isRead: false,
+        });
+      }
+    } catch (notifyError) {
+      console.error('Failed to persist LEASE_AGREEMENT_PENDING notification:', notifyError);
     }
   }
 

@@ -146,6 +146,9 @@ class ChatServices {
                         notificationType: 'chat_message',
                         route: `/chats/${senderId}`,
                         skipPush: true,
+                        // privateMessage already drives live toast — persist for bell only
+                        emitRealtime: false,
+                        type: 'info',
                     },
                     'COMMUNICATION'
                 ),

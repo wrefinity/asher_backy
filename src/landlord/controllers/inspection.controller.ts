@@ -113,6 +113,8 @@ class InspectionController {
               message: `An inspection has been scheduled for ${property.name} on ${inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'TBD'}.`,
               notificationType: 'inspection_scheduled',
               route: '/inspections',
+              emitRealtime: true,
+              type: 'info',
             }, 'COMMUNICATION');
           }
         } catch (notifError) {
@@ -358,6 +360,10 @@ class InspectionController {
               title: 'Inspection Completed',
               message: `The inspection for ${property.name} has been marked as completed.`,
               category: 'COMMUNICATION',
+              notificationType: 'inspection_completed',
+              route: `/inspections/${req.params.id}`,
+              emitRealtime: true,
+              type: 'success',
             })
           );
         }

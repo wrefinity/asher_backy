@@ -263,26 +263,8 @@ class LeaseRenewalService {
     }
 
     if (wantsInApp) {
-      this.sendRealtimeNotification(tenant.id, {
-        type: 'LEASE_RENEWAL_REMINDER',
-        title: message.title,
-        message: message.tenantMessage,
-        reminderType,
-        propertyId: property.id,
-        leaseEndDate: lease.leaseEndDate
-      });
-
-      this.sendRealtimeNotification(landlord.id, {
-        type: 'LEASE_RENEWAL_REMINDER',
-        title: message.title,
-        message: message.landlordMessage,
-        reminderType,
-        propertyId: property.id,
-        leaseEndDate: lease.leaseEndDate
-      });
-
       try {
-        await NotificationService.createNotification(
+        const tenantPersisted = await NotificationService.createNotification(
           {
             sourceId: landlord.id,
             destId: tenant.id,
@@ -292,9 +274,9 @@ class LeaseRenewalService {
             route: '/profile/TenancyInfo',
             skipPush: !wantsPush,
           },
-          'ONLINE_PAYMENTS'
+          'COMMUNICATION'
         );
-        await NotificationService.createNotification(
+        const landlordPersisted = await NotificationService.createNotification(
           {
             sourceId: tenant.id,
             destId: landlord.id,
@@ -304,8 +286,33 @@ class LeaseRenewalService {
             route: '/tenants',
             skipPush: !wantsPush,
           },
-          'ONLINE_PAYMENTS'
+          'COMMUNICATION'
         );
+
+        // Single realtime emit with DB ids (do not also emitRealtime on create)
+        this.sendRealtimeNotification(tenant.id, {
+          id: tenantPersisted?.id,
+          type: 'LEASE_RENEWAL_REMINDER',
+          title: message.title,
+          message: message.tenantMessage,
+          reminderType,
+          propertyId: property.id,
+          leaseEndDate: lease.leaseEndDate,
+          actionUrl: '/profile/TenancyInfo',
+          category: 'COMMUNICATION',
+        });
+
+        this.sendRealtimeNotification(landlord.id, {
+          id: landlordPersisted?.id,
+          type: 'LEASE_RENEWAL_REMINDER',
+          title: message.title,
+          message: message.landlordMessage,
+          reminderType,
+          propertyId: property.id,
+          leaseEndDate: lease.leaseEndDate,
+          actionUrl: '/tenants',
+          category: 'COMMUNICATION',
+        });
       } catch (notifyError) {
         console.warn('Failed to persist lease renewal notification', notifyError);
       }
@@ -415,14 +422,40 @@ class LeaseRenewalService {
       receiverId: recipient.id,
     });
 
+    const proposalTitle = 'Lease Renewal Proposal';
+    const proposalMessage = isTenantProposer
+      ? `Your tenant requested a lease renewal for ${tenant.property.name}`
+      : `You have received a lease renewal proposal for ${tenant.property.name}`;
+    const proposalRoute = isTenantProposer ? '/tenants' : '/profile/TenancyInfo';
+
+    let proposalNotificationId: string | undefined;
+    try {
+      const created = await NotificationService.createNotification(
+        {
+          sourceId: sender.id,
+          destId: recipient.id,
+          title: proposalTitle,
+          message: proposalMessage,
+          notificationType: 'LEASE_RENEWAL_PROPOSAL',
+          route: proposalRoute,
+          type: 'info',
+        },
+        'COMMUNICATION'
+      );
+      proposalNotificationId = created?.id;
+    } catch (notifyError) {
+      console.warn('Failed to persist lease renewal proposal notification', notifyError);
+    }
+
     this.sendRealtimeNotification(recipient.id, {
+      id: proposalNotificationId,
       type: 'LEASE_RENEWAL_PROPOSAL',
-      title: 'Lease Renewal Proposal',
-      message: isTenantProposer
-        ? `Your tenant requested a lease renewal for ${tenant.property.name}`
-        : `You have received a lease renewal proposal for ${tenant.property.name}`,
+      title: proposalTitle,
+      message: proposalMessage,
       proposalId: renewalProposal.id,
       propertyId: data.propertyId,
+      actionUrl: proposalRoute,
+      category: 'COMMUNICATION',
     });
 
     return renewalProposal;
@@ -537,32 +570,82 @@ class LeaseRenewalService {
       receiverId: otherParty.id
     });
 
-    // Send real-time notification
+    // Send real-time + persisted notification
     const acceptedByTenant = response === 'ACCEPTED' && userId === proposal.tenant.user.id;
     const acceptedByLandlord = response === 'ACCEPTED' && userId !== proposal.tenant.user.id;
+    const responseTitle = 'Lease Renewal Response';
+    const responseMessage =
+      acceptedByTenant
+        ? 'The tenant accepted your renewal proposal. Review their response and send the lease agreement.'
+        : acceptedByLandlord
+          ? 'Your landlord accepted the renewal proposal. They will send the updated lease agreement for signing.'
+          : `Lease renewal proposal has been ${response.toLowerCase()}`;
+    const responseRoute =
+      otherParty.id === proposal.property.landlord.user.id
+        ? '/tenants'
+        : '/profile/TenancyInfo';
+
+    let responseNotificationId: string | undefined;
+    try {
+      const created = await NotificationService.createNotification(
+        {
+          sourceId: userId,
+          destId: otherParty.id,
+          title: responseTitle,
+          message: responseMessage,
+          notificationType: 'LEASE_RENEWAL_RESPONSE',
+          route: responseRoute,
+          type: 'info',
+        },
+        'ONLINE_PAYMENTS'
+      );
+      responseNotificationId = created?.id;
+    } catch (notifyError) {
+      console.warn('Failed to persist lease renewal response notification', notifyError);
+    }
 
     this.sendRealtimeNotification(otherParty.id, {
+      id: responseNotificationId,
       type: 'LEASE_RENEWAL_RESPONSE',
-      title: 'Lease Renewal Response',
-      message:
-        acceptedByTenant
-          ? 'The tenant accepted your renewal proposal. Review their response and send the lease agreement.'
-          : acceptedByLandlord
-            ? 'Your landlord accepted the renewal proposal. They will send the updated lease agreement for signing.'
-            : `Lease renewal proposal has been ${response.toLowerCase()}`,
+      title: responseTitle,
+      message: responseMessage,
       proposalId: proposalId,
       response,
       propertyId: proposal.propertyId,
+      actionUrl: responseRoute,
+      category: 'ONLINE_PAYMENTS',
     });
 
     if (acceptedByTenant && proposal.tenant.user.id) {
+      let tenantFollowUpId: string | undefined;
+      try {
+        const created = await NotificationService.createNotification(
+          {
+            sourceId: userId,
+            destId: proposal.tenant.user.id,
+            title: 'Renewal accepted',
+            message: 'Your landlord will send the updated lease agreement for you to sign.',
+            notificationType: 'LEASE_RENEWAL_RESPONSE',
+            route: '/profile/TenancyInfo',
+            type: 'success',
+          },
+          'ONLINE_PAYMENTS'
+        );
+        tenantFollowUpId = created?.id;
+      } catch (notifyError) {
+        console.warn('Failed to persist tenant renewal acceptance notification', notifyError);
+      }
+
       this.sendRealtimeNotification(proposal.tenant.user.id, {
+        id: tenantFollowUpId,
         type: 'LEASE_RENEWAL_RESPONSE',
         title: 'Renewal accepted',
         message: 'Your landlord will send the updated lease agreement for you to sign.',
         proposalId,
         response,
         propertyId: proposal.propertyId,
+        actionUrl: '/profile/TenancyInfo',
+        category: 'ONLINE_PAYMENTS',
       });
     }
 

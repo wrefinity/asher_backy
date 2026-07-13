@@ -355,6 +355,10 @@ class GuarantorService {
           title: "Guarantor declined nomination",
           message,
           category: NotificationCategory.COMMUNICATION,
+          notificationType: 'guarantor_declined',
+          emitRealtime: true,
+          type: 'warning',
+          route: '/leasing',
         },
         NotificationCategory.COMMUNICATION
       );

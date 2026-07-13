@@ -133,6 +133,10 @@ class MoveOutNoticeService {
           title: 'Tenant Move-Out Notice',
           message: `${tenantName} has submitted a move-out notice (${typeLabel}). Intended move-out date: ${moveOutDateStr}. Reason: ${input.reason}.`,
           category: NotificationCategory.MOVE_OUT,
+          notificationType: 'tenant_move_out_notice',
+          emitRealtime: true,
+          type: 'warning',
+          route: '/tenants',
         },
         NotificationCategory.MOVE_OUT
       ),
@@ -169,6 +173,8 @@ class MoveOutNoticeService {
             message: `${tenantName} submitted a move-out notice. A move-out inspection has been scheduled for ${moveOutDateStr}.`,
             notificationType: 'inspection_scheduled',
             route: `/service/inspections/${inspection.id}`,
+            emitRealtime: true,
+            type: 'info',
           },
           NotificationCategory.MOVE_OUT
         ),
@@ -181,6 +187,8 @@ class MoveOutNoticeService {
                 message: `Your landlord will conduct a move-out inspection around ${moveOutDateStr}.`,
                 notificationType: 'inspection_scheduled',
                 route: `/inspections/${inspection.id}`,
+                emitRealtime: true,
+                type: 'info',
               },
               NotificationCategory.MOVE_OUT
             )
@@ -324,6 +332,8 @@ class MoveOutNoticeService {
             : `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
           notificationType: 'move_out_acknowledged',
           route: '/profile/TenancyInfo',
+          emitRealtime: true,
+          type: 'info',
         },
         NotificationCategory.MOVE_OUT
       ),

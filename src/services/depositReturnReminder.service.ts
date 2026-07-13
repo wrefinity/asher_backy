@@ -123,6 +123,8 @@ class DepositReturnReminderService {
             message: landlordMessage,
             notificationType: 'deposit_return_reminder',
             route: '/tenants/move-out-notices',
+            emitRealtime: true,
+            type: 'warning',
           },
           NotificationCategory.MOVE_OUT
         );

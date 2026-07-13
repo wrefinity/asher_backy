@@ -262,6 +262,10 @@ async function notifyLandlordIdentityRejected(landlordId: string): Promise<void>
         destId: user.id,
         title,
         message,
+        notificationType: 'identity_rejected',
+        emitRealtime: true,
+        type: 'error',
+        route: '/onboarding',
       },
       'COMMUNICATION'
     );

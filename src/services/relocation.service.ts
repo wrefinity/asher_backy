@@ -257,6 +257,7 @@ class RelocationService {
           logId: log.id,
           propertyListingId: listingId,
           matchScore,
+          skipLandlordNotification: true,
         });
 
         const landlord = await prismaClient.landlords.findUnique({
@@ -272,6 +273,9 @@ class RelocationService {
               title: 'Property Match — Relocating Tenant',
               message: `${tenantName} (${displayScore}/1000 Asher score, ${matchScore}% listing match) is interested in your property. Review under Leasing → Existing Tenants.`,
               category: NotificationCategory.PROPERTY_MATCH,
+              emitRealtime: true,
+              type: 'info',
+              route: '/leasing',
             },
             NotificationCategory.PROPERTY_MATCH
           );

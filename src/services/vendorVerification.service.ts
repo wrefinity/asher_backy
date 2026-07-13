@@ -167,7 +167,17 @@ async function notifyVendorVerificationDecision(
       : 'Your submitted documents were not approved. Please restart onboarding with clear documents.';
 
     await NotificationService.createNotification(
-      { destId: user.id, title, message },
+      {
+        destId: user.id,
+        title,
+        message,
+        notificationType: isApproved
+          ? 'vendor_verification_approved'
+          : 'vendor_verification_rejected',
+        route: '/(app)/(tabs)',
+        emitRealtime: true,
+        type: isApproved ? 'success' : 'error',
+      },
       'COMMUNICATION'
     );
 

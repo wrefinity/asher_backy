@@ -84,11 +84,38 @@ class QuoteService {
             select: {
               id: true,
               description: true,
-              status: true
+              status: true,
+              landlordId: true,
+              landlord: {
+                select: { userId: true, user: { select: { id: true } } },
+              },
             }
           }
         }
       });
+
+      try {
+        const landlordUserId =
+          quote.maintenance?.landlord?.user?.id ||
+          quote.maintenance?.landlord?.userId;
+        if (landlordUserId) {
+          const NotificationService = (await import('./notification.service')).default;
+          await NotificationService.createNotification(
+            {
+              destId: landlordUserId,
+              title: 'New Maintenance Quote',
+              message: `A vendor submitted a quote of ${amount} for your maintenance request.`,
+              notificationType: 'maintenance_new_invoice',
+              route: `/service/maintenance/landlord/${maintenanceId}`,
+              emitRealtime: true,
+              type: 'info',
+            },
+            'MAINTENANCE_REQUESTS'
+          );
+        }
+      } catch (notifyError) {
+        console.error('Failed to notify landlord of new quote:', notifyError);
+      }
 
       return quote;
     } catch (error) {
@@ -270,10 +297,37 @@ class QuoteService {
     // job-count increment, and sibling-quote rejection all happen in
     // respondToAcceptedQuote. Sibling quotes stay PENDING so the landlord
     // can re-pick if this vendor declines.
-    return prismaClient.maintenanceQuote.update({
+    const updated = await prismaClient.maintenanceQuote.update({
       where: { id: quoteId },
-      data: { status: 'ACCEPTED', vendorAccepted: null, vendorRespondedAt: null }
+      data: { status: 'ACCEPTED', vendorAccepted: null, vendorRespondedAt: null },
+      include: {
+        vendor: { select: { userId: true } },
+        maintenance: { select: { id: true, description: true } },
+      },
     });
+
+    try {
+      if (updated.vendor?.userId) {
+        const NotificationService = (await import('./notification.service')).default;
+        await NotificationService.createNotification(
+          {
+            destId: updated.vendor.userId,
+            title: 'You have been picked',
+            message:
+              'A landlord accepted your quote. Confirm or decline the job in the Vendor app.',
+            notificationType: 'maintenance_status_change',
+            route: '/(app)/(tabs)',
+            emitRealtime: true,
+            type: 'success',
+          },
+          'MAINTENANCE_REQUESTS'
+        );
+      }
+    } catch (notifyError) {
+      console.error('Failed to notify vendor of quote acceptance:', notifyError);
+    }
+
+    return updated;
   }
 
   // Vendor responds to a landlord-accepted quote ("You have been picked" -
@@ -296,7 +350,7 @@ class QuoteService {
     }
 
     if (!accept) {
-      return prismaClient.maintenanceQuote.update({
+      const declined = await prismaClient.maintenanceQuote.update({
         where: { id: quoteId },
         data: {
           status: 'REJECTED',
@@ -304,6 +358,35 @@ class QuoteService {
           vendorRespondedAt: new Date(),
         },
       });
+
+      try {
+        const landlord = quote.maintenance.landlordId
+          ? await prismaClient.landlords.findUnique({
+              where: { id: quote.maintenance.landlordId },
+              select: { userId: true },
+            })
+          : null;
+        if (landlord?.userId) {
+          const NotificationService = (await import('./notification.service')).default;
+          await NotificationService.createNotification(
+            {
+              destId: landlord.userId,
+              title: 'Vendor Declined Job',
+              message:
+                'A picked vendor declined the job. You can accept another pending quote.',
+              notificationType: 'maintenance_status_change',
+              route: `/service/maintenance/landlord/${quote.maintenanceId}`,
+              emitRealtime: true,
+              type: 'warning',
+            },
+            'MAINTENANCE_REQUESTS'
+          );
+        }
+      } catch (notifyError) {
+        console.error('Failed to notify landlord of vendor decline:', notifyError);
+      }
+
+      return declined;
     }
 
     // Reputation gate (Part 5): blocked vendors can't take the job even if
@@ -325,7 +408,7 @@ class QuoteService {
       throw ApiError.badRequest('You have reached the maximum number of active jobs - complete one first');
     }
 
-    return prismaClient.$transaction(async (tx) => {
+    const assigned = await prismaClient.$transaction(async (tx) => {
       const updatedQuote = await tx.maintenanceQuote.update({
         where: { id: quoteId },
         data: { vendorAccepted: true, vendorRespondedAt: new Date() }
@@ -367,6 +450,50 @@ class QuoteService {
 
       return updatedQuote;
     });
+
+    try {
+      const MaintenanceService = (await import('./maintenance.service')).default;
+      const full = await MaintenanceService.getMaintenanceById(quote.maintenanceId);
+      if (full) {
+        const { notifyTenantMaintenanceUpdate } = await import(
+          './maintenanceNotification.service'
+        );
+        const fullTenant = (full as any).tenant as { userId?: string | null } | null | undefined;
+        const fullLandlord = (full as any).landlord as
+          | { userId?: string | null; user?: { id?: string | null } | null }
+          | null
+          | undefined;
+        await notifyTenantMaintenanceUpdate(
+          {
+            id: quote.maintenanceId,
+            status: quote.maintenance.status,
+            landlordDecision: quote.maintenance.landlordDecision,
+            landlordId: quote.maintenance.landlordId,
+            tenantId: quote.maintenance.tenantId,
+          },
+          {
+            id: full.id,
+            status: full.status,
+            landlordDecision: full.landlordDecision,
+            landlordId: full.landlordId,
+            tenantId: full.tenantId,
+            tenant: fullTenant ? { userId: fullTenant.userId } : null,
+            landlord: fullLandlord
+              ? {
+                  userId: fullLandlord.userId,
+                  user: fullLandlord.user
+                    ? { id: fullLandlord.user.id }
+                    : undefined,
+                }
+              : null,
+          }
+        );
+      }
+    } catch (notifyError) {
+      console.error('Failed to notify parties of vendor job acceptance:', notifyError);
+    }
+
+    return assigned;
   }
 
   // Landlord rejects a quote

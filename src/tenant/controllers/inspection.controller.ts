@@ -293,9 +293,9 @@ class TenantInspectionController {
               notificationType: hasDisputes
                 ? 'inspection_disputed'
                 : 'inspection_acknowledged',
-              route: hasDisputes
-                ? `/service/inspections/${id}`
-                : `/service/inspections/${id}`,
+              route: `/service/inspections/${id}`,
+              emitRealtime: true,
+              type: hasDisputes ? 'warning' : 'info',
             },
             'COMMUNICATION'
           ).catch((notifErr) => {
@@ -526,6 +526,8 @@ class TenantInspectionController {
               message: `The tenant raised a dispute on the inspection for ${property.name}. Please review their comments.`,
               notificationType: 'inspection_disputed',
               route: `/service/inspections/${id}`,
+              emitRealtime: true,
+              type: 'warning',
             },
             'COMMUNICATION'
           ).catch((notifyErr) => {

@@ -4758,8 +4758,48 @@ class PropertyService {
         logId?: string;
         propertyListingId?: string;
         matchScore?: number;
+        skipLandlordNotification?: boolean;
     }) => {
-        return await prismaClient.propertyEnquiry.create({ data });
+        const { skipLandlordNotification, ...enquiryData } = data;
+        const enquiry = await prismaClient.propertyEnquiry.create({ data: enquiryData });
+
+        try {
+            if (!skipLandlordNotification) {
+                const landlord = await prismaClient.landlords.findUnique({
+                    where: { id: data.landlordId },
+                    select: { userId: true },
+                });
+                const tenant = data.tenantId
+                    ? await prismaClient.tenants.findUnique({
+                        where: { id: data.tenantId },
+                        select: { userId: true },
+                    })
+                    : null;
+
+                if (landlord?.userId) {
+                    const NotificationService = (await import('./notification.service')).default;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: tenant?.userId || undefined,
+                            destId: landlord.userId,
+                            title: 'New Property Enquiry',
+                            message: data.subject
+                                ? `${data.subject}: ${data.message}`.slice(0, 240)
+                                : (data.message || 'You received a new property enquiry.').slice(0, 240),
+                            notificationType: 'website_inquiry',
+                            route: '/leasing',
+                            type: 'info',
+                            emitRealtime: true,
+                        },
+                        'WEBSITE_INQUIRY'
+                    );
+                }
+            }
+        } catch (notifyError) {
+            console.error('Failed to notify landlord of new enquiry:', notifyError);
+        }
+
+        return enquiry;
     }
 
     syncEnquiryStatusByLogId = async (logId: string, status: EnquiryStatus) => {
