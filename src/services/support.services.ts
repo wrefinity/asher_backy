@@ -428,6 +428,29 @@ export class SupportService {
             },
           },
         },
+        // Disputes (Part 6 of VENDOR_APP_FLOW_SPEC.md): vendor raiser and
+        // the disputed job's full evidence, so admin never needs re-uploads.
+        raisedByVendor: {
+          include: {
+            user: { select: { id: true, email: true, profile: true } },
+          },
+        },
+        maintenance: {
+          select: {
+            id: true,
+            description: true,
+            status: true,
+            paymentStatus: true,
+            amount: true,
+            startAttachments: true,
+            endAttachments: true,
+            attachments: true,
+            scheduleDate: true,
+            createdAt: true,
+            tenantVerified: true,
+            property: { select: { name: true, address: true, city: true } },
+          },
+        },
         assignedTo: {
           select: {
             id: true,
@@ -691,6 +714,14 @@ export class SupportService {
                 },
               },
             },
+          },
+          raisedByVendor: {
+            include: {
+              user: { select: { id: true, email: true, profile: true } },
+            },
+          },
+          maintenance: {
+            select: { id: true, description: true, status: true },
           },
           raisedByTenant: {
             include: {
