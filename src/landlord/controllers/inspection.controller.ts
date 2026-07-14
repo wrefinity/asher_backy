@@ -22,6 +22,8 @@ import {
   resolveInspectionScheduledAt,
   validateInspectionNotice,
 } from '../../utils/settingsEnforcement.util';
+import moveOutNoticeService from '../../services/moveOutNotice.service';
+import InspectionGuestService from '../../services/inspectionGuest.service';
 
 
 class InspectionController {
@@ -63,7 +65,8 @@ class InspectionController {
         req.body.scheduledDate,
         req.body.scheduledTime
       );
-      if (scheduledAt) {
+      // Draft inspections do not enforce notice window until landlord schedules
+      if (scheduledAt && req.body.status !== 'Draft') {
         const noticeCheck = validateInspectionNotice(
           scheduledAt,
           rules.inspectionNoticeHours
@@ -81,18 +84,21 @@ class InspectionController {
         ? new Date(inspection.scheduledDate).toLocaleDateString('en-GB')
         : null;
       const typeLabel = inspection.type?.trim() || 'Inspection';
+      const isDraft = inspection.status === 'Draft';
       try {
         await LogsServices.createLog({
           propertyId: inspection.propertyId,
           events: appendActivityLogRef(
-            scheduledLabel
-              ? `${typeLabel} booked for ${scheduledLabel}`
-              : `${typeLabel} booked`,
+            isDraft
+              ? `${typeLabel} draft created (awaiting schedule)`
+              : scheduledLabel
+                ? `${typeLabel} booked for ${scheduledLabel}`
+                : `${typeLabel} booked`,
             { type: 'inspection', id: inspection.id }
           ),
           type: LogType.ACTIVITY,
           createdById: req.user?.id,
-          subjects: 'Inspection booked',
+          subjects: isDraft ? 'Inspection draft created' : 'Inspection booked',
         });
       } catch (logErr) {
         console.warn('Failed to write inspection-booked activity log', logErr);
@@ -112,10 +118,18 @@ class InspectionController {
               title: 'Inspection Scheduled',
               message: `An inspection has been scheduled for ${property.name} on ${inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'TBD'}.`,
               notificationType: 'inspection_scheduled',
-              route: '/inspections',
+              route: `/inspections/${inspection.id}`,
               emitRealtime: true,
               type: 'info',
             }, 'COMMUNICATION');
+
+            await InspectionActivityLogService.logEvent({
+              propertyId: inspection.propertyId,
+              tenantUserId: tenant.userId,
+              inspectionId: inspection.id,
+              subjects: 'Inspection scheduled',
+              events: `Inspection scheduled for ${property.name}`,
+            });
           }
         } catch (notifError) {
           console.warn('⚠️ Failed to send notification (non-critical):', notifError);
@@ -296,13 +310,130 @@ class InspectionController {
         }
       }
 
+      // Final documents require inspector + landlord signatures; tenant signature when occupied.
+      if (req.body.status === 'Completed' && inspection.status !== 'Completed') {
+        const inspectorSignature =
+          req.body.inspectorSignature || inspection.inspectorSignature || null;
+        const landlordSignature =
+          req.body.landlordSignature || inspection.landlordSignature || null;
+        const tenantSignature =
+          req.body.onSiteSignature ||
+          inspection.onSiteSignature ||
+          (await prismaClient.inspectionAcknowledgment.findUnique({
+            where: { inspectionId: inspection.id },
+            select: { signature: true },
+          }))?.signature ||
+          null;
+
+        const missing: string[] = [];
+        if (!inspectorSignature) missing.push('inspector');
+        if (!landlordSignature) missing.push('landlord');
+        if (inspection.tenantId && !tenantSignature) missing.push('tenant');
+
+        if (missing.length > 0) {
+          return res.status(400).json({
+            error: `Signatures required before final documents: ${missing.join(', ')}`,
+            missingSignatures: missing,
+          });
+        }
+
+        // Keep signatures on the record even if only passed in body
+        req.body.inspectorSignature = inspectorSignature;
+        req.body.landlordSignature = landlordSignature;
+        if (tenantSignature) req.body.onSiteSignature = tenantSignature;
+      }
+
       const updatedInspection = await InspectionService.updateInspection(
         req.params.id,
         req.body
       );
 
+      const becameScheduled =
+        req.body.status === 'Scheduled' && inspection.status === 'Draft';
+      const becameCompleted =
+        req.body.status === 'Completed' && inspection.status !== 'Completed';
+
+      // Draft → Scheduled: notify tenant of appointment + ack linked move-out notice
+      if (becameScheduled) {
+        const dateLabel = updatedInspection.scheduledDate
+          ? new Date(updatedInspection.scheduledDate).toLocaleDateString('en-GB')
+          : 'TBD';
+        const timeLabel = updatedInspection.scheduledTime
+          ? ` at ${updatedInspection.scheduledTime}`
+          : '';
+
+        try {
+          const tenant = updatedInspection.tenantId
+            ? await prismaClient.tenants.findUnique({
+                where: { id: updatedInspection.tenantId },
+                select: { userId: true },
+              })
+            : null;
+
+          if (tenant?.userId) {
+            await NotificationService.createNotification(
+              {
+                destId: tenant.userId,
+                title: 'Inspection appointment scheduled',
+                message: `An inspection for ${property.name} is scheduled for ${dateLabel}${timeLabel}. Please prepare the property.`,
+                notificationType: 'inspection_scheduled',
+                route: `/inspections/${updatedInspection.id}`,
+                emitRealtime: true,
+                type: 'info',
+              },
+              'COMMUNICATION'
+            );
+
+            await InspectionActivityLogService.logEvent({
+              propertyId: updatedInspection.propertyId,
+              tenantUserId: tenant.userId,
+              inspectionId: updatedInspection.id,
+              subjects: 'Inspection scheduled',
+              events: `Inspection appointment scheduled for ${dateLabel}${timeLabel}`,
+            });
+          }
+
+          await LogsServices.createLog({
+            propertyId: updatedInspection.propertyId,
+            events: appendActivityLogRef(
+              `Inspection scheduled for ${dateLabel}${timeLabel}`,
+              { type: 'inspection', id: updatedInspection.id }
+            ),
+            type: LogType.ACTIVITY,
+            createdById: req.user?.id,
+            subjects: 'Inspection scheduled',
+          });
+        } catch (scheduleSideEffectErr) {
+          console.warn(
+            'Non-critical failure after Draft→Scheduled',
+            scheduleSideEffectErr
+          );
+        }
+
+        const noticeId = updatedInspection.moveOutNoticeId || inspection.moveOutNoticeId;
+        if (noticeId && req.user?.id) {
+          try {
+            await moveOutNoticeService.acknowledge(
+              noticeId,
+              landlordId,
+              req.user.id
+            );
+          } catch (ackErr: any) {
+            if (ackErr?.message === 'NOTICE_ALREADY_ACKNOWLEDGED') {
+              // Expected if landlord already acked — ignore
+            } else {
+              console.warn('Failed to acknowledge move-out notice on schedule', {
+                noticeId,
+                landlordId,
+                error: ackErr?.message || ackErr,
+              });
+            }
+          }
+        }
+      }
+
       if (
-        (req.body.status === 'Completed' && inspection.status !== 'Completed') ||
+        becameCompleted ||
         (req.body.completedAt && !inspection.completedAt)
       ) {
         const typeLabel = updatedInspection.type?.trim() || 'Inspection';
@@ -322,8 +453,8 @@ class InspectionController {
         }
       }
 
-      // Send notification when inspection is marked as completed
-      if (req.body.status === 'Completed' && inspection.status !== 'Completed') {
+      // Send notification when inspection is marked as completed + auto-certify
+      if (becameCompleted) {
         const [tenant, landlordUser] = await Promise.all([
           updatedInspection.tenantId
             ? prismaClient.tenants.findUnique({
@@ -337,19 +468,90 @@ class InspectionController {
           }),
         ]);
 
+        // Auto-generate landlord certificate. On-site sign-off also issues tenant cert + acknowledgment.
+        const onSiteSignature =
+          updatedInspection.onSiteSignature ||
+          inspection.onSiteSignature ||
+          req.body.onSiteSignature ||
+          null;
+
+        try {
+          await InspectionCertificateService.generateCertificate(
+            updatedInspection.id,
+            'landlord',
+            req.user.id
+          );
+          if (updatedInspection.tenantId && onSiteSignature) {
+            const existingAck = await prismaClient.inspectionAcknowledgment.findUnique({
+              where: { inspectionId: updatedInspection.id },
+            });
+            if (!existingAck) {
+              await prismaClient.inspectionAcknowledgment.create({
+                data: {
+                  inspectionId: updatedInspection.id,
+                  tenantId: updatedInspection.tenantId,
+                  acknowledged: true,
+                  signature: String(onSiteSignature),
+                  acknowledgedAt: new Date(),
+                  disputed: false,
+                },
+              });
+            } else if (!existingAck.acknowledged) {
+              await prismaClient.inspectionAcknowledgment.update({
+                where: { id: existingAck.id },
+                data: {
+                  acknowledged: true,
+                  signature: String(onSiteSignature),
+                  acknowledgedAt: new Date(),
+                },
+              });
+            }
+
+            await InspectionCertificateService.generateCertificate(
+              updatedInspection.id,
+              'tenant',
+              req.user.id
+            );
+          }
+        } catch (certErr) {
+          console.warn('Auto certificate generation failed (non-critical)', certErr);
+        }
+
+        const hasTenantCert =
+          Boolean(updatedInspection.tenantId) && Boolean(onSiteSignature);
+
         const notifications: Array<Promise<unknown>> = [];
         if (tenant?.userId) {
           notifications.push(
             NotificationService.createNotification(
               {
                 destId: tenant.userId,
-                title: 'Inspection Completed',
-                message: `The inspection for ${property.name} has been completed. Your landlord will share the report for review shortly.`,
+                title: hasTenantCert
+                  ? 'Inspection certificate available'
+                  : 'Inspection completed',
+                message: hasTenantCert
+                  ? `The inspection for ${property.name} is complete. Your certificate is available in Documents.`
+                  : `The inspection for ${property.name} is complete. Your certificate will appear in Documents once issued.`,
                 notificationType: 'inspection_completed',
                 route: '/inspections',
+                emitRealtime: true,
+                type: 'success',
               },
               'COMMUNICATION'
             )
+          );
+          notifications.push(
+            InspectionActivityLogService.logEvent({
+              propertyId: updatedInspection.propertyId,
+              tenantUserId: tenant.userId,
+              inspectionId: updatedInspection.id,
+              subjects: hasTenantCert
+                ? 'Inspection certificate available'
+                : 'Inspection completed',
+              events: hasTenantCert
+                ? `Inspection certificate available for ${property.name}`
+                : `Inspection completed for ${property.name}`,
+            })
           );
         }
 
@@ -358,10 +560,10 @@ class InspectionController {
             NotificationService.createNotification({
               destId: landlordUser.userId,
               title: 'Inspection Completed',
-              message: `The inspection for ${property.name} has been marked as completed.`,
+              message: `The inspection for ${property.name} has been marked as completed. Certificates were saved to documents.`,
               category: 'COMMUNICATION',
               notificationType: 'inspection_completed',
-              route: `/inspections/${req.params.id}`,
+              route: `/service/inspections/${req.params.id}`,
               emitRealtime: true,
               type: 'success',
             })
@@ -372,6 +574,7 @@ class InspectionController {
 
       res.json(updatedInspection);
     } catch (error) {
+      console.error('Error updating inspection:', error);
       res.status(500).json({ error: 'Failed to update inspection' });
     }
   }
@@ -727,6 +930,54 @@ class InspectionController {
       console.error('Error sending inspection dispute message:', error);
       return res.status(error.statusCode || 500).json({
         error: error.message || 'Failed to send dispute message',
+      });
+    }
+  }
+
+  inviteGuest = async (req: CustomRequest, res: Response) => {
+    try {
+      const landlordId = req.user.landlords?.id;
+      if (!landlordId) {
+        return res.status(403).json({ error: 'Landlord not found' });
+      }
+
+      const { email, name, expiresInDays, inspectionIds } = req.body as {
+        email?: string;
+        name?: string;
+        expiresInDays?: number;
+        inspectionIds?: string[];
+      };
+
+      if (!email?.trim()) {
+        return res.status(400).json({ error: 'Guest inspector email is required' });
+      }
+
+      const ids =
+        Array.isArray(inspectionIds) && inspectionIds.length > 0
+          ? inspectionIds
+          : [req.params.id];
+
+      const result = await InspectionGuestService.inviteGuest({
+        inspectionIds: ids,
+        landlordId,
+        email,
+        name: name || 'Inspector',
+        expiresInDays,
+      });
+
+      return res.status(200).json(result);
+    } catch (error: any) {
+      const map: Record<string, number> = {
+        INSPECTION_NOT_FOUND: 404,
+        INSPECTION_NOT_INVITABLE: 400,
+        INVALID_EMAIL: 400,
+      };
+      const status = map[error?.message] || 500;
+      return res.status(status).json({
+        error:
+          error?.message === 'INSPECTION_NOT_INVITABLE'
+            ? 'Schedule the inspection before inviting a guest inspector'
+            : error?.message || 'Failed to invite guest inspector',
       });
     }
   }

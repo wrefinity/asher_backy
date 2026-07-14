@@ -215,6 +215,8 @@ function resolveFromInvite(
     scheduleDate?: Date | null;
     reScheduleDate?: Date | null;
     propertiesId?: string | null;
+    roomId?: string | null;
+    unitId?: string | null;
     propertyListingId?: string | null;
     application?: {
       id: string;
@@ -291,6 +293,9 @@ function resolveFromInvite(
         actionLabel: "Start application",
         actionHref: applicationApplyUrl({
           applicationInviteId: invite.id,
+          // Prefer room/unit/property row id — listing-history ids fail startApplication lookup
+          propertyId:
+            invite.roomId || invite.unitId || invite.propertiesId || undefined,
           listingId,
         }),
         enquiryId,

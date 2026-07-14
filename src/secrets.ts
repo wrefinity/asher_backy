@@ -4,6 +4,7 @@ dotenv.config({ path: ".env" });
 export const PORT =  process.env.PORT!;
 export const JWT_SECRET =  process.env.JWT_SECRET!;
 export const FRONTEND_URL = (process.env.FRONTEND_URL || "https://asherlanlord.vercel.app").replace(/\/+$/, "");
+export const WEB_USER_URL = (process.env.WEB_USER_URL || process.env.PUBLIC_URL || "https://asherwebsite.vercel.app").replace(/\/+$/, "");
 export const MAIL_HOST = process.env.MAIL_HOST!;
 export const NODE_ENV = process.env.NODE_ENV!;
 export const MAIL_USERNAME = process.env.MAIL_USERNAME!;

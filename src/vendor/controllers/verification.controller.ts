@@ -4,6 +4,31 @@ import { resubmitVendorVerification } from "../../services/vendorVerification.se
 import { prismaClient } from "../..";
 
 class VendorVerificationController {
+  // Records acceptance of the vendor terms & conditions (shown as a
+  // scroll-gated sheet after onboarding Session 1 and Session 2).
+  acceptTerms = async (req: CustomRequest, res: Response) => {
+    try {
+      const vendorId = req.user?.vendors?.id;
+      if (!vendorId) {
+        return res.status(400).json({ success: false, message: "No vendor profile on this account" });
+      }
+      const version = String(req.body?.version || "").trim();
+      if (!version) {
+        return res.status(400).json({ success: false, message: "version is required" });
+      }
+
+      const vendor = await prismaClient.vendors.update({
+        where: { id: vendorId },
+        data: { termsVersion: version, termsAcceptedAt: new Date() },
+        select: { id: true, termsVersion: true, termsAcceptedAt: true },
+      });
+
+      return res.status(200).json({ success: true, data: vendor, message: "Terms acceptance recorded" });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error?.message ?? "Failed to record terms acceptance" });
+    }
+  };
+
   // Vendor raises a dispute (Part 6 of VENDOR_APP_FLOW_SPEC.md): always to
   // Asher admin, never to the other party; tags the disputed job so admin
   // pulls its evidence directly.

@@ -50,6 +50,9 @@ class InspectionRoutes {
 
     // POST /api/landlord/inspections/:id/share - Share inspection with tenant
     this.router.post('/:id/share', InspectionController.shareWithTenant.bind(InspectionController));
+
+    // POST /api/landlord/inspections/:id/invite-guest - Invite external inspector
+    this.router.post('/:id/invite-guest', InspectionController.inviteGuest.bind(InspectionController));
   }
 }
 

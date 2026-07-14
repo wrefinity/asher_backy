@@ -103,11 +103,21 @@ model inspection {
   propertyId       String
   tenantId         String?
   type             String?
+  trigger          String?    @default("MANUAL") // MANUAL | MOVE_OUT
+  moveOutNoticeId  String?    @unique
   scheduledDate    DateTime?
   scheduledTime    String?
   inspector        String?
   inspectorId      String?
-  status           String?    @default("Scheduled")
+  guestInspectorName     String?
+  guestInspectorEmail    String?
+  guestAccessTokenHash   String?   @unique
+  guestTokenExpiresAt    DateTime?
+  guestFormSubmittedAt   DateTime?
+  guestPortalId          String?
+  inspectorSignature     String?   @db.Text
+  landlordSignature      String?   @db.Text
+  status           String?    @default("Scheduled") // Draft | Not Started | Scheduled | In Progress | Completed | Cancelled
   priority         String?
   score            Int?
   findings         Int?       @default(0)
@@ -116,11 +126,14 @@ model inspection {
   generalNotes     String?    @db.Text
   recommendations  String?    @db.Text
   notes            String?    @db.Text // Kept for backward compatibility
+  onSiteSignature  String?    @db.Text
   completedAt      DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   property         properties @relation(fields: [propertyId], references: [id])
   tenant           tenants?   @relation(fields: [tenantId], references: [id])
+  moveOutNotice    MoveOutNotice? @relation(fields: [moveOutNoticeId], references: [id], onDelete: SetNull)
+  guestPortal      inspectionGuestPortal? @relation(fields: [guestPortalId], references: [id], onDelete: SetNull)
 
   // NEW RELATIONS (Added for enhanced inspection system)
   sections       inspectionSection[]
@@ -132,5 +145,27 @@ model inspection {
   @@index([status])
   @@index([scheduledDate])
   @@index([type])
+  @@index([trigger])
+  @@index([guestPortalId])
+  @@index([guestInspectorEmail])
   @@map("inspection")
+}
+
+// Shared guest inspector access — one portal token can cover many inspections.
+model inspectionGuestPortal {
+  id              String   @id @default(cuid())
+  landlordId      String
+  email           String
+  name            String
+  accessTokenHash String   @unique
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inspections inspection[]
+
+  @@unique([landlordId, email])
+  @@index([landlordId])
+  @@index([email])
+  @@map("inspection_guest_portal")
 }

@@ -47,6 +47,8 @@ class TenantInspectionController {
 
     const whereClause: any = {
       tenantId: tenant.id,
+      // Draft inspections are landlord-only until scheduled
+      NOT: { status: 'Draft' },
     };
 
     if (typeof status === 'string' && status.trim()) {
@@ -122,6 +124,7 @@ class TenantInspectionController {
     const inspections = await prismaClient.inspection.findMany({
       where: {
         tenantId: tenant.id,
+        NOT: { status: 'Draft' },
       },
       include: {
         acknowledgment: true,
@@ -173,6 +176,10 @@ class TenantInspectionController {
 
     if (inspection.tenantId !== tenant.id) {
       throw ApiError.forbidden('You do not have access to this inspection');
+    }
+
+    if (inspection.status === 'Draft') {
+      throw ApiError.notFound('Inspection not found');
     }
 
     return res.status(200).json(

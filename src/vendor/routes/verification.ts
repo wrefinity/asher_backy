@@ -20,6 +20,8 @@ class VendorVerificationRoutes {
     );
     // Disputes (Part 6 of VENDOR_APP_FLOW_SPEC.md) - vendor -> Asher admin.
     this.router.post("/disputes", VendorVerificationController.raiseDispute);
+    // Terms & conditions acceptance (Session 1 / Session 2 sheets).
+    this.router.post("/terms", VendorVerificationController.acceptTerms);
   }
 }
 

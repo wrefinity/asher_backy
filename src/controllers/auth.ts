@@ -651,6 +651,14 @@ class AuthControls {
             throw ApiError.unauthorized("Account not verified, verification code sent to email");
         }
 
+        if ((user as any).isSuspended) {
+            throw ApiError.unauthorized("Account suspended. Contact support for assistance.");
+        }
+
+        if ((user as any).landlords?.isDeleted) {
+            throw ApiError.unauthorized("This account has been removed.");
+        }
+
         if (tenantCode && !email) {
             const payload = await this.buildTenantLoginPayload(user, tenantCode, req);
             return res.status(200).json(

@@ -2,16 +2,15 @@ import { prismaClient } from '..';
 import InspectionService from './inspection.services';
 
 class InspectionMoveOutService {
-  private buildMoveOutNotes(noticeId: string, reason: string, comments?: string | null) {
-    const base = `Auto-created from move-out notice ${noticeId}. Reason: ${reason}`;
-    return comments?.trim() ? `${base}. Comments: ${comments.trim()}` : base;
-  }
-
   async findInspectionForNotice(noticeId: string, tenantId: string) {
     return prismaClient.inspection.findFirst({
       where: {
         tenantId,
-        generalNotes: { contains: noticeId },
+        OR: [
+          { moveOutNoticeId: noticeId },
+          // Legacy rows linked via notes before moveOutNoticeId existed
+          { generalNotes: { contains: noticeId } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -56,21 +55,24 @@ class InspectionMoveOutService {
         .join(' ') ||
       'Landlord';
 
+    const commentsNote = params.comments?.trim()
+      ? ` Comments: ${params.comments.trim()}`
+      : '';
+
     return InspectionService.createInspection({
       propertyId: params.propertyId,
       tenantId: params.tenantId,
       type: 'Move-out Inspection',
-      scheduledDate: params.intendedMoveOutDate,
-      scheduledTime: '10:00',
+      trigger: 'MOVE_OUT',
+      moveOutNoticeId: params.noticeId,
+      // Date/time set when landlord confirms schedule (Draft has none yet)
+      scheduledDate: undefined,
+      scheduledTime: undefined,
       inspector: inspectorName,
       inspectorId: landlord?.user?.id,
-      status: 'Scheduled',
+      status: 'Draft',
       priority: 'High',
-      generalNotes: this.buildMoveOutNotes(
-        params.noticeId,
-        params.reason,
-        params.comments
-      ),
+      generalNotes: `Move-out draft from notice. Reason: ${params.reason}.${commentsNote}`,
     });
   }
 }

@@ -661,11 +661,13 @@ class MaintenanceService {
   createMaintenanceChat = async (maintenanceId: string, senderId: string, receiverId: string, initialMessage: string) => {
     try {
       // Check if a chat room already exists for this maintenance request
+      // Match the pair in either direction - otherwise a reply from the
+      // other party creates a second room and orphans the history.
       let chatRoom = await prismaClient.chatRoom.findFirst({
         where: {
-          AND: [
-            { user1Id: senderId },
-            { user2Id: receiverId },
+          OR: [
+            { user1Id: senderId, user2Id: receiverId },
+            { user1Id: receiverId, user2Id: senderId },
           ],
         },
       });
@@ -736,16 +738,23 @@ class MaintenanceService {
     }
   }
   getMaintenanceChat = async (maintenanceId: string) => {
-    const chatRoom = await prismaClient.chatRoom.findUnique({
-      where: { maintenanceId },
-      include: {
-        messages: {
-          where: { chatType: 'MAINTENANCE' },
-          orderBy: { createdAt: 'asc' }
+    // Rooms are linked via maintenance.chatRoomId (set in
+    // createMaintenanceChat) - ChatRoom.maintenanceId is never written, so
+    // querying it returned nothing for every job chat.
+    const maintenance = await prismaClient.maintenance.findUnique({
+      where: { id: maintenanceId },
+      select: {
+        chatRoom: {
+          include: {
+            messages: {
+              where: { chatType: 'MAINTENANCE' },
+              orderBy: { createdAt: 'asc' }
+            }
+          }
         }
       }
     });
-    return chatRoom?.messages || [];
+    return maintenance?.chatRoom?.messages || [];
   }
 
   updateMaintenance = async (id: string, maintenanceData: Partial<MaintenanceIF>) => {

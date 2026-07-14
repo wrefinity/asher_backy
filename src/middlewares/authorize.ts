@@ -86,6 +86,14 @@ export class Authorize {
                 return res.status(401).json({ message: "User not found" });
             }
 
+            if ((user as any).isSuspended) {
+                return res.status(403).json({ message: "Account suspended" });
+            }
+
+            if ((user as any).landlords?.isDeleted) {
+                return res.status(403).json({ message: "Account has been deleted" });
+            }
+
             // Build the user object with proper tenant context
             req.user = this.buildUserWithContext(user, decoded);
             this.backfillLoginSession(req);

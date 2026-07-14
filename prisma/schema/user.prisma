@@ -4,6 +4,8 @@ model users {
   password                 String?
   googleId                 String?
   isVerified               Boolean                    @default(false)
+  isSuspended              Boolean                    @default(false)
+  suspendedAt              DateTime?
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   role                     userRoles[]                @default([WEBUSER])

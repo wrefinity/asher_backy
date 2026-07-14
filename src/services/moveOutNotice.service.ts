@@ -125,18 +125,37 @@ class MoveOutNoticeService {
     const moveOutDateStr = input.intendedMoveOutDate.toLocaleDateString();
     const typeLabel = input.type === MoveOutNoticeType.RELOCATING ? 'relocating' : 'moving out';
 
+    let inspection = null;
+    try {
+      inspection = await InspectionMoveOutService.createMoveOutInspection({
+        tenantId: tenant.id,
+        propertyId: tenant.propertyId,
+        landlordId: tenant.landlordId,
+        noticeId: notice.id,
+        intendedMoveOutDate: input.intendedMoveOutDate,
+        reason: input.reason,
+        comments: input.comments,
+      });
+    } catch (inspectionErr) {
+      console.warn('Failed to auto-create move-out inspection draft', inspectionErr);
+    }
+
+    const scheduleRoute = inspection
+      ? `/service/inspections/${inspection.id}?scheduleDraft=1`
+      : '/service/inspections';
+
     await Promise.all([
       NotificationService.createNotification(
         {
           sourceId: tenant.userId,
           destId: tenant.landlord.userId,
-          title: 'Tenant Move-Out Notice',
-          message: `${tenantName} has submitted a move-out notice (${typeLabel}). Intended move-out date: ${moveOutDateStr}. Reason: ${input.reason}.`,
+          title: 'Tenant leaving — schedule walkthrough',
+          message: `${tenantName} submitted a move-out notice (${typeLabel}) for ${moveOutDateStr}. Reason: ${input.reason}. Open Inspections to set the appointment.`,
           category: NotificationCategory.MOVE_OUT,
           notificationType: 'tenant_move_out_notice',
           emitRealtime: true,
           type: 'warning',
-          route: '/tenants',
+          route: scheduleRoute,
         },
         NotificationCategory.MOVE_OUT
       ),
@@ -151,62 +170,6 @@ class MoveOutNoticeService {
         subjects: 'Move-out notice submitted',
       }),
     ]);
-
-    let inspection = null;
-    try {
-      inspection = await InspectionMoveOutService.createMoveOutInspection({
-        tenantId: tenant.id,
-        propertyId: tenant.propertyId,
-        landlordId: tenant.landlordId,
-        noticeId: notice.id,
-        intendedMoveOutDate: input.intendedMoveOutDate,
-        reason: input.reason,
-        comments: input.comments,
-      });
-
-      await Promise.all([
-        NotificationService.createNotification(
-          {
-            sourceId: tenant.userId,
-            destId: tenant.landlord.userId,
-            title: 'Move-Out Inspection Scheduled',
-            message: `${tenantName} submitted a move-out notice. A move-out inspection has been scheduled for ${moveOutDateStr}.`,
-            notificationType: 'inspection_scheduled',
-            route: `/service/inspections/${inspection.id}`,
-            emitRealtime: true,
-            type: 'info',
-          },
-          NotificationCategory.MOVE_OUT
-        ),
-        tenant.userId
-          ? NotificationService.createNotification(
-              {
-                sourceId: tenant.landlord.userId,
-                destId: tenant.userId,
-                title: 'Move-Out Inspection Scheduled',
-                message: `Your landlord will conduct a move-out inspection around ${moveOutDateStr}.`,
-                notificationType: 'inspection_scheduled',
-                route: `/inspections/${inspection.id}`,
-                emitRealtime: true,
-                type: 'info',
-              },
-              NotificationCategory.MOVE_OUT
-            )
-          : Promise.resolve(null),
-        LogsServices.createLog({
-          events: appendActivityLogRef(
-            `Move-out inspection scheduled for ${moveOutDateStr}`,
-            { type: 'inspection', id: inspection.id }
-          ),
-          type: LogType.ACTIVITY,
-          propertyId: tenant.propertyId,
-          createdById: tenant.userId,
-          subjects: 'Move-out inspection scheduled',
-        }),
-      ]);
-    } catch (inspectionErr) {
-      console.warn('Failed to auto-create move-out inspection', inspectionErr);
-    }
 
     return { notice, inspection };
   }

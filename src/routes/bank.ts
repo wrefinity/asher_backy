@@ -27,6 +27,8 @@ class BankRouter {
         this.router.get('/bank-info', this.authenticateService.authorize, BankInfoController.getAllBankInfo);
         // Add to your bank router
         this.router.get('/my-bank', this.authenticateService.authorize, BankInfoController.getMyBankInfo);
+        // Nigerian bank directory (Paystack) for the add-account picker
+        this.router.get('/directory/paystack', this.authenticateService.authorize, BankInfoController.listPaystackBanks);
     }
 }
 

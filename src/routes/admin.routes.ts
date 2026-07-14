@@ -177,6 +177,12 @@ class AdminRouter {
             AdminController.deleteLandlordAccount
         );
 
+        this.router.post(
+            "/landlords/:userId/suspend",
+            this.authenticateService.authorize,
+            AdminController.setLandlordSuspension
+        );
+
         // Public endpoint for landlords to get admin users for chat
         this.router.get(
             "/admin-users",
