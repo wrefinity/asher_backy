@@ -115,6 +115,17 @@ export function inspectionNeedsTenantAcknowledgment(inspection: any): boolean {
   );
 }
 
+/** True when the appointment is scheduled and tenant has not yet confirmed receipt. */
+export function inspectionNeedsScheduleAcknowledgment(inspection: any): boolean {
+  const status = normalizeInspectionStatus(inspection?.status);
+  if (status !== 'pending' && status !== 'in_progress') return false;
+  if (inspection?.tenantScheduleAcknowledgedAt) return false;
+  // Move-out has its own home banner; still allow ack but prefer MANUAL/routine here.
+  const trigger = String(inspection?.trigger || 'MANUAL').toUpperCase();
+  if (trigger === 'MOVE_OUT') return false;
+  return true;
+}
+
 export function mapInspectionForTenant(inspection: any) {
   if (!inspection) return inspection;
 
@@ -152,5 +163,8 @@ export function mapInspectionForTenant(inspection: any) {
       ...inspection,
       acknowledgment,
     }),
+    scheduleAcknowledged: !!inspection.tenantScheduleAcknowledgedAt,
+    tenantScheduleAcknowledgedAt: inspection.tenantScheduleAcknowledgedAt || null,
+    needsScheduleAcknowledgment: inspectionNeedsScheduleAcknowledgment(inspection),
   };
 }

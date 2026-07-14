@@ -10,6 +10,7 @@ import NotificationService from '../../services/notification.service';
 import InspectionChatService from '../../services/inspectionChat.service';
 import InspectionActivityLogService from '../../services/inspectionActivityLog.service';
 import {
+  inspectionNeedsScheduleAcknowledgment,
   mapInspectionForTenant,
   normalizeInspectionStatus,
 } from '../../utils/inspectionTenantMapper.util';
@@ -113,6 +114,7 @@ class TenantInspectionController {
               pending: 0,
               completed: 0,
               needsAcknowledgment: 0,
+              needsScheduleAcknowledgment: 0,
               withDisputes: 0,
             },
           },
@@ -145,6 +147,9 @@ class TenantInspectionController {
           normalizeInspectionStatus(i.status) === 'completed' &&
           i.acknowledgment &&
           !i.acknowledgment.acknowledged
+      ).length,
+      needsScheduleAcknowledgment: inspections.filter((i) =>
+        inspectionNeedsScheduleAcknowledgment(i)
       ).length,
       withDisputes: inspections.filter(
         (i) => i.acknowledgment && i.acknowledgment.disputed === true
@@ -186,6 +191,65 @@ class TenantInspectionController {
       ApiResponse.success(
         { inspection: mapInspectionForTenant(inspection) },
         'Inspection retrieved successfully'
+      )
+    );
+  });
+
+  /**
+   * Tenant confirms they received / acknowledge a scheduled appointment
+   * (lightweight — not the completed-report signature flow).
+   */
+  acknowledgeInspectionSchedule = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const tenant = await this.resolveTenant(userId);
+
+    if (!tenant) {
+      throw ApiError.badRequest('No active tenant found');
+    }
+
+    const inspection = await prismaClient.inspection.findUnique({
+      where: { id },
+    });
+
+    if (!inspection || inspection.status === 'Draft') {
+      throw ApiError.notFound('Inspection not found');
+    }
+
+    if (inspection.tenantId !== tenant.id) {
+      throw ApiError.forbidden('You do not have access to this inspection');
+    }
+
+    if (!inspectionNeedsScheduleAcknowledgment(inspection)) {
+      if (inspection.tenantScheduleAcknowledgedAt) {
+        return res.status(200).json(
+          ApiResponse.success(
+            {
+              inspection: mapInspectionForTenant(inspection),
+              alreadyAcknowledged: true,
+            },
+            'Schedule already acknowledged'
+          )
+        );
+      }
+      throw ApiError.badRequest(
+        'This inspection schedule cannot be acknowledged in its current status'
+      );
+    }
+
+    const updated = await prismaClient.inspection.update({
+      where: { id },
+      data: { tenantScheduleAcknowledgedAt: new Date() },
+      include: {
+        property: true,
+        acknowledgment: true,
+      },
+    });
+
+    return res.status(200).json(
+      ApiResponse.success(
+        { inspection: mapInspectionForTenant(updated) },
+        'Inspection schedule acknowledged'
       )
     );
   });
