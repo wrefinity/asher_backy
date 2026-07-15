@@ -202,6 +202,17 @@ class LandlordReferenceService {
     }, {
       maxWait: 20000, // Wait up to 20 seconds to acquire a connection from the pool
       timeout: 20000  // Allow 20 seconds for the transaction execution
+    }).then(async (created) => {
+      try {
+        const { notifyReferenceSubmitted } = await import('./leasingNotification.service');
+        await notifyReferenceSubmitted({
+          applicationId,
+          referenceKind: 'previous_landlord',
+        });
+      } catch (notifyError) {
+        console.error('Failed to notify on landlord reference submit:', notifyError);
+      }
+      return created;
     });
   }
 

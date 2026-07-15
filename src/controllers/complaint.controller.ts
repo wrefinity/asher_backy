@@ -3,6 +3,11 @@ import ComplaintService from "../services/complaintServices";
 import { createComplaintSchema, updateComplaintSchema } from "../validations/schemas/complaint.schema";
 import { CustomRequest } from "../utils/types";
 import { postComplaintMessageSchema } from "../landlord/validations/schema/complaintSchema";
+import {
+    notifyComplaintCreated,
+    notifyComplaintMessage,
+    notifyComplaintUpdated,
+} from "../services/complaintNotification.service";
 
 
 class ComplaintController {
@@ -12,6 +17,11 @@ class ComplaintController {
             if (error) return res.status(400).json({ message: error.details[0].message });
             const createdById = String(req.user.id);
             const complaint = await ComplaintService.createComplaint({ ...value, createdById });
+            try {
+                await notifyComplaintCreated(complaint, createdById);
+            } catch (notifyErr) {
+                console.warn('Non-critical: complaint create notify failed', notifyErr);
+            }
             res.status(201).json(complaint);
         } catch (error) {
             res.status(500).json({ message: "Error creating complaint" });
@@ -50,6 +60,11 @@ class ComplaintController {
             if (!complaint) return res.status(404).json({ message: "Complaint not found" });
 
             const updatedComplaint = await ComplaintService.updateComplaint(id, value);
+            try {
+                await notifyComplaintUpdated(complaint, updatedComplaint, String(req.user.id));
+            } catch (notifyErr) {
+                console.warn('Non-critical: complaint update notify failed', notifyErr);
+            }
             res.status(200).json({ updatedComplaint });
         } catch (error) {
             res.status(500).json({ message: "Error updating complaint" });
@@ -98,7 +113,16 @@ class ComplaintController {
         }
         const {message } = req.body;
         try {
+            const complaint = await ComplaintService.getComplaintById(complaintId);
+            if (!complaint) {
+                return res.status(404).json({ error: 'Complaint not found' });
+            }
             const msg = await ComplaintService.postMessage(complaintId, senderId, message);
+            try {
+                await notifyComplaintMessage(complaint, senderId, message);
+            } catch (notifyErr) {
+                console.warn('Non-critical: complaint message notify failed', notifyErr);
+            }
             return res.status(201).json({ success: true, message: msg });
         } catch (err) {
             return res.status(500).json({ error: 'Failed to post message' });

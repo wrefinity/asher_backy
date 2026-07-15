@@ -1,5 +1,5 @@
 import { maintenanceDecisionStatus, maintenanceStatus } from '@prisma/client';
-import NotificationService from './notification.service';
+import { notifyUser } from './notify';
 
 type MaintenanceSnapshot = {
   id: string;
@@ -17,7 +17,7 @@ function statusNotification(
 ): {
   title: string;
   message: string;
-  notificationType: string;
+  type: 'maintenance_status_change' | 'maintenance_resolved';
 } | null {
   switch (status) {
     case maintenanceStatus.ASSIGNED:
@@ -27,7 +27,7 @@ function statusNotification(
           audience === 'landlord'
             ? 'A vendor has been assigned to a maintenance request.'
             : 'A vendor has been assigned to your maintenance request.',
-        notificationType: 'maintenance_status_change',
+        type: 'maintenance_status_change',
       };
     case maintenanceStatus.IN_PROGRESS:
       return {
@@ -36,7 +36,7 @@ function statusNotification(
           audience === 'landlord'
             ? 'Work on a maintenance request is now in progress.'
             : 'Work on your maintenance request is now in progress.',
-        notificationType: 'maintenance_status_change',
+        type: 'maintenance_status_change',
       };
     case maintenanceStatus.COMPLETED:
       return {
@@ -45,7 +45,7 @@ function statusNotification(
           audience === 'landlord'
             ? 'A maintenance request has been marked as completed.'
             : 'Your maintenance request has been marked as completed.',
-        notificationType: 'maintenance_resolved',
+        type: 'maintenance_resolved',
       };
     case maintenanceStatus.CANCEL:
       return {
@@ -54,7 +54,7 @@ function statusNotification(
           audience === 'landlord'
             ? 'A maintenance request has been cancelled.'
             : 'Your maintenance request has been cancelled.',
-        notificationType: 'maintenance_status_change',
+        type: 'maintenance_status_change',
       };
     case maintenanceStatus.CANCELLATION_REQUEST:
       return {
@@ -63,7 +63,7 @@ function statusNotification(
           audience === 'landlord'
             ? 'A cancellation was requested for a maintenance request.'
             : 'A cancellation request was submitted for your maintenance request.',
-        notificationType: 'maintenance_status_change',
+        type: 'maintenance_status_change',
       };
     case maintenanceStatus.UNASSIGNED:
       return {
@@ -72,7 +72,7 @@ function statusNotification(
           audience === 'landlord'
             ? 'The vendor was unassigned from a maintenance request.'
             : 'The vendor was unassigned from your maintenance request.',
-        notificationType: 'maintenance_status_change',
+        type: 'maintenance_status_change',
       };
     default:
       return null;
@@ -81,19 +81,23 @@ function statusNotification(
 
 function decisionNotification(
   decision: maintenanceDecisionStatus
-): { title: string; message: string; notificationType: string } | null {
+): {
+  title: string;
+  message: string;
+  type: 'maintenance_status_change';
+} | null {
   if (decision === maintenanceDecisionStatus.APPROVED) {
     return {
       title: 'Maintenance Request Approved',
       message: 'Your landlord has approved your maintenance request.',
-      notificationType: 'maintenance_status_change',
+      type: 'maintenance_status_change',
     };
   }
   if (decision === maintenanceDecisionStatus.DECLINED) {
     return {
       title: 'Maintenance Request Declined',
       message: 'Your landlord has declined your maintenance request.',
-      notificationType: 'maintenance_status_change',
+      type: 'maintenance_status_change',
     };
   }
   return null;
@@ -117,19 +121,13 @@ export async function notifyLandlordNewMaintenanceRequest(
   // Don't notify the landlord if they created the request themselves
   if (sourceUserId && sourceUserId === landlordUserId) return;
 
-  await NotificationService.createNotification(
-    {
-      sourceId: sourceUserId ?? undefined,
-      destId: landlordUserId,
-      title: 'New Maintenance Request',
-      message: 'A tenant submitted a new maintenance request that needs your attention.',
-      notificationType: 'maintenance_new_request',
-      route: `/service/maintenance/landlord/${maintenance.id}`,
-      type: 'info',
-      emitRealtime: true,
-    },
-    'MAINTENANCE_REQUESTS'
-  );
+  await notifyUser({
+    userId: landlordUserId,
+    sourceId: sourceUserId ?? undefined,
+    type: 'maintenance_new_request',
+    message: 'A tenant submitted a new maintenance request that needs your attention.',
+    route: `/service/maintenance/landlord/${maintenance.id}`,
+  });
 }
 
 export async function notifyTenantMaintenanceUpdate(
@@ -140,10 +138,16 @@ export async function notifyTenantMaintenanceUpdate(
   const tenantUserId = after.tenant?.userId;
   const landlordUserId = resolveLandlordUserId(after);
 
-  let tenantPayload: { title: string; message: string; notificationType: string } | null =
-    null;
-  let landlordPayload: { title: string; message: string; notificationType: string } | null =
-    null;
+  let tenantPayload: {
+    title: string;
+    message: string;
+    type: 'maintenance_status_change' | 'maintenance_resolved';
+  } | null = null;
+  let landlordPayload: {
+    title: string;
+    message: string;
+    type: 'maintenance_status_change' | 'maintenance_resolved';
+  } | null = null;
 
   const decisionChanged =
     before.landlordDecision !== after.landlordDecision && after.landlordDecision;
@@ -158,18 +162,14 @@ export async function notifyTenantMaintenanceUpdate(
   }
 
   if (tenantPayload && tenantUserId) {
-    await NotificationService.createNotification(
-      {
-        sourceId: sourceUserId ?? undefined,
-        destId: tenantUserId,
-        title: tenantPayload.title,
-        message: tenantPayload.message,
-        notificationType: tenantPayload.notificationType,
-        route: `/settings/shared/MaintenanceStatusScreen?id=${after.id}`,
-        emitRealtime: true,
-      },
-      'MAINTENANCE_REQUESTS'
-    );
+    await notifyUser({
+      userId: tenantUserId,
+      sourceId: sourceUserId ?? undefined,
+      type: tenantPayload.type,
+      title: tenantPayload.title,
+      message: tenantPayload.message,
+      route: `/settings/shared/MaintenanceStatusScreen?id=${after.id}`,
+    });
   }
 
   if (
@@ -178,18 +178,13 @@ export async function notifyTenantMaintenanceUpdate(
     landlordUserId !== sourceUserId &&
     landlordUserId !== tenantUserId
   ) {
-    await NotificationService.createNotification(
-      {
-        sourceId: sourceUserId ?? undefined,
-        destId: landlordUserId,
-        title: landlordPayload.title,
-        message: landlordPayload.message,
-        notificationType: landlordPayload.notificationType,
-        route: `/service/maintenance/landlord/${after.id}`,
-        type: 'info',
-        emitRealtime: true,
-      },
-      'MAINTENANCE_REQUESTS'
-    );
+    await notifyUser({
+      userId: landlordUserId,
+      sourceId: sourceUserId ?? undefined,
+      type: landlordPayload.type,
+      title: landlordPayload.title,
+      message: landlordPayload.message,
+      route: `/service/maintenance/landlord/${after.id}`,
+    });
   }
 }

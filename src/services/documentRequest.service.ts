@@ -1,8 +1,6 @@
 import { prismaClient } from "..";
 import { PropertyDocumentService } from "./propertyDocument.service";
 import { DocumentType } from "@prisma/client";
-import NotificationService from "./notification.service";
-import { NotificationCategory } from "@prisma/client";
 
 export interface CreateDocumentRequestDTO {
   documentName: string;
@@ -67,19 +65,15 @@ class DocumentRequestService {
 
     // Send notification to tenant
     if (tenant.userId) {
-      await NotificationService.createNotification(
-      {
+      const { notifyUser } = await import('./notify');
+      await notifyUser({
+        userId: tenant.userId,
         sourceId: data.requestedBy,
-        destId: tenant.userId,
-        title: "New Document Request",
+        type: 'document_request',
+        title: 'New Document Request',
         message: `Your landlord has requested ${data.documentName}. Please upload by ${new Date(data.dueDate).toLocaleDateString()}.`,
-        notificationType: 'document_request',
         route: '/profile/Documents',
-        emitRealtime: true,
-        type: 'info',
-      },
-      NotificationCategory.COMMUNICATION
-    );
+      });
     }
 
     return documentRequest;

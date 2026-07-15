@@ -3,7 +3,6 @@ import InspectionService from '../../services/inspection.services';
 import InspectionPhotoService from '../../services/inspectionPhoto.service';
 import InspectionCertificateService from '../../services/inspectionCertificate.service';
 import InspectionChatService from '../../services/inspectionChat.service';
-import NotificationService from '../../services/notification.service';
 import {
   createInspectionSchema,
   updateInspectionSchema,
@@ -113,15 +112,13 @@ class InspectionController {
           });
 
           if (tenant?.userId) {
-            await NotificationService.createNotification({
-              destId: tenant.userId,
-              title: 'Inspection Scheduled',
+            const { notifyUser } = await import('../../services/notify');
+            await notifyUser({
+              userId: tenant.userId,
+              type: 'inspection_scheduled',
               message: `An inspection has been scheduled for ${property.name} on ${inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'TBD'}.`,
-              notificationType: 'inspection_scheduled',
               route: `/inspections/${inspection.id}`,
-              emitRealtime: true,
-              type: 'info',
-            }, 'COMMUNICATION');
+            });
 
             await InspectionActivityLogService.logEvent({
               propertyId: inspection.propertyId,
@@ -371,18 +368,14 @@ class InspectionController {
             : null;
 
           if (tenant?.userId) {
-            await NotificationService.createNotification(
-              {
-                destId: tenant.userId,
-                title: 'Inspection appointment scheduled',
-                message: `An inspection for ${property.name} is scheduled for ${dateLabel}${timeLabel}. Please prepare the property.`,
-                notificationType: 'inspection_scheduled',
-                route: `/inspections/${updatedInspection.id}`,
-                emitRealtime: true,
-                type: 'info',
-              },
-              'COMMUNICATION'
-            );
+            const { notifyUser } = await import('../../services/notify');
+            await notifyUser({
+              userId: tenant.userId,
+              type: 'inspection_scheduled',
+              title: 'Inspection appointment scheduled',
+              message: `An inspection for ${property.name} is scheduled for ${dateLabel}${timeLabel}. Please prepare the property.`,
+              route: `/inspections/${updatedInspection.id}`,
+            });
 
             await InspectionActivityLogService.logEvent({
               propertyId: updatedInspection.propertyId,
@@ -429,6 +422,70 @@ class InspectionController {
               });
             }
           }
+        }
+      }
+
+      const becameCancelled =
+        req.body.status === 'Cancelled' && inspection.status !== 'Cancelled';
+      const prevDateMs = inspection.scheduledDate
+        ? new Date(inspection.scheduledDate).getTime()
+        : null;
+      const nextDateMs = updatedInspection.scheduledDate
+        ? new Date(updatedInspection.scheduledDate).getTime()
+        : null;
+      const dateChanged =
+        req.body.scheduledDate !== undefined && prevDateMs !== nextDateMs;
+      const timeChanged =
+        req.body.scheduledTime !== undefined &&
+        String(req.body.scheduledTime ?? '') !== String(inspection.scheduledTime ?? '');
+      const wasRescheduled =
+        !becameScheduled &&
+        !becameCancelled &&
+        (dateChanged || timeChanged) &&
+        ['Scheduled', 'Not Started', 'In Progress'].includes(
+          updatedInspection.status || inspection.status || ''
+        );
+
+      if ((becameCancelled || wasRescheduled) && updatedInspection.tenantId) {
+        try {
+          const tenant = await prismaClient.tenants.findUnique({
+            where: { id: updatedInspection.tenantId },
+            select: { userId: true },
+          });
+          if (tenant?.userId) {
+            const { notifyUser } = await import('../../services/notify');
+            const dateLabel = updatedInspection.scheduledDate
+              ? new Date(updatedInspection.scheduledDate).toLocaleDateString('en-GB')
+              : 'TBD';
+            const timeLabel = updatedInspection.scheduledTime
+              ? ` at ${updatedInspection.scheduledTime}`
+              : '';
+
+            if (becameCancelled) {
+              await notifyUser({
+                userId: tenant.userId,
+                sourceId: req.user?.id,
+                type: 'inspection_cancelled',
+                title: 'Inspection cancelled',
+                message: `The inspection for ${property.name} has been cancelled.`,
+                route: `/inspections/${updatedInspection.id}`,
+              });
+            } else if (wasRescheduled) {
+              await notifyUser({
+                userId: tenant.userId,
+                sourceId: req.user?.id,
+                type: 'inspection_rescheduled',
+                title: 'Inspection rescheduled',
+                message: `The inspection for ${property.name} is now scheduled for ${dateLabel}${timeLabel}.`,
+                route: `/inspections/${updatedInspection.id}`,
+              });
+            }
+          }
+        } catch (scheduleChangeNotifyErr) {
+          console.warn(
+            'Non-critical failure notifying inspection cancel/reschedule',
+            scheduleChangeNotifyErr
+          );
         }
       }
 
@@ -520,25 +577,21 @@ class InspectionController {
         const hasTenantCert =
           Boolean(updatedInspection.tenantId) && Boolean(onSiteSignature);
 
+        const { notifyUser } = await import('../../services/notify');
         const notifications: Array<Promise<unknown>> = [];
         if (tenant?.userId) {
           notifications.push(
-            NotificationService.createNotification(
-              {
-                destId: tenant.userId,
-                title: hasTenantCert
-                  ? 'Inspection certificate available'
-                  : 'Inspection completed',
-                message: hasTenantCert
-                  ? `The inspection for ${property.name} is complete. Your certificate is available in Documents.`
-                  : `The inspection for ${property.name} is complete. Your certificate will appear in Documents once issued.`,
-                notificationType: 'inspection_completed',
-                route: '/inspections',
-                emitRealtime: true,
-                type: 'success',
-              },
-              'COMMUNICATION'
-            )
+            notifyUser({
+              userId: tenant.userId,
+              type: 'inspection_completed',
+              title: hasTenantCert
+                ? 'Inspection certificate available'
+                : 'Inspection completed',
+              message: hasTenantCert
+                ? `The inspection for ${property.name} is complete. Your certificate is available in Documents.`
+                : `The inspection for ${property.name} is complete. Your certificate will appear in Documents once issued.`,
+              route: `/inspections/${updatedInspection.id}`,
+            })
           );
           notifications.push(
             InspectionActivityLogService.logEvent({
@@ -557,15 +610,11 @@ class InspectionController {
 
         if (landlordUser?.userId) {
           notifications.push(
-            NotificationService.createNotification({
-              destId: landlordUser.userId,
-              title: 'Inspection Completed',
+            notifyUser({
+              userId: landlordUser.userId,
+              type: 'inspection_completed',
               message: `The inspection for ${property.name} has been marked as completed. Certificates were saved to documents.`,
-              category: 'COMMUNICATION',
-              notificationType: 'inspection_completed',
               route: `/service/inspections/${req.params.id}`,
-              emitRealtime: true,
-              type: 'success',
             })
           );
         }
@@ -759,16 +808,15 @@ class InspectionController {
       // Send notification to tenant if tenant certificate was generated
       if (type === 'tenant' && tenant?.userId) {
         sideEffects.push(
-          NotificationService.createNotification(
-            {
-              destId: tenant.userId,
-              title: 'Inspection Certificate Generated',
+          (async () => {
+            const { notifyUser } = await import('../../services/notify');
+            await notifyUser({
+              userId: tenant.userId,
+              type: 'inspection_certificate',
               message: `Your inspection certificate for ${property.name} has been generated and is ready for download.`,
-              notificationType: 'inspection_certificate',
               route: '/profile/Documents',
-            },
-            'COMMUNICATION'
-          )
+            });
+          })()
         );
       }
       await Promise.all(sideEffects);
@@ -831,16 +879,15 @@ class InspectionController {
       // Send notification to tenant
       if (tenantUserId) {
         sideEffects.push(
-          NotificationService.createNotification(
-            {
-              destId: tenantUserId,
-              title: 'New Inspection Report',
+          (async () => {
+            const { notifyUser } = await import('../../services/notify');
+            await notifyUser({
+              userId: tenantUserId,
+              type: 'inspection_report',
               message: `Your landlord has shared an inspection report for ${property.name}. Please review and acknowledge.`,
-              notificationType: 'inspection_report',
               route: `/inspections/acknowledge/${id}`,
-            },
-            'COMMUNICATION'
-          )
+            });
+          })()
         );
       }
       await Promise.all(sideEffects);

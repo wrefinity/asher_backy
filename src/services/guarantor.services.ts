@@ -5,10 +5,8 @@ import {
   GuarantorAgreement,
 } from '../validations/interfaces/references.interfaces';
 import applicantService from "../webuser/services/applicantService";
-import { ApplicationSaveState, ApplicationStatus, GuarantorNominationStatus, NotificationCategory } from ".prisma/client";
-import NotificationService from "./notification.service";
-import { sendMail } from "../utils/emailer";
-import { sendPreferenceAwareMail } from "../utils/sendPreferenceAwareMail";
+import { ApplicationSaveState, ApplicationStatus, GuarantorNominationStatus } from ".prisma/client";
+import { notifyUser } from "./notify";
 import {
   applicationPropertyLandlordInclude,
   resolveApplicationPropertyLandlordUser,
@@ -118,7 +116,7 @@ class GuarantorService {
       throw Error("Guarantor reference completed");
     }
 
-    return prismaClient.$transaction(async (prisma) => {
+    const created = await prismaClient.$transaction(async (prisma) => {
       const apx = await prisma.application.findFirst({
         where: { id: applicationId },
         include: { guarantorInformation: true }
@@ -134,7 +132,7 @@ class GuarantorService {
         );
       }
 
-      const created = await prisma.guarantorAgreement.create({
+      const agreement = await prisma.guarantorAgreement.create({
         data: {
           status: data.status,
           title: data.title,
@@ -175,18 +173,30 @@ class GuarantorService {
         }
       });
 
-      if (created) {
+      if (agreement) {
         await applicantService.updateApplicationStatus(
           applicationId,
           ApplicationStatus.GUARANTOR_REFERENCE
         );
       }
 
-      return created;
+      return agreement;
     }, {
       maxWait: 20000,
       timeout: 20000
     });
+
+    try {
+      const { notifyReferenceSubmitted } = await import('./leasingNotification.service');
+      await notifyReferenceSubmitted({
+        applicationId,
+        referenceKind: 'guarantor',
+      });
+    } catch (notifyError) {
+      console.error('Failed to notify on guarantor reference submit:', notifyError);
+    }
+
+    return created;
   }
 
   // private mapEmploymentData(data: GuarantorEmploymentInfo) {
@@ -329,49 +339,28 @@ class GuarantorService {
     const message = `${guarantorName} has declined to act as guarantor for ${tenantName}'s application (${propertyLabel}). The tenant will need to nominate another guarantor.`;
 
     if (tenantUserId) {
-      await NotificationService.createNotification(
-        {
-          destId: tenantUserId,
-          title: "Guarantor declined nomination",
-          message,
-          category: NotificationCategory.COMMUNICATION,
-        },
-        NotificationCategory.COMMUNICATION
-      );
-      if (application.user?.email) {
-        await sendMail(
-          application.user.email,
-          "Guarantor declined your nomination",
-          `<p>${message}</p><p>Please sign in to your application and nominate another guarantor if required.</p>`
-        );
-      }
+      await notifyUser({
+        userId: tenantUserId,
+        type: 'guarantor_declined',
+        title: 'Guarantor declined nomination',
+        message,
+        route: '/dashboard',
+        emailSubject: 'Guarantor declined your nomination',
+        emailHtml: `<p>${message}</p><p>Please sign in to your application and nominate another guarantor if required.</p>`,
+      });
     }
 
     if (propertyLandlord?.id) {
-      await NotificationService.createNotification(
-        {
-          sourceId: tenantUserId || undefined,
-          destId: propertyLandlord.id,
-          title: "Guarantor declined nomination",
-          message,
-          category: NotificationCategory.COMMUNICATION,
-          notificationType: 'guarantor_declined',
-          emitRealtime: true,
-          type: 'warning',
-          route: '/leasing',
-        },
-        NotificationCategory.COMMUNICATION
-      );
-      if (propertyLandlord.email) {
-        await sendPreferenceAwareMail({
-          userId: propertyLandlord.id,
-          category: NotificationCategory.COMMUNICATION,
-          notificationType: 'guarantor_declined',
-          to: propertyLandlord.email,
-          subject: 'Guarantor declined tenant nomination',
-          html: `<p>${message}</p>`,
-        });
-      }
+      await notifyUser({
+        userId: propertyLandlord.id,
+        sourceId: tenantUserId || undefined,
+        type: 'guarantor_declined',
+        title: 'Guarantor declined nomination',
+        message,
+        route: '/leasing',
+        emailSubject: 'Guarantor declined tenant nomination',
+        emailHtml: `<p>${message}</p>`,
+      });
     }
 
     const updatedGuarantor = await prismaClient.guarantorInformation.findUnique({

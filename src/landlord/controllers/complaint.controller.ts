@@ -1,7 +1,8 @@
 import { Response } from "express";
 import ComplaintService from "../../services/complaintServices";
-import { createComplaintSchema, updateComplaintSchema } from "../../validations/schemas/complaint.schema";
+import { updateComplaintSchema } from "../../validations/schemas/complaint.schema";
 import { CustomRequest } from "../../utils/types";
+import { notifyComplaintUpdated } from "../../services/complaintNotification.service";
 
 
 
@@ -53,6 +54,15 @@ class ComplaintController {
             if (!complaint) return res.status(404).json({ message: "Complaint not found" });
 
             const updatedComplaint = await ComplaintService.updateComplaint(id, value);
+            try {
+                await notifyComplaintUpdated(
+                    complaint,
+                    { ...complaint, ...updatedComplaint },
+                    String(req.user.id)
+                );
+            } catch (notifyErr) {
+                console.warn('Non-critical: landlord complaint update notify failed', notifyErr);
+            }
             res.status(200).json({ updatedComplaint });
         } catch (error) {
             res.status(500).json({ message: "Error updating complaint" });

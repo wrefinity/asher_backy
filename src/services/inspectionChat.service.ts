@@ -1,6 +1,5 @@
 import { chatType } from '@prisma/client';
 import { prismaClient, serverInstance } from '..';
-import NotificationService from './notification.service';
 
 class InspectionChatService {
   private async getInspectionParticipants(inspectionId: string) {
@@ -131,7 +130,12 @@ class InspectionChatService {
     };
   }
 
-  async sendDisputeMessage(inspectionId: string, senderId: string, content: string) {
+  async sendDisputeMessage(
+    inspectionId: string,
+    senderId: string,
+    content: string,
+    options?: { skipNotification?: boolean }
+  ) {
     if (!content?.trim()) {
       throw Object.assign(new Error('MESSAGE_REQUIRED'), { statusCode: 400 });
     }
@@ -183,32 +187,38 @@ class InspectionChatService {
     serverInstance.io.to(`user:${senderId}`).emit('privateMessage', payload);
     serverInstance.io.to(`user:${receiverId}`).emit('privateMessage', payload);
 
-    try {
-      const propertyName = (await prismaClient.inspection.findUnique({
-        where: { id: inspectionId },
-        select: { property: { select: { name: true } } },
-      }))?.property?.name;
+    if (!options?.skipNotification) {
+      try {
+        const propertyName = (
+          await prismaClient.inspection.findUnique({
+            where: { id: inspectionId },
+            select: { property: { select: { name: true } } },
+          })
+        )?.property?.name;
 
-      await NotificationService.createNotification(
-        {
+        const { notifyUser } = await import('./notify');
+        await notifyUser({
+          userId: receiverId,
           sourceId: senderId,
-          destId: receiverId,
+          type: 'inspection_dispute_message',
           title: 'Inspection Dispute Reply',
           message: propertyName
             ? `New dispute message for the inspection at ${propertyName}.`
             : 'New dispute message on an inspection report.',
-          notificationType: 'inspection_dispute_message',
-          route: senderId === tenantUserId
-            ? `/service/inspections/${inspectionId}`
-            : `/inspections/${inspectionId}`,
-          // privateMessage already toasts — persist for bell only
+          route:
+            senderId === tenantUserId
+              ? `/service/inspections/${inspectionId}`
+              : `/inspections/${inspectionId}`,
+          // privateMessage already toasts — bell + push only
           emitRealtime: false,
-          type: 'info',
-        },
-        'COMMUNICATION'
-      );
-    } catch (notifErr) {
-      console.warn('Failed to send inspection dispute message notification', notifErr);
+          channels: ['IN_APP', 'PUSH'],
+        });
+      } catch (notifErr) {
+        console.warn(
+          'Failed to send inspection dispute message notification',
+          notifErr
+        );
+      }
     }
 
     return message;

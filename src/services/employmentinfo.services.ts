@@ -246,6 +246,17 @@ class EmploymentService {
       if (created) {
         await applicantService.updateApplicationStatus(applicationId, ApplicationStatus.EMPLOYEE_REFERENCE)
       }
+
+      try {
+        const { notifyReferenceSubmitted } = await import('./leasingNotification.service');
+        await notifyReferenceSubmitted({
+          applicationId,
+          referenceKind: 'employer',
+        });
+      } catch (notifyError) {
+        console.error('Failed to notify on employer reference submit:', notifyError);
+      }
+
       return created
     } catch (error) {
       throw new Error(`Error creating employee reference: ${error}`);

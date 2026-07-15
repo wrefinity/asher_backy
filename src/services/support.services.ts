@@ -2,6 +2,25 @@ import { prismaClient } from "..";
 import { TicketStatus } from "@prisma/client";
 import openRouterService from './openrouter.service';
 
+async function supportTicketRouteForUser(
+  userId: string,
+  ticketId: string
+): Promise<string> {
+  try {
+    const user = await prismaClient.users.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    const roles = (user?.role || []).map((r) => String(r).toUpperCase());
+    if (roles.some((r) => r.includes('TENANT'))) {
+      return `/supports/chatSupport?ticketId=${ticketId}`;
+    }
+  } catch {
+    /* fall through to landlord route */
+  }
+  return `/service/support?ticketId=${ticketId}`;
+}
+
 export class SupportService {
   /**
    * Generate ticket code: [2 initials][1 random letter]-[DDMMYYHHMM]
@@ -652,21 +671,18 @@ export class SupportService {
             serverInstance.io.to(`user:${userId}`).emit("ticket_message_added", eventData);
 
             try {
-              const NotificationService = (await import("./notification.service")).default;
-              await NotificationService.createNotification(
-                {
-                  sourceId: senderId,
-                  destId: userId,
-                  title: "Support Ticket Update",
-                  message: `New message on support ticket ${ticket.ticketCode}`,
-                  notificationType: "support_ticket_message",
-                  route: "/service/support",
-                  type: "info",
-                  // ticket_message_added already delivers live UI — persist for bell only
-                  emitRealtime: false,
-                },
-                "SUPPORT_TICKET"
-              );
+              const { notifyUser } = await import("./notify");
+              const route = await supportTicketRouteForUser(userId, ticket.id);
+              await notifyUser({
+                userId,
+                sourceId: senderId,
+                type: "support_ticket_message",
+                title: "Support Ticket Update",
+                message: `New message on support ticket ${ticket.ticketCode}`,
+                route,
+                // ticket_message_added already delivers live UI — persist for bell only
+                emitRealtime: false,
+              });
             } catch (notifyError) {
               console.error("Failed to persist support ticket message notification:", notifyError);
             }
@@ -952,19 +968,15 @@ export class SupportService {
           serverInstance.io.to(`user:${userId}`).emit("ticket_status_updated", eventData);
 
           try {
-            const NotificationService = (await import("./notification.service")).default;
-            await NotificationService.createNotification(
-              {
-                destId: userId,
-                title: "Support Ticket Status Updated",
-                message: `Support ticket ${updatedTicket.ticketCode} is now ${status}`,
-                notificationType: "support_ticket_status",
-                route: "/service/support",
-                type: "info",
-                emitRealtime: true,
-              },
-              "SUPPORT_TICKET"
-            );
+            const { notifyUser } = await import("./notify");
+            const route = await supportTicketRouteForUser(userId, updatedTicket.id);
+            await notifyUser({
+              userId,
+              type: "support_ticket_status",
+              title: "Support Ticket Status Updated",
+              message: `Support ticket ${updatedTicket.ticketCode} is now ${status}`,
+              route,
+            });
           } catch (notifyError) {
             console.error("Failed to persist support ticket status notification:", notifyError);
           }

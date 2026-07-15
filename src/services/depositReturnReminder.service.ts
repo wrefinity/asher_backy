@@ -1,7 +1,6 @@
-import { MoveOutNoticeStatus, NotificationCategory } from '@prisma/client';
+import { MoveOutNoticeStatus } from '@prisma/client';
 import { prismaClient } from '..';
 import LandlordSettingsService from '../landlord/services/propertySetting.service';
-import NotificationService from './notification.service';
 import { resolveFinancialRules } from '../utils/globalSettings.util';
 import { computeDepositReturnDeadline, startOfCalendarDay } from '../utils/settingsEnforcement.util';
 import loggers from '../utils/loggers';
@@ -103,31 +102,24 @@ class DepositReturnReminderService {
           : `Deposit return deadline for ${propertyName} is ${deadlineLabel} (${remaining} day${remaining === 1 ? '' : 's'} remaining).`;
 
       try {
-        await NotificationService.createNotification(
-          {
-            sourceId: landlordUserId,
-            destId: tenantUserId,
-            title: tenantTitle,
-            message: tenantMessage,
-            notificationType: 'deposit_return_reminder',
-            route: '/profile/TenancyInfo',
-          },
-          NotificationCategory.MOVE_OUT
-        );
+        const { notifyUser } = await import('./notify');
+        await notifyUser({
+          userId: tenantUserId,
+          sourceId: landlordUserId,
+          type: 'deposit_return_reminder',
+          title: tenantTitle,
+          message: tenantMessage,
+          route: '/profile/TenancyInfo',
+        });
 
-        await NotificationService.createNotification(
-          {
-            sourceId: tenantUserId,
-            destId: landlordUserId,
-            title: landlordTitle,
-            message: landlordMessage,
-            notificationType: 'deposit_return_reminder',
-            route: '/tenants/move-out-notices',
-            emitRealtime: true,
-            type: 'warning',
-          },
-          NotificationCategory.MOVE_OUT
-        );
+        await notifyUser({
+          userId: landlordUserId,
+          sourceId: tenantUserId,
+          type: 'deposit_return_reminder',
+          title: landlordTitle,
+          message: landlordMessage,
+          route: '/tenants/move-out-notices',
+        });
 
         const nextMeta: DepositReminderMeta = {
           ...meta,

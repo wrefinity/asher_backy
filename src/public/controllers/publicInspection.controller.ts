@@ -5,9 +5,7 @@ import { ApiResponse } from '../../utils/ApiResponse';
 import { ApiError } from '../../utils/ApiError';
 import InspectionGuestService from '../../services/inspectionGuest.service';
 import InspectionPhotoService from '../../services/inspectionPhoto.service';
-import NotificationService from '../../services/notification.service';
 import { prismaClient } from '../..';
-import { NotificationCategory } from '@prisma/client';
 
 function mapGuestErr(err: any): never {
   if (err?.message === 'INVALID_TOKEN') throw ApiError.notFound('Invalid inspection link');
@@ -221,18 +219,13 @@ class PublicInspectionController {
       });
 
       if (landlord?.userId) {
-        await NotificationService.createNotification(
-          {
-            destId: landlord.userId,
-            title: 'Guest inspection submitted',
-            message: `${updated.guestInspectorName || 'Guest inspector'} submitted the inspection for ${updated.property.name || 'your property'}. Add landlord (and tenant) signatures, then complete it.`,
-            notificationType: 'inspection_guest_submitted',
-            route: `/service/inspections/${updated.id}`,
-            emitRealtime: true,
-            type: 'info',
-          },
-          NotificationCategory.COMMUNICATION
-        );
+        const { notifyUser } = await import('../../services/notify');
+        await notifyUser({
+          userId: landlord.userId,
+          type: 'inspection_guest_submitted',
+          message: `${updated.guestInspectorName || 'Guest inspector'} submitted the inspection for ${updated.property.name || 'your property'}. Add landlord (and tenant) signatures, then complete it.`,
+          route: `/service/inspections/${updated.id}`,
+        });
       }
 
       return res.status(200).json(

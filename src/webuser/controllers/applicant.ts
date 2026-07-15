@@ -296,6 +296,9 @@ class ApplicantControls {
 
       if (paymentMethod === 'wallet') {
         const result = await applicationFeeService.payFromWallet(applicationId, userId);
+        if ((result as any)?.paid && !(result as any)?.alreadyPaid) {
+          await this.notifyLandlordApplicationFeePaid(applicationId, userId);
+        }
         return res.status(200).json(result);
       }
 
@@ -330,6 +333,9 @@ class ApplicantControls {
         paymentGateway as PaymentGateway,
         applicationId
       );
+      if ((result as any)?.paid) {
+        await this.notifyLandlordApplicationFeePaid(applicationId, userId);
+      }
       return res.status(200).json(result);
     } catch (error) {
       ErrorService.handleError(error, res);
@@ -405,6 +411,32 @@ class ApplicantControls {
         ApplicantService.updateInvites(application.applicationInviteId, { response: InvitedResponse.SUBMITTED }),
         sendApplicationCompletionEmails(applicationExist)
       ]);
+
+      try {
+        const { notifyUser } = await import('../../services/notify');
+        const { resolveApplicationPropertyLandlordUser } = await import(
+          '../../utils/resolveApplicationLandlord'
+        );
+        const landlordUser = await resolveApplicationPropertyLandlordUser(
+          applicationExist
+        );
+        if (landlordUser?.id) {
+          const propertyName =
+            (applicationExist as any)?.properties?.name ||
+            (applicationExist as any)?.applicationInvites?.properties?.name ||
+            'your listing';
+          await notifyUser({
+            userId: landlordUser.id,
+            sourceId: userId,
+            type: 'application_submitted',
+            message: `A new application was submitted for ${propertyName}.`,
+            route: `/leasing`,
+          });
+        }
+      } catch (notifyError) {
+        console.error('Failed to notify landlord of application submission:', notifyError);
+      }
+
       return res.status(200).json(application);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -946,6 +978,22 @@ class ApplicantControls {
       }
 
       const invite = await ApplicantService.updateInvites(id, value);
+
+      if (value.response) {
+        try {
+          const { notifyTenantInviteResponse } = await import(
+            '../../services/leasingNotification.service'
+          );
+          await notifyTenantInviteResponse({
+            invite: invite || inviteExist,
+            response: value.response,
+            actorUserId: req.user?.id,
+          });
+        } catch (notifyError) {
+          console.error('Failed to notify landlord of invite response:', notifyError);
+        }
+      }
+
       return res.status(200).json({ invite });
     } catch (error: unknown) {
       ErrorService.handleError(error, res);
@@ -1086,20 +1134,14 @@ class ApplicantControls {
 
       try {
         if (landlord.user?.id) {
-          const NotificationService = (await import('../../services/notification.service')).default;
-          await NotificationService.createNotification(
-            {
-              sourceId: userId,
-              destId: landlord.user.id,
-              title: 'Agreement Signed by Applicant',
-              message: `An applicant signed the agreement for ${agreement.application?.properties?.name || 'a property'}. Please counter-sign.`,
-              notificationType: 'agreement_signed',
-              route: '/leasing',
-              emitRealtime: true,
-              type: 'success',
-            },
-            'WEBSITE_INQUIRY'
-          );
+          const { notifyUser } = await import('../../services/notify');
+          await notifyUser({
+            userId: landlord.user.id,
+            sourceId: userId,
+            type: 'application_agreement_signed',
+            message: `An applicant signed the agreement for ${agreement.application?.properties?.name || 'a property'}. Please counter-sign.`,
+            route: '/leasing',
+          });
         }
       } catch (notifyError) {
         console.error('Failed to notify landlord of agreement signature:', notifyError);
@@ -1121,6 +1163,46 @@ class ApplicantControls {
       });
     } catch (error) {
       ErrorService.handleError(error, res);
+    }
+  };
+
+  private notifyLandlordApplicationFeePaid = async (
+    applicationId: string,
+    payerUserId: string
+  ) => {
+    try {
+      const application = await ApplicantService.getApplicationById(applicationId);
+      if (!application) return;
+      const { notifyUser } = await import('../../services/notify');
+      const { resolveApplicationPropertyLandlordUser } = await import(
+        '../../utils/resolveApplicationLandlord'
+      );
+      const landlordUser = await resolveApplicationPropertyLandlordUser(
+        application as any
+      );
+      if (!landlordUser?.id) return;
+      const propertyName =
+        (application as any)?.properties?.name ||
+        (application as any)?.applicationInvites?.properties?.name ||
+        'your listing';
+      await notifyUser({
+        userId: landlordUser.id,
+        sourceId: payerUserId,
+        type: 'application_fee_paid',
+        message: `Application fee received for ${propertyName}.`,
+        route: '/leasing',
+      });
+      // Confirm fee payment to the applicant as well
+      await notifyUser({
+        userId: payerUserId,
+        type: 'application_fee_paid',
+        title: 'Application fee paid',
+        message: `Your application fee for ${propertyName} was received.`,
+        route: `/dashboard/applications/${applicationId}/apply`,
+        channels: ['IN_APP', 'PUSH'],
+      });
+    } catch (error) {
+      console.error('Failed to notify landlord of application fee payment:', error);
     }
   };
 }

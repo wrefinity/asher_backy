@@ -1,11 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { NotificationCategory } from '@prisma/client';
 import { prismaClient } from '..';
-import NotificationService from './notification.service';
-import { sendPreferenceAwareMail } from '../utils/sendPreferenceAwareMail';
 import { getClientIpFromRequest } from '../utils/currencyContext';
-import loggers from '../utils/loggers';
 
 const ACCESS_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -162,32 +158,16 @@ class LoginSessionService {
     const title = 'New login to your account';
     const message = `Signed in on ${deviceLabel}${location}.`;
 
-    await NotificationService.createNotification(
-      {
-        destId: userId,
-        title,
-        message,
-        category: NotificationCategory.SECURITY,
-        notificationType: 'login_activity',
-        route: '/settings',
-        emitRealtime: true,
-        type: 'warning',
-      },
-      NotificationCategory.SECURITY
-    );
-
-    if (userEmail) {
-      await sendPreferenceAwareMail({
-        userId,
-        category: NotificationCategory.SECURITY,
-        notificationType: 'login_activity',
-        to: userEmail,
-        subject: title,
-        html: `<p>${message}</p><p>If this wasn't you, change your password and review active sessions in Settings.</p>`,
-      }).catch(err => {
-        loggers.warn('Login activity email failed', err);
-      });
-    }
+    const { notifyUser } = await import('./notify');
+    await notifyUser({
+      userId,
+      type: 'login_activity',
+      title,
+      message,
+      route: '/settings',
+      emailHtml: `<p>${message}</p><p>If this wasn't you, change your password and review active sessions in Settings.</p>`,
+      emailSubject: title,
+    });
   }
 
   async listSessions(userId: string, currentToken?: string | null) {

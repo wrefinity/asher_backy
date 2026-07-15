@@ -6,7 +6,6 @@ import { ApiError } from '../../utils/ApiError';
 import { prismaClient } from '../..';
 import InspectionService from '../../services/inspection.services';
 import InspectionCertificateService from '../../services/inspectionCertificate.service';
-import NotificationService from '../../services/notification.service';
 import InspectionChatService from '../../services/inspectionChat.service';
 import InspectionActivityLogService from '../../services/inspectionActivityLog.service';
 import {
@@ -246,6 +245,28 @@ class TenantInspectionController {
       },
     });
 
+    try {
+      const { notifyUser, resolveLandlordUserFromPropertyId } = await import(
+        '../../services/notify'
+      );
+      const landlord = await resolveLandlordUserFromPropertyId(updated.propertyId);
+      if (landlord?.userId && landlord.userId !== userId) {
+        const propertyName =
+          (updated as { property?: { name?: string | null } }).property?.name ||
+          'your property';
+        await notifyUser({
+          userId: landlord.userId,
+          sourceId: userId,
+          type: 'inspection_schedule_acknowledged',
+          title: 'Schedule acknowledged',
+          message: `Tenant acknowledged the inspection schedule for ${propertyName}.`,
+          route: `/service/inspections/${updated.id}`,
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('Non-critical: schedule-ack landlord notify failed', notifyErr);
+    }
+
     return res.status(200).json(
       ApiResponse.success(
         { inspection: mapInspectionForTenant(updated) },
@@ -351,27 +372,30 @@ class TenantInspectionController {
 
       if (landlord?.userId) {
         sideEffects.push(
-          NotificationService.createNotification(
-            {
-              sourceId: userId,
-              destId: landlord.userId,
-              title: hasDisputes
-                ? 'Inspection Acknowledged With Disputes'
-                : 'Inspection Acknowledged',
-              message: hasDisputes
-                ? `The tenant acknowledged the inspection for ${property.name} but raised disputes. Please review their comments.`
-                : `The tenant has acknowledged the inspection report for ${property.name}.`,
-              notificationType: hasDisputes
-                ? 'inspection_disputed'
-                : 'inspection_acknowledged',
-              route: `/service/inspections/${id}`,
-              emitRealtime: true,
-              type: hasDisputes ? 'warning' : 'info',
-            },
-            'COMMUNICATION'
-          ).catch((notifErr) => {
-            console.warn('Failed to notify landlord about inspection acknowledgment', notifErr);
-          })
+          (async () => {
+            try {
+              const { notifyUser } = await import('../../services/notify');
+              await notifyUser({
+                userId: landlord.userId,
+                sourceId: userId,
+                type: hasDisputes
+                  ? 'inspection_disputed'
+                  : 'inspection_acknowledged',
+                title: hasDisputes
+                  ? 'Inspection Acknowledged With Disputes'
+                  : 'Inspection Acknowledged',
+                message: hasDisputes
+                  ? `The tenant acknowledged the inspection for ${property.name} but raised disputes. Please review their comments.`
+                  : `The tenant has acknowledged the inspection report for ${property.name}.`,
+                route: `/service/inspections/${id}`,
+              });
+            } catch (notifErr) {
+              console.warn(
+                'Failed to notify landlord about inspection acknowledgment',
+                notifErr
+              );
+            }
+          })()
         );
       }
     }
@@ -568,7 +592,13 @@ class TenantInspectionController {
 
     try {
       await InspectionChatService.ensureDisputeChatRoom(id);
-      await InspectionChatService.sendDisputeMessage(id, userId, comments.trim());
+      // Opening message is covered by inspection_disputed notify below — avoid double bell.
+      await InspectionChatService.sendDisputeMessage(
+        id,
+        userId,
+        comments.trim(),
+        { skipNotification: true }
+      );
     } catch (chatErr) {
       console.warn('Failed to open dispute chat after raise-dispute', chatErr);
     }
@@ -589,21 +619,24 @@ class TenantInspectionController {
 
       if (landlord?.userId) {
         sideEffects.push(
-          NotificationService.createNotification(
-            {
-              sourceId: userId,
-              destId: landlord.userId,
-              title: 'Inspection dispute raised',
-              message: `The tenant raised a dispute on the inspection for ${property.name}. Please review their comments.`,
-              notificationType: 'inspection_disputed',
-              route: `/service/inspections/${id}`,
-              emitRealtime: true,
-              type: 'warning',
-            },
-            'COMMUNICATION'
-          ).catch((notifyErr) => {
-            console.warn('Failed to notify landlord of inspection dispute', notifyErr);
-          })
+          (async () => {
+            try {
+              const { notifyUser } = await import('../../services/notify');
+              await notifyUser({
+                userId: landlord.userId,
+                sourceId: userId,
+                type: 'inspection_disputed',
+                title: 'Inspection dispute raised',
+                message: `The tenant raised a dispute on the inspection for ${property.name}. Please review their comments.`,
+                route: `/service/inspections/${id}`,
+              });
+            } catch (notifyErr) {
+              console.warn(
+                'Failed to notify landlord of inspection dispute',
+                notifyErr
+              );
+            }
+          })()
         );
       }
     }

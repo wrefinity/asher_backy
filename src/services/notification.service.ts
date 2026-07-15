@@ -18,6 +18,11 @@ interface NotificationData {
     notificationType?: string;
     route?: string;
     skipPush?: boolean;
+    /**
+     * When set, only attempt these channels (still gated by prefs).
+     * Prefer notifyUser() which sets this from the event registry.
+     */
+    channels?: Array<'IN_APP' | 'PUSH'>;
     /** When true, also emit Socket.IO `notification` to `user:{destId}` */
     emitRealtime?: boolean;
     type?: 'info' | 'success' | 'warning' | 'error';
@@ -103,21 +108,30 @@ class NotificationService {
             mapNotificationTypeToCategory(typeKey) || 
             'COMMUNICATION'; // Default category
 
+        const channelFilter = data.channels?.length
+            ? new Set(data.channels)
+            : null;
+        const attemptInApp = !channelFilter || channelFilter.has('IN_APP');
+        const attemptPush =
+            !data.skipPush && (!channelFilter || channelFilter.has('PUSH'));
+
         const [shouldSendInApp, shouldSendPush] = await Promise.all([
-            shouldSendNotification(
-                data.destId,
-                notificationCategory as NotificationCategory,
-                typeKey,
-                'IN_APP'
-            ),
-            data.skipPush
-                ? Promise.resolve(false)
-                : shouldSendNotification(
+            attemptInApp
+                ? shouldSendNotification(
+                    data.destId,
+                    notificationCategory as NotificationCategory,
+                    typeKey,
+                    'IN_APP'
+                )
+                : Promise.resolve(false),
+            attemptPush
+                ? shouldSendNotification(
                     data.destId,
                     notificationCategory as NotificationCategory,
                     typeKey,
                     'PUSH'
-                ),
+                )
+                : Promise.resolve(false),
         ]);
 
         if (!shouldSendInApp && !shouldSendPush) {
@@ -199,6 +213,22 @@ class NotificationService {
                 } catch (emitError) {
                     console.error('Failed to emit realtime notification:', emitError);
                 }
+            }
+
+            // Push-only: no DB row, but delivery happened — return a lightweight marker
+            // so callers (notifyUser) can tell "blocked" apart from "push ok, no inbox row".
+            if (!notification && shouldSendPush) {
+                return {
+                    id: null,
+                    destId: data.destId,
+                    title: data.title,
+                    message: data.message,
+                    category: notificationCategory,
+                    notificationType: data.notificationType || null,
+                    route: data.route || null,
+                    isRead: true,
+                    createdAt: new Date(),
+                } as any;
             }
 
             return notification;

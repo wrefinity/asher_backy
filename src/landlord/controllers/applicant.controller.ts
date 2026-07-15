@@ -102,6 +102,24 @@ class ApplicationControls {
             const applicationId = req.params?.applicationId;
             const application = await ApplicationService.updateApplicationStatus(applicationId, ApplicationStatus.MAKEPAYMENT);
             if (!application) return res.status(400).json({ message: "application doesn't exist" });
+
+            try {
+                const fullApp = await applicantService.getApplicationById(applicationId);
+                const { notifyMoveInPaymentRequested } = await import(
+                    '../../services/leasingNotification.service'
+                );
+                await notifyMoveInPaymentRequested({
+                    applicantUserId: fullApp?.userId || fullApp?.user?.id,
+                    actorUserId: req.user?.id,
+                    applicationId,
+                    propertyName:
+                        fullApp?.properties?.name ||
+                        fullApp?.applicationInvites?.properties?.name,
+                });
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of move-in payment request:', notifyError);
+            }
+
             return res.status(200).json({ application });
         } catch (error) {
             errorService.handleError(error, res)
@@ -112,6 +130,24 @@ class ApplicationControls {
             const applicationId = req.params?.applicationId;
             const application = await ApplicationService.updateApplicationStatus(applicationId, ApplicationStatus.DECLINED);
             if (!application) return res.status(400).json({ message: "property doesn't exist" });
+
+            try {
+                const fullApp = await applicantService.getApplicationById(applicationId);
+                const applicantUserId = fullApp?.userId || fullApp?.user?.id;
+                if (applicantUserId) {
+                    const { notifyUser } = await import('../../services/notify');
+                    await notifyUser({
+                        userId: applicantUserId,
+                        sourceId: req.user?.id,
+                        type: 'application_declined',
+                        message: 'Your property application was declined.',
+                        route: `/dashboard/applications/${applicationId}/progress`,
+                    });
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of decline:', notifyError);
+            }
+
             return res.status(200).json({
                 message: "Application declined successfully",
                 action: "DECLINED",
@@ -340,22 +376,17 @@ class ApplicationControls {
             });
 
             try {
-                const NotificationService = (await import('../../services/notification.service')).default;
-                await NotificationService.createNotification(
-                    {
-                        sourceId: req.user?.id,
-                        destId: value.userInvitedId,
-                        title: 'Property Viewing Invite',
-                        message: value?.scheduleDate
-                            ? `You have been invited to a property viewing on ${value.scheduleDate}.`
-                            : 'You have been invited to a property viewing. Please respond in your dashboard.',
-                        notificationType: 'viewing_invite',
-                        route: '/dashboard',
-                        emitRealtime: true,
-                        type: 'info',
-                    },
-                    'COMMUNICATION'
-                );
+                const { notifyUser } = await import('../../services/notify');
+                await notifyUser({
+                    userId: value.userInvitedId,
+                    sourceId: req.user?.id,
+                    type: 'viewing_invite',
+                    title: 'Property Viewing Invite',
+                    message: value?.scheduleDate
+                        ? `You have been invited to a property viewing on ${value.scheduleDate}.`
+                        : 'You have been invited to a property viewing. Please respond in your dashboard.',
+                    route: `/dashboard/property-viewings/${invite.id}`,
+                });
             } catch (notifyError) {
                 console.error('Failed to notify invitee of viewing invite:', notifyError);
             }
@@ -448,22 +479,17 @@ class ApplicationControls {
 
             try {
                 if (userExist?.id) {
-                    const NotificationService = (await import('../../services/notification.service')).default;
-                    await NotificationService.createNotification(
-                        {
-                            sourceId: req.user?.id,
-                            destId: userExist.id,
-                            title: 'Property Viewing Invite',
-                            message: value?.scheduleDate
-                                ? `You have been invited to a property viewing on ${value.scheduleDate}.`
-                                : 'You have been invited to a property viewing. Please respond in your dashboard.',
-                            notificationType: 'viewing_invite',
-                            route: '/dashboard',
-                            emitRealtime: true,
-                            type: 'info',
-                        },
-                        'COMMUNICATION'
-                    );
+                    const { notifyUser } = await import('../../services/notify');
+                    await notifyUser({
+                        userId: userExist.id,
+                        sourceId: req.user?.id,
+                        type: 'viewing_invite',
+                        title: 'Property Viewing Invite',
+                        message: value?.scheduleDate
+                            ? `You have been invited to a property viewing on ${value.scheduleDate}.`
+                            : 'You have been invited to a property viewing. Please respond in your dashboard.',
+                        route: `/dashboard/property-viewings/${invite.id}`,
+                    });
                 }
             } catch (notifyError) {
                 console.error('Failed to notify invitee of viewing invite:', notifyError);
@@ -589,6 +615,26 @@ class ApplicationControls {
 
             // Update invite with validated data
             const updatedInvite = await ApplicationInvitesService.updateInvite(id, updateDate, enquiryId);
+
+            if (updateDate.response) {
+                try {
+                    const { notifyLandlordInviteResponse } = await import(
+                        '../../services/leasingNotification.service'
+                    );
+                    await notifyLandlordInviteResponse({
+                        invite: updatedInvite || invite,
+                        response: updateDate.response,
+                        actorUserId: req.user?.id,
+                        applicationId:
+                            updatedInvite?.application?.id ||
+                            invite?.application?.id ||
+                            null,
+                    });
+                } catch (notifyError) {
+                    console.error('Failed to notify applicant of invite update:', notifyError);
+                }
+            }
+
             return res.status(200).json({ updatedInvite });
 
         } catch (error) {
@@ -682,6 +728,27 @@ class ApplicationControls {
                         };
                     }
                 }
+            }
+
+            try {
+                const applicantUserId = enquiry?.createdById || null;
+                if (applicantUserId) {
+                    let propertyName: string | null = null;
+                    if (enquiry?.propertyId) {
+                        const prop = await propertyServices.getPropertiesById(enquiry.propertyId);
+                        propertyName = prop?.name ?? null;
+                    }
+                    const { notifyEnquiryRejected } = await import(
+                        '../../services/leasingNotification.service'
+                    );
+                    await notifyEnquiryRejected({
+                        applicantUserId,
+                        actorUserId: req.user?.id,
+                        propertyName,
+                    });
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of enquiry rejection:', notifyError);
             }
 
             return res.status(200).json({ leasingUpdated, applicationFeeRefund });
@@ -792,27 +859,19 @@ class ApplicationControls {
                     (value.status === ApplicationStatus.APPROVED ||
                         value.status === ApplicationStatus.DECLINED)
                 ) {
-                    const NotificationService = (await import('../../services/notification.service')).default;
+                    const { notifyUser } = await import('../../services/notify');
                     const approved = value.status === ApplicationStatus.APPROVED;
-                    await NotificationService.createNotification(
-                        {
-                            sourceId: req.user?.id,
-                            destId: applicantUserId,
-                            title: approved
-                                ? 'Application Approved'
-                                : 'Application Declined',
-                            message: approved
-                                ? 'Your property application was approved. Check your dashboard for next steps.'
-                                : 'Your property application was declined.',
-                            notificationType: approved
-                                ? 'application_approved'
-                                : 'application_declined',
-                            route: '/dashboard',
-                            emitRealtime: true,
-                            type: approved ? 'success' : 'error',
-                        },
-                        'COMMUNICATION'
-                    );
+                    await notifyUser({
+                        userId: applicantUserId,
+                        sourceId: req.user?.id,
+                        type: approved
+                            ? 'application_approved'
+                            : 'application_declined',
+                        message: approved
+                            ? 'Your property application was approved. Check your dashboard for next steps.'
+                            : 'Your property application was declined.',
+                        route: `/dashboard/applications/${applicationId}/progress`,
+                    });
                 }
             } catch (notifyError) {
                 console.error('Failed to notify applicant of application status:', notifyError);
@@ -1263,20 +1322,15 @@ class ApplicationControls {
 
             try {
                 if (application.user?.id) {
-                    const NotificationService = (await import('../../services/notification.service')).default;
-                    await NotificationService.createNotification(
-                        {
-                            sourceId: req.user.id,
-                            destId: application.user.id,
-                            title: 'Agreement Form Ready',
-                            message: `Please review and sign the agreement for ${propertyName}.`,
-                            notificationType: 'agreement_sent',
-                            route: '/dashboard',
-                            emitRealtime: true,
-                            type: 'info',
-                        },
-                        'COMMUNICATION'
-                    );
+                    const { notifyUser } = await import('../../services/notify');
+                    await notifyUser({
+                        userId: application.user.id,
+                        sourceId: req.user.id,
+                        type: 'application_agreement_sent',
+                        title: 'Agreement Form Ready',
+                        message: `Please review and sign the agreement for ${propertyName}.`,
+                        route: '/dashboard',
+                    });
                 }
             } catch (notifyError) {
                 console.error('Failed to notify applicant of agreement form:', notifyError);
@@ -1431,6 +1485,20 @@ class ApplicationControls {
               }).catch((emailError) => {
                 logger.error('Failed to send landlord counter-sign email:', emailError);
               });
+            }
+
+            try {
+                const { notifyAgreementCounterSigned } = await import(
+                    '../../services/leasingNotification.service'
+                );
+                await notifyAgreementCounterSigned({
+                    applicantUserId: tenantUser?.id || agreement.application?.userId,
+                    actorUserId: userId,
+                    applicationId: agreement.applicationId,
+                    propertyName: agreement.application?.properties?.name,
+                });
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of counter-sign:', notifyError);
             }
 
             await logsServices.createLog({

@@ -700,7 +700,7 @@ class MaintenanceService {
       });
 
       try {
-        const NotificationService = (await import('./notification.service')).default;
+        const { notifyUser } = await import('./notify');
         const parties = await prismaClient.maintenance.findUnique({
           where: { id: maintenanceId },
           select: {
@@ -714,19 +714,14 @@ class MaintenanceService {
           ? `/service/maintenance/landlord/${maintenanceId}`
           : `/settings/shared/MaintenanceStatusScreen?id=${maintenanceId}`;
 
-        await NotificationService.createNotification(
-          {
-            sourceId: senderId,
-            destId: receiverId,
-            title: 'Maintenance Message',
-            message: initialMessage.slice(0, 240),
-            notificationType: 'maintenance_request_message',
-            route,
-            type: 'info',
-            emitRealtime: true,
-          },
-          'MAINTENANCE_REQUESTS'
-        );
+        await notifyUser({
+          userId: receiverId,
+          sourceId: senderId,
+          type: 'maintenance_chat_message',
+          title: 'Maintenance Message',
+          message: initialMessage.slice(0, 240),
+          route,
+        });
       } catch (notifyError) {
         console.error('Failed to notify maintenance chat recipient:', notifyError);
       }

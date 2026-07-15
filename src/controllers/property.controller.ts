@@ -229,28 +229,49 @@ class PropertyController {
             })
 
             try {
-                const landlordId = propertyListing.property?.landlordId;
-                if (landlordId) {
-                    const landlord = await prismaClient.landlords.findUnique({
-                        where: { id: landlordId },
-                        select: { userId: true },
+                const {
+                    notifyUser,
+                    resolveLandlordUserFromListingId,
+                } = await import('../services/notify');
+                const landlordUser = await resolveLandlordUserFromListingId(
+                    propertyListingId
+                );
+
+                // Ensure leasing list can attribute the log if listing lacked propertyId
+                if (!propsId && landlordUser?.propertyId) {
+                  try {
+                    await prismaClient.log.update({
+                      where: { id: log.id },
+                      data: { propertyId: landlordUser.propertyId },
                     });
-                    if (landlord?.userId) {
-                        const NotificationService = (await import('../services/notification.service')).default;
-                        await NotificationService.createNotification(
+                  } catch {
+                    /* non-critical */
+                  }
+                }
+
+                if (landlordUser?.userId) {
+                    const result = await notifyUser({
+                        userId: landlordUser.userId,
+                        sourceId: createdById,
+                        type: 'website_inquiry',
+                        message: String(message).slice(0, 240),
+                        route: '/leasing',
+                    });
+                    if (!result.inAppId && !result.pushed && !result.emailed) {
+                        console.warn(
+                            '[enquireProperty] notifyUser delivered nothing',
                             {
-                                sourceId: createdById,
-                                destId: landlord.userId,
-                                title: 'New Website Enquiry',
-                                message: String(message).slice(0, 240),
-                                notificationType: 'website_inquiry',
-                                route: '/leasing',
-                                type: 'info',
-                                emitRealtime: true,
-                            },
-                            'WEBSITE_INQUIRY'
+                                listingId: propertyListingId,
+                                landlordUserId: landlordUser.userId,
+                                blockedByPrefs: result.blockedByPrefs,
+                            }
                         );
                     }
+                } else {
+                    console.warn(
+                        '[enquireProperty] could not resolve landlord for listing',
+                        propertyListingId
+                    );
                 }
             } catch (notifyError) {
                 console.error('Failed to notify landlord of website enquiry:', notifyError);

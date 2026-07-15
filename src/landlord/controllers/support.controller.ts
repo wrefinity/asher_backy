@@ -3,7 +3,7 @@ import { CustomRequest } from "../../utils/types";
 import errorService from "../../services/error.service";
 import { CreateSupportTicketSchema, UpdateSupportTicketSchema, UpdateSupportTicketStatusSchema } from "../validations/schema/supportSchema";
 import { SupportService } from "../../services/support.services";
-import NotificationService from "../../services/notification.service";
+import { notifyUser } from "../../services/notify";
 import { prismaClient } from "../..";
 import { userRoles } from "@prisma/client";
 import userServices from "../../services/user.services";
@@ -70,19 +70,15 @@ class SupportController {
                         ? `${user.profile.firstName} ${user.profile.lastName}`
                         : user?.email || 'A user');
 
-                // Create notification for each admin user
-                const notificationPromises = adminUsers.map(admin => 
-                    NotificationService.createNotification({
+                const notificationPromises = adminUsers.map((admin) =>
+                    notifyUser({
+                        userId: admin.id,
                         sourceId: user?.id,
-                        destId: admin.id,
+                        type: 'support_ticket_created',
                         title: 'New Support Ticket',
                         message: `${userName} created a new support ticket: "${data.subject}"`,
-                        category: 'SUPPORT_TICKET',
-                        notificationType: 'support_ticket_created',
-                        route: '/tickets',
-                        emitRealtime: true,
-                        type: 'info',
-                    }, 'SUPPORT_TICKET')
+                        route: '/service/support',
+                    })
                 );
 
                 await Promise.allSettled(notificationPromises);

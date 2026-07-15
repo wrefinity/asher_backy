@@ -4,6 +4,7 @@ import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import ViolationResponseService from "../../services/violations";
+import { notifyUser } from "../../services/notify";
 class ViolationController {
   constructor() { }
 
@@ -22,6 +23,23 @@ class ViolationController {
       evidenceUrl,
       tenantId: tenantId!
     });
+
+    try {
+      const landlordUserId = created.violation?.createdById;
+      if (landlordUserId && landlordUserId !== req.user?.id) {
+        await notifyUser({
+          userId: landlordUserId,
+          sourceId: req.user?.id,
+          type: 'violation_response',
+          title: 'Violation Response',
+          message: `A tenant responded to a violation notice (${created.responseType}).`,
+          route: `/tenants`,
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('Non-critical: violation response notify failed', notifyErr);
+    }
+
     return res.status(201).json(
       ApiResponse.success({ data: created })
     );

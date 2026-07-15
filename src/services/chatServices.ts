@@ -132,32 +132,44 @@ class ChatServices {
                 'New message';
             const preview = (content || '').trim().slice(0, 160) || 'You have a new message';
 
-            const [NotificationService, expoPushService] = await Promise.all([
-                import('./notification.service').then(({ default: service }) => service),
+            const [{ notifyUser }, expoPushService] = await Promise.all([
+                import('./notify'),
                 import('./expoPush.service').then(({ default: service }) => service),
             ]);
+
+            const receiver = await prismaClient.users.findUnique({
+                where: { id: receiverId },
+                select: { role: true },
+            });
+            const roles = (receiver?.role || []).map((r) => String(r).toUpperCase());
+            const isLandlordReceiver = roles.some((r) => r.includes('LANDLORD'));
+            const isTenantReceiver = roles.some((r) => r.includes('TENANT'));
+            // Audience-aware deep links: landlord web, tenant mobile, rental/applicant portal
+            const chatRoute = isLandlordReceiver
+                ? `/communication/chat?peer=${senderId}`
+                : isTenantReceiver
+                  ? `/chats/${senderId}`
+                  : `/dashboard/chats?peer=${senderId}`;
+
+            // In-app via registry; chat push stays on dedicated Expo template.
             const deliveryResults = await Promise.allSettled([
-                NotificationService.createNotification(
-                    {
-                        sourceId: senderId,
-                        destId: receiverId,
-                        title: 'New message',
-                        message: `${senderName}: ${preview}`,
-                        notificationType: 'chat_message',
-                        route: `/chats/${senderId}`,
-                        skipPush: true,
-                        // privateMessage already drives live toast — persist for bell only
-                        emitRealtime: false,
-                        type: 'info',
-                    },
-                    'COMMUNICATION'
-                ),
+                notifyUser({
+                    userId: receiverId,
+                    sourceId: senderId,
+                    type: 'chat_message',
+                    title: 'New message',
+                    message: `${senderName}: ${preview}`,
+                    route: chatRoute,
+                    channels: ['IN_APP'],
+                    // privateMessage already drives live toast — persist for bell only
+                    emitRealtime: false,
+                }),
                 expoPushService.sendChatToUser(receiverId, {
                     title: senderName,
                     body: preview,
                     data: {
                         type: 'chat_message',
-                        route: `/chats/${senderId}`,
+                        route: chatRoute,
                         senderId,
                     },
                 }),

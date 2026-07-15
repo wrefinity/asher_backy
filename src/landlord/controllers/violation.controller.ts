@@ -2,11 +2,10 @@ import { Response } from 'express';
 import ViolationService from '../../services/violations';
 
 import { CustomRequest } from '../../utils/types';
-import propertyServices from '../../services/propertyServices';
-import { ViolationSchema } from '../../validations/schemas/violations';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { ApiError } from '../../utils/ApiError';
 import { ApiResponse } from '../../utils/ApiResponse';
+import { notifyUser } from '../../services/notify';
 
 class ViolationController {
 
@@ -44,6 +43,27 @@ class ViolationController {
       createdById,
       dueDate,
     });
+
+    try {
+      const { prismaClient } = await import('../..');
+      const tenant = await prismaClient.tenants.findUnique({
+        where: { id: tenantId },
+        select: { userId: true },
+      });
+      if (tenant?.userId) {
+        const severity = violation.severityLevel || 'LOW';
+        await notifyUser({
+          userId: tenant.userId,
+          sourceId: createdById,
+          type: 'violation_created',
+          title: 'Violation Notice',
+          message: `You have received a ${severity} severity notice: ${description.slice(0, 140)}`,
+          route: '/profile/Notices',
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('Non-critical: violation create notify failed', notifyErr);
+    }
 
     return res.status(201).json(
       ApiResponse.success(violation, "Violation created successfully")

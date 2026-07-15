@@ -1,13 +1,11 @@
 import {
   MoveOutNoticeStatus,
   MoveOutNoticeType,
-  NotificationCategory,
   Prisma,
+  LogType,
 } from '@prisma/client';
 import { prismaClient } from '../db/prismaClient';
-import NotificationService from './notification.service';
 import LogsServices from './logs.services';
-import { LogType } from '@prisma/client';
 import InspectionMoveOutService from './inspectionMoveOut.service';
 import { appendActivityLogRef } from '../utils/activityLogRef.util';
 import LandlordSettingsService from '../landlord/services/propertySetting.service';
@@ -144,21 +142,16 @@ class MoveOutNoticeService {
       ? `/service/inspections/${inspection.id}?scheduleDraft=1`
       : '/service/inspections';
 
+    const { notifyUser } = await import('./notify');
     await Promise.all([
-      NotificationService.createNotification(
-        {
-          sourceId: tenant.userId,
-          destId: tenant.landlord.userId,
-          title: 'Tenant leaving — schedule walkthrough',
-          message: `${tenantName} submitted a move-out notice (${typeLabel}) for ${moveOutDateStr}. Reason: ${input.reason}. Open Inspections to set the appointment.`,
-          category: NotificationCategory.MOVE_OUT,
-          notificationType: 'tenant_move_out_notice',
-          emitRealtime: true,
-          type: 'warning',
-          route: scheduleRoute,
-        },
-        NotificationCategory.MOVE_OUT
-      ),
+      notifyUser({
+        userId: tenant.landlord.userId,
+        sourceId: tenant.userId,
+        type: 'move_out_notice',
+        title: 'Tenant leaving — schedule walkthrough',
+        message: `${tenantName} submitted a move-out notice (${typeLabel}) for ${moveOutDateStr}. Reason: ${input.reason}. Open Inspections to set the appointment.`,
+        route: scheduleRoute,
+      }),
       LogsServices.createLog({
         events: appendActivityLogRef(
           `${tenantName} submitted move-out notice (${typeLabel}) for ${moveOutDateStr}`,
@@ -284,22 +277,17 @@ class MoveOutNoticeService {
       },
     });
 
+    const { notifyUser } = await import('./notify');
     await Promise.all([
-      NotificationService.createNotification(
-        {
-          sourceId: acknowledgedByUserId,
-          destId: notice.tenant.userId,
-          title: 'Move-Out Notice Acknowledged',
-          message: depositReturn
-            ? `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}. Security deposit must be returned by ${depositReturn.deadline.toLocaleDateString('en-GB')} (${depositReturn.days} day${depositReturn.days === 1 ? '' : 's'} after move-out).`
-            : `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
-          notificationType: 'move_out_acknowledged',
-          route: '/profile/TenancyInfo',
-          emitRealtime: true,
-          type: 'info',
-        },
-        NotificationCategory.MOVE_OUT
-      ),
+      notifyUser({
+        userId: notice.tenant.userId,
+        sourceId: acknowledgedByUserId,
+        type: 'move_out_acknowledged',
+        message: depositReturn
+          ? `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}. Security deposit must be returned by ${depositReturn.deadline.toLocaleDateString('en-GB')} (${depositReturn.days} day${depositReturn.days === 1 ? '' : 's'} after move-out).`
+          : `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
+        route: '/profile/TenancyInfo',
+      }),
       LogsServices.createLog({
         events: appendActivityLogRef(
           `Landlord acknowledged move-out notice for ${notice.tenant.property?.name || 'the property'}`,

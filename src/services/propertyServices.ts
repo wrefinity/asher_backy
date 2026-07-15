@@ -4777,22 +4777,16 @@ class PropertyService {
                     : null;
 
                 if (landlord?.userId) {
-                    const NotificationService = (await import('./notification.service')).default;
-                    await NotificationService.createNotification(
-                        {
-                            sourceId: tenant?.userId || undefined,
-                            destId: landlord.userId,
-                            title: 'New Property Enquiry',
-                            message: data.subject
-                                ? `${data.subject}: ${data.message}`.slice(0, 240)
-                                : (data.message || 'You received a new property enquiry.').slice(0, 240),
-                            notificationType: 'website_inquiry',
-                            route: '/leasing',
-                            type: 'info',
-                            emitRealtime: true,
-                        },
-                        'WEBSITE_INQUIRY'
-                    );
+                    const { notifyUser } = await import('./notify');
+                    await notifyUser({
+                        userId: landlord.userId,
+                        sourceId: tenant?.userId || undefined,
+                        type: 'website_inquiry',
+                        message: data.subject
+                            ? `${data.subject}: ${data.message}`.slice(0, 240)
+                            : (data.message || 'You received a new property enquiry.').slice(0, 240),
+                        route: '/leasing',
+                    });
                 }
             }
         } catch (notifyError) {

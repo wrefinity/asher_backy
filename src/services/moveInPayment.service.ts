@@ -218,6 +218,27 @@ class MoveInPaymentService {
       return { alreadyPaid: true, context, paymentMethod: 'wallet' as const };
     }
 
+    try {
+      const { notifyMoveInPaymentReceived } = await import('./leasingNotification.service');
+      const amountLabel = `${context.currency} ${Number(context.totalAmount).toLocaleString()}`;
+      const property = context.propertyId
+        ? await prismaClient.properties.findUnique({
+            where: { id: context.propertyId },
+            select: { name: true },
+          })
+        : null;
+      await notifyMoveInPaymentReceived({
+        landlordUserId: context.landlordUserId,
+        applicantUserId: userId,
+        actorUserId: userId,
+        applicationId,
+        amountLabel,
+        propertyName: property?.name,
+      });
+    } catch (notifyError) {
+      console.error('Failed to notify on move-in payment:', notifyError);
+    }
+
     return { paid: true, context, paymentMethod: 'wallet' as const };
   }
 }

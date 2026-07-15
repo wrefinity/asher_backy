@@ -99,19 +99,14 @@ class QuoteService {
           quote.maintenance?.landlord?.user?.id ||
           quote.maintenance?.landlord?.userId;
         if (landlordUserId) {
-          const NotificationService = (await import('./notification.service')).default;
-          await NotificationService.createNotification(
-            {
-              destId: landlordUserId,
-              title: 'New Maintenance Quote',
-              message: `A vendor submitted a quote of ${amount} for your maintenance request.`,
-              notificationType: 'maintenance_new_invoice',
-              route: `/service/maintenance/landlord/${maintenanceId}`,
-              emitRealtime: true,
-              type: 'info',
-            },
-            'MAINTENANCE_REQUESTS'
-          );
+          const { notifyUser } = await import('./notify');
+          await notifyUser({
+            userId: landlordUserId,
+            type: 'maintenance_quote',
+            title: 'New Maintenance Quote',
+            message: `A vendor submitted a quote of ${amount} for your maintenance request.`,
+            route: `/service/maintenance/landlord/${maintenanceId}`,
+          });
         }
       } catch (notifyError) {
         console.error('Failed to notify landlord of new quote:', notifyError);
@@ -308,20 +303,15 @@ class QuoteService {
 
     try {
       if (updated.vendor?.userId) {
-        const NotificationService = (await import('./notification.service')).default;
-        await NotificationService.createNotification(
-          {
-            destId: updated.vendor.userId,
-            title: 'You have been picked',
-            message:
-              'A landlord accepted your quote. Confirm or decline the job in the Vendor app.',
-            notificationType: 'maintenance_status_change',
-            route: '/(app)/(tabs)',
-            emitRealtime: true,
-            type: 'success',
-          },
-          'MAINTENANCE_REQUESTS'
-        );
+        const { notifyUser } = await import('./notify');
+        await notifyUser({
+          userId: updated.vendor.userId,
+          type: 'maintenance_quote_accepted',
+          title: 'You have been picked',
+          message:
+            'A landlord accepted your quote. Confirm or decline the job in the Vendor app.',
+          route: '/(app)/(tabs)',
+        });
       }
     } catch (notifyError) {
       console.error('Failed to notify vendor of quote acceptance:', notifyError);
@@ -367,20 +357,15 @@ class QuoteService {
             })
           : null;
         if (landlord?.userId) {
-          const NotificationService = (await import('./notification.service')).default;
-          await NotificationService.createNotification(
-            {
-              destId: landlord.userId,
-              title: 'Vendor Declined Job',
-              message:
-                'A picked vendor declined the job. You can accept another pending quote.',
-              notificationType: 'maintenance_status_change',
-              route: `/service/maintenance/landlord/${quote.maintenanceId}`,
-              emitRealtime: true,
-              type: 'warning',
-            },
-            'MAINTENANCE_REQUESTS'
-          );
+          const { notifyUser } = await import('./notify');
+          await notifyUser({
+            userId: landlord.userId,
+            type: 'maintenance_quote_declined',
+            title: 'Vendor Declined Job',
+            message:
+              'A picked vendor declined the job. You can accept another pending quote.',
+            route: `/service/maintenance/landlord/${quote.maintenanceId}`,
+          });
         }
       } catch (notifyError) {
         console.error('Failed to notify landlord of vendor decline:', notifyError);
