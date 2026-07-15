@@ -8,7 +8,7 @@ import { LandlordService } from "../services/landlord.service";
 import TenantService from '../../services/tenant.service';
 import { ApplicationStatus, LogType, EnquireStatus, EnquiryStatus } from "@prisma/client"
 import { ReminderType, createApplicationInviteSchema, applicationReminderSchema, updateApplicationInviteSchema, agreementDocumentSchema, updateApplicationStatusSchema, updateAgreementSchema } from '../validations/schema/applicationInvitesSchema';
-import Emailer, { sendApplicationCompletionEmails } from "../../utils/emailer";
+import Emailer from "../../utils/emailer";
 import propertyServices from "../../services/propertyServices";
 import logsServices from "../../services/logs.services";
 import userServices from "../../services/user.services"
@@ -339,6 +339,27 @@ class ApplicationControls {
                 logger.error('Failed to send invitation email:', emailError);
             });
 
+            try {
+                const NotificationService = (await import('../../services/notification.service')).default;
+                await NotificationService.createNotification(
+                    {
+                        sourceId: req.user?.id,
+                        destId: value.userInvitedId,
+                        title: 'Property Viewing Invite',
+                        message: value?.scheduleDate
+                            ? `You have been invited to a property viewing on ${value.scheduleDate}.`
+                            : 'You have been invited to a property viewing. Please respond in your dashboard.',
+                        notificationType: 'viewing_invite',
+                        route: '/dashboard',
+                        emitRealtime: true,
+                        type: 'info',
+                    },
+                    'COMMUNICATION'
+                );
+            } catch (notifyError) {
+                console.error('Failed to notify invitee of viewing invite:', notifyError);
+            }
+
             await logsServices.updateLog(enquiryId, { status: logTypeStatus.INVITED });
             await propertyServices.syncEnquiryStatusByLogId(enquiryId, EnquiryStatus.RESPONDED);
             return res.status(201).json({ invite });
@@ -424,6 +445,29 @@ class ApplicationControls {
                 logger.error('Failed to send invitation email:', emailError);
                 // Log the error but don't throw - invite creation should still succeed
             });
+
+            try {
+                if (userExist?.id) {
+                    const NotificationService = (await import('../../services/notification.service')).default;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: req.user?.id,
+                            destId: userExist.id,
+                            title: 'Property Viewing Invite',
+                            message: value?.scheduleDate
+                                ? `You have been invited to a property viewing on ${value.scheduleDate}.`
+                                : 'You have been invited to a property viewing. Please respond in your dashboard.',
+                            notificationType: 'viewing_invite',
+                            route: '/dashboard',
+                            emitRealtime: true,
+                            type: 'info',
+                        },
+                        'COMMUNICATION'
+                    );
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify invitee of viewing invite:', notifyError);
+            }
 
             return res.status(201).json({ invite });
         } catch (error) {
@@ -573,29 +617,35 @@ class ApplicationControls {
             const landlordId = req.user?.landlords?.id;
             const enquiry = await logsServices.getLogsById(enquireId);
 
-            const leasingUpdated = await logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED });
-            await propertyServices.syncEnquiryStatusByLogId(enquireId, EnquiryStatus.CLOSED);
+            const [leasingUpdated] = await Promise.all([
+                logsServices.updateLog(enquireId, { status: logTypeStatus.REJECTED }),
+                propertyServices.syncEnquiryStatusByLogId(enquireId, EnquiryStatus.CLOSED),
+            ]);
 
             let applicationFeeRefund = null;
             if (landlordId && enquiry?.propertyId) {
-                const property = await propertyServices.getPropertiesById(enquiry.propertyId);
-                const globalSettings = await LandlordSettingsService.getAllGlobalSettings(landlordId);
+                const [property, globalSettings] = await Promise.all([
+                    propertyServices.getPropertiesById(enquiry.propertyId),
+                    LandlordSettingsService.getAllGlobalSettings(landlordId),
+                ]);
                 const rent = Number(property?.price ?? 0);
                 const rules = resolveFinancialRules(
                     globalSettings,
                     rent,
                     property?.priceFrequency
                 );
-                const appSettings = await LandlordSettingsService.syncApplicationSettingsFromGlobal(
-                    landlordId,
-                    enquiry.propertyId,
-                    rent,
-                    property?.priceFrequency
-                );
-                const listing = await prismaClient.propertyListingHistory.findFirst({
-                    where: { propertyId: enquiry.propertyId, onListing: true, isActive: true },
-                    orderBy: { createdAt: 'desc' },
-                });
+                const [appSettings, listing] = await Promise.all([
+                    LandlordSettingsService.syncApplicationSettingsFromGlobal(
+                        landlordId,
+                        enquiry.propertyId,
+                        rent,
+                        property?.priceFrequency
+                    ),
+                    prismaClient.propertyListingHistory.findFirst({
+                        where: { propertyId: enquiry.propertyId, onListing: true, isActive: true },
+                        orderBy: { createdAt: 'desc' },
+                    }),
+                ]);
                 const feePaid = Number(
                     listing?.applicationFeeAmount ?? rules.applicationFeeAmount
                 );
@@ -735,6 +785,39 @@ class ApplicationControls {
                 value.status
             );
 
+            try {
+                const applicantUserId = application?.userId || application?.user?.id;
+                if (
+                    applicantUserId &&
+                    (value.status === ApplicationStatus.APPROVED ||
+                        value.status === ApplicationStatus.DECLINED)
+                ) {
+                    const NotificationService = (await import('../../services/notification.service')).default;
+                    const approved = value.status === ApplicationStatus.APPROVED;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: req.user?.id,
+                            destId: applicantUserId,
+                            title: approved
+                                ? 'Application Approved'
+                                : 'Application Declined',
+                            message: approved
+                                ? 'Your property application was approved. Check your dashboard for next steps.'
+                                : 'Your property application was declined.',
+                            notificationType: approved
+                                ? 'application_approved'
+                                : 'application_declined',
+                            route: '/dashboard',
+                            emitRealtime: true,
+                            type: approved ? 'success' : 'error',
+                        },
+                        'COMMUNICATION'
+                    );
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of application status:', notifyError);
+            }
+
             const explicitMessage =
                 value.status === ApplicationStatus.APPROVED
                     ? "Application approved successfully"
@@ -801,16 +884,10 @@ class ApplicationControls {
             if (!applicationLandlord) {
                 return res.status(403).json({ error: "Unauthorized: Landlord not associated with this property application" });
             }
-            // Get recipient email
+            // Get recipient email — applicant for app/reference reminders; invitee for schedule
             let recipientEmail = null;
 
-            // TODO: why email reminder for employer and guarantor sents to the applicant email
             if (
-                value.status === ReminderType.REFERENCE_REMINDER ||
-                value.status === ReminderType.APPLICATION_REMINDER
-            ) {
-                recipientEmail = application.user.email;
-            } else if (
                 value.status === ReminderType.REFERENCE_REMINDER ||
                 value.status === ReminderType.APPLICATION_REMINDER
             ) {
@@ -872,11 +949,23 @@ class ApplicationControls {
                     break;
             }
 
-            // Send email in background - log is already created, so reminder is tracked even if email fails
-            // sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
-            //     logger.error('Failed to send reminder email:', emailError);
-            // });
-            await sendApplicationCompletionEmails(application);
+            // Reminder must go to applicant/invitee — not external guarantor/employer refs
+            if (userId) {
+                await sendPreferenceAwareMail({
+                    userId,
+                    category: NotificationCategory.COMMUNICATION,
+                    notificationType: value.status,
+                    to: recipientEmail,
+                    subject,
+                    html: htmlContent,
+                }).catch((emailError) => {
+                    logger.error('Failed to send reminder email:', emailError);
+                });
+            } else {
+                await sendMail(recipientEmail, subject, htmlContent).catch((emailError) => {
+                    logger.error('Failed to send reminder email:', emailError);
+                });
+            }
             return res.status(200).json({
                 message: "Reminder sent successfully",
                 details: { recipient: recipientEmail, type: value.status }
@@ -1171,6 +1260,27 @@ class ApplicationControls {
             sendMail(recipientEmail, `${propertyName} Agreement Form`, htmlContent).catch((emailError) => {
                 logger.error('Failed to send agreement form email:', emailError);
             });
+
+            try {
+                if (application.user?.id) {
+                    const NotificationService = (await import('../../services/notification.service')).default;
+                    await NotificationService.createNotification(
+                        {
+                            sourceId: req.user.id,
+                            destId: application.user.id,
+                            title: 'Agreement Form Ready',
+                            message: `Please review and sign the agreement for ${propertyName}.`,
+                            notificationType: 'agreement_sent',
+                            route: '/dashboard',
+                            emitRealtime: true,
+                            type: 'info',
+                        },
+                        'COMMUNICATION'
+                    );
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify applicant of agreement form:', notifyError);
+            }
 
             await Promise.all([
                 logsServices.createLog({

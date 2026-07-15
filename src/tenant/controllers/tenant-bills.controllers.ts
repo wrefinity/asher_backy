@@ -29,9 +29,11 @@ class TenantBillController {
       throw ApiError.unauthorized("Unauthorized - Tenant ID missing");
     }
 
-    const tenant = await tenantsServices.getTenantById(tenantId);
+    const [tenant, billScope] = await Promise.all([
+      tenantsServices.getTenantById(tenantId),
+      resolveTenantBillAccessScope(tenantId),
+    ]);
     const propertyId = tenant?.propertyId || (req.query.propertyId as string) || null;
-    const billScope = await resolveTenantBillAccessScope(tenantId);
 
     const {
       page = "1",

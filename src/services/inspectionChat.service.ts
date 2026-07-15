@@ -179,8 +179,7 @@ class InspectionChatService {
       chatType: message.chatType,
     };
 
-    serverInstance.io.to(senderId).emit('privateMessage', payload);
-    serverInstance.io.to(receiverId).emit('privateMessage', payload);
+    // Emit only to namespaced rooms to avoid duplicate delivery
     serverInstance.io.to(`user:${senderId}`).emit('privateMessage', payload);
     serverInstance.io.to(`user:${receiverId}`).emit('privateMessage', payload);
 
@@ -202,6 +201,9 @@ class InspectionChatService {
           route: senderId === tenantUserId
             ? `/service/inspections/${inspectionId}`
             : `/inspections/${inspectionId}`,
+          // privateMessage already toasts — persist for bell only
+          emitRealtime: false,
+          type: 'info',
         },
         'COMMUNICATION'
       );

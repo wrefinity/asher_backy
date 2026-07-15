@@ -149,7 +149,15 @@ export async function resolveTenantBillAccessScope(
 export function buildTenantAccessibleBillWhere(
   tenantId: string,
   propertyId: string | null,
-  includePropertyWideBills: boolean
+  includePropertyWideBills: boolean,
+  /**
+   * When true (default), only bills the tenant is financially responsible for
+   * are returned - used for payment and payment-obligation views (pay-bill,
+   * overdue, upcoming). Set to false for the general bills list so tenants can
+   * also see landlord-payable bills attached to their tenancy/property, for
+   * transparency, without being able to pay them.
+   */
+  restrictToTenantPayable: boolean = true
 ) {
   const orConditions: Array<Record<string, unknown>> = [{ tenantId }];
 
@@ -159,7 +167,7 @@ export function buildTenantAccessibleBillWhere(
 
   return {
     isDeleted: false,
-    payableBy: PayableBy.TENANT,
+    ...(restrictToTenantPayable ? { payableBy: PayableBy.TENANT } : {}),
     OR: orConditions,
   };
 }

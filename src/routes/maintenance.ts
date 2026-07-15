@@ -18,7 +18,7 @@ class MaintenaceRoutes {
     private initializeRoutes(): void {
         this.router.post('/chats/:maintenanceId', this.authenticateService.authorize, validateBody(maintenanceChatSchema), MaintenanceController.createMaintenanceChat);
         this.router.get('/chats/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.getMaintenanceChat);
-        this.router.get('/request-cancel/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.requestMaintenanceCancellation);
+        this.router.post('/request-cancel/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.requestMaintenanceCancellation);
         this.router.post('/reschedule/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.rescheduleMaintenanceController);
         this.router.post('/schedule/:maintenanceId', this.authenticateService.authorize,  MaintenanceController.scheduleMaintenanceDate);
         this.router.post('/whitelisted', this.authenticateService.authorize,  MaintenanceController.checkIfMaintenanceWhitelisted);

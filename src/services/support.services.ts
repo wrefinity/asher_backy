@@ -213,36 +213,35 @@ export class SupportService {
       ];
     }
 
-    // Get total count
-    const totalItems = await prismaClient.supportTicket.count({ where });
-
-    // Get paginated data
-    const tickets = await prismaClient.supportTicket.findMany({
-      where,
-      skip,
-      take: itemsPerPage,
-      orderBy: { createdAt: "desc" },
-      include: {
-        raisedBy: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+    const [totalItems, tickets] = await Promise.all([
+      prismaClient.supportTicket.count({ where }),
+      prismaClient.supportTicket.findMany({
+        where,
+        skip,
+        take: itemsPerPage,
+        orderBy: { createdAt: "desc" },
+        include: {
+          raisedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
             },
           },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            profile: true,
+          assignedTo: {
+            select: {
+              id: true,
+              email: true,
+              profile: true,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -324,69 +323,68 @@ export class SupportService {
       }
     }
 
-    // Get total count
-    const totalItems = await prismaClient.supportTicket.count({ where });
-
-    // Get paginated data
-    const tickets = await prismaClient.supportTicket.findMany({
-      where,
-      skip,
-      take: itemsPerPage,
-      orderBy: { createdAt: "desc" },
-      include: {
-        raisedBy: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+    const [totalItems, tickets] = await Promise.all([
+      prismaClient.supportTicket.count({ where }),
+      prismaClient.supportTicket.findMany({
+        where,
+        skip,
+        take: itemsPerPage,
+        orderBy: { createdAt: "desc" },
+        include: {
+          raisedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
             },
           },
-        },
-        raisedByTenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+          raisedByTenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
-            },
-            landlord: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
+              landlord: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                    },
                   },
                 },
               },
             },
           },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            profile: true,
-          },
-        },
-        messages: {
-          include: {
-            sender: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
-                role: true,
-              },
+          assignedTo: {
+            select: {
+              id: true,
+              email: true,
+              profile: true,
             },
           },
-          orderBy: { createdAt: "asc" },
+          messages: {
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
         },
-      },
-    });
+      }),
+    ]);
 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -428,6 +426,29 @@ export class SupportService {
                 profile: true,
               },
             },
+          },
+        },
+        // Disputes (Part 6 of VENDOR_APP_FLOW_SPEC.md): vendor raiser and
+        // the disputed job's full evidence, so admin never needs re-uploads.
+        raisedByVendor: {
+          include: {
+            user: { select: { id: true, email: true, profile: true } },
+          },
+        },
+        maintenance: {
+          select: {
+            id: true,
+            description: true,
+            status: true,
+            paymentStatus: true,
+            amount: true,
+            startAttachments: true,
+            endAttachments: true,
+            attachments: true,
+            scheduleDate: true,
+            createdAt: true,
+            tenantVerified: true,
+            property: { select: { name: true, address: true, city: true } },
           },
         },
         assignedTo: {
@@ -481,6 +502,29 @@ export class SupportService {
                 profile: true,
               },
             },
+          },
+        },
+        // Kept identical to getTicketById's dispute includes so both
+        // lookups return the same shape.
+        raisedByVendor: {
+          include: {
+            user: { select: { id: true, email: true, profile: true } },
+          },
+        },
+        maintenance: {
+          select: {
+            id: true,
+            description: true,
+            status: true,
+            paymentStatus: true,
+            amount: true,
+            startAttachments: true,
+            endAttachments: true,
+            attachments: true,
+            scheduleDate: true,
+            createdAt: true,
+            tenantVerified: true,
+            property: { select: { name: true, address: true, city: true } },
           },
         },
         assignedTo: {
@@ -576,21 +620,24 @@ export class SupportService {
       data: { updatedAt: new Date() },
     });
 
-    // Emit Socket.IO event to landlord if message is not internal
+    // Emit Socket.IO event to ticket parties (landlord + tenant raiser), not the sender
     if (!isInternal) {
       try {
         const { serverInstance } = await import("../index");
-        let landlordUserId: string | null = null;
+        const recipients = new Set<string>();
 
-        // Get landlord's userId
-        if (ticket.raisedById && ticket.raisedBy?.user?.id) {
-          landlordUserId = ticket.raisedBy.user.id;
-        } else if (ticket.raisedByTenantId && ticket.raisedByTenant?.landlord?.user?.id) {
-          landlordUserId = ticket.raisedByTenant.landlord.user.id;
+        if (ticket.raisedBy?.user?.id) {
+          recipients.add(ticket.raisedBy.user.id);
         }
+        if (ticket.raisedByTenant?.user?.id) {
+          recipients.add(ticket.raisedByTenant.user.id);
+        }
+        if (ticket.raisedByTenant?.landlord?.user?.id) {
+          recipients.add(ticket.raisedByTenant.landlord.user.id);
+        }
+        recipients.delete(senderId);
 
-        if (landlordUserId) {
-          // Get full ticket with messages for the notification
+        if (recipients.size > 0) {
           const updatedTicket = await this.getTicketById(ticketId);
 
           const eventData = {
@@ -601,14 +648,36 @@ export class SupportService {
             timestamp: new Date(),
           };
 
-          // Emit to user room
-          serverInstance.io.to(`user:${landlordUserId}`).emit("ticket_message_added", eventData);
+          for (const userId of recipients) {
+            serverInstance.io.to(`user:${userId}`).emit("ticket_message_added", eventData);
 
-          // Also emit to ticket-specific room for real-time updates
+            try {
+              const NotificationService = (await import("./notification.service")).default;
+              await NotificationService.createNotification(
+                {
+                  sourceId: senderId,
+                  destId: userId,
+                  title: "Support Ticket Update",
+                  message: `New message on support ticket ${ticket.ticketCode}`,
+                  notificationType: "support_ticket_message",
+                  route: "/service/support",
+                  type: "info",
+                  // ticket_message_added already delivers live UI — persist for bell only
+                  emitRealtime: false,
+                },
+                "SUPPORT_TICKET"
+              );
+            } catch (notifyError) {
+              console.error("Failed to persist support ticket message notification:", notifyError);
+            }
+          }
+
           serverInstance.io.to(`ticket:${ticket.id}`).emit("ticket_message_added", eventData);
           serverInstance.io.to(`ticket:${ticket.ticketCode}`).emit("ticket_message_added", eventData);
 
-          console.log(`📩 Ticket message notification sent to landlord: ${landlordUserId} for ticket ${ticket.ticketCode}`);
+          console.log(
+            `📩 Ticket message notification sent to ${[...recipients].join(", ")} for ticket ${ticket.ticketCode}`
+          );
         }
       } catch (socketError) {
         // Log error but don't fail the message creation
@@ -670,66 +739,75 @@ export class SupportService {
       ];
     }
 
-    const totalItems = await prismaClient.supportTicket.count({ where });
-
-    const tickets = await prismaClient.supportTicket.findMany({
-      where,
-      skip,
-      take: itemsPerPage,
-      orderBy: { createdAt: "desc" },
-      include: {
-        raisedBy: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
+    const [totalItems, tickets] = await Promise.all([
+      prismaClient.supportTicket.count({ where }),
+      prismaClient.supportTicket.findMany({
+        where,
+        skip,
+        take: itemsPerPage,
+        orderBy: { createdAt: "desc" },
+        include: {
+          raisedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
               },
             },
           },
-        },
-        raisedByTenant: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
-              },
-            },
-            property: {
-              select: {
-                id: true,
-                address: true,
-              },
+          raisedByVendor: {
+            include: {
+              user: { select: { id: true, email: true, profile: true } },
             },
           },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            email: true,
-            profile: true,
+          maintenance: {
+            select: { id: true, description: true, status: true },
           },
-        },
-        messages: {
-          include: {
-            sender: {
-              select: {
-                id: true,
-                email: true,
-                profile: true,
-                role: true,
+          raisedByTenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                },
+              },
+              property: {
+                select: {
+                  id: true,
+                  address: true,
+                },
               },
             },
           },
-          orderBy: {
-            createdAt: 'asc',
+          assignedTo: {
+            select: {
+              id: true,
+              email: true,
+              profile: true,
+            },
+          },
+          messages: {
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -846,19 +924,22 @@ export class SupportService {
       },
     });
 
-    // Emit Socket.IO event to landlord
+    // Emit Socket.IO event to ticket parties (landlord + tenant raiser)
     try {
       const { serverInstance } = await import("../index");
-      let landlordUserId: string | null = null;
+      const recipients = new Set<string>();
 
-      // Get landlord's userId
-      if (ticketBeforeUpdate.raisedById && ticketBeforeUpdate.raisedBy?.user?.id) {
-        landlordUserId = ticketBeforeUpdate.raisedBy.user.id;
-      } else if (ticketBeforeUpdate.raisedByTenantId && ticketBeforeUpdate.raisedByTenant?.landlord?.user?.id) {
-        landlordUserId = ticketBeforeUpdate.raisedByTenant.landlord.user.id;
+      if (ticketBeforeUpdate?.raisedBy?.user?.id) {
+        recipients.add(ticketBeforeUpdate.raisedBy.user.id);
+      }
+      if (ticketBeforeUpdate?.raisedByTenant?.user?.id) {
+        recipients.add(ticketBeforeUpdate.raisedByTenant.user.id);
+      }
+      if (ticketBeforeUpdate?.raisedByTenant?.landlord?.user?.id) {
+        recipients.add(ticketBeforeUpdate.raisedByTenant.landlord.user.id);
       }
 
-      if (landlordUserId) {
+      if (recipients.size > 0) {
         const eventData = {
           ticketId: updatedTicket.id,
           ticketCode: updatedTicket.ticketCode,
@@ -867,14 +948,34 @@ export class SupportService {
           timestamp: new Date(),
         };
 
-        // Emit to user room
-        serverInstance.io.to(`user:${landlordUserId}`).emit("ticket_status_updated", eventData);
+        for (const userId of recipients) {
+          serverInstance.io.to(`user:${userId}`).emit("ticket_status_updated", eventData);
 
-        // Also emit to ticket-specific room for real-time updates
+          try {
+            const NotificationService = (await import("./notification.service")).default;
+            await NotificationService.createNotification(
+              {
+                destId: userId,
+                title: "Support Ticket Status Updated",
+                message: `Support ticket ${updatedTicket.ticketCode} is now ${status}`,
+                notificationType: "support_ticket_status",
+                route: "/service/support",
+                type: "info",
+                emitRealtime: true,
+              },
+              "SUPPORT_TICKET"
+            );
+          } catch (notifyError) {
+            console.error("Failed to persist support ticket status notification:", notifyError);
+          }
+        }
+
         serverInstance.io.to(`ticket:${updatedTicket.id}`).emit("ticket_status_updated", eventData);
         serverInstance.io.to(`ticket:${updatedTicket.ticketCode}`).emit("ticket_status_updated", eventData);
 
-        console.log(`📢 Ticket status update notification sent to landlord: ${landlordUserId} for ticket ${updatedTicket.ticketCode}`);
+        console.log(
+          `📢 Ticket status update notification sent to ${[...recipients].join(", ")} for ticket ${updatedTicket.ticketCode}`
+        );
       }
     } catch (socketError) {
       // Log error but don't fail the status update

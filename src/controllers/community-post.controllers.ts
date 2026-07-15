@@ -90,6 +90,13 @@ class CommunityPostController {
     getRecentPosts = async (req: CustomRequest, res: Response) => {
         try {
             const { communityId } = req.params;
+            const userId = String(req.user?.id);
+            const canAccess = await communityServices.canUserAccessCommunity(userId, communityId);
+            if (!canAccess) {
+                return res.status(403).json({
+                    message: 'You do not have access to this community. Only the landlord and their tenants can access it.',
+                });
+            }
             const posts = await communityPostServices.getRecentPosts(communityId);
             res.status(200).json(posts);
         } catch (error) {
@@ -101,6 +108,13 @@ class CommunityPostController {
         console.log(req.params)
         try {
             const { communityId } = req.params
+            const userId = String(req.user?.id);
+            const canAccess = await communityServices.canUserAccessCommunity(userId, communityId);
+            if (!canAccess) {
+                return res.status(403).json({
+                    message: 'You do not have access to this community. Only the landlord and their tenants can access it.',
+                });
+            }
             const { page = 1, limit = 10, search } = req.query;
             const posts = await communityPostServices.getAllPosts(communityId, Number(page), Number(limit), String(search || ''));
             res.json(posts);
@@ -112,6 +126,13 @@ class CommunityPostController {
     async getSingleCommunityPost(req: CustomRequest, res: Response) {
         try {
             const { communityId, postId } = req.params
+            const userId = String(req.user?.id);
+            const canAccess = await communityServices.canUserAccessCommunity(userId, communityId);
+            if (!canAccess) {
+                return res.status(403).json({
+                    message: 'You do not have access to this community.',
+                });
+            }
             const community = await communityPostServices.getSingleCommunityPost(communityId, postId)
             return res.status(200).json(community)
         } catch (error) {
@@ -146,7 +167,7 @@ class CommunityPostController {
             if (!communityPost) return res.status(404).json({ message: "Post not found" })
 
             // Standardized user ID extraction pattern
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }
@@ -170,7 +191,7 @@ class CommunityPostController {
             if (!communityPost) return res.status(404).json({ message: "Post not found" })
 
             // Standardized user ID extraction pattern
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }
@@ -189,7 +210,7 @@ class CommunityPostController {
     voteOnPoll = async (req: CustomRequest, res: Response) => {
         try {
             // Standardized user ID extraction pattern
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }
@@ -205,7 +226,7 @@ class CommunityPostController {
         try {
             const { postId } = req.params;
             // Standardized user ID extraction pattern
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }
@@ -219,7 +240,7 @@ class CommunityPostController {
         try {
             const { postId } = req.params;
             // Standardized user ID extraction pattern
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }
@@ -234,7 +255,7 @@ class CommunityPostController {
         try {
             const { postId } = req.params;
             // Standardized user ID extraction pattern - views can be anonymous, so userId is optional
-            const userId = req.user ? String(req.user?.landlords?.id || req.user?.id) : undefined;
+            const userId = req.user ? String(req.user?.id) : undefined;
             const ipAddress = req.ip || req.socket.remoteAddress;
             const userAgent = req.get('user-agent');
             const result = await communityPostServices.viewCommunityPost(postId, userId, ipAddress, userAgent);
@@ -283,7 +304,7 @@ class CommunityPostController {
     async togglePinPost(req: CustomRequest, res: Response) {
         try {
             const { postId } = req.params;
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }
@@ -297,7 +318,7 @@ class CommunityPostController {
 
     async getPinnedPosts(req: CustomRequest, res: Response) {
         try {
-            const userId = String(req.user?.landlords?.id || req.user?.id);
+            const userId = String(req.user?.id);
             if (!userId) {
                 return res.status(404).json({ message: 'User not found' });
             }

@@ -195,7 +195,7 @@ class UserService {
     }
 
     async registerVendor(input: RegisterVendorInput) {
-        const { email, password, profile, uploadedDocuments = [] } = input;
+        const { email, password, profile, uploadedDocuments = [], businessName, businessRegistrationNumber } = input;
 
         // Transaction: create user + profile + vendor + vendorDocuments
         const newVendor = await prismaClient.$transaction(
@@ -216,7 +216,9 @@ class UserService {
 
                 const vendor = await tx.vendors.create({
                     data: {
-                        userId: createdUser.id
+                        userId: createdUser.id,
+                        businessName,
+                        businessRegistrationNumber
                     }
                 });
 
@@ -750,6 +752,23 @@ class UserService {
 
                 if (tenant) {
                     await this.updateUserRole(user.id, userRoles.TENANT);
+                    const isCurrentLease =
+                        userData.isCurrentLease !== undefined
+                            ? Boolean(userData.isCurrentLease)
+                            : true;
+                    if (isCurrentLease) {
+                        try {
+                            const { ensureTenantInLandlordCommunity } = await import(
+                                "./community.membership.service"
+                            );
+                            await ensureTenantInLandlordCommunity(landlord.id, user.id);
+                        } catch (membershipErr) {
+                            loggers.warn(
+                                "Failed to add tenant to landlord community",
+                                membershipErr
+                            );
+                        }
+                    }
                     const label = tenant.tenantCode || user.email;
                     try {
                         await LogsServices.createLog({

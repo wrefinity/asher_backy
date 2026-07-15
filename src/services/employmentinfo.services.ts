@@ -8,6 +8,10 @@ import {
   joinReferenceNameParts,
   notifyReferenceDeclined,
 } from "../utils/referenceNomination.utils";
+import {
+  applicationPropertyLandlordInclude,
+  resolveApplicationPropertyLandlordUser,
+} from "../utils/resolveApplicationLandlord";
 
 class EmploymentService {
   // Upsert Employment Information
@@ -111,8 +115,8 @@ class EmploymentService {
         employmentInfo: true,
         personalDetails: true,
         user: true,
-        createdBy: true,
-        properties: true,
+        createdBy: { select: { id: true, email: true, role: true } },
+        properties: { include: applicationPropertyLandlordInclude },
       },
     });
 
@@ -181,11 +185,13 @@ class EmploymentService {
 
     const message = `${employerLabel} has declined to provide an employment reference for ${tenantName}'s application (${propertyLabel}). The tenant will need to provide another employer contact.`;
 
+    const propertyLandlord = await resolveApplicationPropertyLandlordUser(application);
+
     await notifyReferenceDeclined({
       tenantUserId: application.userId,
-      landlordUserId: application.createdById,
+      landlordUserId: propertyLandlord?.id,
       tenantEmail: application.user?.email,
-      propertyLandlordEmail: application.createdBy?.email,
+      propertyLandlordEmail: propertyLandlord?.email,
       title: "Employer reference declined",
       message,
       tenantEmailSubject: "Employer declined your reference request",

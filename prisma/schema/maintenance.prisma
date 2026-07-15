@@ -11,6 +11,17 @@ model maintenance {
   isDeleted                    Boolean                        @default(false)
   handleByLandlord             Boolean                        @default(false)
   landlordDecision             maintenanceDecisionStatus?
+  // When landlordDecision is APPROVED, this distinguishes *which* approval it
+  // was: true = landlord will handle/pay for the repair themselves (tenant's
+  // offer, if any, was not taken); false = the tenant's offer to pay was
+  // accepted, so the tenant proceeds to set a price. Same landlordDecision
+  // value previously meant both, with no way to tell them apart afterward.
+  landlordWillRepair           Boolean?
+  // Gates vendor visibility. Whitelisted (tenant self-service) requests are
+  // posted immediately. Landlord-liable requests are NOT posted until the
+  // landlord explicitly posts them (repair-myself path) or the tenant
+  // finishes setting a price after their offer is accepted.
+  postedForVendorSearch        Boolean                        @default(false)
   cancelReason                 String?
   flagCancellation             Boolean?                       @default(false)
   vendorConsentCancellation    Boolean?
@@ -22,8 +33,20 @@ model maintenance {
   chatRoomId                   String?                        @unique
   status                       maintenanceStatus              @default(UNASSIGNED)
   serviceId                    String?
+  selectedPackage              String?
+  tenantWantsToPay             Boolean?
   paymentStatus                TransactionStatus              @default(PENDING)
   amount                       Decimal?                       @db.Decimal(18, 2)
+  // Set once this job's earnings have been included in a weekly vendor
+  // payout batch (Part 2 §6 of VENDOR_APP_FLOW_SPEC.md) - prevents paying
+  // the same completed job out twice across runs.
+  vendorPaidOutAt              DateTime?
+  // Live journey tracking (Part 18 of VENDOR_APP_FLOW_SPEC.md): the vendor
+  // app pushes its position while en route; the tenant app polls it for the
+  // Uber-style live map/ETA view. Cleared when the job leaves transit.
+  vendorLastLatitude           Decimal?                       @db.Decimal(18, 6)
+  vendorLastLongitude          Decimal?                       @db.Decimal(18, 6)
+  vendorLocationUpdatedAt      DateTime?
   roomId                       String?
   unitId                       String?
   endAttachments               String[]
@@ -53,6 +76,8 @@ model maintenance {
   maintenanceAssignmentHistory maintenanceAssignmentHistory[]
   MaintenanceQuote             MaintenanceQuote[]
   MaintenanceNote              MaintenanceNote[]
+  review                       reviews?
+  supportTickets               SupportTicket[]
 
   @@index([vendorId])
   @@index([status])
@@ -89,6 +114,16 @@ model maintenanceAssignmentHistory {
   vendor        vendors?          @relation(fields: [vendorId], references: [id])
 }
 
+// Payment types a vendor can enable per service/category (Part 1 §5 of
+// VENDOR_APP_FLOW_SPEC.md, refined 2026-07-13): multi-select, not mutually
+// exclusive - a category can offer tenant-facing tiered pricing AND opt in
+// to landlord quotations at the same time.
+enum ServicePaymentType {
+  FIXED_TIERS
+  ONE_OFF
+  QUOTATION
+}
+
 model services {
   id                 String             @id @default(cuid())
   currentJobs        Int                @default(0)
@@ -101,6 +136,19 @@ model services {
   categoryId         String?
   subcategoryId      String?
   tenantId           String?
+
+  // Session-2 service storefront fields (Part 1 §4-5, refined 2026-07-13):
+  // the service page is the vendor's business page, so each entry carries a
+  // proper description of what's involved plus validation evidence - either
+  // a reference to the onboarding certificate (when it covers this trade)
+  // or portfolio photo URLs of real work. Defaults keep pre-existing rows
+  // behaving exactly as before (tiered pricing only).
+  paymentTypes                    ServicePaymentType[] @default([FIXED_TIERS])
+  oneOffPrice                     Decimal?             @db.Decimal(18, 2)
+  description                     String?
+  referencesOnboardingCertificate Boolean              @default(false)
+  proofUrls                       String[]             @default([])
+
   maintenance        maintenance[]
   category           category?          @relation(fields: [categoryId], references: [id])
   subcategory        subCategory?       @relation(fields: [subcategoryId], references: [id])
@@ -133,6 +181,13 @@ model MaintenanceQuote {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   isDeleted     Boolean     @default(false)
+
+  // Second vendor consent gate (Part 16 of VENDOR_APP_FLOW_SPEC.md): after
+  // the landlord accepts a quote, the vendor must explicitly confirm
+  // ("You have been picked - Accept/Decline") before the job is actually
+  // assigned. Null = awaiting the vendor's response.
+  vendorAccepted    Boolean?
+  vendorRespondedAt DateTime?
 
   maintenance maintenance @relation(fields: [maintenanceId], references: [id])
   vendor      vendors     @relation(fields: [vendorId], references: [id])

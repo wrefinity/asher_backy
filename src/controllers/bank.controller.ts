@@ -21,14 +21,40 @@ class BankInfoController {
       );
     }
 
+    // NGN accounts get a Paystack transfer recipient at creation so
+    // withdrawals can route through Paystack (Part 3 §5 of
+    // VENDOR_APP_FLOW_SPEC.md). bankCode is Paystack-only input, not a
+    // bankInfo column.
+    const { bankCode, ...persistable } = value;
+    let paystackRecipientCode: string | undefined;
+    if (String(value.currency).toUpperCase() === "NGN") {
+      if (!bankCode) {
+        throw ApiError.badRequest("bankCode is required for NGN bank accounts");
+      }
+      const paystackServices = (await import("../services/paystack.services")).default;
+      paystackRecipientCode = await paystackServices.createTransferRecipient(
+        value.accountName,
+        value.accountNumber,
+        bankCode
+      );
+    }
+
     const data = {
-      ...value,
+      ...persistable,
+      paystackRecipientCode,
       landlordId: landlordId ?? undefined,
       vendorId: vendorId ?? undefined,
     };
 
     const bankInfo = await bankInfoService.createBankInfo(data);
     return res.status(201).json(ApiResponse.success(bankInfo, "Bank info created"));
+  });
+
+  // Nigerian bank directory (Paystack) for the add-account picker.
+  listPaystackBanks = asyncHandler(async (_req: CustomRequest, res: Response) => {
+    const paystackServices = (await import("../services/paystack.services")).default;
+    const banks = await paystackServices.listBanks();
+    return res.status(200).json(ApiResponse.success(banks, "Banks retrieved"));
   });
 
   getBankInfo = asyncHandler(async (req: CustomRequest, res: Response) => {

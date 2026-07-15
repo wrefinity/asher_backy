@@ -10,7 +10,11 @@ export const mapNotificationTypeToCategory = (type: string): NotificationCategor
   if (typeLower.includes('payment') || typeLower.includes('bill')) {
     return 'ONLINE_PAYMENTS';
   }
-  if (typeLower.includes('maintenance') || typeLower.includes('request')) {
+  if (
+    typeLower.includes('maintenance') ||
+    typeLower.includes('maintenance_request') ||
+    typeLower.includes('work_order')
+  ) {
     return 'MAINTENANCE_REQUESTS';
   }
   if (typeLower.includes('message') || typeLower.includes('chat')) {
@@ -28,7 +32,7 @@ export const mapNotificationTypeToCategory = (type: string): NotificationCategor
   if (typeLower.includes('property') && typeLower.includes('match')) {
     return 'PROPERTY_MATCH';
   }
-  if (typeLower.includes('inquiry') || typeLower.includes('inquiry')) {
+  if (typeLower.includes('inquiry') || typeLower.includes('enquiry')) {
     return 'WEBSITE_INQUIRY';
   }
   if (typeLower.includes('support') || typeLower.includes('ticket')) {

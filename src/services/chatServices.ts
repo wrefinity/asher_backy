@@ -112,9 +112,9 @@ class ChatServices {
             audios: message?.audios,
             chatType: message.chatType,
         };
-        // Emit message to personal rooms (legacy id room + user: prefixed room)
-        serverInstance.io.to(senderId).emit("privateMessage", payload);
-        serverInstance.io.to(receiverId).emit("privateMessage", payload);
+        // Both clients join `user:${id}` rooms (and, for backward compatibility,
+        // the bare-id room). Emitting to only one scheme per recipient avoids
+        // delivering the same message twice to an already-connected client.
         serverInstance.io.to(`user:${senderId}`).emit("privateMessage", payload);
         serverInstance.io.to(`user:${receiverId}`).emit("privateMessage", payload);
         console.log(`📤 Message sent from ${senderId} to ${receiverId}`);
@@ -146,6 +146,9 @@ class ChatServices {
                         notificationType: 'chat_message',
                         route: `/chats/${senderId}`,
                         skipPush: true,
+                        // privateMessage already drives live toast — persist for bell only
+                        emitRealtime: false,
+                        type: 'info',
                     },
                     'COMMUNICATION'
                 ),

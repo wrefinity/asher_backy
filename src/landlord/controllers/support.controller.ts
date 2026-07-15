@@ -77,8 +77,12 @@ class SupportController {
                         destId: admin.id,
                         title: 'New Support Ticket',
                         message: `${userName} created a new support ticket: "${data.subject}"`,
-                        category: 'COMMUNICATION',
-                    })
+                        category: 'SUPPORT_TICKET',
+                        notificationType: 'support_ticket_created',
+                        route: '/tickets',
+                        emitRealtime: true,
+                        type: 'info',
+                    }, 'SUPPORT_TICKET')
                 );
 
                 await Promise.allSettled(notificationPromises);

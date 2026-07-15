@@ -44,11 +44,9 @@ class MoveOutNoticeController {
         ApiResponse.created(
           {
             notice: result.notice,
-            inspection: result.inspection,
+            // Do not expose Draft inspections to the tenant API consumer
           },
-          result.inspection
-            ? 'Move-out notice submitted and move-out inspection scheduled'
-            : 'Move-out notice submitted'
+          'Move-out notice submitted. Your landlord has been notified.'
         )
       );
     } catch (error) {
@@ -69,9 +67,12 @@ class MoveOutNoticeController {
     }
 
     const notice = await moveOutNoticeService.getActiveNoticeForTenant(tenant.id);
-    const inspection = notice
+    const inspectionRaw = notice
       ? await InspectionMoveOutService.findInspectionForNotice(notice.id, tenant.id)
       : null;
+    // Tenant must not see Draft inspections until landlord schedules
+    const inspection =
+      inspectionRaw && inspectionRaw.status !== 'Draft' ? inspectionRaw : null;
 
     return res.status(200).json(
       ApiResponse.success(

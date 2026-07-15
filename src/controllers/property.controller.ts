@@ -8,6 +8,7 @@ import { LogType, logTypeStatus, PropertySpecificationType, PropertyType, Availa
 import { LandlordService } from "../landlord/services/landlord.service";
 import propertyUnitService from "../services/property.unit.service";
 import propertyRoomService from "../services/property.room.service";
+import { prismaClient } from "../db/prismaClient";
 import {
     buildListingBrowseCurrencyOptions,
 } from "../utils/currencyContext";
@@ -226,6 +227,35 @@ class PropertyController {
                 propertyListingId,
                 status: logTypeStatus.PENDING
             })
+
+            try {
+                const landlordId = propertyListing.property?.landlordId;
+                if (landlordId) {
+                    const landlord = await prismaClient.landlords.findUnique({
+                        where: { id: landlordId },
+                        select: { userId: true },
+                    });
+                    if (landlord?.userId) {
+                        const NotificationService = (await import('../services/notification.service')).default;
+                        await NotificationService.createNotification(
+                            {
+                                sourceId: createdById,
+                                destId: landlord.userId,
+                                title: 'New Website Enquiry',
+                                message: String(message).slice(0, 240),
+                                notificationType: 'website_inquiry',
+                                route: '/leasing',
+                                type: 'info',
+                                emitRealtime: true,
+                            },
+                            'WEBSITE_INQUIRY'
+                        );
+                    }
+                }
+            } catch (notifyError) {
+                console.error('Failed to notify landlord of website enquiry:', notifyError);
+            }
+
             return res.status(200).json({log})
         } catch (error) {
             ErrorService.handleError(error, res)

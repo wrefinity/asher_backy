@@ -6,6 +6,7 @@ import http from 'http';
 import { WebSocket, WebSocketServer } from "ws";
 import { Server as IOServer } from "socket.io";
 import { APP_SECRET, PORT } from "./secrets";
+import { socketAuthMiddleware, assertSocketOwnsUserId, AuthenticatedSocket } from "./middlewares/socketAuth";
 import swaggerUi from 'swagger-ui-express';
 import AuthRouter from "./routes/auth";
 import ApplicationRouter from "./routes/application";
@@ -37,6 +38,7 @@ import communityRoutes from "./routes/community.routes";
 import VendorRouter from "./vendor/routes/index.routes";
 import TenantRouter from "./tenant/routes/index";
 import TenantInspectionRouter from "./tenant/routes/inspection.routes";
+import PublicInspectionRouter from "./public/routes/publicInspection.routes";
 import LandlordRouter from './landlord/routes/index.routes';
 import BankRouter from './routes/bank';
 import flutterWaveService from './services/flutterWave.service';
@@ -150,6 +152,7 @@ class Server {
         this.app.use("/api/wallet", WalletRouter);
         this.app.use("/api/tenants", TenantRouter);
         this.app.use("/api/inspections", TenantInspectionRouter);
+        this.app.use("/api/public/inspections", PublicInspectionRouter);
         this.app.use("/api/payouts", PayoutRouter);
         this.app.use("/api/docusign", DocuSignRouter);
         // this.app.use("/api/generator", GeneratorRouter);
@@ -249,26 +252,74 @@ class Server {
     private configureSocketIO() {
         const socketDebug = process.env.SOCKET_DEBUG === 'true';
 
-        this.io.on("connection", (socket) => {
+        this.io.use(socketAuthMiddleware);
+
+        this.io.on("connection", (socket: AuthenticatedSocket) => {
             if (socketDebug) {
-                console.log(`🔌 Socket connected: ${socket.id}`);
+                console.log(`🔌 Socket connected: ${socket.id} user=${socket.data.userId}`);
             }
 
-            socket.on("join", ({ senderId }) => {
-                socket.join(senderId);
-            });
+            // Auto-join only the namespaced room — all server emits use `user:{id}`
+            if (socket.data.userId) {
+                socket.join(`user:${socket.data.userId}`);
+            }
 
-            socket.on("privateMessage", ({ senderId, receiverId, message }) => {
-                const payload = { senderId, message, timestamp: new Date() };
-                this.io.to(receiverId).emit("privateMessage", payload);
-            });
-
-            socket.on('join_user_room', (userId: string) => {
+            socket.on("join", (payload: { senderId?: string } | undefined) => {
+                const userId = assertSocketOwnsUserId(socket, payload?.senderId);
+                if (!userId) {
+                    if (socketDebug) {
+                        console.warn(`🚫 Rejected join for socket ${socket.id}`);
+                    }
+                    return;
+                }
+                // Legacy bare room + namespaced room (emit paths prefer user:)
+                socket.join(userId);
                 socket.join(`user:${userId}`);
             });
 
+            socket.on("privateMessage", ({ senderId, receiverId, message }) => {
+                const authSenderId = assertSocketOwnsUserId(socket, senderId);
+                if (!authSenderId || typeof receiverId !== 'string' || !receiverId) {
+                    if (socketDebug) {
+                        console.warn(`🚫 Rejected privateMessage spoof from socket ${socket.id}`);
+                    }
+                    return;
+                }
+                const payload = {
+                    senderId: authSenderId,
+                    receiverId,
+                    message,
+                    timestamp: new Date(),
+                };
+                // Single room only — avoids duplicate when client has both bare + user: joins
+                this.io.to(`user:${receiverId}`).emit("privateMessage", payload);
+            });
+
+            socket.on('join_user_room', (userId: string) => {
+                const authUserId = assertSocketOwnsUserId(socket, userId);
+                if (!authUserId) {
+                    if (socketDebug) {
+                        console.warn(`🚫 Rejected join_user_room for socket ${socket.id}`);
+                    }
+                    return;
+                }
+                socket.join(`user:${authUserId}`);
+            });
+
             socket.on('leave_user_room', (userId: string) => {
-                socket.leave(`user:${userId}`);
+                const authUserId = assertSocketOwnsUserId(socket, userId);
+                if (!authUserId) return;
+                socket.leave(`user:${authUserId}`);
+            });
+
+            socket.on('join_ticket_room', (ticketKey: string) => {
+                if (typeof ticketKey !== 'string' || !ticketKey.trim()) return;
+                socket.join(`ticket:${ticketKey.trim()}`);
+            });
+
+            socket.on('leave_ticket_room', (ticketKey: string) => {
+                if (typeof ticketKey !== 'string' || !ticketKey.trim()) return;
+                socket.leave(`ticket:${ticketKey.trim()}`);
             });
 
             socket.on("disconnect", () => {
@@ -429,6 +480,38 @@ class Server {
                 loggers.error('Error in scheduled compliance reminder check:', error);
             }
         }, 24 * 60 * 60 * 1000);
+
+        // Confirm-and-approve nudges for completed-but-unverified jobs
+        // (Part 18 of VENDOR_APP_FLOW_SPEC.md) - hourly; the service itself
+        // dedupes to one reminder per job per day.
+        setInterval(async () => {
+            try {
+                const { sendMaintenanceVerificationReminders } = await import('./services/maintenanceVerificationReminder.service');
+                await sendMaintenanceVerificationReminders();
+            } catch (error) {
+                loggers.error('Error sending maintenance verification reminders:', error);
+            }
+        }, 60 * 60 * 1000);
+
+        // Weekly vendor payout batch (Part 2 §6 of VENDOR_APP_FLOW_SPEC.md) -
+        // checked hourly rather than daily since it must only fire on
+        // Fridays; a simple in-memory date guard stops it re-running once
+        // it's already fired that day.
+        let lastVendorPayoutRunDate: string | null = null;
+        setInterval(async () => {
+            try {
+                const now = new Date();
+                const isFriday = now.getDay() === 5;
+                const todayKey = now.toISOString().split('T')[0];
+                if (!isFriday || lastVendorPayoutRunDate === todayKey) return;
+
+                lastVendorPayoutRunDate = todayKey;
+                const { runWeeklyVendorPayoutBatch } = await import('./services/weeklyVendorPayout.service');
+                await runWeeklyVendorPayoutBatch();
+            } catch (error) {
+                loggers.error('Error running weekly vendor payout batch:', error);
+            }
+        }, 60 * 60 * 1000);
 
         loggers.info('Scheduled bill checks initialized');
     }

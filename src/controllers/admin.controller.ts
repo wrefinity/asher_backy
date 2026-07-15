@@ -18,6 +18,17 @@ import {
   listPendingIdentityVerifications,
   rejectLandlordIdentityVerification,
 } from "../services/landlordIdentity.service";
+import {
+  approveVendorVerification,
+  listPendingVendorVerifications,
+  rejectVendorVerification,
+} from "../services/vendorVerification.service";
+import {
+  createDocumentRequirement,
+  deleteDocumentRequirement,
+  getAllDocumentRequirements,
+  updateDocumentRequirement,
+} from "../services/vendorDocumentRequirement.service";
 
 interface InviteLandlordData {
   email: string;
@@ -282,7 +293,10 @@ class AdminController {
   };
 
   /**
-   * Permanently delete a landlord account (active or pending)
+   * Permanently remove a landlord from the admin directory.
+   * Empty accounts are hard-deleted. Accounts with properties/tenants are
+   * soft-purged (properties/tenants/landlord marked deleted, user anonymized
+   * and blocked from login) so related history can remain without keeping access.
    */
   deleteLandlordAccount = async (req: CustomRequest, res: Response) => {
     try {
@@ -293,52 +307,175 @@ class AdminController {
         return res.status(404).json({ success: false, message: "Landlord not found" });
       }
 
-      if (user.landlords?.id) {
-        const landlordId = user.landlords.id;
-
-        const propertyCount = await prismaClient.properties.count({
-          where: { landlordId, isDeleted: false },
+      if (user.landlords?.isDeleted) {
+        return res.status(400).json({
+          success: false,
+          message: "This landlord account has already been removed",
         });
-
-        if (propertyCount > 0) {
-          return res.status(400).json({
-            success: false,
-            message: "Cannot delete this account because the landlord has active properties. Remove or transfer properties first.",
-          });
-        }
-
-        const tenantCount = await prismaClient.tenants.count({
-          where: { landlordId },
-        });
-
-        if (tenantCount > 0) {
-          return res.status(400).json({
-            success: false,
-            message: "Cannot delete this account because the landlord still has tenants on record.",
-          });
-        }
       }
 
+      const landlordId = user.landlords?.id;
       const profileId = user.profileId;
+      const originalEmail = user.email;
+
+      let propertyCount = 0;
+      let tenantCount = 0;
+      if (landlordId) {
+        [propertyCount, tenantCount] = await Promise.all([
+          prismaClient.properties.count({ where: { landlordId } }),
+          prismaClient.tenants.count({ where: { landlordId } }),
+        ]);
+      }
+
+      const canHardDelete = !landlordId || (propertyCount === 0 && tenantCount === 0);
+
+      if (canHardDelete) {
+        await prismaClient.$transaction(async (tx) => {
+          await tx.verificationToken.deleteMany({ where: { userId: user.id } });
+          await tx.userLoginSession.deleteMany({ where: { userId: user.id } });
+          if (landlordId) {
+            await tx.landlords.delete({ where: { id: landlordId } });
+          }
+          await tx.users.delete({ where: { id: user.id } });
+          if (profileId) {
+            await tx.profile.delete({ where: { id: profileId } });
+          }
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: "Landlord account deleted successfully",
+          data: { userId: user.id, email: originalEmail, mode: "hard" },
+        });
+      }
+
+      const anonymizedEmail = `deleted+${user.id}@deleted.asher.local`;
 
       await prismaClient.$transaction(async (tx) => {
+        await tx.properties.updateMany({
+          where: { landlordId: landlordId!, isDeleted: false },
+          data: { isDeleted: true, isListed: false },
+        });
+
+        await tx.tenants.updateMany({
+          where: { landlordId: landlordId!, isDeleted: false },
+          data: {
+            isDeleted: true,
+            isAppAccessSuspended: true,
+            isCurrentLease: false,
+            appAccessSuspendedAt: new Date(),
+          },
+        });
+
+        await tx.landlords.update({
+          where: { id: landlordId! },
+          data: { isDeleted: true },
+        });
+
         await tx.verificationToken.deleteMany({ where: { userId: user.id } });
-        if (user.landlords?.id) {
-          await tx.landlords.delete({ where: { id: user.landlords.id } });
-        }
-        await tx.users.delete({ where: { id: user.id } });
+        await tx.userLoginSession.deleteMany({ where: { userId: user.id } });
+
+        await tx.users.update({
+          where: { id: user.id },
+          data: {
+            email: anonymizedEmail,
+            password: null,
+            googleId: null,
+            isVerified: false,
+            isSuspended: true,
+            suspendedAt: new Date(),
+            onlineStatus: onlineStatus.offline,
+          },
+        });
+
         if (profileId) {
-          await tx.profile.delete({ where: { id: profileId } });
+          await tx.profile.update({
+            where: { id: profileId },
+            data: {
+              firstName: "Deleted",
+              lastName: "User",
+              fullname: "Deleted User",
+              phoneNumber: null,
+              profileUrl: null,
+            },
+          }).catch(() => undefined);
         }
       });
 
       return res.status(200).json({
         success: true,
-        message: "Landlord account deleted successfully",
-        data: { userId: user.id, email: user.email },
+        message:
+          "Landlord removed from the system. Their properties and tenants were deactivated and the account can no longer sign in.",
+        data: {
+          userId: user.id,
+          email: originalEmail,
+          mode: "purge",
+          propertiesDeactivated: propertyCount,
+          tenantsDeactivated: tenantCount,
+        },
       });
     } catch (error: any) {
       console.error("Error deleting landlord account:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Suspend or reinstate a landlord account (blocks login + API access).
+   */
+  setLandlordSuspension = async (req: CustomRequest, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const suspend = req.body?.suspend !== false && req.body?.suspend !== "false";
+
+      const user = await this.getLandlordById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Landlord not found" });
+      }
+
+      if (user.landlords?.isDeleted) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot change suspension for a deleted landlord account",
+        });
+      }
+
+      if (!user.isVerified && suspend) {
+        return res.status(400).json({
+          success: false,
+          message: "Pending invites cannot be suspended. Cancel the invitation instead.",
+        });
+      }
+
+      const updated = await prismaClient.users.update({
+        where: { id: user.id },
+        data: {
+          isSuspended: suspend,
+          suspendedAt: suspend ? new Date() : null,
+          onlineStatus: suspend ? onlineStatus.offline : user.onlineStatus,
+        },
+      });
+
+      if (suspend) {
+        await prismaClient.userLoginSession.deleteMany({ where: { userId: user.id } });
+        await prismaClient.verificationToken.deleteMany({ where: { userId: user.id } });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: suspend
+          ? "Landlord account suspended. They can no longer sign in."
+          : "Landlord account reinstated.",
+        data: {
+          userId: updated.id,
+          email: updated.email,
+          status: suspend ? "Suspended" : "Active",
+          isSuspended: updated.isSuspended,
+          suspendedAt: updated.suspendedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error updating landlord suspension:", error);
       ErrorService.handleError(error, res);
     }
   };
@@ -695,14 +832,26 @@ class AdminController {
 
       const where: any = {
         role: { has: userRoles.LANDLORD },
+        OR: [
+          { landlords: null },
+          { landlords: { isDeleted: false } },
+        ],
+        NOT: {
+          email: { startsWith: "deleted+" },
+        },
       };
 
       if (search) {
-        where.OR = [
-          { email: { contains: search as string, mode: 'insensitive' } },
-          { profile: { firstName: { contains: search as string, mode: 'insensitive' } } },
-          { profile: { lastName: { contains: search as string, mode: 'insensitive' } } },
-          { profile: { fullname: { contains: search as string, mode: 'insensitive' } } },
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { email: { contains: search as string, mode: 'insensitive' } },
+              { profile: { firstName: { contains: search as string, mode: 'insensitive' } } },
+              { profile: { lastName: { contains: search as string, mode: 'insensitive' } } },
+              { profile: { fullname: { contains: search as string, mode: 'insensitive' } } },
+            ],
+          },
         ];
       }
 
@@ -716,7 +865,7 @@ class AdminController {
             landlords: {
               select: {
                 id: true,
-                isDeleted: false,
+                isDeleted: true,
               },
             },
           },
@@ -748,10 +897,18 @@ class AdminController {
           email: user.email,
           role: 'Landlord',
           systemId: '4', // Rent Mgmt System
-          status: user.isVerified ? 'Active' : 'Pending Invite',
-          lastActive: user.isVerified
-            ? (user.onlineStatus === onlineStatus.online ? 'Online' : 'Offline')
-            : 'Invitation sent',
+          status: user.isSuspended
+            ? 'Suspended'
+            : user.isVerified
+              ? 'Active'
+              : 'Pending Invite',
+          lastActive: user.isSuspended
+            ? 'Suspended'
+            : user.isVerified
+              ? (user.onlineStatus === onlineStatus.online ? 'Online' : 'Offline')
+              : 'Invitation sent',
+          isSuspended: !!user.isSuspended,
+          suspendedAt: user.suspendedAt,
           ticketsRaised: ticketCountMap.get(user.id) || 0,
           phone: user.profile?.phoneNumber || '',
           createdAt: user.createdAt,
@@ -763,6 +920,180 @@ class AdminController {
     } catch (error: any) {
       console.error("Error getting all landlords:", error);
       ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Get all vendors (users) - mirrors getAllLandlords above, for the
+   * AsherAdmin "Vendors" section (Part 1 of VENDOR_APP_FLOW_SPEC.md).
+   */
+  getAllVendors = async (req: CustomRequest, res: Response) => {
+    try {
+      const { page = 1, limit = 1000, search = '' } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const where: any = {
+        role: { has: userRoles.VENDOR },
+      };
+
+      if (search) {
+        where.OR = [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { profile: { firstName: { contains: search as string, mode: 'insensitive' } } },
+          { profile: { lastName: { contains: search as string, mode: 'insensitive' } } },
+          { profile: { fullname: { contains: search as string, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [users, total] = await Promise.all([
+        prismaClient.users.findMany({
+          where,
+          skip,
+          take: Number(limit),
+          include: {
+            profile: true,
+            vendors: {
+              select: {
+                id: true,
+                verificationStatus: true,
+                businessName: true,
+                businessRegistrationNumber: true,
+                documents: { select: { id: true, type: true, url: true, createdAt: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prismaClient.users.count({ where }),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        data: users.map(user => ({
+          id: user.id,
+          name: user.profile?.fullname ||
+            (user.profile?.firstName && user.profile?.lastName
+              ? `${user.profile.firstName} ${user.profile.lastName}`.trim()
+              : user.profile?.firstName || user.email.split('@')[0]),
+          email: user.email,
+          role: 'Vendor',
+          systemId: '2', // Vendor App
+          status: user.isVerified ? 'Active' : 'Pending Invite',
+          lastActive: user.isVerified
+            ? (user.onlineStatus === onlineStatus.online ? 'Online' : 'Offline')
+            : 'Invitation sent',
+          phone: user.profile?.phoneNumber || '',
+          createdAt: user.createdAt,
+          vendorId: user.vendors?.id || null,
+          verificationStatus: user.vendors?.verificationStatus || null,
+          businessName: user.vendors?.businessName || null,
+          businessRegistrationNumber: user.vendors?.businessRegistrationNumber || null,
+          documents: user.vendors?.documents || [],
+        })),
+        total,
+        page: Number(page),
+        limit: Number(limit),
+      });
+    } catch (error: any) {
+      console.error("Error getting all vendors:", error);
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  /**
+   * Vendor verification review (Part 1 of VENDOR_APP_FLOW_SPEC.md) - mirrors
+   * the landlord identity-verification endpoints above.
+   */
+  getPendingVendorVerifications = async (_req: CustomRequest, res: Response) => {
+    try {
+      const pending = await listPendingVendorVerifications();
+      return res.status(200).json({ success: true, data: pending });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  approveVendorVerification = async (req: CustomRequest, res: Response) => {
+    try {
+      const { vendorId } = req.params;
+      const vendor = await approveVendorVerification(vendorId);
+      return res.status(200).json({
+        success: true,
+        message: 'Vendor verification approved',
+        data: vendor,
+      });
+    } catch (error: any) {
+      const status = error?.statusCode ?? 500;
+      return res.status(status).json({
+        success: false,
+        message: error?.message ?? 'Failed to approve vendor verification',
+      });
+    }
+  };
+
+  rejectVendorVerification = async (req: CustomRequest, res: Response) => {
+    try {
+      const { vendorId } = req.params;
+      const vendor = await rejectVendorVerification(vendorId);
+      return res.status(200).json({
+        success: true,
+        message: 'Vendor verification rejected',
+        data: vendor,
+      });
+    } catch (error: any) {
+      const status = error?.statusCode ?? 500;
+      return res.status(status).json({
+        success: false,
+        message: error?.message ?? 'Failed to reject vendor verification',
+      });
+    }
+  };
+
+  /**
+   * Admin-controlled vendor document-requirements config (Part 1 of
+   * VENDOR_APP_FLOW_SPEC.md) - replaces the hardcoded ID_CARD/CERTIFICATION
+   * pair in the Vendor app's documentUpload.tsx.
+   */
+  getVendorDocumentRequirements = async (_req: CustomRequest, res: Response) => {
+    try {
+      const requirements = await getAllDocumentRequirements();
+      return res.status(200).json({ success: true, data: requirements });
+    } catch (error) {
+      ErrorService.handleError(error, res);
+    }
+  };
+
+  createVendorDocumentRequirement = async (req: CustomRequest, res: Response) => {
+    try {
+      const { type, label } = req.body;
+      if (!type || !label) {
+        return res.status(400).json({ success: false, message: 'type and label are required' });
+      }
+      const requirement = await createDocumentRequirement(type, label);
+      return res.status(201).json({ success: true, data: requirement });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message ?? 'Failed to create document requirement' });
+    }
+  };
+
+  updateVendorDocumentRequirement = async (req: CustomRequest, res: Response) => {
+    try {
+      const { requirementId } = req.params;
+      const { label, active } = req.body;
+      const requirement = await updateDocumentRequirement(requirementId, { label, active });
+      return res.status(200).json({ success: true, data: requirement });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message ?? 'Failed to update document requirement' });
+    }
+  };
+
+  deleteVendorDocumentRequirement = async (req: CustomRequest, res: Response) => {
+    try {
+      const { requirementId } = req.params;
+      await deleteDocumentRequirement(requirementId);
+      return res.status(200).json({ success: true, message: 'Document requirement deleted' });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message ?? 'Failed to delete document requirement' });
     }
   };
 

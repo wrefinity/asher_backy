@@ -83,6 +83,76 @@ class AdminRouter {
             AdminController.rejectLandlordIdentity
         );
 
+        // Vendors (Part 1 of VENDOR_APP_FLOW_SPEC.md) - mirrors the landlord
+        // blocks above.
+        this.router.get(
+            "/vendors",
+            this.authenticateService.authorize,
+            AdminController.getAllVendors
+        );
+
+        this.router.get(
+            "/vendors/verifications/pending",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.getPendingVendorVerifications
+        );
+
+        this.router.post(
+            "/vendors/:vendorId/verification/approve",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.approveVendorVerification
+        );
+
+        this.router.post(
+            "/vendors/:vendorId/verification/reject",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.rejectVendorVerification
+        );
+
+        // Public - the Vendor app reads this during onboarding, before it
+        // has an authenticated session (register-vendor is the final step).
+        this.router.get(
+            "/vendors/document-requirements/active",
+            async (req, res) => {
+                const { getActiveDocumentRequirements } = await import(
+                    "../services/vendorDocumentRequirement.service"
+                );
+                const requirements = await getActiveDocumentRequirements();
+                res.status(200).json({ success: true, data: requirements });
+            }
+        );
+
+        this.router.get(
+            "/vendors/document-requirements",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.getVendorDocumentRequirements
+        );
+
+        this.router.post(
+            "/vendors/document-requirements",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.createVendorDocumentRequirement
+        );
+
+        this.router.patch(
+            "/vendors/document-requirements/:requirementId",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.updateVendorDocumentRequirement
+        );
+
+        this.router.delete(
+            "/vendors/document-requirements/:requirementId",
+            this.authenticateService.authorize,
+            this.authenticateService.authorizeRole(userRoles.ADMIN),
+            AdminController.deleteVendorDocumentRequirement
+        );
+
         this.router.post(
             "/landlords/:userId/resend-invite",
             this.authenticateService.authorize,
@@ -105,6 +175,12 @@ class AdminRouter {
             "/landlords/:userId",
             this.authenticateService.authorize,
             AdminController.deleteLandlordAccount
+        );
+
+        this.router.post(
+            "/landlords/:userId/suspend",
+            this.authenticateService.authorize,
+            AdminController.setLandlordSuspension
         );
 
         // Public endpoint for landlords to get admin users for chat

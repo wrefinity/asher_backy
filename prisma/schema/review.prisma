@@ -1,21 +1,23 @@
 model reviews {
-  id         String      @id @default(cuid())
-  rating     Float
-  type       ReviewType? @default(NORMAL_REVIEW)
-  comment    String?
-  tenantId   String?
-  vendorId   String?
-  landlordId String?
-  propertyId String?
-  reviewById String
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  isDeleted  Boolean     @default(false)
-  landlord   landlords?  @relation(fields: [landlordId], references: [id])
-  property   properties? @relation(fields: [propertyId], references: [id])
-  user       users       @relation(fields: [reviewById], references: [id])
-  tenant     tenants?    @relation(fields: [tenantId], references: [id])
-  vendor     vendors?    @relation(fields: [vendorId], references: [id])
+  id            String      @id @default(cuid())
+  rating        Float
+  type          ReviewType? @default(NORMAL_REVIEW)
+  comment       String?
+  tenantId      String?
+  vendorId      String?
+  landlordId    String?
+  propertyId    String?
+  maintenanceId String?     @unique
+  reviewById    String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  isDeleted     Boolean     @default(false)
+  landlord      landlords?  @relation(fields: [landlordId], references: [id])
+  property      properties? @relation(fields: [propertyId], references: [id])
+  user          users       @relation(fields: [reviewById], references: [id])
+  tenant        tenants?    @relation(fields: [tenantId], references: [id])
+  vendor        vendors?    @relation(fields: [vendorId], references: [id])
+  maintenance   maintenance? @relation(fields: [maintenanceId], references: [id])
 }
 
 enum ReviewType {

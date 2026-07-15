@@ -230,10 +230,25 @@ export function tenancyDataToActivityItems(data: {
   });
 
   (data.inspections ?? []).forEach((inspection: any) => {
+    const status = String(inspection.status || 'Scheduled');
+    const typeLabel = inspection.title || inspection.type || 'Property inspection';
+    const scheduledLabel = inspection.scheduledDate
+      ? new Date(inspection.scheduledDate).toLocaleDateString('en-GB')
+      : null;
+
+    let subtitle = status;
+    if (status === 'Scheduled' && scheduledLabel) {
+      subtitle = `Appointment on ${scheduledLabel}`;
+    } else if (status === 'Completed') {
+      subtitle = 'Completed';
+    } else if (status === 'In Progress') {
+      subtitle = 'In progress';
+    }
+
     items.push({
       id: `inspection-${inspection.id}`,
-      title: inspection.title || inspection.type || 'Property inspection',
-      subtitle: inspection.status || 'Scheduled',
+      title: typeLabel,
+      subtitle,
       createdAt: (inspection.updatedAt || inspection.createdAt || new Date()).toISOString(),
       tone: 'inspection',
       source: 'inspection',
@@ -249,7 +264,7 @@ export function tenancyDataToActivityItems(data: {
         title: ack.disputed
           ? 'Inspection acknowledged with disputes'
           : 'Inspection acknowledged',
-        subtitle: inspection.title || inspection.type || 'Property inspection',
+        subtitle: typeLabel,
         createdAt: new Date(ack.acknowledgedAt).toISOString(),
         tone: 'inspection',
         source: 'inspection',

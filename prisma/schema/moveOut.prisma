@@ -29,6 +29,7 @@ model MoveOutNotice {
   updatedAt           DateTime            @updatedAt
   tenant              tenants             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   relocationInterest  RelocationInterest?
+  inspection          inspection?
 
   @@index([tenantId])
   @@index([status])

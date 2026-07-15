@@ -1,26 +1,32 @@
 model Community {
-  id          String                @id @default(cuid())
-  description String
-  visibility  CommunityVisibility   @default(PUBLIC)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  avatarUrl   String?
-  bannerUrl   String?
-  name        String                @unique
-  ownerId     String
-  slug        String?               @unique
-  forumCount  Int                   @default(0)
-  memberCount Int                   @default(0)
-  postCount   Int                   @default(0)
-  isDeleted   Boolean               @default(false)
-  owner       users                 @relation("CommunityOwner", fields: [ownerId], references: [id])
-  invitations CommunityInvitation[]
-  members     CommunityMember[]
-  posts       CommunityPost[]
-  forums      Forum[]               @relation("CommunityForums")
+  id                 String                      @id @default(cuid())
+  description        String
+  visibility         CommunityVisibility         @default(PUBLIC)
+  ownerType          CommunityOwnerType          @default(LANDLORD)
+  discoveryAudience  CommunityDiscoveryAudience  @default(NONE)
+  joinApprovalMode   JoinApprovalMode            @default(MANUAL)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  avatarUrl          String?
+  bannerUrl          String?
+  name               String                      @unique
+  ownerId            String
+  slug               String?                     @unique
+  forumCount         Int                         @default(0)
+  memberCount        Int                         @default(0)
+  postCount          Int                         @default(0)
+  isDeleted          Boolean                     @default(false)
+  owner              users                       @relation("CommunityOwner", fields: [ownerId], references: [id])
+  invitations        CommunityInvitation[]
+  members            CommunityMember[]
+  joinRequests       CommunityJoinRequest[]
+  posts              CommunityPost[]
+  forums             Forum[]                     @relation("CommunityForums")
 
   @@index([slug])
   @@index([ownerId])
+  @@index([ownerType])
+  @@index([discoveryAudience])
 }
 
 model CommunityMember {
@@ -51,12 +57,47 @@ model CommunityInvitation {
   @@index([code])
 }
 
+model CommunityJoinRequest {
+  id          String            @id @default(cuid())
+  communityId String
+  usersId     String
+  status      JoinRequestStatus @default(PENDING)
+  message     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  reviewedAt  DateTime?
+  community   Community         @relation(fields: [communityId], references: [id])
+  users       users             @relation(fields: [usersId], references: [id])
+
+  @@unique([communityId, usersId])
+  @@index([usersId])
+  @@index([status])
+}
+
+model ForumJoinRequest {
+  id        String            @id @default(cuid())
+  forumId   String
+  usersId   String
+  status    JoinRequestStatus @default(PENDING)
+  message   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  reviewedAt DateTime?
+  forum     Forum             @relation(fields: [forumId], references: [id])
+  users     users             @relation(fields: [usersId], references: [id])
+
+  @@unique([forumId, usersId])
+  @@index([usersId])
+  @@index([status])
+}
+
 model Forum {
   id                String             @id @default(cuid())
   communityId       String
   name              String
   description       String?
   order             Int                @default(0)
+  isDiscoverable    Boolean            @default(false)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   postCount         Int                @default(0)
@@ -75,9 +116,11 @@ model Forum {
   owner             users              @relation("ForumOwner", fields: [ownerId], references: [id])
   categories        ForumCategory[]
   ForumMember       ForumMember[]
+  joinRequests      ForumJoinRequest[]
 
   @@index([communityId])
   @@index([membershipType])
+  @@index([isDiscoverable])
 }
 
 model ForumMember {
@@ -396,6 +439,28 @@ model DiscussionCommentShare {
 enum CommunityVisibility {
   PUBLIC
   PRIVATE
+}
+
+enum CommunityOwnerType {
+  LANDLORD
+  TENANT
+}
+
+enum CommunityDiscoveryAudience {
+  NONE
+  LANDLORDS
+  TENANTS
+}
+
+enum JoinApprovalMode {
+  MANUAL
+  AUTO
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum MembershipStatus {

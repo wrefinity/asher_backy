@@ -394,6 +394,10 @@ class ApplicantService {
     // }
 
     let propertyListingId: string | null = null;
+    let resolvedPropertiesId = propertiesId || null;
+    let resolvedUnitId = unitId || null;
+    let resolvedRoomId = roomId || null;
+
     if (data.applicationInviteId) {
       const inviteRecord = await prismaClient.applicationInvites.findFirst({
         where: { id: data.applicationInviteId },
@@ -404,6 +408,11 @@ class ApplicantService {
         inviteRecord?.enquires?.propertyListingId ||
         null;
 
+      resolvedPropertiesId =
+        resolvedPropertiesId || inviteRecord?.propertiesId || null;
+      resolvedUnitId = resolvedUnitId || inviteRecord?.unitId || null;
+      resolvedRoomId = resolvedRoomId || inviteRecord?.roomId || null;
+
       if (propertyListingId && inviteRecord && !inviteRecord.propertyListingId) {
         await prismaClient.applicationInvites.update({
           where: { id: data.applicationInviteId },
@@ -412,15 +421,26 @@ class ApplicantService {
       }
     }
 
+    // Room/unit-only payloads often omit propertiesId — backfill from listing
+    if ((!resolvedPropertiesId || !resolvedUnitId || !resolvedRoomId) && propertyListingId) {
+      const listing = await prismaClient.propertyListingHistory.findUnique({
+        where: { id: propertyListingId },
+        select: { propertyId: true, unitId: true, roomId: true },
+      });
+      resolvedPropertiesId = resolvedPropertiesId || listing?.propertyId || null;
+      resolvedUnitId = resolvedUnitId || listing?.unitId || null;
+      resolvedRoomId = resolvedRoomId || listing?.roomId || null;
+    }
+
     // Web direct application path: initiated by user through web portal, mark platform WEB.
     const app = await prismaClient.application.create({
       data: {
         createdById: userId,
         invited,
         userId,
-        propertiesId: propertiesId || undefined,
-        roomId: roomId || undefined,           // Only include if room exists
-        unitId: unitId || undefined,           // Only include if unit exists
+        propertiesId: resolvedPropertiesId || undefined,
+        roomId: resolvedRoomId || undefined,
+        unitId: resolvedUnitId || undefined,
         applicationInviteId: applicationInviteId,
         propertyListingId: propertyListingId ?? undefined,
         lastStep: ApplicationSaveState.PERSONAL_KIN,
@@ -439,13 +459,13 @@ class ApplicantService {
       const logcreated = await LogsServices.checkPropertyLogs(
         userId,
         LogType.APPLICATION,
-        propertiesId,
+        resolvedPropertiesId,
         app.id
       );
 
       if (!logcreated) {
         await LogsServices.createLog({
-          propertyId: propertiesId,
+          propertyId: resolvedPropertiesId || undefined,
           propertyListingId: propertyListingId ?? undefined,
           subjects: "Application Started",
           events: "Application in progress",

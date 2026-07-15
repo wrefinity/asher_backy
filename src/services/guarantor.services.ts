@@ -9,6 +9,10 @@ import { ApplicationSaveState, ApplicationStatus, GuarantorNominationStatus, Not
 import NotificationService from "./notification.service";
 import { sendMail } from "../utils/emailer";
 import { sendPreferenceAwareMail } from "../utils/sendPreferenceAwareMail";
+import {
+  applicationPropertyLandlordInclude,
+  resolveApplicationPropertyLandlordUser,
+} from "../utils/resolveApplicationLandlord";
 
 function joinNameParts(...parts: Array<string | null | undefined>): string {
   return parts
@@ -252,8 +256,8 @@ class GuarantorService {
         guarantorInformation: true,
         personalDetails: true,
         user: true,
-        createdBy: true,
-        properties: true,
+        createdBy: { select: { id: true, email: true, role: true } },
+        properties: { include: applicationPropertyLandlordInclude },
       },
     });
 
@@ -321,7 +325,7 @@ class GuarantorService {
     });
 
     const tenantUserId = application.userId;
-    const landlordUserId = application.createdById;
+    const propertyLandlord = await resolveApplicationPropertyLandlordUser(application);
     const message = `${guarantorName} has declined to act as guarantor for ${tenantName}'s application (${propertyLabel}). The tenant will need to nominate another guarantor.`;
 
     if (tenantUserId) {
@@ -343,23 +347,27 @@ class GuarantorService {
       }
     }
 
-    if (landlordUserId) {
+    if (propertyLandlord?.id) {
       await NotificationService.createNotification(
         {
           sourceId: tenantUserId || undefined,
-          destId: landlordUserId,
+          destId: propertyLandlord.id,
           title: "Guarantor declined nomination",
           message,
           category: NotificationCategory.COMMUNICATION,
+          notificationType: 'guarantor_declined',
+          emitRealtime: true,
+          type: 'warning',
+          route: '/leasing',
         },
         NotificationCategory.COMMUNICATION
       );
-      if (application.createdBy?.email) {
+      if (propertyLandlord.email) {
         await sendPreferenceAwareMail({
-          userId: landlordUserId,
+          userId: propertyLandlord.id,
           category: NotificationCategory.COMMUNICATION,
           notificationType: 'guarantor_declined',
-          to: application.createdBy.email,
+          to: propertyLandlord.email,
           subject: 'Guarantor declined tenant nomination',
           html: `<p>${message}</p>`,
         });

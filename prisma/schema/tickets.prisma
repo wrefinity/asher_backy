@@ -12,14 +12,23 @@ model SupportTicket {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   raisedByTenantId String?
+  // Disputes (Part 6 of VENDOR_APP_FLOW_SPEC.md): raised by tenant OR
+  // vendor, always routed to Asher admin, and tagging the disputed job so
+  // admin can pull its full evidence (photos, timeline, payment) without
+  // re-uploads.
+  raisedByVendorId String?
+  maintenanceId    String?
   assignedTo       users?          @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
   raisedBy         landlords?      @relation("TicketRaisedBy", fields: [raisedById], references: [id])
   raisedByTenant   tenants?        @relation("TicketTenantRaisedBy", fields: [raisedByTenantId], references: [id])
+  raisedByVendor   vendors?        @relation("TicketVendorRaisedBy", fields: [raisedByVendorId], references: [id])
+  maintenance      maintenance?    @relation(fields: [maintenanceId], references: [id])
   messages         TicketMessage[]
 
   @@index([raisedById])
   @@index([assignedToId])
   @@index([ticketCode])
+  @@index([maintenanceId])
 }
 
 model TicketMessage {
@@ -48,6 +57,7 @@ enum TicketStatus {
 enum TicketType {
   SUPPORT
   SUGGESTION
+  DISPUTE
 }
 
 enum TicketPriority {

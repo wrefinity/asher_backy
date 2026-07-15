@@ -58,6 +58,10 @@ export async function notifyReferenceDeclined(params: {
         title,
         message,
         category: NotificationCategory.COMMUNICATION,
+        notificationType: 'reference_declined',
+        emitRealtime: true,
+        type: 'warning',
+        route: '/leasing',
       },
       NotificationCategory.COMMUNICATION
     );

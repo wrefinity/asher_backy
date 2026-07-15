@@ -264,6 +264,54 @@ class PayStackService {
         });
     }
 
+    /** Nigerian bank directory for the add-bank-account picker. */
+    async listBanks() {
+        const response = await axios.get(`${this.payStackBaseUrl}/bank?country=nigeria`, {
+            headers: this.getHeaders(),
+        });
+        return (response.data?.data ?? []).map((b: any) => ({ name: b.name, code: b.code }));
+    }
+
+    /**
+     * Creates a Paystack transfer recipient for NGN payouts (Part 3 §5 of
+     * VENDOR_APP_FLOW_SPEC.md) and returns its recipient_code.
+     */
+    async createTransferRecipient(accountName: string, accountNumber: string, bankCode: string) {
+        const response = await axios.post(
+            `${this.payStackBaseUrl}/transferrecipient`,
+            {
+                type: 'nuban',
+                name: accountName,
+                account_number: accountNumber,
+                bank_code: bankCode,
+                currency: 'NGN',
+            },
+            { headers: this.getHeaders() }
+        );
+        return response.data?.data?.recipient_code as string;
+    }
+
+    /**
+     * Vendor payout transfer (Part 2 §6 / Part 3 §5 of VENDOR_APP_FLOW_SPEC.md)
+     * - unlike processPaystackPayout above, this has no wallet/Transaction
+     * coupling since vendors aren't paid out of a landlord-style wallet;
+     * the caller (weeklyVendorPayout.service.ts) tracks what's been paid via
+     * Maintenance.vendorPaidOutAt instead.
+     */
+    async transferToVendor(amount: number, recipientCode: string, reference: string) {
+        const response = await axios.post(
+            `${this.payStackBaseUrl}/transfer`,
+            {
+                source: 'balance',
+                amount: Math.round(amount * 100),
+                recipient: recipientCode,
+                reference,
+            },
+            { headers: this.getHeaders() }
+        );
+        return response.data;
+    }
+
     async verifyPayment(referenceId: string) {
         // Verify payment with Paystack
         const response = await axios.get(

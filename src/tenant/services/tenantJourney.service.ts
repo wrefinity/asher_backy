@@ -112,7 +112,7 @@ class TenantJourneyService {
       }),
       TenantBillsService.getTenantBills(tenant.id).then((rows) => rows.slice(0, 20)),
       prismaClient.inspection.findMany({
-        where: { tenantId: tenant.id },
+        where: { tenantId: tenant.id, NOT: { status: 'Draft' } },
         include: { acknowledgment: true },
         orderBy: { updatedAt: 'desc' },
         take: 20,

@@ -75,6 +75,8 @@ class DocumentRequestService {
         message: `Your landlord has requested ${data.documentName}. Please upload by ${new Date(data.dueDate).toLocaleDateString()}.`,
         notificationType: 'document_request',
         route: '/profile/Documents',
+        emitRealtime: true,
+        type: 'info',
       },
       NotificationCategory.COMMUNICATION
     );

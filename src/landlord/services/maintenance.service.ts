@@ -31,52 +31,47 @@ class LandlordMaintenanceService {
     }
   }
   getMaintenanceCounts = async (landlordId: string): Promise<MaintenanceCounts> => {
-    // Count maintenance records with status "PENDING"
-    const pendingCount = await prismaClient.maintenance.count({
-      where: {
-        OR: [
-          { landlordId: landlordId },
-          { property: { landlordId: landlordId } }
-        ],
-        status: maintenanceStatus.PENDING,
-        isDeleted: false,
-      },
-    });
-
-    // Count maintenance records with status "COMPLETED"
-    const completedCount = await prismaClient.maintenance.count({
-      where: {
-        OR: [
-          { landlordId: landlordId },
-          { property: { landlordId: landlordId } }
-        ],
-        status: maintenanceStatus.COMPLETED,
-        isDeleted: false,
-      },
-    });
-
-    // Count maintenance records with status "ASSIGNED" or "IN_PROGRESS"
-    const inProgressCount = await prismaClient.maintenance.count({
-      where: {
-        property: {
-          landlordId
+    const [pendingCount, completedCount, inProgressCount, tenantRequestCount] = await Promise.all([
+      prismaClient.maintenance.count({
+        where: {
+          OR: [
+            { landlordId: landlordId },
+            { property: { landlordId: landlordId } }
+          ],
+          status: maintenanceStatus.PENDING,
+          isDeleted: false,
         },
-        status: { in: ['ASSIGNED', 'UNASSIGNED'] },
-        isDeleted: false,
-      },
-    });
-
-    // Count maintenance records with status "CANCELLATION_REQUEST"
-    const tenantRequestCount = await prismaClient.maintenance.count({
-      where: {
-        OR: [
-          { landlordId: landlordId },
-          { property: { landlordId: landlordId } }
-        ],
-        handleByLandlord: false,
-        isDeleted: false,
-      },
-    });
+      }),
+      prismaClient.maintenance.count({
+        where: {
+          OR: [
+            { landlordId: landlordId },
+            { property: { landlordId: landlordId } }
+          ],
+          status: maintenanceStatus.COMPLETED,
+          isDeleted: false,
+        },
+      }),
+      prismaClient.maintenance.count({
+        where: {
+          property: {
+            landlordId
+          },
+          status: { in: ['ASSIGNED', 'UNASSIGNED'] },
+          isDeleted: false,
+        },
+      }),
+      prismaClient.maintenance.count({
+        where: {
+          OR: [
+            { landlordId: landlordId },
+            { property: { landlordId: landlordId } }
+          ],
+          handleByLandlord: false,
+          isDeleted: false,
+        },
+      }),
+    ]);
     return {
       pending: pendingCount,
       completed: completedCount,
@@ -802,7 +797,12 @@ class LandlordMaintenanceService {
     });
   }
 
-  changeLandlordPropertiesMaintenanceDecisionState = async (landlordId: string, maintenanceId: string, status?: maintenanceDecisionStatus) => {
+  changeLandlordPropertiesMaintenanceDecisionState = async (
+    landlordId: string,
+    maintenanceId: string,
+    status?: maintenanceDecisionStatus,
+    options: { landlordWillRepair?: boolean; cancel?: boolean } = {}
+  ) => {
     const existing = await prismaClient.maintenance.findFirst({
       where: {
         id: maintenanceId,
@@ -825,6 +825,10 @@ class LandlordMaintenanceService {
       },
       data: {
         ...(status && { landlordDecision: status as any }),
+        ...(options.landlordWillRepair !== undefined && { landlordWillRepair: options.landlordWillRepair }),
+        // Declining terminates the request outright - nothing (vendor or
+        // tenant) can act on it further, matching a real cancellation.
+        ...(options.cancel && { status: maintenanceStatus.CANCEL, postedForVendorSearch: false }),
         isDeleted: false,
       },
       include: {
@@ -848,6 +852,31 @@ class LandlordMaintenanceService {
     }
 
     return updated;
+  }
+
+  // Landlord explicitly makes an already-approved "I'll repair this myself"
+  // job visible to vendors. Requests stay hidden from the vendor marketplace
+  // until this is called, so the landlord controls exactly when it goes out.
+  postJobForVendorSearch = async (landlordId: string, maintenanceId: string) => {
+    const maintenance = await prismaClient.maintenance.findFirst({
+      where: { id: maintenanceId, property: { landlordId } },
+    });
+
+    if (!maintenance) {
+      throw new Error('Maintenance request not found');
+    }
+    if (maintenance.landlordDecision !== maintenanceDecisionStatus.APPROVED || !maintenance.landlordWillRepair) {
+      throw new Error('This request must be an approved, landlord-handled repair before it can be posted');
+    }
+    if (maintenance.postedForVendorSearch) {
+      throw new Error('This request has already been posted for vendors');
+    }
+
+    return prismaClient.maintenance.update({
+      where: { id: maintenanceId },
+      data: { postedForVendorSearch: true },
+      include: { landlord: true, tenant: true, ...this.inclusion },
+    });
   }
 
   createWhitelist = async (data: MaintenanceWhitelistInput, landlordId: string) => {

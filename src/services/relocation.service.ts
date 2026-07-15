@@ -110,12 +110,13 @@ class RelocationService {
       throw new Error('ACTIVE_LEAVING_NOTICE');
     }
 
-    await prismaClient.moveOutNotice.update({
-      where: { id: moveOutNotice.id },
-      data: { searchCriteria: input.criteria as Prisma.InputJsonValue },
-    });
-
-    const existingInterest = await this.getActiveInterest(input.tenantId);
+    const [, existingInterest] = await Promise.all([
+      prismaClient.moveOutNotice.update({
+        where: { id: moveOutNotice.id },
+        data: { searchCriteria: input.criteria as Prisma.InputJsonValue },
+      }),
+      this.getActiveInterest(input.tenantId),
+    ]);
     let interest = existingInterest;
 
     if (existingInterest) {
@@ -168,106 +169,134 @@ class RelocationService {
       [tenant.user?.profile?.firstName, tenant.user?.profile?.lastName].filter(Boolean).join(' ') ||
       'An existing tenant';
 
-    let newMatches = 0;
-    const enquiryResults: Array<{ landlordId: string; enquiryId: string; listingId: string; matchScore: number }> = [];
+    const matchResults = await Promise.all(
+      Array.from(bestByLandlord.entries()).map(async ([landlordId, { listing, matchScore }]) => {
+        const listingId = listing.listingId;
+        const propertyId = listing.hierarchy?.propertyId;
+        const unitId = listing.hierarchy?.unitId || undefined;
+        const roomId = listing.hierarchy?.roomId || undefined;
 
-    for (const [landlordId, { listing, matchScore }] of bestByLandlord.entries()) {
-      const listingId = listing.listingId;
-      const propertyId = listing.hierarchy?.propertyId;
-      const unitId = listing.hierarchy?.unitId || undefined;
-      const roomId = listing.hierarchy?.roomId || undefined;
+        const existingEnquiry = await prismaClient.propertyEnquiry.findFirst({
+          where: {
+            tenantId: input.tenantId,
+            landlordId,
+            status: { not: EnquiryStatus.CLOSED },
+          },
+        });
 
-      const existingEnquiry = await prismaClient.propertyEnquiry.findFirst({
-        where: {
-          tenantId: input.tenantId,
-          landlordId,
-          status: { not: EnquiryStatus.CLOSED },
-        },
-      });
+        const message = `${tenantName} is relocating and matches your listing (${matchScore}% match). Asher score: ${displayScore}/1000.`;
 
-      const message = `${tenantName} is relocating and matches your listing (${matchScore}% match). Asher score: ${displayScore}/1000.`;
+        if (existingEnquiry) {
+          const existingScore = existingEnquiry.matchScore ?? 0;
+          if (existingScore >= matchScore) return null;
 
-      if (existingEnquiry) {
-        const existingScore = existingEnquiry.matchScore ?? 0;
-        if (existingScore >= matchScore) continue;
+          if (existingEnquiry.logId) {
+            await Promise.all([
+              logsServices.updateLog(existingEnquiry.logId, {
+                propertyId,
+                events: message,
+                unitId,
+                roomId,
+                propertyListingId: listingId,
+              }),
+              prismaClient.propertyEnquiry.update({
+                where: { id: existingEnquiry.id },
+                data: {
+                  message,
+                  propertyId,
+                  unitId,
+                  roomId,
+                  propertyListingId: listingId,
+                  matchScore,
+                },
+              }),
+            ]);
+          } else {
+            await prismaClient.propertyEnquiry.update({
+              where: { id: existingEnquiry.id },
+              data: {
+                message,
+                propertyId,
+                unitId,
+                roomId,
+                propertyListingId: listingId,
+                matchScore,
+              },
+            });
+          }
 
-        if (existingEnquiry.logId) {
-          await logsServices.updateLog(existingEnquiry.logId, {
-            propertyId,
-            events: message,
-            unitId,
-            roomId,
-            propertyListingId: listingId,
-          });
+          return {
+            isNew: false,
+            landlordId,
+            enquiryId: existingEnquiry.id,
+            listingId,
+            matchScore,
+          };
         }
 
-        await prismaClient.propertyEnquiry.update({
-          where: { id: existingEnquiry.id },
-          data: {
-            message,
-            propertyId,
-            unitId,
-            roomId,
-            propertyListingId: listingId,
-            matchScore,
-          },
+        const log = await logsServices.createLog({
+          propertyId,
+          events: message,
+          createdById: input.userId,
+          type: LogType.ENQUIRED,
+          enquireStatus: EnquireStatus.EXISTING_TENANT,
+          unitId,
+          roomId,
+          propertyListingId: listingId,
+          status: logTypeStatus.PENDING,
         });
 
-        enquiryResults.push({
+        const enquiry = await propertyServices.createEnquiry({
+          tenantId: input.tenantId,
           landlordId,
-          enquiryId: existingEnquiry.id,
-          listingId,
+          subject: 'Relocation interest — existing tenant',
+          message,
+          propertyId,
+          unitId,
+          roomId,
+          logId: log.id,
+          propertyListingId: listingId,
           matchScore,
+          skipLandlordNotification: true,
         });
-        continue;
-      }
 
-      const log = await logsServices.createLog({
-        propertyId,
-        events: message,
-        createdById: input.userId,
-        type: LogType.ENQUIRED,
-        enquireStatus: EnquireStatus.EXISTING_TENANT,
-        unitId,
-        roomId,
-        propertyListingId: listingId,
-        status: logTypeStatus.PENDING,
-      });
+        const landlord = await prismaClient.landlords.findUnique({
+          where: { id: landlordId },
+          select: { userId: true },
+        });
 
-      const enquiry = await propertyServices.createEnquiry({
-        tenantId: input.tenantId,
-        landlordId,
-        subject: 'Relocation interest — existing tenant',
-        message,
-        propertyId,
-        unitId,
-        roomId,
-        logId: log.id,
-        propertyListingId: listingId,
-        matchScore,
-      });
+        if (landlord?.userId) {
+          await NotificationService.createNotification(
+            {
+              sourceId: input.userId,
+              destId: landlord.userId,
+              title: 'Property Match — Relocating Tenant',
+              message: `${tenantName} (${displayScore}/1000 Asher score, ${matchScore}% listing match) is interested in your property. Review under Leasing → Existing Tenants.`,
+              category: NotificationCategory.PROPERTY_MATCH,
+              emitRealtime: true,
+              type: 'info',
+              route: '/leasing',
+            },
+            NotificationCategory.PROPERTY_MATCH
+          );
+        }
 
-      const landlord = await prismaClient.landlords.findUnique({
-        where: { id: landlordId },
-        select: { userId: true },
-      });
+        return { isNew: true, landlordId, enquiryId: enquiry.id, listingId, matchScore };
+      })
+    );
 
-      if (landlord?.userId) {
-        await NotificationService.createNotification(
-          {
-            sourceId: input.userId,
-            destId: landlord.userId,
-            title: 'Property Match — Relocating Tenant',
-            message: `${tenantName} (${displayScore}/1000 Asher score, ${matchScore}% listing match) is interested in your property. Review under Leasing → Existing Tenants.`,
-            category: NotificationCategory.PROPERTY_MATCH,
-          },
-          NotificationCategory.PROPERTY_MATCH
-        );
-      }
-
-      newMatches += 1;
-      enquiryResults.push({ landlordId, enquiryId: enquiry.id, listingId, matchScore });
-    }
+    const enquiryResults = matchResults.filter(
+      (
+        result
+      ): result is {
+        isNew: boolean;
+        landlordId: string;
+        enquiryId: string;
+        listingId: string;
+        matchScore: number;
+      } => Boolean(result)
+    );
+    const newMatches = enquiryResults.filter((result) => result.isNew).length;
 
     const totalMatchCount = await this.countTotalMatches(input.tenantId);
 
@@ -285,7 +314,7 @@ class RelocationService {
       displayScore,
       matchCount: totalMatchCount,
       newMatches,
-      enquiries: enquiryResults,
+      enquiries: enquiryResults.map(({ isNew, ...result }) => result),
     };
   }
 }

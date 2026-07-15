@@ -44,6 +44,7 @@ import {
     validateTenantApplicationStart,
     validateTenantInviteUpdate,
 } from '../../utils/InviteStateMachine';
+import { resolveApplicationStartEntity } from '../../utils/resolveApplicationStartEntity';
 import applicationFeeService from '../../services/applicationFee.service';
 import moveInPaymentService from '../../services/moveInPayment.service';
 import { PaymentGateway } from '@prisma/client';
@@ -415,16 +416,13 @@ class ApplicantControls {
     try {
       const userId = String(req.user.id);
       const propertiesId = req.params.propertiesId;
-      // check for property existance
-      const propertyExist = await PropertyServices.searchPropertyUnitRoom(propertiesId);
-      if (!propertyExist) return res.status(404).json({ message: `property with the id : ${propertiesId} doesn't exist` });
 
       const { error, value } = applicantPersonalDetailsSchema.validate(req.body);
       if (error) {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      if (!value.applicationInviteId == null) {
+      if (value.applicationInviteId == null) {
         return res.status(400).json({ error: "cannot pass null application invite id" });
       }
 
@@ -436,14 +434,25 @@ class ApplicantControls {
         return res.status(400).json({ error: startCheck.error });
       }
 
-      const { type, data } = propertyExist;
-      // Only one of these will be assigned, others remain undefined
-      const id = data.id;
-      const propertyId = type === 'property' ? id : undefined;
-      const unitId = type === 'unit' ? id : undefined;
-      const roomId = type === 'room' ? id : undefined;
+      // URL :propertyId is often a listing-history id from "invited to apply" links.
+      // Prefer invite-bound room/unit/property, then listing → entity resolution.
+      const resolved = await resolveApplicationStartEntity(propertiesId, invitation);
+      if (!resolved) {
+        return res.status(404).json({
+          message:
+            "No matching property, unit, or room found for this invitation. Open the apply link from your invite or property page and try again.",
+        });
+      }
 
-      const application = await ApplicantService.createApplication({ ...value, userId }, { propertyId, unitId, roomId }, userId);
+      const application = await ApplicantService.createApplication(
+        { ...value, userId },
+        {
+          propertyId: resolved.propertyId,
+          unitId: resolved.unitId,
+          roomId: resolved.roomId,
+        },
+        userId
+      );
 
       return res.status(201).json({ application });
     } catch (error: unknown) {
@@ -1048,7 +1057,7 @@ class ApplicantControls {
         </div>
       `;
 
-      // Send in-house inbox message
+      // Send in-house inbox message to the landlord (must match receiverEmail)
       const mailBox = await emailService.createEmail({
         senderEmail: user.email,
         receiverEmail: landlord.user.email,
@@ -1056,7 +1065,7 @@ class ApplicantControls {
         attachment: documentUrls,
         subject: `Asher - ${agreement?.application.properties?.name} Agreement Form SignUp`,
         senderId: req.user.id,
-        receiverId: agreement.application.user.id,
+        receiverId: landlord.user.id,
       });
 
       if (!mailBox) {
@@ -1074,6 +1083,27 @@ class ApplicantControls {
       }).catch((emailError) => {
         logger.error('Failed to send agreement signed email:', emailError);
       });
+
+      try {
+        if (landlord.user?.id) {
+          const NotificationService = (await import('../../services/notification.service')).default;
+          await NotificationService.createNotification(
+            {
+              sourceId: userId,
+              destId: landlord.user.id,
+              title: 'Agreement Signed by Applicant',
+              message: `An applicant signed the agreement for ${agreement.application?.properties?.name || 'a property'}. Please counter-sign.`,
+              notificationType: 'agreement_signed',
+              route: '/leasing',
+              emitRealtime: true,
+              type: 'success',
+            },
+            'WEBSITE_INQUIRY'
+          );
+        }
+      } catch (notifyError) {
+        console.error('Failed to notify landlord of agreement signature:', notifyError);
+      }
 
       // Agreement fully signed only after landlord counter-signs (see syncApplicationStatusAfterAgreementSign)
       await logsServices.createLog({

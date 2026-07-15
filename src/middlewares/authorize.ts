@@ -86,6 +86,14 @@ export class Authorize {
                 return res.status(401).json({ message: "User not found" });
             }
 
+            if ((user as any).isSuspended) {
+                return res.status(403).json({ message: "Account suspended" });
+            }
+
+            if ((user as any).landlords?.isDeleted) {
+                return res.status(403).json({ message: "Account has been deleted" });
+            }
+
             // Build the user object with proper tenant context
             req.user = this.buildUserWithContext(user, decoded);
             this.backfillLoginSession(req);
@@ -130,7 +138,10 @@ export class Authorize {
                 ...baseUser,
                 tenantCode: decoded.tenantCode,
                 tenantId: decoded.tenantId,
-                tenant: { id: decoded.tenantId },
+                tenant: {
+                    id: decoded.tenantId,
+                    landlordId: user.tenants?.find((t: any) => t.id === decoded.tenantId)?.landlordId,
+                },
                 landlords: undefined,
                 vendors: undefined,
             };
@@ -157,7 +168,10 @@ export class Authorize {
             if (selectedTenant) {
                 return {
                     ...baseUser,
-                    tenant: { id: selectedTenant.id },
+                    tenant: {
+                        id: selectedTenant.id,
+                        landlordId: selectedTenant.landlordId,
+                    },
                     tenantCode: selectedTenant.tenantCode,
                     tenantId: selectedTenant.id,
                     landlords: user.landlords ? { id: user.landlords.id } : undefined,
@@ -284,6 +298,13 @@ export class Authorize {
         };
     }
 
+    authorizeAnyRole(...roles: userRoles[]) {
+        return (req: CustomRequest, res: Response, next: NextFunction) => {
+            if (roles.some((role) => req.user?.role.includes(role))) return next();
+            res.status(403).json({ message: "You are not authorized for this action" });
+        };
+    }
+
     /**
      * Middleware to ensure user is operating in tenant context
      */
@@ -299,6 +320,8 @@ export class Authorize {
             const tenant = await prismaClient.tenants.findUnique({
                 where: { id: tenantId },
                 select: {
+                    id: true,
+                    landlordId: true,
                     isDeleted: true,
                     isAppAccessSuspended: true,
                 },
@@ -315,6 +338,13 @@ export class Authorize {
                     message: "Your access to the tenant app has been suspended. Please contact your landlord."
                 });
             }
+
+            // Keep landlordId on tenant context for whitelist / vendor posting
+            req.user.tenant = {
+                id: tenant.id,
+                landlordId: tenant.landlordId,
+            };
+            req.user.tenantId = tenant.id;
 
             next();
         };

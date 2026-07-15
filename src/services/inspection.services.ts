@@ -15,6 +15,8 @@ class InspectionService {
                 propertyId: data.propertyId,
                 tenantId: data.tenantId || null,
                 type: data.type || null,
+                trigger: data.trigger || 'MANUAL',
+                moveOutNoticeId: data.moveOutNoticeId || null,
                 scheduledDate: scheduledDate || null,
                 scheduledTime: data.scheduledTime || null,
                 inspector: data.inspector || null,
@@ -28,6 +30,7 @@ class InspectionService {
                 generalNotes: data.generalNotes || data.notes || null, // Use generalNotes, fallback to notes
                 recommendations: data.recommendations || null,
                 notes: data.notes || null, // Keep for backward compatibility
+                onSiteSignature: data.onSiteSignature || null,
             },
             include: {
                 property: true,
@@ -64,6 +67,9 @@ class InspectionService {
         const updateData: any = {};
         
         if (data.type !== undefined) updateData.type = data.type || null;
+        if (data.trigger !== undefined) updateData.trigger = data.trigger || null;
+        if (data.moveOutNoticeId !== undefined) updateData.moveOutNoticeId = data.moveOutNoticeId || null;
+        if ((data as any).tenantId !== undefined) updateData.tenantId = (data as any).tenantId || null;
         if (data.scheduledDate !== undefined) updateData.scheduledDate = scheduledDate || null;
         if (data.scheduledTime !== undefined) updateData.scheduledTime = data.scheduledTime || null;
         if (data.inspector !== undefined) updateData.inspector = data.inspector || null;
@@ -77,6 +83,13 @@ class InspectionService {
         if (data.generalNotes !== undefined) updateData.generalNotes = data.generalNotes || null;
         if (data.recommendations !== undefined) updateData.recommendations = data.recommendations || null;
         if (data.notes !== undefined) updateData.notes = data.notes || null; // Keep for backward compatibility
+        if (data.onSiteSignature !== undefined) updateData.onSiteSignature = data.onSiteSignature || null;
+        if (data.inspectorSignature !== undefined) {
+            updateData.inspectorSignature = data.inspectorSignature || null;
+        }
+        if (data.landlordSignature !== undefined) {
+            updateData.landlordSignature = data.landlordSignature || null;
+        }
         if (data.completedAt !== undefined) updateData.completedAt = completedAt || null;
 
         // If generalNotes is updated but notes is not, sync notes to generalNotes for backward compatibility
@@ -175,9 +188,9 @@ class InspectionService {
     }
 
     /**
-     * Save inspection sections with items
-     * @param inspectionId - Inspection ID
-     * @param sections - Array of sections with items
+     * Save inspection sections with items.
+     * Merges by sectionType: only provided types are replaced; other sections are kept.
+     * This prevents step autosave from wiping previous progress/photos.
      */
     saveSections = async (
         inspectionId: string,
@@ -192,59 +205,114 @@ class InspectionService {
             }>;
         }>
     ) => {
-        // Delete existing sections and items (cascade will handle items)
-        await prismaClient.inspectionSection.deleteMany({
+        if (!Array.isArray(sections) || sections.length === 0) {
+            return [];
+        }
+
+        // Upsert by sectionType + itemName so guest/landlord photo IDs survive saves.
+        const savedSections = [];
+        for (const section of sections) {
+            const sectionType = (section.sectionType || '').trim().toLowerCase();
+            if (!sectionType) continue;
+
+            let existing = await prismaClient.inspectionSection.findFirst({
+                where: { inspectionId, sectionType },
+                include: { items: true },
+            });
+
+            if (!existing) {
+                existing = await prismaClient.inspectionSection.create({
+                    data: { inspectionId, sectionType },
+                    include: { items: true },
+                });
+            }
+
+            const payloadItems = Array.isArray(section.items) ? section.items : [];
+            const keepNames = new Set(
+                payloadItems
+                    .map((item) => (item.itemName || '').trim())
+                    .filter(Boolean)
+            );
+
+            // Remove items that are no longer in the payload for this section
+            const toRemove = existing.items.filter(
+                (item) => !keepNames.has((item.itemName || '').trim())
+            );
+            if (toRemove.length > 0) {
+                await prismaClient.inspectionItem.deleteMany({
+                    where: { id: { in: toRemove.map((i) => i.id) } },
+                });
+            }
+
+            for (const item of payloadItems) {
+                const itemName = (item.itemName || '').trim();
+                if (!itemName) continue;
+                const data = {
+                    itemName,
+                    condition: item.condition,
+                    notes: item.notes || null,
+                    actionRequired: item.actionRequired || false,
+                    severity: item.severity || null,
+                };
+                const match = existing.items.find(
+                    (row) => (row.itemName || '').trim() === itemName
+                );
+                if (match) {
+                    await prismaClient.inspectionItem.update({
+                        where: { id: match.id },
+                        data,
+                    });
+                } else {
+                    await prismaClient.inspectionItem.create({
+                        data: { sectionId: existing.id, ...data },
+                    });
+                }
+            }
+
+            const refreshed = await prismaClient.inspectionSection.findUnique({
+                where: { id: existing.id },
+                include: {
+                    items: { include: { photos: true } },
+                },
+            });
+            if (refreshed) savedSections.push(refreshed);
+        }
+
+        // Recompute findings from the full section set after merge
+        const allSections = await prismaClient.inspectionSection.findMany({
             where: { inspectionId },
+            include: { items: true },
         });
 
-        // Create new sections with items
-        const createdSections = await Promise.all(
-            sections.map((section) =>
-                prismaClient.inspectionSection.create({
-                    data: {
-                        inspectionId,
-                        sectionType: section.sectionType,
-                        items: {
-                            create: section.items.map((item) => ({
-                                itemName: item.itemName,
-                                condition: item.condition,
-                                notes: item.notes || null,
-                                actionRequired: item.actionRequired || false,
-                                severity: item.severity || null,
-                            })),
-                        },
-                    },
-                    include: {
-                        items: true,
-                    },
-                })
-            )
-        );
-
-        // Update inspection with findings count
-        const totalItems = sections.reduce(
-            (sum, section) => sum + section.items.length,
-            0
-        );
-        const criticalItems = sections.reduce(
+        const nonGoodItems = allSections.reduce(
             (sum, section) =>
                 sum +
-                section.items.filter(
-                    (item) =>
-                        item.actionRequired && item.severity === 'Critical'
-                ).length,
+                section.items.filter((item) => {
+                    const condition = (item.condition || '').trim().toLowerCase();
+                    return condition && condition !== 'good' && condition !== 'n/a' && condition !== 'na';
+                }).length,
+            0
+        );
+        const criticalItems = allSections.reduce(
+            (sum, section) =>
+                sum +
+                section.items.filter((item) => {
+                    if (!item.actionRequired) return false;
+                    const severity = (item.severity || '').trim().toLowerCase();
+                    return severity === 'critical' || severity === 'high';
+                }).length,
             0
         );
 
         await prismaClient.inspection.update({
             where: { id: inspectionId },
             data: {
-                findings: totalItems,
+                findings: nonGoodItems,
                 criticalIssues: criticalItems,
             },
         });
 
-        return createdSections;
+        return savedSections;
     }
 
     /**

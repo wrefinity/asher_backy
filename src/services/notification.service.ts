@@ -18,6 +18,9 @@ interface NotificationData {
     notificationType?: string;
     route?: string;
     skipPush?: boolean;
+    /** When true, also emit Socket.IO `notification` to `user:{destId}` */
+    emitRealtime?: boolean;
+    type?: 'info' | 'success' | 'warning' | 'error';
 }
 
 class NotificationService {
@@ -134,6 +137,8 @@ class NotificationService {
                         title: data.title,
                         message: data.message,
                         category: notificationCategory,
+                        notificationType: data.notificationType || null,
+                        route: data.route || null,
                         isRead: false,
                     },
                     include: {
@@ -174,6 +179,26 @@ class NotificationService {
                     typeKey,
                     notification?.id
                 );
+            }
+
+            if (data.emitRealtime && shouldSendInApp && notification) {
+                try {
+                    const { serverInstance } = await import('../index');
+                    serverInstance?.io?.to(`user:${data.destId}`).emit('notification', {
+                        id: notification.id,
+                        title: data.title,
+                        message: data.message,
+                        type: data.type || 'info',
+                        category: notificationCategory,
+                        actionUrl: notification.route ?? data.route,
+                        route: notification.route ?? data.route,
+                        notificationType: notification.notificationType ?? typeKey,
+                        timestamp: notification.createdAt || new Date(),
+                        isRead: false,
+                    });
+                } catch (emitError) {
+                    console.error('Failed to emit realtime notification:', emitError);
+                }
             }
 
             return notification;

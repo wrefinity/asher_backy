@@ -41,7 +41,8 @@ class SubCategoryControls {
     // Other CRUD operations
     getAllSubCategories = async (req, res) => {
         try {
-            const subCategories = await SubCategoryService.getAllSubCategories();
+            const search = typeof req.query.search === "string" ? req.query.search : undefined;
+            const subCategories = await SubCategoryService.getAllSubCategories(search);
             res.status(200).json({ subCategories });
         } catch (err) {
             errorService.handleError(err, res);

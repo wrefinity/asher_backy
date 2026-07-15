@@ -2,6 +2,7 @@ import { prismaClient } from "..";
 import { CommunityVisibility, CommunityInvitation, MembershipStatus, Community } from "@prisma/client";
 import { ICommunityPostCreateDTO } from "../validations/interfaces/community.interface";
 import { Prisma } from "@prisma/client";
+import { assertCommunityFeedAccess } from "./community.access.service";
 
 class CommunityService {
     constructor() { }
@@ -32,19 +33,7 @@ class CommunityService {
 
         if (!community) throw new Error('Community not found');
 
-        if (community.ownerId !== userId) {
-            const membership = await prismaClient.communityMember.findUnique({
-                where: {
-                    communityId_usersId: {
-                        communityId: data.communityId,
-                        usersId: userId
-                    },
-                    status: 'MEMBER'
-                }
-            });
-
-            if (!membership) throw new Error('User is not a community member');
-        }
+        await assertCommunityFeedAccess(userId, communityId);
 
         const post = await prismaClient.communityPost.create({
             data: {

@@ -125,28 +125,6 @@ class MoveOutNoticeService {
     const moveOutDateStr = input.intendedMoveOutDate.toLocaleDateString();
     const typeLabel = input.type === MoveOutNoticeType.RELOCATING ? 'relocating' : 'moving out';
 
-    await NotificationService.createNotification(
-      {
-        sourceId: tenant.userId,
-        destId: tenant.landlord.userId,
-        title: 'Tenant Move-Out Notice',
-        message: `${tenantName} has submitted a move-out notice (${typeLabel}). Intended move-out date: ${moveOutDateStr}. Reason: ${input.reason}.`,
-        category: NotificationCategory.MOVE_OUT,
-      },
-      NotificationCategory.MOVE_OUT
-    );
-
-    await LogsServices.createLog({
-      events: appendActivityLogRef(
-        `${tenantName} submitted move-out notice (${typeLabel}) for ${moveOutDateStr}`,
-        { type: 'notice', id: notice.id }
-      ),
-      type: LogType.ACTIVITY,
-      propertyId: tenant.propertyId,
-      createdById: tenant.userId,
-      subjects: 'Move-out notice submitted',
-    });
-
     let inspection = null;
     try {
       inspection = await InspectionMoveOutService.createMoveOutInspection({
@@ -158,46 +136,40 @@ class MoveOutNoticeService {
         reason: input.reason,
         comments: input.comments,
       });
+    } catch (inspectionErr) {
+      console.warn('Failed to auto-create move-out inspection draft', inspectionErr);
+    }
 
-      await NotificationService.createNotification(
+    const scheduleRoute = inspection
+      ? `/service/inspections/${inspection.id}?scheduleDraft=1`
+      : '/service/inspections';
+
+    await Promise.all([
+      NotificationService.createNotification(
         {
           sourceId: tenant.userId,
           destId: tenant.landlord.userId,
-          title: 'Move-Out Inspection Scheduled',
-          message: `${tenantName} submitted a move-out notice. A move-out inspection has been scheduled for ${moveOutDateStr}.`,
-          notificationType: 'inspection_scheduled',
-          route: `/service/inspections/${inspection.id}`,
+          title: 'Tenant leaving — schedule walkthrough',
+          message: `${tenantName} submitted a move-out notice (${typeLabel}) for ${moveOutDateStr}. Reason: ${input.reason}. Open Inspections to set the appointment.`,
+          category: NotificationCategory.MOVE_OUT,
+          notificationType: 'tenant_move_out_notice',
+          emitRealtime: true,
+          type: 'warning',
+          route: scheduleRoute,
         },
         NotificationCategory.MOVE_OUT
-      );
-
-      if (tenant.userId) {
-        await NotificationService.createNotification(
-          {
-            sourceId: tenant.landlord.userId,
-            destId: tenant.userId,
-            title: 'Move-Out Inspection Scheduled',
-            message: `Your landlord will conduct a move-out inspection around ${moveOutDateStr}.`,
-            notificationType: 'inspection_scheduled',
-            route: `/inspections/${inspection.id}`,
-          },
-          NotificationCategory.MOVE_OUT
-        );
-      }
-
-      await LogsServices.createLog({
+      ),
+      LogsServices.createLog({
         events: appendActivityLogRef(
-          `Move-out inspection scheduled for ${moveOutDateStr}`,
-          { type: 'inspection', id: inspection.id }
+          `${tenantName} submitted move-out notice (${typeLabel}) for ${moveOutDateStr}`,
+          { type: 'notice', id: notice.id }
         ),
         type: LogType.ACTIVITY,
         propertyId: tenant.propertyId,
         createdById: tenant.userId,
-        subjects: 'Move-out inspection scheduled',
-      });
-    } catch (inspectionErr) {
-      console.warn('Failed to auto-create move-out inspection', inspectionErr);
-    }
+        subjects: 'Move-out notice submitted',
+      }),
+    ]);
 
     return { notice, inspection };
   }
@@ -228,14 +200,10 @@ class MoveOutNoticeService {
 
     return Promise.all(
       notices.map(async (notice) => {
-        const inspection = await InspectionMoveOutService.findInspectionForNotice(
-          notice.id,
-          notice.tenantId
-        );
-        const depositReturn = await this.resolveDepositReturnDeadline(
-          landlordId,
-          notice.intendedMoveOutDate
-        );
+        const [inspection, depositReturn] = await Promise.all([
+          InspectionMoveOutService.findInspectionForNotice(notice.id, notice.tenantId),
+          this.resolveDepositReturnDeadline(landlordId, notice.intendedMoveOutDate),
+        ]);
         return this.enrichNoticeWithDepositReturn(
           { ...notice, inspection },
           depositReturn
@@ -316,30 +284,33 @@ class MoveOutNoticeService {
       },
     });
 
-    await NotificationService.createNotification(
-      {
-        sourceId: acknowledgedByUserId,
-        destId: notice.tenant.userId,
-        title: 'Move-Out Notice Acknowledged',
-        message: depositReturn
-          ? `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}. Security deposit must be returned by ${depositReturn.deadline.toLocaleDateString('en-GB')} (${depositReturn.days} day${depositReturn.days === 1 ? '' : 's'} after move-out).`
-          : `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
-        notificationType: 'move_out_acknowledged',
-        route: '/profile/TenancyInfo',
-      },
-      NotificationCategory.MOVE_OUT
-    );
-
-    await LogsServices.createLog({
-      events: appendActivityLogRef(
-        `Landlord acknowledged move-out notice for ${notice.tenant.property?.name || 'the property'}`,
-        { type: 'notice', id: noticeId }
+    await Promise.all([
+      NotificationService.createNotification(
+        {
+          sourceId: acknowledgedByUserId,
+          destId: notice.tenant.userId,
+          title: 'Move-Out Notice Acknowledged',
+          message: depositReturn
+            ? `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}. Security deposit must be returned by ${depositReturn.deadline.toLocaleDateString('en-GB')} (${depositReturn.days} day${depositReturn.days === 1 ? '' : 's'} after move-out).`
+            : `Your landlord has acknowledged your move-out notice for ${notice.tenant.property?.name || 'your property'}.`,
+          notificationType: 'move_out_acknowledged',
+          route: '/profile/TenancyInfo',
+          emitRealtime: true,
+          type: 'info',
+        },
+        NotificationCategory.MOVE_OUT
       ),
-      type: LogType.ACTIVITY,
-      propertyId: notice.tenant.propertyId,
-      createdById: notice.tenant.userId,
-      subjects: 'Move-out notice acknowledged',
-    });
+      LogsServices.createLog({
+        events: appendActivityLogRef(
+          `Landlord acknowledged move-out notice for ${notice.tenant.property?.name || 'the property'}`,
+          { type: 'notice', id: noticeId }
+        ),
+        type: LogType.ACTIVITY,
+        propertyId: notice.tenant.propertyId,
+        createdById: notice.tenant.userId,
+        subjects: 'Move-out notice acknowledged',
+      }),
+    ]);
 
     return this.enrichNoticeWithDepositReturn(updated, depositReturn);
   }

@@ -135,7 +135,9 @@ class AuthControls {
                 ...data.profile,
                 profileUrl
             },
-            uploadedDocuments: documents
+            uploadedDocuments: documents,
+            businessName: data.businessName,
+            businessRegistrationNumber: data.businessRegistrationNumber
         });
 
         return res
@@ -647,6 +649,14 @@ class AuthControls {
         if (!user.isVerified) {
             await this.verificationTokenCreator({ userId: user.id, email: user.email });
             throw ApiError.unauthorized("Account not verified, verification code sent to email");
+        }
+
+        if ((user as any).isSuspended) {
+            throw ApiError.unauthorized("Account suspended. Contact support for assistance.");
+        }
+
+        if ((user as any).landlords?.isDeleted) {
+            throw ApiError.unauthorized("This account has been removed.");
         }
 
         if (tenantCode && !email) {

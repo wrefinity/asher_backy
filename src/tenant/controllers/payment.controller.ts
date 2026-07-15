@@ -38,9 +38,11 @@ class TenantPaymentController {
     }
 
     // Get the bill details (tenant-specific, property-wide, or landlord-wide)
-    const tenant = await tenantsServices.getTenantById(tenantId);
+    const [tenant, billScope] = await Promise.all([
+      tenantsServices.getTenantById(tenantId),
+      resolveTenantBillAccessScope(tenantId),
+    ]);
     const propertyId = tenant?.propertyId || null;
-    const billScope = await resolveTenantBillAccessScope(tenantId);
 
     const bill = await landlordBillsService.findBillAccessibleToTenant(
       billId,

@@ -4,6 +4,8 @@ model users {
   password                 String?
   googleId                 String?
   isVerified               Boolean                    @default(false)
+  isSuspended              Boolean                    @default(false)
+  suspendedAt              DateTime?
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   role                     userRoles[]                @default([WEBUSER])
@@ -19,6 +21,8 @@ model users {
   CommentLike              CommentLike[]
   Community                Community[]                @relation("CommunityOwner")
   CommunityMember          CommunityMember[]
+  CommunityJoinRequest     CommunityJoinRequest[]
+  ForumJoinRequest         ForumJoinRequest[]
   communityPost            CommunityPost[]
   communityPostLikes       CommunityPostLike[]
   CommunityPostPollVote    CommunityPostPollVote[]

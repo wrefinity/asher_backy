@@ -21,6 +21,7 @@ class MaintenaceRoutes {
     }
     private initializeRoutes(): void {
         this.router.get('/all', MaintenanceController.getMaintenances);
+        this.router.get('/statuses', MaintenanceController.getMaintenancesByStatus);
 
         // Vendor actions
         this.router.post("/:maintenanceId/accept", MaintenanceController.acceptJob);
@@ -39,20 +40,21 @@ class MaintenaceRoutes {
         this.router.post("/:maintenanceId/resume", MaintenanceController.resumeMaintenance);
         this.router.post("/:maintenanceId/cancel", MaintenanceController.cancelMaintenance);
         this.router.patch("/:maintenanceId/destination-reached", MaintenanceController.destinationReached);
+        this.router.post("/:maintenanceId/live-location", MaintenanceController.updateLiveLocation);
+
+        // maintenance quotation
+        this.router.post('/quotes', validateBody(createQuoteValidation), this.authenticateService.authorize, MaintenanceController.createQuote);
+        this.router.get('/quotes/maintenance/:maintenanceId', this.authenticateService.authorize, MaintenanceController.getMaintenanceQuotes);
+        this.router.get('/quotes/mine', this.authenticateService.authorize, MaintenanceController.getVendorQuotes);
+        this.router.post('/quotes/:quoteId/respond', this.authenticateService.authorize, MaintenanceController.respondToAcceptedQuote);
+        this.router.patch('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.updateQuote);
+        this.router.delete('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.deleteQuote);
 
         this.router.get('/request-confirm/:maintenanceId', this.authenticateService.authorize, MaintenanceController.confirmCancellationByVendor);
         this.router.post('/completed/:maintenanceId', this.authenticateService.authorize, MaintenanceController.updateMaintenanceToCompleted);
         this.router.post('/reschedule/:maintenanceId', this.authenticateService.authorize, MaintenanceGeneralController.rescheduleMaintenanceController);
         this.router.post('/schedule/:maintenanceId', this.authenticateService.authorize, MaintenanceGeneralController.scheduleMaintenanceDate);
-        this.router.get('/statuses', MaintenanceController.getMaintenancesByStatus);
         this.router.get('/:maintenanceId', MaintenanceController.getMaintenancesById);
-
-        // maintenance quotation
-        this.router.post('/quotes', validateBody(createQuoteValidation), this.authenticateService.authorize, MaintenanceController.createQuote);
-        this.router.get('/quotes/maintenance/:maintenanceId', validateBody(updateQuoteValidation    ), this.authenticateService.authorize, MaintenanceController.getMaintenanceQuotes);
-        this.router.get('/quotes/mine', this.authenticateService.authorize, MaintenanceController.getVendorQuotes);
-        this.router.patch('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.updateQuote);
-        this.router.delete('/quotes/:quoteId', this.authenticateService.authorize, MaintenanceController.deleteQuote);
     }
 }
 

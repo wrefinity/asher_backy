@@ -49,6 +49,10 @@ class ReviewService {
             prismaData.propertyId = data?.propertyId;
         }
 
+        if (data?.maintenanceId) {
+            prismaData.maintenanceId = data?.maintenanceId;
+        }
+
      
 
         return await prismaClient.reviews.create({
@@ -59,6 +63,12 @@ class ReviewService {
     getReviewById = async (id: string): Promise<reviews | null> => {
         return await prismaClient.reviews.findUnique({
             where: { id, isDeleted: false },
+        });
+    }
+
+    getReviewByMaintenanceId = async (maintenanceId: string): Promise<reviews | null> => {
+        return await prismaClient.reviews.findUnique({
+            where: { maintenanceId },
         });
     }
 

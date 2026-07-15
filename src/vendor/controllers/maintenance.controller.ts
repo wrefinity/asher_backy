@@ -5,7 +5,7 @@ import { ApiResponse } from "../../utils/ApiResponse";
 import { ApiError } from "../../utils/ApiError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import ServiceServices from "../services/vendor.services";
-import { maintenanceStatus, TransactionStatus, vendorAvailability } from '@prisma/client';
+import { maintenanceStatus, TransactionStatus, vendorAvailability, Currency } from '@prisma/client';
 import { CreateQuoteInput, quoteService, UpdateQuoteInput } from "../../services/quote.service";
 import { stat } from "fs";
 class MaintenanceController {
@@ -17,7 +17,7 @@ class MaintenanceController {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const maintenances = await MaintenanceService.getSpecificVendorMaintenanceRequest(vendorId, {
       page, limit,
-      status: maintenanceStatus.UNASSIGNED || req.query.status as maintenanceStatus,
+      status: (req.query.status as maintenanceStatus) || maintenanceStatus.UNASSIGNED,
     });
     return res
       .status(200)
@@ -111,9 +111,11 @@ class MaintenanceController {
   // Upload start attachments
   uploadStartAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const files = req.body.uploadedFiles; // assume [{ url, type }]
+    // uploadToCloudinaryGeneric middleware sets req.body.uploadedDocuments,
+    // not uploadedFiles - this previously always 400'd regardless of upload.
+    const files = req.body.uploadedDocuments; // [{ url, type }]
 
-    if (!files || !Array.isArray(files)) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
       throw ApiError.badRequest("Files are required and must be an array");
     }
 
@@ -126,9 +128,9 @@ class MaintenanceController {
   // Upload end attachments
   uploadEndAttachments = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const files = req.body.uploadedFiles;
+    const files = req.body.uploadedDocuments;
 
-    if (!files || !Array.isArray(files)) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
       throw ApiError.badRequest("Files are required and must be an array");
     }
 
@@ -173,6 +175,24 @@ class MaintenanceController {
       );
     }
 
+    // Landlord-liable jobs stay invisible to vendors until the landlord (or
+    // the tenant, once their offer is accepted) explicitly posts them.
+    if (!maintenanceRequest.postedForVendorSearch) {
+      return res.status(400).json(
+        ApiError.badRequest("This job has not been posted for vendors yet")
+      );
+    }
+
+    // Reputation gate (Part 5 of VENDOR_APP_FLOW_SPEC.md): blocked vendors
+    // cannot take new jobs anywhere in the system.
+    const { getVendorReputation } = await import("../../services/vendorReputation.service");
+    const reputation = await getVendorReputation(vendorId);
+    if (reputation.zone === "BLOCKED") {
+      return res.status(403).json({
+        message: "Your rating is below the minimum to receive jobs. Check your dashboard for how to rebuild your reputation."
+      });
+    }
+
     const vendorService = await ServiceServices.getSpecificVendorService(vendorId, maintenanceRequest.categoryId);
     if (!vendorService) {
       return res.status(400).json(
@@ -185,7 +205,7 @@ class MaintenanceController {
     if (vendorService.availability === vendorAvailability.NO) {
       return res.status(400).json({ message: 'Vendor is not available' });
     }
-    if (vendorService && vendorService.currentJobs > 2) {
+    if (vendorService && vendorService.currentJobs >= 2) {
       return res.status(400).json({ message: "job level exceeded" });
     }
 
@@ -198,6 +218,38 @@ class MaintenanceController {
       },
       maintenanceRequest.status,
     );
+
+    // Charge the tenant's wallet now that a vendor has picked up the job,
+    // mirroring the "fare locked in on driver acceptance" model. Requests
+    // with no amount (e.g. pure landlord-covered repairs) are skipped.
+    const tenantUserId = (maintenanceRequest as any).tenant?.userId;
+    const propertyCurrency = (maintenanceRequest as any).property?.currency;
+    if (
+      updated.amount &&
+      updated.paymentStatus === TransactionStatus.PENDING &&
+      tenantUserId
+    ) {
+      try {
+        await MaintenanceService.processPayment(
+          maintenanceId,
+          Number(updated.amount),
+          tenantUserId,
+          req.user.id,
+          propertyCurrency || Currency.NGN
+        );
+      } catch (paymentError) {
+        // Roll back the assignment (including job-count decrement and history)
+        // so the job isn't stuck ASSIGNED with no payment taken.
+        await MaintenanceService.unassignVendorFromMaintenance(
+          maintenanceId,
+          "Payment failed on acceptance"
+        );
+        throw ApiError.badRequest(
+          paymentError instanceof Error ? paymentError.message : "Failed to charge tenant for this job"
+        );
+      }
+    }
+
     return res
       .status(200)
       .json(ApiResponse.success(updated, "Job successfully accepted by vendor"));
@@ -221,16 +273,16 @@ class MaintenanceController {
   // Reschedule maintenance
   rescheduleMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
-    const { newDate } = req.body;
+    const { newDate, reason } = req.body;
 
     if (!newDate) {
       throw ApiError.badRequest("New date is required");
     }
 
-    const updated = await MaintenanceService.rescheduleMaintenanceDate(maintenanceId, newDate);
+    const updated = await MaintenanceService.rescheduleMaintenanceDate(maintenanceId, newDate, reason);
     return res
       .status(200)
-      .json(ApiResponse.success(updated, "Reschedule request sent successfully"));
+      .json(ApiResponse.success(updated, "Reschedule request sent, waiting for tenant approval"));
   });
 
   // Pause maintenance
@@ -266,6 +318,31 @@ class MaintenanceController {
       .status(200)
       .json(ApiResponse.success(updated, "Work started successfully"));
   });
+
+  // Live journey tracking (Part 18 of VENDOR_APP_FLOW_SPEC.md): the vendor
+  // app pushes its position while en route; the tenant app polls it.
+  updateLiveLocation = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const { maintenanceId } = req.params;
+    const vendorId = req.user?.vendors?.id;
+    const { latitude, longitude } = req.body;
+
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      throw ApiError.badRequest("latitude and longitude (numbers) are required");
+    }
+
+    const maintenance = await MaintenanceService.getMaintenanceById(maintenanceId);
+    if (!maintenance || maintenance.vendorId !== vendorId) {
+      throw ApiError.notFound("Maintenance not found or not assigned to you");
+    }
+
+    const updated = await MaintenanceService.updateVendorLiveLocation(
+      maintenanceId,
+      latitude,
+      longitude
+    );
+
+    return res.status(200).json(ApiResponse.success(updated, "Location updated"));
+  });
   cancelMaintenance = asyncHandler(async (req: CustomRequest, res: Response) => {
     const { maintenanceId } = req.params;
     const vendorId = req.user?.vendors?.id;
@@ -288,6 +365,12 @@ class MaintenanceController {
     if (maintenance.vendorId !== vendorId) {
       throw new Error("Unauthorized: Only the assigned vendor can consent to cancellation.");
     }
+    // Release the vendor's job slot so cancellations don't permanently
+    // inflate their active job count and lock them out of new work.
+    if (maintenance.serviceId) {
+      await ServiceServices.decrementJobCount(maintenance.serviceId, vendorId);
+    }
+
     // Update the maintenance record to reflect vendor consent
     const updated = await MaintenanceService.updateMaintenance(
       maintenanceId,
@@ -376,6 +459,28 @@ class MaintenanceController {
       ApiResponse.success(
         {},
         'Quote deleted successfully'
+      )
+    );
+  });
+
+  // Second vendor consent gate (Part 16 of VENDOR_APP_FLOW_SPEC.md):
+  // "You have been picked" - vendor confirms or declines a
+  // landlord-accepted quote. Confirming performs the actual assignment.
+  respondToAcceptedQuote = asyncHandler(async (req: CustomRequest, res: Response) => {
+    const vendorId = req.user.vendors.id;
+    const { quoteId } = req.params;
+    const { accept } = req.body;
+
+    if (typeof accept !== 'boolean') {
+      throw ApiError.badRequest('accept (boolean) is required');
+    }
+
+    const quote = await quoteService.respondToAcceptedQuote(quoteId, vendorId, accept);
+
+    return res.status(200).json(
+      ApiResponse.success(
+        quote,
+        accept ? 'Job confirmed - it is now assigned to you' : 'Quote declined'
       )
     );
   });

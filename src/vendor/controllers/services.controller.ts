@@ -66,6 +66,22 @@ class ServiceControls {
         }
     }
 
+    // Portfolio-proof uploads for the service wizard (Part 1 §5 of
+    // VENDOR_APP_FLOW_SPEC.md) - files land in Cloudinary via middleware;
+    // this just returns the hosted URLs for the client to attach to
+    // createService.proofUrls.
+    uploadProofImages = async (req: CustomRequest, res: Response) => {
+        try {
+            const uploaded: { url: string; type: string }[] = req.body.uploadedDocuments || [];
+            return res.status(200).json({
+                success: true,
+                data: { urls: uploaded.map((u) => u.url) },
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
     // Get All Services
     getAllServices = async (_req: CustomRequest, res: Response) => {
         try {
@@ -79,11 +95,11 @@ class ServiceControls {
     // Get Services by Category and Subcategories
     getServicesByCategoryAndSubcategories = async (req: CustomRequest, res: Response) => {
         try {
-            const { id } = req.params;
-            const { error, value } = applyOfferSchema.validate(req.body);
+            const { categoryId } = req.params;
+            const { error, value } = applyOfferSchema.extract('body').validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
 
-            const services = await serviceService.getServicesByCategoryAndSubcategories(id, value.subcategoryIds);
+            const services = await serviceService.getServicesByCategoryAndSubcategories(categoryId, value.subcategoryIds);
             res.status(200).json({ services });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -92,10 +108,10 @@ class ServiceControls {
     applyOffer = async (req: CustomRequest, res: Response) => {
         try {
             const { categoryId } = req.params;
-            const { error, value } = applyOfferSchema.validate(req.body);
+            const { error, value } = applyOfferSchema.extract('body').validate(req.body);
             if (error) return res.status(400).json({ error: error.details[0].message });
             // const services = await serviceService.applyOffer(categoryId, value.plan, value.offer);
-            const services = await serviceService.getServicesByCategoryAndSubcategories(categoryId, value.plan);
+            const services = await serviceService.getServicesByCategoryAndSubcategories(categoryId, value.subcategoryIds);
             res.status(200).json({services});
         } catch (error) {
             res.status(500).json({ error: error.message });

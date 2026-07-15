@@ -2,11 +2,13 @@ export interface InspectionCreateInput {
     propertyId: string;
     tenantId?: string;
     type?: string;
+    trigger?: 'MANUAL' | 'MOVE_OUT';
+    moveOutNoticeId?: string;
     scheduledDate?: string | Date;
     scheduledTime?: string;
     inspector?: string;
     inspectorId?: string;
-    status?: 'Not Started' | 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
+    status?: 'Draft' | 'Not Started' | 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
     priority?: 'Low' | 'Medium' | 'High' | 'Critical';
     score?: number;
     findings?: number;
@@ -15,15 +17,21 @@ export interface InspectionCreateInput {
     generalNotes?: string;
     recommendations?: string;
     notes?: string; // Kept for backward compatibility
+    onSiteSignature?: string;
+    inspectorSignature?: string;
+    landlordSignature?: string;
   }
   
   export interface InspectionUpdateInput {
     type?: string;
+    trigger?: 'MANUAL' | 'MOVE_OUT';
+    moveOutNoticeId?: string;
     scheduledDate?: string | Date;
     scheduledTime?: string;
     inspector?: string;
     inspectorId?: string;
-    status?: 'Not Started' | 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
+    tenantId?: string;
+    status?: 'Draft' | 'Not Started' | 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
     priority?: 'Low' | 'Medium' | 'High' | 'Critical';
     score?: number;
     findings?: number;
@@ -32,5 +40,8 @@ export interface InspectionCreateInput {
     generalNotes?: string;
     recommendations?: string;
     notes?: string; // Kept for backward compatibility
+    onSiteSignature?: string;
+    inspectorSignature?: string;
+    landlordSignature?: string;
     completedAt?: string | Date;
   }

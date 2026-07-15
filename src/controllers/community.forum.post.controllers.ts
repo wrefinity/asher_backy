@@ -3,6 +3,7 @@ import errorService from "../services/error.service"
 import { CustomRequest } from "../utils/types"
 import ForumThreadServices from "../services/forum.post.services"
 import { createCommunityPostSchema } from "../validations/schemas/community"
+import { assertForumAccess, assertForumAccessForComment, assertForumAccessForPollOption, assertForumAccessForThread } from "../services/community.access.service"
 
 class ForumThreadController {
     constructor() { }
@@ -14,6 +15,7 @@ class ForumThreadController {
         try {
             const userId = String(req.user.id)
             const forumId = req.params.forumId
+            await assertForumAccess(userId, forumId)
             const { cloudinaryAudioUrls, cloudinaryImageUrls, cloudinaryUrls, cloudinaryVideoUrls, cloudinaryDocumentUrls, ...data } = value
 
             const imageUrl = cloudinaryAudioUrls || [];
@@ -35,6 +37,8 @@ class ForumThreadController {
     async getForumThread(req: CustomRequest, res: Response) {
         try {
             const { forumId } = req.params
+            const userId = String(req.user?.id)
+            await assertForumAccess(userId, forumId)
             const { page = 1, limit = 10, search } = req.query;
             const posts = await ForumThreadServices.getForumThread(forumId, Number(page), Number(limit), String(search || ''));
             res.json(posts);
@@ -43,9 +47,11 @@ class ForumThreadController {
         }
     }
 
-    getTopContributors = async (req: Request, res: Response) => {
+    getTopContributors = async (req: CustomRequest, res: Response) => {
         try {
             const { threadId } = req.params;
+            const userId = String(req.user?.id);
+            await assertForumAccessForThread(userId, threadId);
             const contributors = await ForumThreadServices.getTopContributors(threadId);
             res.status(200).json(contributors);
         } catch (error) {
@@ -53,9 +59,11 @@ class ForumThreadController {
         }
     };
 
-    getRelatedThreads = async (req: Request, res: Response) => {
+    getRelatedThreads = async (req: CustomRequest, res: Response) => {
         try {
             const { threadId } = req.params;
+            const userId = String(req.user?.id);
+            await assertForumAccessForThread(userId, threadId);
             const threads = await ForumThreadServices.getRelatedDiscussionThreads(threadId);
             res.status(200).json(threads);
         } catch (error) {
@@ -66,6 +74,8 @@ class ForumThreadController {
     async getSingleForumThread(req: CustomRequest, res: Response) {
         try {
             const { forumId, threadId } = req.params
+            const userId = String(req.user?.id)
+            await assertForumAccess(userId, forumId)
             const forum = await ForumThreadServices.getSingleForumThread(forumId, threadId)
             return res.status(200).json(forum)
         } catch (error) {
@@ -96,10 +106,10 @@ class ForumThreadController {
 
         try {
             const { threadId } = req.params
+            const userId = String(req.user.id)
+            await assertForumAccessForThread(userId, threadId)
             const forumThread = await ForumThreadServices.getForumThreadById(threadId)
             if (!forumThread) return res.status(404).json({ message: "Post not found" })
-
-            const userId = String(req.user.id)
 
             if (forumThread.authorId !== userId) return res.status(403).json({ message: "Unauthorized to edit this post" })
 
@@ -115,7 +125,8 @@ class ForumThreadController {
     async togglePin(req: CustomRequest, res: Response) {
         try {
             const { threadId } = req.params;
-            const usersId = req.user.id;
+            const usersId = String(req.user.id);
+            await assertForumAccessForThread(usersId, threadId);
 
             const result = await ForumThreadServices.togglePinThread(threadId, usersId);
             return res.status(200).json(result);
@@ -138,10 +149,11 @@ class ForumThreadController {
         try {
 
             const { threadId } = req.params
+            const userId = String(req.user.id)
+            await assertForumAccessForThread(userId, threadId)
             const forumThread = await ForumThreadServices.getForumThreadById(threadId)
             if (!forumThread) return res.status(404).json({ message: "Post not found" })
 
-            const userId = String(req.user.id)
             if (forumThread.authorId !== userId) return res.status(403).json({ message: "Unauthorized to delete this post" })
 
             const deleted = await ForumThreadServices.deleteDiscussionThread(threadId)
@@ -156,8 +168,10 @@ class ForumThreadController {
     }
     voteOnPoll = async (req: CustomRequest, res: Response) => {
         try {
+            const userId = String(req.user.id);
             const { optionId } = req.body;
-            const result = await ForumThreadServices.voteOnPoll(req.user.id, optionId);
+            await assertForumAccessForPollOption(userId, optionId);
+            const result = await ForumThreadServices.voteOnPoll(userId, optionId);
             res.json(result);
         } catch (error) {
             res.status(500).json({ message: error.message });
@@ -168,6 +182,7 @@ class ForumThreadController {
         try {
             const { threadId } = req.params;
             const userId = String(req.user.id);
+            await assertForumAccessForThread(userId, threadId);
             const result = await ForumThreadServices.likeDiscussionThread(threadId, userId);
             return res.status(200).json(result);
         } catch (error) {
@@ -178,6 +193,7 @@ class ForumThreadController {
         try {
             const { commentId } = req.params;
             const userId = String(req.user.id);
+            await assertForumAccessForComment(userId, commentId);
             const result = await ForumThreadServices.shareDiscussionComment(commentId, userId);
             return res.status(200).json(result);
         } catch (error) {
@@ -185,10 +201,11 @@ class ForumThreadController {
         }
     }
 
-    getThreadCommentsWithReplies = async (req: Request, res: Response) => {
+    getThreadCommentsWithReplies = async (req: CustomRequest, res: Response) => {
         try {
-            console.log("================ checking thread comments ================")
             const threadId = req.params.threadId
+            const userId = String(req.user?.id);
+            await assertForumAccessForThread(userId, threadId);
             const comments = await ForumThreadServices.getDiscussionCommentsWithReplies(threadId)
             return res.status(200).json({ data: comments })
         } catch (error) {
@@ -199,6 +216,8 @@ class ForumThreadController {
     async getLikedDiscussionThread(req: CustomRequest, res: Response) {
         try {
             const { threadId } = req.params;
+            const userId = String(req.user?.id);
+            await assertForumAccessForThread(userId, threadId);
             const likes = await ForumThreadServices.getThreadLikes(threadId)
             return res.status(200).json(likes)
         } catch (error) {
@@ -220,6 +239,7 @@ class ForumThreadController {
         try {
             const userId = String(req.user.id);
             const { threadId } = req.params;
+            await assertForumAccessForThread(userId, threadId);
             const { content } = req.body;
 
             if (!content) {
@@ -237,6 +257,7 @@ class ForumThreadController {
         try {
             const userId = String(req.user.id);
             const { commentId } = req.params;
+            await assertForumAccessForComment(userId, commentId);
             const { content } = req.body;
 
             if (!content) {

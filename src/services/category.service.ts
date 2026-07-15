@@ -54,26 +54,25 @@ class categoryService {
             ];
         }
 
-        // Get total count for pagination
-        const total = await prismaClient.category.count({ where });
-
-        // Get paginated results
-        const categories = await prismaClient.category.findMany({
-            where,
-            skip: (page - 1) * limit,
-            take: limit,
-            orderBy: {
-                [sortBy]: sortOrder
-            },
-            include: {
-                subCategory: {
-                    where: { isDeleted: false },
-                    orderBy: {
-                        name: 'asc'
+        const [total, categories] = await Promise.all([
+            prismaClient.category.count({ where }),
+            prismaClient.category.findMany({
+                where,
+                skip: (page - 1) * limit,
+                take: limit,
+                orderBy: {
+                    [sortBy]: sortOrder
+                },
+                include: {
+                    subCategory: {
+                        where: { isDeleted: false },
+                        orderBy: {
+                            name: 'asc'
+                        }
                     }
                 }
-            }
-        });
+            }),
+        ]);
 
         return {
             data: categories,
