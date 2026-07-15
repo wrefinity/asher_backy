@@ -298,10 +298,14 @@ class ApplicantControls {
         return res.status(200).json(result);
       }
 
+      const callbackUrl =
+        typeof req.body.callbackUrl === 'string' ? req.body.callbackUrl : undefined;
+
       const result = await applicationFeeService.initiateCardPayment(
         applicationId,
         userId,
-        paymentGateway
+        paymentGateway,
+        callbackUrl
       );
       return res.status(200).json(result);
     } catch (error) {

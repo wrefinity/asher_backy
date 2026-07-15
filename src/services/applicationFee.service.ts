@@ -12,6 +12,7 @@ import stripeService from './stripe.service';
 import paystackServices from './paystack.services';
 import walletService from './wallet.service';
 import { validateFundAmount } from '../utils/moneyAmount';
+import { WEB_USER_PORTAL_URL } from '../secrets';
 import {
   resolveApplicationFeeContext,
   selectApplicationFeeGateway,
@@ -238,10 +239,30 @@ class ApplicationFeeService {
     return { paid: true, context, paymentMethod: 'wallet' as const };
   }
 
+  private resolveApplicationFeeCallbackUrl(
+    applicationId: string,
+    clientCallbackUrl?: string
+  ): string {
+    if (typeof clientCallbackUrl === 'string' && clientCallbackUrl.trim()) {
+      try {
+        const parsed = new URL(clientCallbackUrl.trim());
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+          return parsed.toString();
+        }
+      } catch {
+        // fall through to default
+      }
+    }
+
+    const base = WEB_USER_PORTAL_URL;
+    return `${base}/dashboard/applications/payment-success?applicationId=${encodeURIComponent(applicationId)}&feeVerify=1`;
+  }
+
   async initiateCardPayment(
     applicationId: string,
     userId: string,
-    paymentGateway?: PaymentGateway
+    paymentGateway?: PaymentGateway,
+    clientCallbackUrl?: string
   ) {
     const application = await this.loadApplication(applicationId, userId);
     const context = await resolveApplicationFeeContext(application);
@@ -390,7 +411,10 @@ class ApplicationFeeService {
           landlordReferenceId,
           fundCurrency: context.currency,
           fundAmount: String(amount),
-          callbackUrl: `${(process.env.FRONTEND_URL || 'https://asher-tenant-web.vercel.app').replace(/\/$/, '')}/dashboard/applications/${applicationId}/apply?applicationId=${applicationId}&feeVerify=1`,
+          callbackUrl: this.resolveApplicationFeeCallbackUrl(
+            applicationId,
+            clientCallbackUrl
+          ),
         }
       );
 
