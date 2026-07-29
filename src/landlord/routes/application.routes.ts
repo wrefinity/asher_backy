@@ -49,6 +49,7 @@ class ApplicationLandlordRouter {
         this.router.get('/references/screening/:id/runs', ApplicationController.getApplicationScreeningRuns);
         this.router.get('/references/screening/:id/latest', ApplicationController.getLatestApplicationScreeningRun);
         this.router.patch('/references/screening/:id/override', ApplicationController.overrideApplicationScreeningCheck);
+        this.router.patch('/references/screening/:id/manual', ApplicationController.runManualApplicationValidation);
         this.router.patch('/references/screening/:id/credit-result', ApplicationController.recordApplicationCreditScreeningResult);
     }
 }

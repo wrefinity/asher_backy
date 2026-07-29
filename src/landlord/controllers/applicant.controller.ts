@@ -1168,6 +1168,57 @@ class ApplicationControls {
         }
     };
 
+    runManualApplicationValidation = async (req: CustomRequest, res: Response) => {
+        try {
+            const applicationId = req.params.id;
+            const { reason } = req.body ?? {};
+            const landlordId = req.user?.landlords?.id;
+
+            if (!applicationId) {
+                return res.status(400).json({
+                    error: "Application ID is required",
+                    details: ["Missing application ID in URL parameters"],
+                });
+            }
+            if (!reason?.trim()) {
+                return res.status(400).json({
+                    error: "Manual validation reason is required",
+                    details: ["Landlords must confirm why they are manually validating screening"],
+                });
+            }
+
+            const result = await ScreeningService.runManualValidation({
+                applicationId,
+                reason,
+                landlordId,
+                triggeredByUserId: req.user?.id,
+            });
+
+            return res.status(200).json(result);
+        } catch (error) {
+            const message = (error as Error)?.message;
+            if (message === "Application not found") {
+                return res.status(404).json({
+                    error: "Application not found",
+                    details: [`Application with ID ${req.params.id} does not exist`],
+                });
+            }
+            if (message === "Landlord does not own this application/property.") {
+                return res.status(403).json({
+                    error: "Forbidden",
+                    details: [message],
+                });
+            }
+            if (message === "Application has already reached a terminal decision state.") {
+                return res.status(400).json({
+                    error: "Manual validation not allowed",
+                    details: [message],
+                });
+            }
+            errorService.handleError(error, res);
+        }
+    };
+
     recordApplicationCreditScreeningResult = async (req: CustomRequest, res: Response) => {
         try {
             const applicationId = req.params.id;

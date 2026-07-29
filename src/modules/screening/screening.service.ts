@@ -81,6 +81,13 @@ export type CreditScreeningResultInput = {
   triggeredByUserId?: string;
 };
 
+export type ManualValidationInput = {
+  applicationId: string;
+  reason: string;
+  landlordId?: string;
+  triggeredByUserId?: string;
+};
+
 const APPLICATION_INCLUDE = {
   documents: true,
   employmentInfo: true,
@@ -524,6 +531,148 @@ class ScreeningService {
     ]);
 
     return { application: updatedApplication, screeningRun: run };
+  }
+
+  /**
+   * Landlord-attested pass for all checklist verification fields.
+   * Use when paid/auto screening is unavailable; still writes an audit screening run.
+   */
+  async runManualValidation(input: ManualValidationInput) {
+    if (!input.reason?.trim()) {
+      throw new Error("Manual validation reason is required.");
+    }
+
+    const application = await prismaClient.application.findUnique({
+      where: { id: input.applicationId },
+      include: {
+        properties: { select: { landlordId: true } },
+        applicationInvites: {
+          select: {
+            invitedByLandordId: true,
+            properties: { select: { landlordId: true } },
+          },
+        },
+      },
+    });
+    if (!application) throw new Error("Application not found");
+
+    const propertyLandlordId =
+      application.properties?.landlordId ??
+      application.applicationInvites?.properties?.landlordId ??
+      application.applicationInvites?.invitedByLandordId;
+
+    if (
+      input.landlordId &&
+      propertyLandlordId &&
+      propertyLandlordId !== input.landlordId
+    ) {
+      throw new Error("Landlord does not own this application/property.");
+    }
+
+    if (
+      [ApplicationStatus.APPROVED, ApplicationStatus.DECLINED, ApplicationStatus.TENANT_CREATED].includes(
+        application.status
+      )
+    ) {
+      throw new Error("Application has already reached a terminal decision state.");
+    }
+
+    const reason = input.reason.trim();
+    const triggeredAt = new Date();
+    const statusUpdate = {
+      employmentVerificationStatus: YesNo.YES,
+      incomeVerificationStatus: YesNo.YES,
+      creditCheckStatus: YesNo.YES,
+      landlordVerificationStatus: YesNo.YES,
+      guarantorVerificationStatus: YesNo.YES,
+      refereeVerificationStatus: YesNo.YES,
+    };
+
+    const checkKeys: ScreeningCheckKey[] = [
+      "identity",
+      "employment",
+      "employmentResearch",
+      "income",
+      "credit",
+      "guarantor",
+      "referee",
+      "landlord",
+      "regional",
+    ];
+
+    const checks = Object.fromEntries(
+      checkKeys.map((key) => [
+        key,
+        {
+          key,
+          label: this.labelForCheck(key),
+          status: "YES" as ScreeningStatus,
+          required: true,
+          reasons: [`Manual validation: ${reason}`],
+          evidence: [
+            {
+              source: "manualValidation",
+              field: this.statusFieldForCheck(key),
+              value: "YES",
+            },
+          ],
+          checkedAt: triggeredAt.toISOString(),
+        },
+      ])
+    ) as Record<ScreeningCheckKey, ScreeningCheckResult>;
+
+    const [updatedApplication, run] = await prismaClient.$transaction([
+      prismaClient.application.update({
+        where: { id: input.applicationId },
+        data: statusUpdate,
+        select: {
+          id: true,
+          employmentVerificationStatus: true,
+          incomeVerificationStatus: true,
+          creditCheckStatus: true,
+          landlordVerificationStatus: true,
+          guarantorVerificationStatus: true,
+          refereeVerificationStatus: true,
+        },
+      }),
+      prismaClient.applicationScreeningRun.create({
+        data: {
+          applicationId: input.applicationId,
+          triggeredByUserId: input.triggeredByUserId,
+          triggeredAt,
+          overall: "PASSED",
+          inputHash: this.hashScreeningInputs({
+            id: input.applicationId,
+            updatedAt: triggeredAt,
+            manualValidation: true,
+            reason,
+          }),
+          checks: this.toJson(checks) as Prisma.InputJsonValue,
+          statusUpdate: this.toJson(statusUpdate) as Prisma.InputJsonValue,
+          riskScore: 0,
+          riskFlags: ["MANUAL_VALIDATION"],
+          blockedReasons: [],
+        },
+      }),
+    ]);
+
+    return {
+      screener: {
+        runId: run.id,
+        applicationId: input.applicationId,
+        triggeredByUserId: input.triggeredByUserId,
+        triggeredAt: triggeredAt.toISOString(),
+        overall: "PASSED" as ScreeningOverall,
+        checks,
+        riskScore: 0,
+        riskFlags: ["MANUAL_VALIDATION"],
+        blockedReasons: [] as string[],
+        statusUpdate,
+        mode: "MANUAL" as const,
+      },
+      application: updatedApplication,
+      screeningRun: run,
+    };
   }
 
   async recordCreditScreeningResult(input: CreditScreeningResultInput) {
